@@ -1,1 +1,10 @@
-# Convenience targets (optional).\n.PHONY: test lint\n\ntest:\n\tpytest -q\n\nlint:\n\truff check .\n
+.PHONY: test test-integration lint
+
+test:
+	pytest -q
+
+test-integration:
+	pytest -q -m integration
+
+lint:
+	ruff check .

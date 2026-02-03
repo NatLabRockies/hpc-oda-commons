@@ -12,15 +12,18 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "HPC-ODA Commons Contributors" }]
-dependencies = [
-  # Keep v0.1 lean; add as needed:
-  # "pydantic>=2",
-  # "jsonschema>=4",
-  # "pandas>=2",
-  # "pyarrow>=14",
-  # "typer>=0.9",
-  # "rich>=13",
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "jsonschema>=4",
+  "pyarrow>=14",
+  "pyyaml>=6",
+  "ruff>=0.5",
+  "mypy>=1.10",
+  "pre-commit>=3.7",
 ]
+
 
 [project.optional-dependencies]
 viz = [
