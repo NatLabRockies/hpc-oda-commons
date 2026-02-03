@@ -26,6 +26,14 @@ _A community hub for **HPC Operational Data Analytics (ODA)** — built for clar
 - **Researchers & vendors** — submit models once and compare fairly across datasets and sites.  
 - **Program managers** — track progress with transparent, reproducible leaderboards.
 
+## Project Status
+
+This repository is under active development toward **v0.1.0**, focused on a vertical slice for **SLURM Job Runtime Prediction**.
+
+- v0.1 scope and exit criteria: **docs/concepts/v0_1_charter.md**
+- Roadmap: **ROADMAP.md**
+
+
 ## Repo organization:
 
 ```
