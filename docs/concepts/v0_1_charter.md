@@ -16,6 +16,10 @@ The purpose of v0.1 is to deliver a **complete, working vertical slice** of hpc-
 
 v0.1 is explicitly focused on proving the project’s viability and usability through a fast, low-friction workflow.
 
+**Find Acceptance (v0.1):** Find is satisfied when `hpc-oda browse` and `hpc-oda info` work offline using the bundled `registry/snapshot.json`, and they list the baseline slurmctld adapter, baseline runtime prediction model, and the `baseline_tiny` recipe with compatibility metadata (schema versions + supported source).
+**Run Acceptance (v0.1):** Run is satisfied when a user can ingest slurmctld logs locally into `oda.job.v0.1.0` Parquet + manifest, validate them successfully (schema + minimal logical checks), and run the baseline runtime prediction model to produce a canonical result bundle under `runs/` without requiring network access.
+**Compare Acceptance (v0.1):** Compare is satisfied when `hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml` produces a deterministic, schema-valid result bundle containing regression metrics (at least MAE and RMSE) and provenance (schema versions, dataset identifier/hash, model identifier/version, environment capture, and code version when available).
+
 ---
 
 ## 2. Scope (v0.1)

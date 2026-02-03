@@ -1,3 +1,113 @@
 {
-  "_comment": "Result bundle schema (leaderboard reads these bundles). Replace with real JSON Schema."
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hpc-oda-commons.org/schemas/oda/result/v0.1.0.json",
+  "title": "hpc-oda-commons result bundle schema v0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "recipe_id", "problem_domain", "created_at", "metrics", "provenance"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "oda.result.v0.1.0",
+      "description": "Schema identifier for this result JSON."
+    },
+    "recipe_id": {
+      "type": "string",
+      "minLength": 3,
+      "description": "Recipe identifier used to produce this result."
+    },
+    "problem_domain": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Problem domain tags; should include job-runtime-prediction for v0.1."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this result bundle was produced."
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Registry model id or equivalent identifier." },
+        "version": { "type": "string", "minLength": 1, "description": "Model version string (semver recommended)." }
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "schema_version"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Dataset identifier (path, DOI, or logical ID)." },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^oda\\.[a-z0-9_.-]+\\.v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+          "description": "Schema id for dataset table rows (e.g., oda.job.v0.1.0)."
+        },
+        "hash": { "type": "string", "minLength": 8, "description": "Optional dataset content hash." }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mae", "rmse"],
+      "properties": {
+        "mae": { "type": "number", "minimum": 0 },
+        "rmse": { "type": "number", "minimum": 0 },
+        "mape": { "type": "number", "minimum": 0 },
+        "r2": { "type": "number" }
+      },
+      "description": "Regression metrics for runtime prediction."
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_versions", "environment", "code"],
+      "properties": {
+        "schema_versions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["input", "result"],
+          "properties": {
+            "input": { "type": "string", "description": "Input data schema version (e.g., oda.job.v0.1.0)." },
+            "result": { "type": "string", "description": "Result schema version (oda.result.v0.1.0)." }
+          }
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["python", "packages"],
+          "properties": {
+            "python": { "type": "string", "minLength": 1, "description": "Python version string." },
+            "packages": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Package freeze or minimal dependency list."
+            }
+          }
+        },
+        "code": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["package_version"],
+          "properties": {
+            "package_version": { "type": "string", "minLength": 1 },
+            "git_commit": { "type": "string", "minLength": 7 }
+          }
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Optional hashes/paths for raw inputs, transforms, and configs."
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional human-readable notes about the run."
+    }
+  }
 }
