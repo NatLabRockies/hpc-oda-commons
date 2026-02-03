@@ -1,1 +1,27 @@
-# Ruff linting configuration (can also live in pyproject.toml).
+# Ruff configuration for hpc-oda-commons (v0.1)
+
+line-length = 100
+target-version = "py39"
+
+[lint]
+# Start conservative; expand later.
+select = [
+  "E",    # pycodestyle errors
+  "F",    # pyflakes
+  "I",    # import sorting
+  "UP",   # pyupgrade
+  "B",    # flake8-bugbear
+]
+ignore = [
+  "E501", # line length enforced by formatter; keep ignore to avoid double noise
+]
+
+[lint.per-file-ignores]
+# tests often need less strictness; keep minimal ignores
+"tests/**.py" = ["B011"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
