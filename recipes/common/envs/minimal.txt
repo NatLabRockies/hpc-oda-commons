@@ -1,0 +1,1 @@
+# Minimal pip requirements for smoke tests (placeholder).\n

@@ -1,0 +1,166 @@
+# =========================
+# OS / Editor noise
+# =========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# =========================
+# Python: bytecode / caches
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.cache/
+
+# Type check / coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+nosetests.xml
+*.cover
+*.py,cover
+
+# =========================
+# Python: packaging / builds
+# =========================
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.conda/
+conda-bld/
+.python-version
+
+# =========================
+# Notebooks / data science
+# =========================
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# =========================
+# Docs site builds
+# =========================
+site/
+docs/_build/
+.build/
+
+# =========================
+# Logs / temp files
+# =========================
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+
+# =========================
+# Local runtime state (HPC-ODA)
+# =========================
+# Local project workspace created by CLI (state, caches, outputs)
+.hpc_oda/
+.hpc-oda/
+.oda/
+.oda_cache/
+.oda_runs/
+.oda_outputs/
+
+# Result bundles / leaderboard outputs that are generated locally
+# (Commit only if you intentionally publish generated artifacts.)
+leaderboard/public/
+!leaderboard/public/.gitkeep
+results/
+runs/
+outputs/
+
+# =========================
+# Data artifacts (keep manifests, ignore big/binary by default)
+# =========================
+# If you decide to commit a tiny demo Parquet, you can override with a negation rule.
+*.parquet
+*.arrow
+*.feather
+*.h5
+*.hdf5
+*.npz
+*.npy
+*.pkl
+*.pickle
+
+# Common compressed data
+*.csv.gz
+*.jsonl.gz
+*.parquet.gz
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+*.xz
+
+# Allow specific tiny demo artifacts if you choose to keep them in-repo:
+!datasets/synthetic/job-failure/tiny/data.parquet
+!tests/fixtures/expected_job_table.parquet
+
+# =========================
+# Secrets / local configs
+# =========================
+.env
+.env.*
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+secrets/
+**/secrets/
+
+# Optional: local override configs
+hpc-oda.local.toml
+*.local.toml
+
+# =========================
+# Containers / HPC runtime
+# =========================
+# Apptainer/Singularity build outputs
+*.sif
+*.img
+*.sandbox/
+
+# Docker build outputs (rarely committed)
+docker-compose.override.yml
+
+# =========================
+# Misc
+# =========================
+# JupyterLab / IPython
+.ipython/
+.profile_default/

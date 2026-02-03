@@ -1,0 +1,1 @@
+# Include non-Python artifacts in sdist/wheel.\nrecursive-include schemas *.json\nrecursive-include registry *.json *.sig\nrecursive-include recipes *.yml *.yaml *.toml *.txt\nrecursive-include datasets *\nrecursive-include docs *\n

@@ -1,0 +1,1 @@
+PLACEHOLDER SIGNATURE\n# Optional signature/checksum for registry snapshot integrity.\n

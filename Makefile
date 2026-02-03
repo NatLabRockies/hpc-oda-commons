@@ -1,0 +1,1 @@
+# Convenience targets (optional).\n.PHONY: test lint\n\ntest:\n\tpytest -q\n\nlint:\n\truff check .\n

@@ -1,0 +1,40 @@
+# Build metadata, dependencies, and tooling config for hpc-oda-commons.
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hpc-oda-commons"
+version = "0.1.0"
+description = "HPC Operational Data Analytics Commons: schema, adapters, models, and reproducible benchmarks."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "HPC-ODA Commons Contributors" }]
+dependencies = [
+  # Keep v0.1 lean; add as needed:
+  # "pydantic>=2",
+  # "jsonschema>=4",
+  # "pandas>=2",
+  # "pyarrow>=14",
+  # "typer>=0.9",
+  # "rich>=13",
+]
+
+[project.optional-dependencies]
+viz = [
+  # Optional visualization extras (v0.1): choose one later (streamlit/dash).
+]
+dev = [
+  "pytest>=8",
+  "ruff>=0.5",
+  "mypy>=1.10",
+  "pre-commit>=3.7",
+]
+
+[project.scripts]
+hpc-oda = "hpc_oda_commons.qst.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
