@@ -6,7 +6,9 @@ import pyarrow.parquet as pq
 import pytest
 from jsonschema import Draft202012Validator
 
-from ..conftest import find_first, load_json, load_schema, run_cli
+
+from tests.conftest import find_first, load_json, run_cli
+from hpc_oda_commons.kernel.schemas import load_schema
 
 REQUIRED_RESULT_FILES = ("result.json", "metrics.json", "provenance.json")
 
@@ -68,7 +70,7 @@ def test_dod_2_offline_run_baseline_produces_result_bundle(
     bundle_dir = _find_result_bundle_dir(tmp_project)
     _assert_result_bundle_dir(bundle_dir)
 
-    schema = load_schema(repo_root, "schemas/oda/result/v0.1.0.json")
+    schema = load_schema("oda.result.v0.1.0")
     result_payload = load_json(bundle_dir / "result.json")
     _validate_json_against_schema(result_payload, schema)
 
@@ -105,7 +107,7 @@ def test_dod_3_ingest_slurmctld_creates_schema_valid_artifacts(
     missing = required_cols - cols
     assert not missing, f"Missing required columns in {parquet_path}: {sorted(missing)}"
 
-    job_schema = load_schema(repo_root, "schemas/oda/job/v0.1.0.json")
+    job_schema = load_schema("oda.job.v0.1.0")
     first_row = table.slice(0, 1).to_pylist()[0]
     _validate_json_against_schema(first_row, job_schema)
 
@@ -136,7 +138,7 @@ def test_dod_4_benchmark_recipe_produces_metrics_and_provenance(
     bundle_dir = _find_result_bundle_dir(tmp_project)
     _assert_result_bundle_dir(bundle_dir)
 
-    schema = load_schema(repo_root, "schemas/oda/result/v0.1.0.json")
+    schema = load_schema("oda.result.v0.1.0")
     result_payload = load_json(bundle_dir / "result.json")
     _validate_json_against_schema(result_payload, schema)
 

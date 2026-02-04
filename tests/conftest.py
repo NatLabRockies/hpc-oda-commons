@@ -81,13 +81,6 @@ def load_json(path: Path) -> dict:
         return json.load(f)
 
 
-def load_schema(repo_root: Path, rel: str) -> dict:
-    schema_path = repo_root / rel
-    if not schema_path.exists():
-        raise AssertionError(f"Missing schema file: {schema_path}")
-    return load_json(schema_path)
-
-
 def find_first(path: Path, pattern: str) -> Path:
     matches = list(path.rglob(pattern))
     if not matches:

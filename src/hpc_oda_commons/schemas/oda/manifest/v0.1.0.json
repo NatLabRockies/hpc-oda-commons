@@ -1,0 +1,38 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://hpc-oda-commons.org/schemas/oda/manifest/v0.1.0.json",
+    "title": "ODA Manifest Schema v0.1.0",
+    "type": "object",
+    "additionalProperties": true,
+    "required": ["schema_version", "created_at", "input_schema_version", "artifact", "provenance"],
+    "properties": {
+      "schema_version": { "const": "oda.manifest.v0.1.0" },
+      "created_at": { "type": "string", "format": "date-time" },
+      "input_schema_version": { "type": "string" },
+      "adapter": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "version": { "type": "string" }
+        }
+      },
+      "inputs": {
+        "type": "array",
+        "items": { "type": "object", "additionalProperties": true }
+      },
+      "artifact": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "transformations": {
+        "type": "array",
+        "items": { "type": "object", "additionalProperties": true }
+      },
+      "provenance": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    }
+  }
+  

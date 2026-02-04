@@ -95,13 +95,27 @@
           "required": ["package_version"],
           "properties": {
             "package_version": { "type": "string", "minLength": 1 },
-            "git_commit": { "type": "string", "minLength": 7 }
+            "git_commit": {
+              "anyOf": [
+                { "type": "string", "minLength": 7 },
+                { "type": "null" }
+              ]
+            }
           }
         },
         "inputs": {
-          "type": "object",
-          "additionalProperties": true,
-          "description": "Optional hashes/paths for raw inputs, transforms, and configs."
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256", "size_bytes", "mtime_epoch"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "size_bytes": { "type": "integer", "minimum": 0 },
+              "mtime_epoch": { "type": "number" }
+            }
+          }
         }
       }
     },

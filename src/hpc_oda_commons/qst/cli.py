@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -12,6 +9,11 @@ import yaml
 from rich.console import Console
 
 from hpc_oda_commons.adapters.slurmctld.adapter import parse_slurmctld_log
+from hpc_oda_commons.kernel.artifacts.manifest import new_manifest, write_manifest
+from hpc_oda_commons.kernel.artifacts.oda_table import table_hash, write_table_parquet
+from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
+from hpc_oda_commons.kernel.provenance import build_provenance
+from hpc_oda_commons.kernel.validate import validate_json, validate_parquet_rows
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
 
 app = typer.Typer(add_completion=False, help="hpc-oda-commons Quickstart Toolkit (v0.1)")
@@ -29,14 +31,6 @@ def _now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-
 def _ensure_dirs(project_root: Path) -> None:
     (project_root / ".hpc_oda").mkdir(parents=True, exist_ok=True)
     (project_root / "data").mkdir(parents=True, exist_ok=True)
@@ -44,7 +38,6 @@ def _ensure_dirs(project_root: Path) -> None:
 
 
 def _default_config_text() -> str:
-    # Keep minimal for v0.1; expand later.
     return """# hpc-oda-commons project config (v0.1)
 # Vertical slice: SLURM job runtime prediction
 
@@ -60,114 +53,8 @@ state_dir = ".hpc_oda"
 """
 
 
-def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-
 def _result_bundle_dir(project_root: Path, run_id: str) -> Path:
     return project_root / "runs" / run_id
-
-
-def _write_result_bundle(
-    project_root: Path,
-    run_id: str,
-    recipe_id: str,
-    metrics: dict[str, float],
-    provenance: dict[str, Any],
-    *,
-    problem_domain: list[str] | None = None,
-    model: dict[str, str] | None = None,
-    dataset: dict[str, Any] | None = None,
-    notes: str | None = None,
-) -> Path:
-    bundle_dir = _result_bundle_dir(project_root, run_id)
-    bundle_dir.mkdir(parents=True, exist_ok=True)
-
-    result_payload: dict[str, Any] = {
-        "schema_version": "oda.result.v0.1.0",
-        "recipe_id": recipe_id,
-        "problem_domain": problem_domain or ["job-runtime-prediction"],
-        "created_at": _now_utc_iso(),
-        "metrics": metrics,
-        "provenance": provenance,
-    }
-    if model is not None:
-        result_payload["model"] = model
-    if dataset is not None:
-        result_payload["dataset"] = dataset
-    if notes:
-        result_payload["notes"] = notes
-
-    _write_json(bundle_dir / "result.json", result_payload)
-    _write_json(bundle_dir / "metrics.json", metrics)
-    _write_json(bundle_dir / "provenance.json", provenance)
-
-    return bundle_dir
-
-
-def _minimal_provenance(input_schema: str) -> dict[str, Any]:
-    # Keep minimal but schema-valid; expand later.
-    pyver = f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}"
-    return {
-        "schema_versions": {"input": input_schema, "result": "oda.result.v0.1.0"},
-        "environment": {"python": pyver, "packages": []},
-        "code": {"package_version": "0.1.0"},
-    }
-
-
-def _generate_tiny_runtime_dataset(out_dir: Path) -> tuple[Path, Path]:
-    """
-    Deterministically generate a tiny synthetic runtime dataset in Parquet + manifest.
-    This avoids committing binary Parquet early while still enabling offline golden-path tests.
-    """
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
-    out_dir.mkdir(parents=True, exist_ok=True)
-    table_path = out_dir / "data.parquet"
-    manifest_path = out_dir / "manifest.json"
-
-    if table_path.exists() and manifest_path.exists():
-        return table_path, manifest_path
-
-    base = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    rows: list[dict[str, Any]] = []
-    for i in range(1, 31):
-        start = base.replace(minute=(i % 60))
-        runtime = float((i % 10 + 1) * 30)  # 30..330 seconds
-        end = start.timestamp() + runtime
-        end_dt = datetime.fromtimestamp(end, tz=timezone.utc)
-        rows.append(
-            {
-                "job_id": 1000 + i,
-                "start_time": start.isoformat().replace("+00:00", "Z"),
-                "end_time": end_dt.isoformat().replace("+00:00", "Z"),
-                "runtime_seconds": runtime,
-                "allocated_cpus": int((i % 8) + 1),
-                "partition": "debug" if i % 2 == 0 else "compute",
-            }
-        )
-
-    table = pa.Table.from_pylist(rows)
-    pq.write_table(table, table_path)
-
-    manifest = {
-        "schema_version": "oda.job.v0.1.0",
-        "generated_at": _now_utc_iso(),
-        "description": "Deterministic tiny synthetic dataset for v0.1 job runtime prediction.",
-        "table_path": str(table_path),
-    }
-    _write_json(manifest_path, manifest)
-
-    return table_path, manifest_path
-
-
-def _load_recipe(recipe_path: Path) -> dict[str, Any]:
-    payload = yaml.safe_load(recipe_path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise typer.BadParameter("Recipe YAML must be a mapping/object.")
-    return payload
 
 
 def _compute_regression_metrics(y_true: list[float], y_pred: list[float]) -> dict[str, float]:
@@ -178,6 +65,55 @@ def _compute_regression_metrics(y_true: list[float], y_pred: list[float]) -> dic
     mae = sum(abs(a - b) for a, b in zip(y_true, y_pred)) / n
     rmse = (sum((a - b) ** 2 for a, b in zip(y_true, y_pred)) / n) ** 0.5
     return {"mae": float(mae), "rmse": float(rmse)}
+
+
+def _generate_tiny_runtime_dataset(out_dir: Path) -> tuple[Path, Path]:
+    """
+    Deterministically generate a tiny synthetic dataset in Parquet + minimal manifest-like JSON.
+    v0.1: keep generation local-first; no network access required.
+    """
+    import json
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    table_path = out_dir / "data.parquet"
+    meta_path = out_dir / "manifest.json"
+
+    if table_path.exists() and meta_path.exists():
+        return table_path, meta_path
+
+    base = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    rows: list[dict[str, Any]] = []
+    for i in range(1, 31):
+        start = base.replace(minute=(i % 60))
+        runtime = float((i % 10 + 1) * 30)  # 30..330 seconds
+        end = datetime.fromtimestamp(start.timestamp() + runtime, tz=timezone.utc)
+        rows.append(
+            {
+                "job_id": 1000 + i,
+                "start_time": start.isoformat().replace("+00:00", "Z"),
+                "end_time": end.isoformat().replace("+00:00", "Z"),
+                "runtime_seconds": runtime,
+                "allocated_cpus": int((i % 8) + 1),
+                "partition": "debug" if i % 2 == 0 else "compute",
+            }
+        )
+
+    write_table_parquet(rows, table_path)
+    meta = {
+        "schema_version": "oda.job.v0.1.0",
+        "generated_at": _now_utc_iso(),
+        "description": "Deterministic tiny synthetic dataset for v0.1 job runtime prediction.",
+        "table_path": str(table_path),
+    }
+    meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return table_path, meta_path
+
+
+def _load_recipe(recipe_path: Path) -> dict[str, Any]:
+    payload = yaml.safe_load(recipe_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise typer.BadParameter("Recipe YAML must be a mapping/object.")
+    return payload
 
 
 @app.command()
@@ -204,40 +140,52 @@ def run_baseline() -> None:
     root = Path.cwd()
     _ensure_dirs(root)
 
-    # Generate dataset in local project cache
     ds_dir = root / ".hpc_oda" / "cache" / "datasets" / "synthetic_job_runtime_tiny"
-    table_path, _manifest_path = _generate_tiny_runtime_dataset(ds_dir)
-    ds_hash = _sha256_file(table_path)
+    table_path, _meta_path = _generate_tiny_runtime_dataset(ds_dir)
+    ds_hash = table_hash(table_path)
 
-    # Load data
     import pyarrow.parquet as pq
 
     table = pq.read_table(table_path)
     rows = table.to_pylist()
     y_true = [float(r["runtime_seconds"]) for r in rows]
 
-    # Fit/predict baseline
     model = JobRuntimeBaselineModel()
     model.fit(rows)
     y_pred = model.predict(rows)
 
     metrics = _compute_regression_metrics(y_true, y_pred)
-    prov = _minimal_provenance("oda.job.v0.1.0")
+
+    prov = build_provenance(
+        input_schema="oda.job.v0.1.0",
+        result_schema="oda.result.v0.1.0",
+        inputs=[table_path],
+        project_root=root,
+        capture_packages=False,
+    )
 
     run_id = f"run-baseline-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    _write_result_bundle(
-        root,
-        run_id,
-        recipe_id="run-baseline.offline_tiny",
-        metrics=metrics,
-        provenance=prov,
-        model={"id": "model.job_runtime_baseline", "version": "0.1.0"},
-        dataset={
+    bundle_dir = _result_bundle_dir(root, run_id)
+
+    result_payload: dict[str, Any] = {
+        "schema_version": "oda.result.v0.1.0",
+        "recipe_id": "run-baseline.offline_tiny",
+        "problem_domain": ["job-runtime-prediction"],
+        "created_at": _now_utc_iso(),
+        "metrics": metrics,
+        "provenance": prov,
+        "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+        "dataset": {
             "id": "synthetic_job_runtime_tiny",
             "schema_version": "oda.job.v0.1.0",
             "hash": ds_hash,
         },
-        notes="Offline baseline demo run (v0.1).",
+        "notes": "Offline baseline demo run (v0.1).",
+    }
+
+    validate_json(result_payload, "oda.result.v0.1.0")
+    write_result_bundle(
+        bundle_dir, result=result_payload, metrics=metrics, provenance=prov, validate=True
     )
 
     console.print(f"[green]Baseline run complete[/green] → runs/{run_id}/")
@@ -253,28 +201,36 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
 
     rows = parse_slurmctld_log(path)
 
-    # Write Parquet
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
     run_id = f"slurmctld-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     out_dir = root / "data" / "ingested" / "slurmctld" / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    table = pa.Table.from_pylist(rows)
     parquet_path = out_dir / "data.parquet"
-    pq.write_table(table, parquet_path)
+    write_table_parquet(rows, parquet_path)
 
-    manifest = {
-        "schema_version": "oda.job.v0.1.0",
-        "created_at": _now_utc_iso(),
-        "adapter": {"id": "adapter.slurmctld", "version": "0.1.0"},
-        "inputs": {"slurmctld_log_path": str(path)},
-        "provenance": {"note": "local-first ingest; no uploads"},
-        "outputs": {"table_path": str(parquet_path)},
-        "transformations": [],
-    }
-    _write_json(out_dir / "manifest.json", manifest)
+    # Validate some rows against the job schema (human-friendly errors on failure)
+    validate_parquet_rows(parquet_path, "oda.job.v0.1.0", sample=10)
+
+    prov = build_provenance(
+        input_schema="oda.job.v0.1.0",
+        result_schema="oda.result.v0.1.0",
+        inputs=[path, parquet_path],
+        project_root=root,
+        capture_packages=False,
+    )
+
+    manifest = new_manifest(
+        input_schema_version="oda.job.v0.1.0",
+        adapter={"id": "adapter.slurmctld", "version": "0.1.0"},
+        inputs=[{"path": str(path)}],
+        artifact={
+            "type": "ingest",
+            "paths": {"table": str(parquet_path), "manifest": str(out_dir / "manifest.json")},
+        },
+        provenance=prov,
+        transformations=[],
+    )
+    write_manifest(out_dir / "manifest.json", manifest, validate=True)
 
     console.print(f"[green]Ingest complete[/green] → {out_dir}")
 
@@ -292,28 +248,21 @@ def benchmark(recipe: Path) -> None:
     recipe_id = str(recipe_payload.get("recipe_id", "recipe.unknown"))
     input_schema = str(recipe_payload.get("schema_version", "oda.job.v0.1.0"))
 
-    # Dataset resolution:
-    # For v0.1, if the dataset paths referenced in the recipe are missing, generate a tiny dataset locally.
     dataset = recipe_payload.get("dataset", {}) or {}
     table_path_str = dataset.get("table_path")
-    manifest_path_str = dataset.get("manifest_path")
-
-    # Prefer recipe-referenced paths if they exist; else generate.
     table_path = Path(table_path_str) if table_path_str else None
-    manifest_path = Path(manifest_path_str) if manifest_path_str else None
 
     if table_path is None or not table_path.exists():
         ds_dir = root / ".hpc_oda" / "cache" / "datasets" / "synthetic_job_runtime_tiny"
-        table_path, manifest_path = _generate_tiny_runtime_dataset(ds_dir)
+        table_path, _meta = _generate_tiny_runtime_dataset(ds_dir)
 
-    ds_hash = _sha256_file(table_path)
+    ds_hash = table_hash(table_path)
 
     import pyarrow.parquet as pq
 
     table = pq.read_table(table_path)
     rows = table.to_pylist()
 
-    # Deterministic split (fixed fraction + seed) to match recipe contract.
     split = recipe_payload.get("split", {}) or {}
     train_fraction = float(split.get("train_fraction", 0.8))
     n_train = max(1, int(len(rows) * train_fraction))
@@ -332,22 +281,36 @@ def benchmark(recipe: Path) -> None:
 
     metrics = _compute_regression_metrics(y_true, y_pred)
 
-    prov = _minimal_provenance(input_schema)
-    # Populate required DoD-4 provenance fields (dataset hash + model id/version)
+    prov = build_provenance(
+        input_schema=input_schema,
+        result_schema="oda.result.v0.1.0",
+        inputs=[recipe, table_path],
+        project_root=root,
+        capture_packages=False,
+    )
+
     run_id = f"benchmark-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    _write_result_bundle(
-        root,
-        run_id,
-        recipe_id=recipe_id,
-        metrics=metrics,
-        provenance=prov,
-        model={"id": model_id, "version": model_version},
-        dataset={
+    bundle_dir = _result_bundle_dir(root, run_id)
+
+    result_payload: dict[str, Any] = {
+        "schema_version": "oda.result.v0.1.0",
+        "recipe_id": recipe_id,
+        "problem_domain": ["job-runtime-prediction"],
+        "created_at": _now_utc_iso(),
+        "metrics": metrics,
+        "provenance": prov,
+        "model": {"id": model_id, "version": model_version},
+        "dataset": {
             "id": str(dataset.get("id", "synthetic_job_runtime_tiny")),
             "schema_version": input_schema,
             "hash": ds_hash,
         },
-        notes=f"Benchmark run for {recipe_id}.",
+        "notes": f"Benchmark run for {recipe_id}.",
+    }
+
+    validate_json(result_payload, "oda.result.v0.1.0")
+    write_result_bundle(
+        bundle_dir, result=result_payload, metrics=metrics, provenance=prov, validate=True
     )
 
     console.print(f"[green]Benchmark complete[/green] → runs/{run_id}/")
@@ -356,9 +319,31 @@ def benchmark(recipe: Path) -> None:
 @app.command()
 def validate(path: Path) -> None:
     """
-    v0.1 placeholder: validate artifacts (schema + simple logical checks).
-    Not required by golden-path tests yet.
+    Validate artifacts (v0.1):
+    - If path is a result bundle dir, validate result.json against schema.
+    - If path is a manifest.json, validate it against manifest schema.
+    - If path is a parquet file, validate first rows as oda.job.v0.1.0.
     """
     if not path.exists():
         raise typer.BadParameter(f"Path not found: {path}")
-    console.print(f"[yellow]validate[/yellow] not yet implemented for: {path}")
+
+    if path.is_dir() and (path / "result.json").exists():
+        from hpc_oda_commons.kernel.artifacts.result_bundle import validate_result_bundle
+
+        validate_result_bundle(path)
+        console.print(f"[green]Valid result bundle[/green]: {path}")
+        return
+
+    if path.is_file() and path.name == "manifest.json":
+        from hpc_oda_commons.kernel.artifacts.manifest import validate_manifest
+
+        validate_manifest(path)
+        console.print(f"[green]Valid manifest[/green]: {path}")
+        return
+
+    if path.is_file() and path.suffix == ".parquet":
+        validate_parquet_rows(path, "oda.job.v0.1.0", sample=10)
+        console.print(f"[green]Valid parquet rows[/green]: {path}")
+        return
+
+    console.print(f"[yellow]No validation rule for[/yellow]: {path}")

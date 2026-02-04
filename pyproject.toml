@@ -37,6 +37,11 @@ dev = [
   "rich>=13.7.0",
 ]
 
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+hpc_oda_commons = ["schemas/**/*.json"]
 
 [project.scripts]
 hpc-oda = "hpc_oda_commons.qst.cli:app"
