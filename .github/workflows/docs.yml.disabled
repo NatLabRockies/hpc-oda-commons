@@ -1,0 +1,30 @@
+name: Docs Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: ["**"]
+
+jobs:
+  docs:
+    name: Build docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install docs deps
+        run: |
+          python -m pip install --upgrade pip
+          # If you later add a [docs] extra, change this to: pip install -e ".[docs]"
+          pip install mkdocs mkdocs-material
+
+      - name: Build
+        run: |
+          mkdocs build --strict

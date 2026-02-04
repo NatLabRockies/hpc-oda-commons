@@ -3,13 +3,11 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Mapping, Optional
 
 import pytest
-
 
 CLI_EXECUTABLE = os.environ.get("HPC_ODA_CLI", "hpc-oda")
 
@@ -21,7 +19,7 @@ class CmdResult:
     stdout: str
     stderr: str
 
-    def assert_ok(self) -> "CmdResult":
+    def assert_ok(self) -> CmdResult:
         if self.returncode != 0:
             msg = (
                 f"Command failed: {' '.join(self.args)}\n"
@@ -36,7 +34,7 @@ class CmdResult:
 def run_cli(
     args: Iterable[str],
     cwd: Path,
-    env: Optional[Mapping[str, str]] = None,
+    env: Mapping[str, str] | None = None,
     timeout_s: int = 120,
 ) -> CmdResult:
     """
@@ -56,6 +54,7 @@ def run_cli(
         capture_output=True,
         text=True,
         timeout=timeout_s,
+        check=False,
     )
     return CmdResult(cmd, proc.returncode, proc.stdout, proc.stderr)
 
