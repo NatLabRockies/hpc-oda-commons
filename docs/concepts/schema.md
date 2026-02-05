@@ -11,6 +11,8 @@ Schema IDs follow the pattern: `oda.<name>.v<MAJOR>.<MINOR>.<PATCH>`.
 2. MINOR: additive changes only.
 3. MAJOR: breaking changes.
 
+Schemas are loaded at runtime via `hpc_oda_commons.kernel.schemas.load_schema`.
+
 ## Schema Evolution Requests (SER)
 Schema changes are proposed through a Schema Evolution Request (SER).
 1. Create an issue using the SER template.

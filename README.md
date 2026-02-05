@@ -125,11 +125,9 @@ hpc-oda-commons/
 │     │
 │     ├─ schema/
 │     │  ├─ __init__.py              # Schema loading + validation entry points
-│     │  ├─ ids.py                   # Canonical schema identifiers and parsing (e.g., oda.job.v0.1.0)
-│     │  ├─ loader.py                # Loads bundled JSON schemas by ID/version
 │     │  ├─ validator.py             # JSONSchema + additional semantic checks glue
 │     │  ├─ quality_rules.py         # Pluggable data quality rules (v0.1 defaults here)
-│     │  └─ migration.py             # Helpers for forward/back transforms (minimal in v0.1)
+│     │  └─ quality_rules.py         # Pluggable data quality rules (v0.1 defaults here)
 │     │
 │     ├─ registry/
 │     │  ├─ __init__.py              # Registry API (search/filter/resolve)
@@ -166,7 +164,7 @@ hpc-oda-commons/
 │     │
 │     ├─ benchmark/
 │     │  ├─ __init__.py              # Benchmark APIs (Compare pillar)
-│     │  └─ results.py               # Result bundle schema + writer/reader
+│     │  └─ results.py               # Result bundle schema + leaderboard helpers
 │     │
 │     ├─ qst/
 │     │  ├─ __init__.py              # Quickstart Toolkit entry points (Run pillar)
@@ -201,40 +199,22 @@ hpc-oda-commons/
 │
 ├─ recipes/
 │  ├─ README.md                      # What recipes are, naming conventions, required fields
-│  ├─ job-failure/
-│  │  ├─ baseline_tiny.yml           # Fast CI recipe (tiny synthetic)
-│  │  ├─ baseline_medium.yml         # Larger recipe for scheduled runs
-│  │  └─ alt_model_example.yml       # Example comparing a second model plugin
-│  └─ common/
-│     ├─ metrics_mdl_examples.yml    # Examples of MDL usage and supported metrics
-│     └─ envs/
-│        ├─ cpu.yml                  # Conda env for CPU-only benchmarking
-│        └─ minimal.txt              # Minimal pip requirements for smoke tests
+│  └─ job-runtime/
+│     └─ baseline_tiny.yml           # Tiny synthetic runtime prediction recipe (v0.1)
 │
 ├─ datasets/
 │  ├─ README.md                      # Dataset policy: manifests only, hosting pointers, licensing rules
 │  ├─ synthetic/
-│  │  ├─ job-failure/
-│  │  │  ├─ tiny/
-│  │  │  │  ├─ data.parquet          # Small included dataset for offline baseline
-│  │  │  │  └─ manifest.json         # Provenance + schema version + generation params
-│  │  │  └─ generator.py             # Synthetic generator used to create tiny/medium (v0.1 simple)
-│  │  └─ shared/
-│  │     └─ schema_examples.jsonl    # Example records to help contributors understand fields
+│  │  └─ job-runtime/
+│  │     └─ tiny/
+│  │        ├─ data.parquet          # Tiny dataset used for offline baseline
+│  │        └─ manifest.json         # Provenance + schema version + generation params
 │  └─ external/
 │     ├─ zenodo_links.yml            # Pointers to externally hosted datasets + checksums
 │     └─ golden_datasets.yml         # Curated “golden” references (if any exist for v0.1)
 │
 ├─ leaderboard/
-│  ├─ README.md                      # How leaderboard is generated and what it contains
-│  ├─ generate.py                    # Script: collect result bundles → build leaderboard.json/html
-│  ├─ templates/
-│  │  ├─ index.html.j2               # Simple HTML template
-│  │  └─ style.css                   # Minimal styling for static pages
-│  └─ public/
-│     ├─ leaderboard.json            # Machine-readable output (published)
-│     ├─ index.html                  # Human-readable page (published)
-│     └─ assets/                     # JS/CSS assets if needed
+│  └─ README.md                      # How leaderboard is generated and what it contains
 │
 ├─ containers/
 │  ├─ README.md                      # How to run with containers on HPC

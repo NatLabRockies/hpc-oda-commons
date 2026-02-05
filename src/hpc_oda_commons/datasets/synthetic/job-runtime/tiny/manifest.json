@@ -1,0 +1,6 @@
+{
+  "description": "Deterministic tiny synthetic dataset for v0.1 job runtime prediction.",
+  "generated_at": "2026-02-05T23:19:49.164783Z",
+  "schema_version": "oda.job.v0.1.0",
+  "table_path": "src/hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet"
+}

@@ -269,3 +269,112 @@ Start coding with the smallest stable foundation:
 
 Once these exist, everything else plugs into them cleanly.
 
+---
+
+## Next Steps (Post-Cleanup Optimization Plan)
+
+This plan defines the **optimal development path** from the current repo state to a stable v0.1.0 release. Decisions below are intentional to maximize reliability in both **editable installs** and **packaged wheels**.
+
+### Decision Summary (Explicit)
+
+1. **Bundle recipes and tiny dataset in the wheel**  
+   - Rationale: avoid "works in repo, breaks in wheel" failures.  
+   - Action: place tiny synthetic dataset under `src/hpc_oda_commons/datasets/` and ensure recipe points there.
+
+2. **Canonical schema loader lives in `kernel/schemas.py`**  
+   - Rationale: core validation already uses kernel; keep a single surface and avoid drift.  
+   - Action: remove unused `schema/loader.py` and `schema/ids.py` after refactoring any consumers.
+
+3. **CLI is the public surface for v0.1**  
+   - Rationale: keep API stability focused on CLI; Python API remains minimal/experimental.
+
+4. **Add a single integration test for leaderboard**  
+   - Rationale: protect the new CLI command and generated artifacts with low overhead.
+
+### Step-by-Step Plan
+
+#### 1) Packaging Consistency (Recipes + Datasets)
+**Goal:** ensure a clean wheel install can run the entire quickstart.
+
+- Move tiny dataset into package:
+  - `src/hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet`
+  - `src/hpc_oda_commons/datasets/synthetic/job-runtime/tiny/manifest.json`
+- Update recipe to point at packaged dataset path.
+- Ensure `pyproject.toml` includes datasets in package-data.
+- Verify registry snapshot references packaged recipe path.
+
+**Acceptance:**
+- `pip install -e .` (and wheel install) can run:
+  - `hpc-oda run-baseline`
+  - `hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
+
+#### 2) Consolidate Schema APIs
+**Goal:** one canonical schema loader/validator surface.
+
+- Keep:
+  - `src/hpc_oda_commons/kernel/schemas.py`
+  - `src/hpc_oda_commons/kernel/validate.py`
+- Retain `src/hpc_oda_commons/schema/validator.py` for quality checks, but remove:
+  - `src/hpc_oda_commons/schema/loader.py`
+  - `src/hpc_oda_commons/schema/ids.py`
+  - `src/hpc_oda_commons/schema/migration.py` (if still unused)
+- Update docs to reflect the canonical loader location.
+
+**Acceptance:**
+- All tests pass.
+- No duplicate schema loaders remain.
+
+#### 3) Residual Dead Code Cleanup
+**Goal:** eliminate any remaining unused modules after consolidation.
+
+- Re-run import/reference scan.
+- Remove any unused files discovered.
+- Update README tree if structure changes.
+
+**Acceptance:**
+- `pytest -q` passes.
+- README tree matches actual repo.
+
+#### 4) Leaderboard Integration Coverage
+**Goal:** protect the new leaderboard CLI and artifacts.
+
+- Add integration test that:
+  1. Runs a benchmark
+  2. Runs `hpc-oda leaderboard`
+  3. Asserts `leaderboard.json` and `index.html` exist
+
+**Acceptance:**
+- `pytest -q -m integration` passes.
+
+#### 5) Public Surface Stabilization
+**Goal:** clarify v0.1 surface and reduce churn.
+
+- Document in `docs/reference/python-api.md`:
+  - CLI is stable for v0.1
+  - Python APIs are minimal/experimental
+- Ensure README quickstart is consistent with packaged paths.
+
+**Acceptance:**
+- Docs match actual CLI behavior.
+
+#### 6) Release Readiness Pass
+**Goal:** ensure v0.1.0 is shippable.
+
+- Run quickstart in a fresh venv using installed wheel.
+- Verify DoD gates:
+  - DoD-1..DoD-4
+- Update `CHANGELOG.md` with final date and summary.
+
+**Acceptance:**
+- `scripts/release_checklist.md` can be checked off.
+
+### Test Strategy (for the plan above)
+
+- Fast checks:
+  - `pytest -q tests/unit`
+- Full suite:
+  - `pytest -q`
+  - `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+- Packaging verification:
+  - wheel install in a clean venv
+  - run quickstart commands from docs

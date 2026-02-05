@@ -1,0 +1,12 @@
+# hpc-oda-commons project config (v0.1)
+# Vertical slice: SLURM job runtime prediction
+
+[project]
+name = "hpc-oda-project"
+schema_job = "oda.job.v0.1.0"
+schema_result = "oda.result.v0.1.0"
+
+[paths]
+data_dir = "data"
+runs_dir = "runs"
+state_dir = ".hpc_oda"
