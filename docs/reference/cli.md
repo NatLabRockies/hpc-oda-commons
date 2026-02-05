@@ -1,3 +1,32 @@
 # CLI Reference
 
-<!-- Command reference for hpc-oda CLI (QST). -->
+This reference covers the v0.1 `hpc-oda` commands.
+
+## Global
+1. `hpc-oda --help` shows available commands.
+
+## Project
+1. `hpc-oda init`
+   Creates `hpc-oda.toml`, `.hpc_oda/`, `data/`, and `runs/` in the current directory.
+
+## Find
+1. `hpc-oda browse --tag <tag> --type <adapter|model|recipe> --source <source>`
+   Lists registry entries from the bundled snapshot.
+1. `hpc-oda info <entry_id>`
+   Shows metadata and compatibility for a registry entry.
+
+## Run
+1. `hpc-oda run-baseline`
+   Runs the offline baseline on the tiny synthetic dataset.
+1. `hpc-oda ingest slurmctld --path <log>`
+   Parses a slurmctld log into `oda.job.v0.1.0` Parquet + manifest.
+1. `hpc-oda validate <path>`
+   Validates a result bundle, manifest, or parquet file. For parquet, writes a `*.quality.json` report.
+
+## Compare
+1. `hpc-oda benchmark <recipe.yml>`
+   Runs a benchmark recipe and emits a result bundle under `runs/`.
+
+## Leaderboard
+1. `hpc-oda leaderboard --runs <dir> --out <dir>`
+   Aggregates result bundles into `leaderboard.json` and `index.html`.

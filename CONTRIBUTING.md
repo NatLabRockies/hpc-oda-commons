@@ -77,6 +77,12 @@ v0.1 is focused on runtime prediction, but contributions are welcome in these ca
 - schema clarifications (non-breaking during v0.1 freeze)
 - documentation and examples
 
+### Schema Evolution Requests (SER)
+Schema changes are proposed via a Schema Evolution Request:
+1. Open an issue using the SER template.
+2. Describe compatibility impact and migration plan.
+3. Update schema docs under `docs/concepts/schema.md`.
+
 ### Sensitive Data Policy
 - Do not commit real site logs or sensitive data.
 - Use synthetic or heavily redacted fixtures only.

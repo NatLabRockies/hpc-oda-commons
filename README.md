@@ -33,6 +33,16 @@ This repository is under active development toward **v0.1.0**, focused on a vert
 - v0.1 scope and exit criteria: **docs/concepts/v0_1_charter.md**
 - Roadmap: **ROADMAP.md**
 
+## Quickstart (10-minute workflow)
+1. Install: `pip install -e ".[dev]"`
+2. Initialize: `hpc-oda init`
+3. Browse: `hpc-oda browse`
+4. Run baseline: `HPC_ODA_OFFLINE=1 hpc-oda run-baseline`
+5. Ingest logs: `hpc-oda ingest slurmctld --path /path/to/slurmctld.log`
+6. Validate data: `hpc-oda validate data/ingested/slurmctld/<run>/data.parquet`
+7. Benchmark: `HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml`
+8. Leaderboard: `hpc-oda leaderboard --runs runs --out leaderboard`
+
 
 ## Repo organization:
 
