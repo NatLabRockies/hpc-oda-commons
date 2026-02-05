@@ -59,13 +59,16 @@ def validate_json_file(path: Path, schema_id: str) -> dict[str, Any]:
     return obj
 
 
-def validate_parquet_rows(path: Path, schema_id: str, *, sample: int = 10) -> None:
+def validate_parquet_rows(path: Path, schema_id: str, sample: int = 10) -> None:
     """
-    Validate up to `sample` rows of a Parquet file as JSON objects against schema_id.
+    Validate the first N rows of a Parquet file against a JSON Schema (row objects).
     """
+    path = Path(path)
     table = pq.read_table(path)
-    rows = table.slice(0, min(sample, table.num_rows)).to_pylist()
+    rows: list[dict[str, Any]] = table.to_pylist()
+
     if not rows:
+        # Up to you: either treat as ok, or error. v0.1 often treats as error.
         raise SchemaValidationError(
             schema_id=schema_id, message="No rows to validate.", path=str(path)
         )
@@ -73,12 +76,15 @@ def validate_parquet_rows(path: Path, schema_id: str, *, sample: int = 10) -> No
     schema = load_schema(schema_id)
     validator = Draft202012Validator(schema)
 
-    for i, row in enumerate(rows):
-        errors = sorted(validator.iter_errors(row), key=lambda x: x.path)
+    n = min(sample, len(rows))
+    for i in range(n):
+        row = rows[i]
+        errors = sorted(validator.iter_errors(row), key=lambda e: list(e.path))
         if errors:
-            lines = [f"Row {i} validation failed:"]
-            for err in errors[:10]:
-                lines.append(f"- {_format_error(err)}")
+            lines = [f"Row validation failed (row {i}):"]
+            for e in errors[:20]:
+                loc = "$" + "".join(f".{p}" for p in list(e.path))
+                lines.append(f"- {loc}: {e.message}")
             raise SchemaValidationError(
                 schema_id=schema_id, message="\n".join(lines), path=str(path)
             )

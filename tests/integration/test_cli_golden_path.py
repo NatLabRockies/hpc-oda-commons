@@ -6,9 +6,8 @@ import pyarrow.parquet as pq
 import pytest
 from jsonschema import Draft202012Validator
 
-
-from tests.conftest import find_first, load_json, run_cli
 from hpc_oda_commons.kernel.schemas import load_schema
+from tests.conftest import find_first, load_json, run_cli
 
 REQUIRED_RESULT_FILES = ("result.json", "metrics.json", "provenance.json")
 
