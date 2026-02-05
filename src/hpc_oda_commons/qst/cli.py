@@ -15,12 +15,16 @@ from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
 from hpc_oda_commons.kernel.provenance import build_provenance
 from hpc_oda_commons.kernel.validate import validate_json, validate_parquet_rows
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
+from hpc_oda_commons.qst.commands.browse import browse
+from hpc_oda_commons.qst.commands.info import info
 
 app = typer.Typer(add_completion=False, help="hpc-oda-commons Quickstart Toolkit (v0.1)")
 ingest_app = typer.Typer(
     add_completion=False, help="Ingest operational data into canonical ODA artifacts."
 )
 app.add_typer(ingest_app, name="ingest")
+app.command()(browse)
+app.command()(info)
 
 console = Console()
 
