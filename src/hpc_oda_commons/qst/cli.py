@@ -13,7 +13,8 @@ from hpc_oda_commons.kernel.artifacts.manifest import new_manifest, write_manife
 from hpc_oda_commons.kernel.artifacts.oda_table import table_hash, write_table_parquet
 from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
 from hpc_oda_commons.kernel.provenance import build_provenance
-from hpc_oda_commons.kernel.validate import validate_json, validate_parquet_rows
+from hpc_oda_commons.kernel.validate import validate_json
+from hpc_oda_commons.schema.validator import validate_parquet_with_quality
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
 from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.info import info
@@ -213,7 +214,7 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
     write_table_parquet(rows, parquet_path)
 
     # Validate some rows against the job schema (human-friendly errors on failure)
-    validate_parquet_rows(parquet_path, "oda.job.v0.1.0", sample=10)
+    validate_parquet_with_quality(parquet_path, schema_id="oda.job.v0.1.0", sample=10)
 
     prov = build_provenance(
         input_schema="oda.job.v0.1.0",
@@ -346,8 +347,13 @@ def validate(path: Path) -> None:
         return
 
     if path.is_file() and path.suffix == ".parquet":
-        validate_parquet_rows(path, "oda.job.v0.1.0", sample=10)
+        report_path = path.with_suffix(path.suffix + ".quality.json")
+        report = validate_parquet_with_quality(path, schema_id="oda.job.v0.1.0", report_path=report_path)
         console.print(f"[green]Valid parquet rows[/green]: {path}")
+        console.print(
+            f"[green]Quality report written[/green]: {report_path} "
+            f"(rows={report.get('row_count', 0)})"
+        )
         return
 
     console.print(f"[yellow]No validation rule for[/yellow]: {path}")
