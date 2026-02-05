@@ -7,7 +7,7 @@ v0.1 is a vertical slice for **SLURM job runtime prediction** using **slurmctld 
 - DoD-1: `pip install -e .` and `hpc-oda --help` works
 - DoD-2: `hpc-oda run-baseline` produces a result bundle **offline**
 - DoD-3: `hpc-oda ingest slurmctld …` produces **schema-valid** Parquet + manifest
-- DoD-4: `hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml` produces comparable metrics + provenance
+- DoD-4: `hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml` produces comparable metrics + provenance
 
 ---
 
@@ -47,7 +47,7 @@ v0.1 is a vertical slice for **SLURM job runtime prediction** using **slurmctld 
 - [ ] Snapshot includes entries for:
   - [ ] slurmctld adapter (official)
   - [ ] baseline runtime prediction model (official)
-  - [ ] `recipes/job-runtime/baseline_tiny.yml`
+  - [ ] `hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
 - [ ] Each entry includes compatibility metadata:
   - [ ] problem domain tags include runtime prediction (e.g., `job-runtime-prediction`)
   - [ ] schema version compatibility is explicit
@@ -135,13 +135,13 @@ If you intentionally store the tiny dataset elsewhere:
 **Goal:** Recipes produce comparable metrics and reproducible result bundles.
 
 - [ ] Runtime prediction recipe exists:
-  - [ ] `recipes/job-runtime/baseline_tiny.yml`
+  - [ ] `hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
 - [ ] Recipe specifies:
   - [ ] dataset reference (tiny synthetic)
   - [ ] baseline model reference
   - [ ] schema version requirement
   - [ ] metric configuration
-- [ ] `hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml` succeeds.
+- [ ] `hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml` succeeds.
 - [ ] Metrics are appropriate for runtime prediction (regression). At minimum, pick one:
   - [ ] MAE
   - [ ] RMSE

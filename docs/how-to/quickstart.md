@@ -39,7 +39,7 @@ This writes a quality report next to the parquet file:
 
 ## 7) Benchmark using the v0.1 recipe
 ```bash
-HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 ```
 
 ## 8) Generate a local leaderboard

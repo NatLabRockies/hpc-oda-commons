@@ -40,7 +40,7 @@ This repository is under active development toward **v0.1.0**, focused on a vert
 4. Run baseline: `HPC_ODA_OFFLINE=1 hpc-oda run-baseline`
 5. Ingest logs: `hpc-oda ingest slurmctld --path /path/to/slurmctld.log`
 6. Validate data: `hpc-oda validate data/ingested/slurmctld/<run>/data.parquet`
-7. Benchmark: `HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml`
+7. Benchmark: `HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
 8. Leaderboard: `hpc-oda leaderboard --runs runs --out leaderboard`
 
 
@@ -123,15 +123,6 @@ hpc-oda-commons/
 │     ├─ __main__.py                 # Enables `python -m hpc_oda_commons` to invoke CLI
 │     ├─ version.py                  # Single source of truth for version (if not using dynamic tooling)
 │     │
-│     ├─ core/
-│     │  ├─ __init__.py              # Core public interfaces (stable)
-│     │  ├─ types.py                 # Shared typed aliases and small dataclasses
-│     │  ├─ errors.py                # Canonical exception types (validation, adapter, recipe, etc.)
-│     │  ├─ constants.py             # Shared constants (default dirs, filenames, schema IDs)
-│     │  ├─ paths.py                 # Project-relative path resolution utilities
-│     │  ├─ artifacts.py             # Read/write helpers for Parquet + manifest + result bundle
-│     │  └─ provenance.py            # Hashing of inputs/env/code + provenance record creation
-│     │
 │     ├─ schema/
 │     │  ├─ __init__.py              # Schema loading + validation entry points
 │     │  ├─ ids.py                   # Canonical schema identifiers and parsing (e.g., oda.job.v0.1.0)
@@ -147,21 +138,6 @@ hpc-oda-commons/
 │     │  ├─ index.py                 # In-memory indices + filtering logic (Find pillar)
 │     │  └─ validate.py              # Validates registry JSON against registry schema
 │     │
-│     ├─ plugins/
-│     │  ├─ __init__.py              # Plugin discovery entry points (importlib.metadata)
-│     │  ├─ entrypoints.py           # Resolve installed plugins by group and name
-│     │  ├─ contracts.py             # ABCs/protocols for adapters/models/tools/metrics
-│     │  └─ metadata.py              # Standard metadata assembly + normalization
-│     │
-│     ├─ security/
-│     │  ├─ __init__.py              # Security-related APIs (local-first defaults)
-│     │  ├─ policy.py                # TransformationPolicy definition + defaults
-│     │  ├─ anonymize.py             # Hashing/pseudonymization helpers
-│     │  ├─ fuzz.py                  # Noise injection helpers (optional/controlled)
-│     │  ├─ aggregate.py             # Timestamp binning and aggregation helpers
-│     │  ├─ redaction.py             # Field dropping/masking helpers
-│     │  └─ scanners.py              # Optional lightweight secret/PII pattern warnings
-│     │
 │     ├─ adapters/
 │     │  ├─ __init__.py              # Official adapters shipped with package
 │     │  ├─ slurmctld/
@@ -172,14 +148,9 @@ hpc-oda-commons/
 │     │  │  ├─ labeling.py           # Failure label derivation rules (exit_code, messages, etc.)
 │     │  │  ├─ fixtures.py           # Small parser fixtures for tests/docs
 │     │  │  └─ README.md             # Adapter-specific notes and limitations
-│     │  └─ xdmod/
-│     │     ├─ __init__.py           # Placeholder for next official adapter
-│     │     ├─ adapter.py            # Minimal skeleton (can be stub in v0.1)
-│     │     └─ README.md             # Planned approach + requirements
-│     │
 │     ├─ models/
 │     │  ├─ __init__.py              # Official baseline models shipped with package
-│     │  └─ job_failure_baseline/
+│     │  └─ job_runtime_baseline/
 │     │     ├─ __init__.py           # Baseline model package
 │     │     ├─ model.py              # ModelPlugin implementation (train/infer)
 │     │     ├─ features.py           # Feature extraction from oda.job tables
@@ -189,23 +160,12 @@ hpc-oda-commons/
 │     │
 │     ├─ tools/
 │     │  ├─ __init__.py              # Utility “tools” that aren’t models (optional)
-│     │  ├─ featurize/
-│     │  │  ├─ __init__.py           # Feature engineering helpers
-│     │  │  └─ job_features.py       # Shared job-level feature computations
 │     │  └─ report/
 │     │     ├─ __init__.py           # Report generation utilities
 │     │     └─ html.py               # Lightweight HTML report builder for local results
 │     │
 │     ├─ benchmark/
 │     │  ├─ __init__.py              # Benchmark APIs (Compare pillar)
-│     │  ├─ recipe_schema.json       # JSON Schema for recipes (or store under /schemas)
-│     │  ├─ recipe.py                # Recipe dataclass + parsing (YAML/TOML)
-│     │  ├─ runner.py                # Orchestrates: load data → run model → compute metrics → write bundle
-│     │  ├─ metrics/
-│     │  │  ├─ __init__.py           # Metric registry and implementations
-│     │  │  ├─ classification.py     # F1/precision/recall/AUROC implementations
-│     │  │  └─ mdl.py                # Minimal Metric Definition Language parsing/validation
-│     │  ├─ environment.py           # Environment capture (pip freeze/conda env export), hashing, metadata
 │     │  └─ results.py               # Result bundle schema + writer/reader
 │     │
 │     ├─ qst/
@@ -214,24 +174,9 @@ hpc-oda-commons/
 │     │  ├─ config.py                # Project config model (hpc-oda.toml) + defaults
 │     │  ├─ project.py               # Project init/layout, state dir (.hpc_oda) management
 │     │  ├─ commands/
-│     │  │  ├─ __init__.py           # CLI command package
-│     │  │  ├─ init.py               # `hpc-oda init`
+│     │  │  ├─ __init__.py           # CLI command package (browse/info only)
 │     │  │  ├─ browse.py             # `hpc-oda browse`
-│     │  │  ├─ info.py               # `hpc-oda info` for adapters/models/recipes
-│     │  │  ├─ ingest.py             # `hpc-oda ingest ...` entry point
-│     │  │  ├─ validate.py           # `hpc-oda validate ...`
-│     │  │  ├─ run_baseline.py       # `hpc-oda run-baseline`
-│     │  │  ├─ run_model.py          # `hpc-oda run model ...`
-│     │  │  ├─ benchmark.py          # `hpc-oda benchmark ...`
-│     │  │  └─ registry_update.py    # `hpc-oda registry update` (optional network use)
-│     │  └─ tui/
-│     │     ├─ __init__.py           # Optional text UI helpers (rich/typer integration)
-│     │     └─ render.py             # Pretty tables, progress bars, prompts
-│     │
-│     ├─ viz/                         # Optional dashboard extras (install via extras)
-│     │  ├─ __init__.py               # Feature-gated visualization entry points
-│     │  ├─ app.py                    # Minimal dashboard app launcher
-│     │  └─ panels.py                 # Common visual panels (quality, metrics, feature importance)
+│     │  │  └─ info.py               # `hpc-oda info` for adapters/models/recipes
 │     │
 │     └─ utils/
 │        ├─ __init__.py               # Small shared helpers (keep lean)

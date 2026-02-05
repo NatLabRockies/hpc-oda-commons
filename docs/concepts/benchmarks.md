@@ -10,7 +10,7 @@ Recipes are YAML files that specify:
 4. Optional split configuration
 
 Example recipe path for v0.1:
-`recipes/job-runtime/baseline_tiny.yml`
+`hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
 
 ## Metrics
 The runtime prediction baseline uses regression metrics:

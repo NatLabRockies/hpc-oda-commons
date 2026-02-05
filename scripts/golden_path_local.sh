@@ -18,7 +18,7 @@ HPC_ODA_OFFLINE=1 hpc-oda ingest slurmctld --path "$(python -c 'import pathlib; 
 # If the above cannot find repo fixture (depends where you run from), supply your own log path:
 # hpc-oda ingest slurmctld --path /path/to/slurmctld.log
 
-HPC_ODA_OFFLINE=1 hpc-oda benchmark /path/to/repo/recipes/job-runtime/baseline_tiny.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark /path/to/repo/src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 
 echo "Outputs:"
 find "${ROOT}" -maxdepth 3 -type f | sed 's|^| - |'

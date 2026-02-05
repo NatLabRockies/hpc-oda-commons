@@ -18,7 +18,7 @@ v0.1 is explicitly focused on proving the project’s viability and usability th
 
 **Find Acceptance (v0.1):** Find is satisfied when `hpc-oda browse` and `hpc-oda info` work offline using the bundled `registry/snapshot.json`, and they list the baseline slurmctld adapter, baseline runtime prediction model, and the `baseline_tiny` recipe with compatibility metadata (schema versions + supported source).
 **Run Acceptance (v0.1):** Run is satisfied when a user can ingest slurmctld logs locally into `oda.job.v0.1.0` Parquet + manifest, validate them successfully (schema + minimal logical checks), and run the baseline runtime prediction model to produce a canonical result bundle under `runs/` without requiring network access.
-**Compare Acceptance (v0.1):** Compare is satisfied when `hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml` produces a deterministic, schema-valid result bundle containing regression metrics (at least MAE and RMSE) and provenance (schema versions, dataset identifier/hash, model identifier/version, environment capture, and code version when available).
+**Compare Acceptance (v0.1):** Compare is satisfied when `hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml` produces a deterministic, schema-valid result bundle containing regression metrics (at least MAE and RMSE) and provenance (schema versions, dataset identifier/hash, model identifier/version, environment capture, and code version when available).
 
 ---
 
@@ -125,9 +125,9 @@ v0.1 is considered complete only when **all** the following gates pass:
 - **DoD-1:** `pip install -e .` and `hpc-oda --help` works
 - **DoD-2:** `hpc-oda run-baseline` produces a result bundle offline
 - **DoD-3:** `hpc-oda ingest slurmctld …` produces schema-valid Parquet + manifest
-- **DoD-4:** `hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml` produces comparable metrics + provenance
+- **DoD-4:** `hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml` produces comparable metrics + provenance
 
-> Note: This charter updates the recipe path for runtime prediction to `recipes/job-runtime/baseline_tiny.yml`.
+> Note: This charter updates the recipe path for runtime prediction to `hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`.
 
 ---
 
