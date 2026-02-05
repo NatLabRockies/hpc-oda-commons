@@ -55,7 +55,7 @@
       "tags": ["tiny", "ci", "offline"],
       "reference": {
         "kind": "path",
-        "path": "recipes/job-runtime/baseline_tiny.yml"
+        "path": "hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml"
       }
     }
   ]
