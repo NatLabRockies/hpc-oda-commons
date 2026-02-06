@@ -129,6 +129,7 @@ outputs/
 # Allow specific tiny demo artifacts if you choose to keep them in-repo:
 !datasets/synthetic/job-failure/tiny/data.parquet
 !tests/fixtures/expected_job_table.parquet
+!src/hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet
 
 # =========================
 # Secrets / local configs

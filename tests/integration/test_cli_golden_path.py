@@ -110,6 +110,10 @@ def test_dod_3_ingest_slurmctld_creates_schema_valid_artifacts(
     assert manifest_path.exists(), f"Missing manifest: {manifest_path}"
     assert parquet_path.exists(), f"Missing parquet: {parquet_path}"
 
+    # Validate parquet and assert quality report exists.
+    run_cli(["validate", str(parquet_path)], cwd=tmp_project, timeout_s=120).assert_ok()
+    assert parquet_path.with_suffix(".parquet.quality.json").exists()
+
     table = pq.read_table(parquet_path)
     cols = set(table.column_names)
 
@@ -162,3 +166,38 @@ def test_dod_4_benchmark_recipe_produces_metrics_and_provenance(
     model = result_payload.get("model", {})
     assert model.get("id"), "model.id must be populated for DoD-4"
     assert model.get("version"), "model.version must be populated for DoD-4"
+
+
+@pytest.mark.integration
+def test_analyze_command_creates_report_bundle(repo_root: Path, tmp_project: Path) -> None:
+    run_cli(["init"], cwd=tmp_project).assert_ok()
+
+    fixture_log = repo_root / "tests/fixtures/slurmctld.log"
+    if not fixture_log.exists():
+        fixture_log = tmp_project / "slurmctld.log"
+        fixture_log.write_text(
+            "\n".join(
+                [
+                    "[2026-01-01T00:00:00.000] Allocate JobId=1 NodeList=node1 #CPUs=2 Partition=debug",
+                    "[2026-01-01T00:01:00.000] _job_complete: JobId=1 done",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    run_cli(
+        ["ingest", "slurmctld", "--path", str(fixture_log)], cwd=tmp_project, timeout_s=180
+    ).assert_ok()
+
+    ingested_root = tmp_project / "data" / "ingested"
+    parquet_path = find_first(ingested_root, "*.parquet")
+
+    run_cli(["analyze", "--data", str(parquet_path)], cwd=tmp_project, timeout_s=180).assert_ok()
+
+    reports_dir = tmp_project / "reports"
+    analysis_json = find_first(reports_dir, "analysis.json")
+    analysis_html = analysis_json.parent / "index.html"
+
+    assert analysis_json.exists()
+    assert analysis_html.exists()
