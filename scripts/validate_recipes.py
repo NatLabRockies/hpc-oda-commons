@@ -15,8 +15,12 @@ def _iter_recipe_paths() -> list[Path]:
     for root in roots:
         if not root.exists():
             continue
-        paths.extend(sorted(root.rglob("*.yml")))
-        paths.extend(sorted(root.rglob("*.yaml")))
+        for path in sorted(root.rglob("*.yml")) + sorted(root.rglob("*.yaml")):
+            if "recipes/common/envs" in path.as_posix():
+                continue
+            if "recipes/common/metrics_mdl_examples" in path.as_posix():
+                continue
+            paths.append(path)
     return paths
 
 

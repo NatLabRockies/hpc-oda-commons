@@ -55,6 +55,9 @@ jobs:
       - name: Run unit tests (exclude integration)
         run: |
           pytest -q -m "not integration"
+      - name: Validate recipes
+        run: |
+          python scripts/validate_recipes.py
 
   integration-tests:
     name: Golden path integration (DoD-1..DoD-4)
