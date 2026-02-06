@@ -25,6 +25,7 @@ def test_build_quality_report() -> None:
     rows = [{"job_id": 1, "start_time": "2026-01-01T00:00:00Z", "end_time": "2026-01-01T00:01:00Z"}]
     report = build_quality_report(rows, schema_version="oda.job.v0.1.0")
     assert report["schema_version"] == "oda.job.v0.1.0"
+    assert report["ruleset_version"] == "v0.1"
     assert report["row_count"] == 1
 
 

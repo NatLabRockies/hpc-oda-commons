@@ -8,7 +8,7 @@ import typer
 import yaml
 from rich.console import Console
 
-from hpc_oda_commons.adapters.slurmctld.adapter import parse_slurmctld_log
+from hpc_oda_commons.adapters.slurmctld.adapter import SlurmctldAdapter
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
 from hpc_oda_commons.kernel.artifacts.manifest import new_manifest, write_manifest
 from hpc_oda_commons.kernel.artifacts.oda_table import table_hash, write_table_parquet
@@ -206,7 +206,8 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
     root = Path.cwd()
     _ensure_dirs(root)
 
-    rows = parse_slurmctld_log(path)
+    adapter = SlurmctldAdapter()
+    rows = adapter.parse(path)
 
     run_id = f"slurmctld-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     out_dir = root / "data" / "ingested" / "slurmctld" / run_id
@@ -228,7 +229,7 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
 
     manifest = new_manifest(
         input_schema_version="oda.job.v0.1.0",
-        adapter={"id": "adapter.slurmctld", "version": "0.1.0"},
+        adapter={"id": adapter.metadata.id, "version": adapter.metadata.version},
         inputs=[{"path": str(path)}],
         artifact={
             "type": "ingest",

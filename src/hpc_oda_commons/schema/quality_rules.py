@@ -79,14 +79,19 @@ def compute_label_distribution(rows: list[dict[str, Any]], label_field: str) -> 
     return dict(values)
 
 
+QUALITY_RULESET_VERSION = "v0.1"
+
+
 def build_quality_report(
     rows: list[dict[str, Any]],
     *,
     schema_version: str,
     label_field: str | None = None,
+    ruleset_version: str = QUALITY_RULESET_VERSION,
 ) -> dict[str, Any]:
     report: dict[str, Any] = {
         "schema_version": schema_version,
+        "ruleset_version": ruleset_version,
         "generated_at": _now_utc_iso(),
         "row_count": len(rows),
         "missingness": compute_missingness(rows),

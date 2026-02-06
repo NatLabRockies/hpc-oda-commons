@@ -1,1 +1,73 @@
-# SER template for proposing schema changes (RFC-like).
+name: Schema Evolution Request (SER)
+description: Propose a change to ODA schemas using the SER process.
+title: "SER: <short change summary>"
+labels: ["schema", "ser"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to propose schema changes. Please keep scope minimal and explicit.
+
+  - type: input
+    id: schema_id
+    attributes:
+      label: Schema ID
+      description: Schema ID you want to change (e.g., oda.job.v0.1.0).
+      placeholder: oda.job.v0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: change_type
+    attributes:
+      label: Change type
+      options:
+        - Patch (backwards compatible clarifications)
+        - Minor (additive fields only)
+        - Major (breaking changes)
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why is this change needed? What problem does it solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_changes
+    attributes:
+      label: Proposed changes
+      description: Describe the fields/structures you want to add/modify/remove.
+    validations:
+      required: true
+
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility impact
+      description: Explain impact on existing data and tools. If breaking, propose a migration path.
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: Provide example payloads or JSON snippets if possible.
+    validations:
+      required: false
+
+  - type: checklist
+    id: checklist
+    attributes:
+      label: SER Checklist
+      options:
+        - label: I have checked for existing SERs covering this change.
+          required: false
+        - label: I have considered backward compatibility and versioning.
+          required: false
+        - label: I have included a migration note if required.
+          required: false

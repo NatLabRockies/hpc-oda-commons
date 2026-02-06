@@ -56,6 +56,7 @@ def validate_parquet_with_quality(
     schema_id: str = JOB_SCHEMA_ID,
     sample: int = 10,
     report_path: Path | None = None,
+    ruleset_version: str = "v0.1",
 ) -> dict[str, Any]:
     """
     Validate parquet rows against schema and emit a quality report.
@@ -74,7 +75,11 @@ def validate_parquet_with_quality(
                 path=str(path),
             )
 
-    report = build_quality_report(rows, schema_version=schema_id)
+    report = build_quality_report(
+        rows,
+        schema_version=schema_id,
+        ruleset_version=ruleset_version,
+    )
 
     if report_path:
         import json

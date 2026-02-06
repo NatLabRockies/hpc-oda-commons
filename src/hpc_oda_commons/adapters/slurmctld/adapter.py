@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from hpc_oda_commons.adapters.base import AdapterMetadata, SourceAdapter
+
 _TS_RE = re.compile(r"^\[(?P<ts>[0-9T:\-\.]+)\]\s+(?P<msg>.*)$")
 _ALLOC_RE = re.compile(
     r"Allocate\s+JobId=(?P<job_id>\d+)\s+NodeList=(?P<nodes>\S+)\s+#CPUs=(?P<cpus>\d+)\s+Partition=(?P<part>\S+)"
@@ -17,6 +19,16 @@ def _parse_ts(ts: str) -> str:
     dt = datetime.fromisoformat(ts)
     dt = dt.replace(tzinfo=timezone.utc)
     return dt.isoformat().replace("+00:00", "Z")
+
+
+SLURMCTLD_METADATA = AdapterMetadata(
+    id="adapter.slurmctld",
+    name="slurmctld log parser",
+    version="0.1.0",
+    input_schema_version=None,
+    output_schema_version="oda.job.v0.1.0",
+    supported_sources=("slurmctld",),
+)
 
 
 def parse_slurmctld_log(path: Path) -> list[dict[str, Any]]:
@@ -90,3 +102,10 @@ def parse_slurmctld_log(path: Path) -> list[dict[str, Any]]:
         rows.append(row)
 
     return rows
+
+
+class SlurmctldAdapter(SourceAdapter):
+    metadata = SLURMCTLD_METADATA
+
+    def parse(self, path: Path) -> list[dict[str, Any]]:
+        return parse_slurmctld_log(path)
