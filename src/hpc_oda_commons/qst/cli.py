@@ -11,7 +11,15 @@ from rich.console import Console
 from hpc_oda_commons.adapters.slurmctld.adapter import SlurmctldAdapter
 from hpc_oda_commons.benchmark.recipes import load_recipe
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
+from hpc_oda_commons.ingest.jobs_parquet.apply import apply_mapping_spec
+from hpc_oda_commons.ingest.jobs_parquet.profile import profile_parquet
+from hpc_oda_commons.ingest.jobs_parquet.suggest import suggest_mapping
+from hpc_oda_commons.ingest.jobs_parquet.wizard import build_mapping_spec_interactive
 from hpc_oda_commons.kernel.artifacts.manifest import new_manifest, write_manifest
+from hpc_oda_commons.kernel.artifacts.mapping_spec import (
+    read_mapping_spec,
+    write_mapping_spec,
+)
 from hpc_oda_commons.kernel.artifacts.oda_table import table_hash, write_table_parquet
 from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
 from hpc_oda_commons.kernel.provenance import build_provenance
@@ -280,6 +288,84 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
             console.print(f"[yellow]Ingest check[/yellow]: {msg}")
         else:
             console.print(f"[blue]Ingest check[/blue]: {msg}")
+
+    console.print(f"[green]Ingest complete[/green] → {out_dir}")
+
+
+@ingest_app.command("jobs-parquet")
+def ingest_jobs_parquet(
+    path: Annotated[Path, typer.Option(..., "--path", exists=True, readable=True)],
+    mapping: Annotated[Path | None, typer.Option("--mapping")] = None,
+    sample_rows: Annotated[int, typer.Option("--sample-rows")] = 200,
+    batch_size: Annotated[int, typer.Option("--batch-size")] = 50_000,
+    non_interactive: Annotated[bool, typer.Option("--non-interactive")] = False,
+    hash_identifiers: Annotated[
+        bool, typer.Option("--hash-identifiers/--no-hash-identifiers")
+    ] = True,
+) -> None:
+    """
+    Ingest a jobs Parquet export into canonical oda.job.v0.1.0 artifacts.
+    """
+    root = Path.cwd()
+    _ensure_dirs(root)
+
+    run_id = f"jobs-parquet-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    out_dir = root / "data" / "ingested" / "jobs_parquet" / run_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if mapping is None:
+        if non_interactive:
+            raise typer.BadParameter("Non-interactive mode requires --mapping.")
+        profiles = profile_parquet(path, sample_rows=sample_rows)
+        suggestions = suggest_mapping(profiles)
+        mapping_payload = build_mapping_spec_interactive(
+            profiles,
+            suggestions,
+            input_path=path,
+            default_hash_identifiers=hash_identifiers,
+        )
+        mapping = out_dir / "mapping.yml"
+        write_mapping_spec(mapping, mapping_payload, validate=True)
+    else:
+        read_mapping_spec(mapping, validate=True)
+
+    parquet_path = out_dir / "data.parquet"
+    summary = apply_mapping_spec(
+        path,
+        mapping,
+        parquet_path,
+        batch_size=batch_size,
+        skip_incomplete=True,
+    )
+
+    validate_parquet_with_quality(parquet_path, schema_id="oda.job.v0.1.0", sample=10)
+
+    prov = build_provenance(
+        input_schema="oda.job.v0.1.0",
+        result_schema="oda.result.v0.1.0",
+        inputs=[path, parquet_path, mapping],
+        project_root=root,
+        capture_packages=False,
+    )
+
+    manifest = new_manifest(
+        input_schema_version="oda.job.v0.1.0",
+        adapter={"id": "adapter.jobs_parquet", "version": "0.1.0"},
+        inputs=[{"path": str(path)}],
+        artifact={
+            "type": "ingest",
+            "paths": {"table": str(parquet_path), "manifest": str(out_dir / "manifest.json")},
+        },
+        provenance=prov,
+        transformations=[
+            {
+                "kind": "mapping_spec",
+                "path": str(mapping),
+                "summary": summary,
+            }
+        ],
+    )
+    write_manifest(out_dir / "manifest.json", manifest, validate=True)
 
     console.print(f"[green]Ingest complete[/green] → {out_dir}")
 

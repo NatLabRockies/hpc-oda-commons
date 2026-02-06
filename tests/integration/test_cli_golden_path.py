@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from jsonschema import Draft202012Validator
 
+from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec, write_mapping_spec
 from hpc_oda_commons.kernel.schemas import load_schema
 from tests.conftest import find_first, load_json, run_cli, write_slurmctld_log
 
@@ -181,3 +183,66 @@ def test_analyze_command_creates_report_bundle(repo_root: Path, tmp_project: Pat
 
     assert analysis_json.exists()
     assert analysis_html.exists()
+
+
+@pytest.mark.integration
+def test_ingest_jobs_parquet_with_mapping(tmp_project: Path) -> None:
+    run_cli(["init"], cwd=tmp_project).assert_ok()
+
+    jobs_path = tmp_project / "jobs.parquet"
+    table = pa.table(
+        {
+            "JobID": [1, 2],
+            "StartTime": ["2026-01-01T00:00:00Z", "2026-01-01T01:00:00Z"],
+            "EndTime": ["2026-01-01T00:10:00Z", "2026-01-01T01:05:00Z"],
+            "SubmitTime": ["2026-01-01T00:00:00Z", "2026-01-01T00:59:00Z"],
+            "State": ["COMPLETED", "FAILED"],
+            "User": ["alice", "bob"],
+            "Elapsed": [600.0, 300.0],
+        }
+    )
+    pq.write_table(table, jobs_path)
+
+    mapping = new_mapping_spec(
+        kind="jobs_parquet",
+        output_schema_version="oda.job.v0.1.0",
+        fields={
+            "job_id": {"source": "JobID"},
+            "start_time": {
+                "source": "StartTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "end_time": {
+                "source": "EndTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "submit_time": {
+                "source": "SubmitTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "state": {"source": "State"},
+            "user": {"source": "User", "transform": {"type": "hash_identifier"}},
+            "runtime_seconds": {
+                "source": "Elapsed",
+                "transform": {"type": "duration", "unit": "seconds"},
+            },
+        },
+    )
+    mapping_path = tmp_project / "mapping.yml"
+    write_mapping_spec(mapping_path, mapping, validate=True)
+
+    run_cli(
+        ["ingest", "jobs-parquet", "--path", str(jobs_path), "--mapping", str(mapping_path)],
+        cwd=tmp_project,
+        timeout_s=180,
+    ).assert_ok()
+
+    ingested_root = tmp_project / "data" / "ingested" / "jobs_parquet"
+    assert ingested_root.exists()
+
+    manifest_path = find_first(ingested_root, "manifest.json")
+    parquet_path = find_first(ingested_root, "*.parquet")
+    assert manifest_path.exists()
+    assert parquet_path.exists()
+
+    run_cli(["validate", str(parquet_path)], cwd=tmp_project, timeout_s=120).assert_ok()
