@@ -55,6 +55,9 @@ At a high level, the system provides three user-visible capabilities.
 ### Run (local-first ingestion, validation, and analysis)
 
 - `hpc-oda init` creates a local project structure (`data/`, `runs/`, `.hpc_oda/`, `hpc-oda.toml`).
+- `HPC_ODA_OFFLINE=1 hpc-oda run-baseline` generates and caches a deterministic tiny synthetic dataset locally
+  (offline), runs the baseline model, computes regression metrics (MAE/RMSE), and produces a result bundle
+  under `runs/`. This is the fastest “sanity check” that the end-to-end toolchain is installed and working.
 - `hpc-oda ingest slurmctld --path <log>` parses logs into schema-aligned rows, writes Parquet + `manifest.json`.
 - `hpc-oda validate <path>` validates:
   - result bundles (`result.json` schema)
@@ -323,4 +326,3 @@ hpc-oda leaderboard --runs runs --out leaderboard
 - Leaderboard:
   - `leaderboard/leaderboard.json`
   - `leaderboard/index.html`
-
