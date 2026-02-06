@@ -16,7 +16,17 @@ def test_slurmctld_adapter_metadata() -> None:
 
 
 def test_slurmctld_adapter_parses_fixture(tmp_path: Path) -> None:
-    fixture = Path("tests/fixtures/slurmctld.log")
+    fixture = tmp_path / "slurmctld.log"
+    fixture.write_text(
+        "\n".join(
+            [
+                "[2026-01-01T00:00:00.000] Allocate JobId=1 NodeList=node1 #CPUs=2 Partition=debug",
+                "[2026-01-01T00:01:00.000] _job_complete: JobId=1 done",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     adapter = SlurmctldAdapter()
     rows = adapter.parse(fixture)
     assert rows

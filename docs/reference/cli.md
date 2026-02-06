@@ -20,6 +20,8 @@ This reference covers the v0.1 `hpc-oda` commands.
    Runs the offline baseline on the tiny synthetic dataset.
 1. `hpc-oda ingest slurmctld --path <log>`
    Parses a slurmctld log into `oda.job.v0.1.0` Parquet + manifest.
+1. `hpc-oda analyze --data <parquet|dir> [--out <dir>]`
+   Analyzes a local dataset with the baseline model and writes an analysis report.
 1. `hpc-oda validate <path>`
    Validates a result bundle, manifest, or parquet file. For parquet, writes a `*.quality.json` report.
 

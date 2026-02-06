@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
@@ -18,8 +19,9 @@ from hpc_oda_commons.kernel.validate import validate_json
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
 from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.info import info
+from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
 from hpc_oda_commons.schema.validator import validate_parquet_with_quality
-from hpc_oda_commons.tools.report import render_leaderboard_html
+from hpc_oda_commons.tools.report import render_analysis_html, render_leaderboard_html
 
 app = typer.Typer(add_completion=False, help="hpc-oda-commons Quickstart Toolkit (v0.1)")
 ingest_app = typer.Typer(
@@ -268,6 +270,17 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
     )
     write_manifest(out_dir / "manifest.json", manifest, validate=True)
 
+    suggestions = build_ingest_suggestions(path)
+    for suggestion in suggestions:
+        level = suggestion.get("level", "info")
+        msg = suggestion.get("message", "")
+        if level == "error":
+            console.print(f"[red]Ingest check[/red]: {msg}")
+        elif level == "warning":
+            console.print(f"[yellow]Ingest check[/yellow]: {msg}")
+        else:
+            console.print(f"[blue]Ingest check[/blue]: {msg}")
+
     console.print(f"[green]Ingest complete[/green] → {out_dir}")
 
 
@@ -352,6 +365,86 @@ def benchmark(recipe: Path) -> None:
     )
 
     console.print(f"[green]Benchmark complete[/green] → runs/{run_id}/")
+
+
+@app.command("analyze")
+def analyze_my_data(
+    data: Annotated[Path, typer.Option("--data", exists=True, readable=True)],
+    out: Annotated[Path, typer.Option("--out", exists=False)] = Path("reports"),
+) -> None:
+    """
+    Analyze a local dataset with the baseline model and emit a report bundle.
+    """
+    root = Path.cwd()
+    _ensure_dirs(root)
+
+    if data.is_dir():
+        data_path = data / "data.parquet"
+        manifest_path = data / "manifest.json"
+    else:
+        data_path = data
+        manifest_path = data.with_name("manifest.json")
+
+    if not data_path.exists():
+        raise typer.BadParameter(f"Parquet data not found: {data_path}")
+
+    ds_hash = table_hash(data_path)
+
+    import pyarrow.parquet as pq
+
+    table = pq.read_table(data_path)
+    rows = table.to_pylist()
+    if not rows:
+        raise typer.BadParameter("Dataset is empty; cannot analyze.")
+
+    y_true = [float(r["runtime_seconds"]) for r in rows if r.get("runtime_seconds") is not None]
+    model = JobRuntimeBaselineModel()
+    model.fit(rows)
+    y_pred = model.predict(rows)
+
+    metric_defs = [
+        {"name": "mae", "target": "runtime_seconds"},
+        {"name": "rmse", "target": "runtime_seconds"},
+    ]
+    metrics = _compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
+
+    prov = build_provenance(
+        input_schema="oda.job.v0.1.0",
+        result_schema="oda.result.v0.1.0",
+        inputs=[data_path],
+        project_root=root,
+        capture_packages=True,
+    )
+
+    report_id = f"analysis-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    out_dir = out if out.is_absolute() else root / out
+    out_dir = out_dir / report_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    report_payload = {
+        "summary": {"report_id": report_id, "created_at": _now_utc_iso()},
+        "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+        "dataset": {
+            "id": str(manifest_path) if manifest_path.exists() else str(data_path),
+            "schema_version": "oda.job.v0.1.0",
+            "hash": ds_hash,
+        },
+        "metrics": metrics,
+        "metrics_definitions": metric_defs,
+        "provenance": prov,
+    }
+
+    json_path = out_dir / "analysis.json"
+    json_path.write_text(
+        json.dumps(report_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    html = render_analysis_html(report_payload)
+    html_path = out_dir / "index.html"
+    html_path.write_text(html, encoding="utf-8")
+
+    console.print(f"[green]Analysis report[/green]: {json_path}")
+    console.print(f"[green]Analysis HTML[/green]: {html_path}")
 
 
 @app.command()

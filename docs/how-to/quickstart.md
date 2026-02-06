@@ -37,12 +37,17 @@ hpc-oda validate data/ingested/slurmctld/<run>/data.parquet
 This writes a quality report next to the parquet file:
 `data/ingested/slurmctld/<run>/data.parquet.quality.json`.
 
-## 7) Benchmark using the v0.1 recipe
+## 7) Analyze local data (baseline)
+```bash
+hpc-oda analyze --data data/ingested/slurmctld/<run>
+```
+
+## 8) Benchmark using the v0.1 recipe
 ```bash
 HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 ```
 
-## 8) Generate a local leaderboard
+## 9) Generate a local leaderboard
 ```bash
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
