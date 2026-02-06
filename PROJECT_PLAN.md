@@ -378,3 +378,217 @@ This plan defines the **optimal development path** from the current repo state t
 - Packaging verification:
   - wheel install in a clean venv
   - run quickstart commands from docs
+
+---
+
+## Continuation Plan (Authoritative Roadmap After Post-Cleanup Optimization)
+
+This section defines the **next development phases** from the repo’s current state through **v0.1.0 “ship-quality”** and toward a **pillar-complete v1.0**.
+
+### Scope Anchor (Clarification)
+
+- The v0.x vertical slice remains: **SLURM Job Runtime Prediction** (not failure prediction).
+- The **CLI** (`hpc-oda`) is the primary stable public surface in v0.1; Python APIs remain minimal/experimental.
+
+### What “Done” Means
+
+#### Completion A: v0.1.0 (Vertical Slice Done / Shippable)
+
+1. A new user can install and complete the documented quickstart offline (where possible) and on a typical laptop/HPC login node.
+2. Artifacts (Parquet + manifest + result bundles) are schema-valid, comparable, and provenance-complete.
+3. Registry snapshot is usable offline and references packaged recipes/datasets correctly.
+4. CI enforces “golden path” DoD gates (below).
+
+#### Completion B: v1.0 (Platform Done / Extensible)
+
+1. ODARSEA: stable schema evolution process + first-class adapter/model contracts + safe transformation policy.
+2. ODABLV: strict recipe + metric definitions, environment lock records, reproducibility-ready leaderboard entries.
+3. ODA-QST: guided workflows (analyze-my-data) and a lightweight dashboard/reporting path.
+4. “Intelligence layer” exists in a pragmatic, minimal form (assistive heuristics + metadata graph), not an ML platform.
+
+---
+
+## Phase 1: Release Engineering and CI DoD Gates (v0.1.0 Hardening)
+
+**Goal:** make installs and the 10-minute workflow boringly reliable; ensure CI protects it.
+
+### Work Items
+
+1. Packaging verification:
+   - Build wheel/sdist locally.
+   - Install wheel into a clean venv and re-run the CLI golden paths.
+2. Offline install story:
+   - Document supported offline modes:
+     - pre-built wheelhouse (recommended for HPC)
+     - internal index / mirror
+     - container image (Docker/Apptainer)
+   - Document what is *not* guaranteed offline (e.g., build isolation when build deps must be fetched).
+3. CI DoD gates:
+   - Add/ensure CI runs:
+     - lint/format
+     - unit tests
+     - integration tests with `HPC_ODA_OFFLINE=1`
+   - Ensure the integration “golden path” mirrors docs (init → run-baseline → ingest → validate → benchmark → leaderboard).
+4. Release checklist alignment:
+   - Ensure `scripts/release_checklist.md` matches exact commands that succeed.
+
+### Likely Files
+
+- `pyproject.toml`
+- `scripts/release_checklist.md`
+- `docs/how-to/install.md`
+- `docs/how-to/quickstart.md`
+- `.github/workflows/*` (if CI is in-repo)
+
+### Acceptance
+
+- Wheel install + CLI quickstart commands succeed.
+- CI fails fast if any DoD gate regresses.
+
+---
+
+## Phase 2: ODARSEA Hardening (Schema + Adapters + Safe Transformations)
+
+**Goal:** strengthen semantic interoperability without expanding scope.
+
+### Work Items
+
+1. SER (Schema Evolution Request) process:
+   - Add a lightweight SER template and rules for semver + deprecation.
+2. Adapter contract:
+   - Define a minimal adapter protocol/base class with required metadata and supported schema versions.
+   - Ensure slurmctld adapter conforms to contract.
+3. Safe transformation policy:
+   - Promote explicit, stable transformation helpers (hashing, timestamp binning, redaction hooks).
+   - Record transformations in manifests/provenance.
+4. Data quality standards:
+   - Make quality rules configurable and versioned (baseline rules for v0.1, extensible for v0.2).
+
+### Likely Files
+
+- `src/hpc_oda_commons/kernel/*`
+- `src/hpc_oda_commons/schema/*`
+- `src/hpc_oda_commons/adapters/*`
+- `docs/concepts/schema.md`
+- `docs/concepts/security-data-handling.md`
+
+### Acceptance
+
+- No schema duplication; all validation uses canonical kernel loading.
+- Ingest always produces schema-valid outputs and a quality report.
+- Transformations are explicit and reproducible (recorded).
+
+---
+
+## Phase 3: ODABLV Expansion (Recipes + MDL + Provenance + Reproducibility)
+
+**Goal:** make “Compare” defensible and repeatable beyond a single baseline.
+
+### Work Items
+
+1. Recipe schema + validation:
+   - Define and enforce a strict recipe schema (and validate in CI).
+2. Metric Definition Language (MDL) v0:
+   - Start small: strict schema for metric declarations with deterministic computation.
+   - Record metric config in result bundles verbatim.
+3. Environment locking:
+   - Support a minimal “environment descriptor” per recipe (constraints file, conda env, or container reference).
+   - Record environment hash and tool versions into provenance.
+4. Leaderboard reproducibility links:
+   - Ensure leaderboard entries point to bundles with complete provenance (recipe, schema versions, inputs, env descriptor).
+
+### Likely Files
+
+- `src/hpc_oda_commons/benchmark/*`
+- `src/hpc_oda_commons/kernel/provenance.py`
+- `recipes/*`
+- `scripts/validate_recipes.py`
+- `docs/reference/recipes.md`
+- `docs/concepts/benchmarks.md`
+
+### Acceptance
+
+- Recipes can be validated mechanically before execution.
+- Result bundles are sufficient to reproduce metrics.
+- Leaderboard generation is stable and schema-backed.
+
+---
+
+## Phase 4: ODA-QST UX Upgrade (Guided Workflows)
+
+**Goal:** improve operator usability without forcing a heavy UI framework too early.
+
+### Work Items
+
+1. “Intelligent ingest” v0 (pragmatic):
+   - Add deterministic checks/suggestions for the slurmctld ingest path (required fields present, timestamp parsing, missingness).
+   - Defer an interactive wizard until there is real demand.
+2. `analyze-my-data` command:
+   - Select a model + input dataset artifact and run inference/evaluation, emitting a report bundle.
+3. Dashboard/reporting:
+   - Prefer a static HTML report artifact first (build on existing HTML generation).
+   - Add Streamlit/Dash only as an optional extra once report contracts stabilize.
+
+### Likely Files
+
+- `src/hpc_oda_commons/qst/cli.py`
+- `src/hpc_oda_commons/tools/report/*`
+- `docs/reference/cli.md`
+- `docs/how-to/quickstart.md`
+
+### Acceptance
+
+- Users can run “ingest → validate → analyze” with clear outputs and a shareable report bundle.
+
+---
+
+## Phase 5: “Intelligence Layer” (Minimal, Practical Form)
+
+**Goal:** add assistive features without committing to a large ML/infra system.
+
+### Work Items
+
+1. Mapping suggestion library:
+   - Create a small library of reusable parsing/mapping hints learned from in-tree adapters.
+2. Synthetic generator feedback loop:
+   - Add a harness that scores synthetic datasets on realism/coverage proxies and stores summary metrics.
+3. Metadata graph:
+   - Generate a static graph derived from registry metadata (tags, schema versions, domains, metrics).
+   - Use it to power better “Find” queries and docs.
+
+### Acceptance
+
+- “Assist” features are deterministic and testable.
+- No new infra dependencies required.
+
+---
+
+## Phase 6: Expand Breadth (Still Runtime First; Defer Failure Domain)
+
+**Goal:** expand only after contracts are stable and CI gates are solid.
+
+### Work Items
+
+1. Add 1–2 additional **runtime** datasets (prefer external pointers + manifests).
+2. Add at least one additional **runtime** model (simple but distinct).
+3. Add another ingestion source (or a second SLURM format) only after adapter contracts stabilize.
+4. Introduce **failure prediction** as a new domain only after runtime is boringly reliable.
+
+### Acceptance
+
+- New datasets/models/adapters land with:
+  - schema and metadata
+  - unit tests
+  - integration coverage for user workflows
+  - docs updates
+
+---
+
+## Tests and Verification (Ongoing)
+
+For any change that touches user workflows:
+
+- Fast: `pytest -q tests/unit`
+- Full: `pytest -q`
+- Offline integration: `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+- CLI smoke (manual/release): run quickstart commands in a clean venv (wheel install preferred).
