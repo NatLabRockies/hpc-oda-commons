@@ -30,12 +30,20 @@ HPC_ODA_OFFLINE=1 hpc-oda run-baseline
 hpc-oda ingest slurmctld --path /path/to/slurmctld.log
 ```
 
+## 5a) Ingest jobs Parquet exports (alternative)
+```bash
+hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
+```
+
 ## 6) Validate ingested artifacts
 ```bash
 hpc-oda validate data/ingested/slurmctld/<run>/data.parquet
 ```
 This writes a quality report next to the parquet file:
 `data/ingested/slurmctld/<run>/data.parquet.quality.json`.
+
+For jobs Parquet ingestion, the equivalent path is:
+`data/ingested/jobs_parquet/<run>/data.parquet`.
 
 ## 7) Analyze local data (baseline)
 ```bash
