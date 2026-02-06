@@ -592,3 +592,116 @@ For any change that touches user workflows:
 - Full: `pytest -q`
 - Offline integration: `HPC_ODA_OFFLINE=1 pytest -q -m integration`
 - CLI smoke (manual/release): run quickstart commands in a clean venv (wheel install preferred).
+
+---
+
+## Additional Testing Plan (CI Hardening / Coverage Gaps)
+
+This section captures a focused test expansion plan to reduce regression risk and
+catch packaging drift early. It is intentionally **prioritized** and biased
+toward “contract tests” that protect the v0.1 CLI golden paths.
+
+### Under-Tested Areas (Current Gaps)
+
+1. **Packaged non-code artifacts**
+   - Risk: `.gitignore` and packaging drift can silently remove runtime-required assets (schemas, recipes, registry snapshot, tiny datasets).
+2. **CLI workflow coverage gaps**
+   - Integration covers DoD-1..DoD-4 and leaderboard generation, but does not currently assert:
+     - `hpc-oda validate` behavior (including writing `*.quality.json`)
+     - `hpc-oda analyze` behavior (analysis bundle + HTML)
+     - CLI subprocess wiring for `browse` / `info`
+3. **slurmctld parsing edge cases**
+   - Parsing is minimally tested (smoke), but not locked down for multi-job interleaving, incomplete jobs, or exact runtime computation.
+4. **Baseline model behavior**
+   - Baseline model has no direct unit tests for determinism and error behavior (`predict` before `fit`).
+5. **Semantic validation failure modes**
+   - Happy path quality report is covered, but failure behavior is not (negative runtime, start > end, invalid timestamps).
+6. **Leaderboard robustness**
+   - Leaderboard intentionally skips invalid bundles; behavior and sorting are not explicitly tested.
+7. **Registry snapshot validation**
+   - We do not assert the packaged snapshot validates against `oda.registry.v0.1.0`.
+8. **Scripts/CI validations**
+   - `scripts/validate_recipes.py` exists but is not enforced in CI; `scripts/validate_schemas.py` is a stub.
+
+---
+
+## Test Development Plan (Prioritized)
+
+### P0 — Packaging and Golden Path Contracts
+
+1. Packaged assets contract test
+   - Add `tests/unit/test_packaged_assets.py` asserting required packaged assets exist:
+     - `oda.*` schemas (job/result/registry/recipe/mdl)
+     - `registry/snapshot.json`
+     - `recipes/job-runtime/baseline_tiny.yml`
+     - `datasets/synthetic/job-runtime/tiny/manifest.json`
+     - `datasets/synthetic/job-runtime/tiny/data.parquet` (if we keep “bundled tiny dataset” as a hard contract)
+   - Verification:
+     - `pytest -q tests/unit`
+   - Follow-on (if needed): update `.gitignore` to allow the specific tiny parquet under `src/` and ensure it is tracked.
+
+2. Expand integration golden path coverage: `validate` + `analyze`
+   - Extend `tests/integration/test_cli_golden_path.py` (or add a new file) to assert:
+     - `hpc-oda validate <parquet>` writes `*.quality.json`
+     - `hpc-oda analyze --data <ingest_dir>` writes:
+       - `reports/analysis-*/analysis.json`
+       - `reports/analysis-*/index.html`
+   - Verification:
+     - `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+
+### P1 — Correctness Lock-Down for Core Components
+
+3. slurmctld parser correctness tests
+   - Add `tests/unit/test_slurmctld_parser.py`:
+     - single job allocate+done → exact `runtime_seconds`
+     - multiple interleaved jobs → correct per-job outputs
+     - incomplete job behavior is explicit (skip or emit nulls) and tested
+   - Verification:
+     - `pytest -q tests/unit`
+
+4. Baseline model unit tests
+   - Add `tests/unit/test_job_runtime_baseline_model.py`:
+     - `predict()` before `fit()` raises
+     - `fit()` ignores null runtimes and computes mean correctly
+     - predictions are constant/deterministic
+   - Verification:
+     - `pytest -q tests/unit`
+
+5. Validation failure-mode tests
+   - Extend `tests/unit/test_validator.py`:
+     - negative runtime triggers `SchemaValidationError`
+     - `start_time > end_time` triggers `SchemaValidationError`
+     - invalid timestamp format triggers `SchemaValidationError`
+   - Verification:
+     - `pytest -q tests/unit`
+
+### P2 — Robustness and CI Guardrails
+
+6. Leaderboard robustness tests
+   - Extend `tests/unit/test_leaderboard.py`:
+     - one valid + one invalid bundle → leaderboard includes only valid entries
+     - ordering by `created_at` is stable
+   - Verification:
+     - `pytest -q tests/unit`
+
+7. Registry snapshot validation test
+   - Add `tests/unit/test_registry_validate.py`:
+     - `validate_registry_snapshot(snapshot_resource_path())` succeeds
+   - Verification:
+     - `pytest -q tests/unit`
+
+8. CI script enforcement
+   - Add CI steps to run:
+     - `python scripts/validate_recipes.py`
+   - Either:
+     - implement `scripts/validate_schemas.py` minimally (load all packaged schema JSON and validate they are JSON objects), and run it in CI
+     - or remove the stub until implemented
+
+### P3 — Test Hygiene
+
+9. Reduce fixture fragility
+   - Add helper(s) in `tests/conftest.py` to generate slurmctld logs for tests (avoid `.gitignore` surprises).
+   - Fill in `tests/README.md` with:
+     - unit vs integration definitions
+     - “no gitignored fixtures” rule
+     - recommended commands
