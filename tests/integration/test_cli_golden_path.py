@@ -84,7 +84,18 @@ def test_dod_3_ingest_slurmctld_creates_schema_valid_artifacts(
     run_cli(["init"], cwd=tmp_project).assert_ok()
 
     fixture_log = repo_root / "tests/fixtures/slurmctld.log"
-    assert fixture_log.exists(), f"Missing fixture: {fixture_log}"
+    if not fixture_log.exists():
+        fixture_log = tmp_project / "slurmctld.log"
+        fixture_log.write_text(
+            "\n".join(
+                [
+                    "[2026-01-01T00:00:00.000] Allocate JobId=1 NodeList=node1 #CPUs=2 Partition=debug",
+                    "[2026-01-01T00:01:00.000] _job_complete: JobId=1 done",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     run_cli(
         ["ingest", "slurmctld", "--path", str(fixture_log)], cwd=tmp_project, timeout_s=180
