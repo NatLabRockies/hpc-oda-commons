@@ -705,3 +705,161 @@ toward “contract tests” that protect the v0.1 CLI golden paths.
      - unit vs integration definitions
      - “no gitignored fixtures” rule
      - recommended commands
+
+---
+
+## Repo Cleanup Plan (Post-v0.1 Hardening)
+
+This section captures a **repo cleanup plan** to remove scaffold leftovers, reduce confusion,
+and ensure docs/scripts/packaging match the current v0.1 runtime-prediction vertical slice.
+
+### Key Cleanup Findings
+
+1. **Placeholder docs/READMEs** remain in multiple places (`<!-- ... -->` stubs).
+2. **Stub Python modules** exist (docstring-only) and are not imported/used.
+3. **Placeholder “fake data” artifacts** exist (text files with `.parquet`, placeholder signatures).
+4. **Scripts are partially non-runnable** as written (paths rely on gitignored fixtures).
+5. **Packaging correctness risks**:
+   - runtime import of `jsonschema` is not declared under `[project].dependencies`
+   - `MANIFEST.in` includes root-level paths that don’t exist and may omit `src/hpc_oda_commons/...` assets from sdist
+6. **Repo naming collisions/confusion**:
+   - top-level `leaderboard/` contains old scaffold templates and ignored generated files; CLI also outputs to `leaderboard/` by default.
+
+---
+
+## Cleanup Checklist (File-Level Operations)
+
+### 1) Remove/Replace Placeholder Artifacts (High ROI / Low Risk)
+
+- Delete placeholder “fake parquet” fixtures:
+  - Delete `tests/fixtures/expected_job_table.parquet` (not a real parquet file)
+  - Delete `tests/fixtures/expected_manifest.json` (placeholder-only)
+- Remove unused failure-prediction synthetic dataset scaffolding:
+  - Delete `datasets/synthetic/job-failure/`
+  - Delete `datasets/synthetic/shared/schema_examples.jsonl`
+- Remove placeholder registry signature:
+  - Delete `registry/snapshot.sig`
+- Optional: remove ignored generated leftovers in working trees (not committed):
+  - remove local `leaderboard/public/index.html`, `leaderboard/public/leaderboard.json` if present
+
+**Verify:** `ruff check .`, `ruff format .`, `pytest -q tests/unit`, `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+
+---
+
+### 2) Remove Dead Stub Python Modules (Reduce Surface Area)
+
+Delete unused docstring-only modules that are not imported and provide no behavior:
+
+- slurmctld adapter stubs:
+  - Delete `src/hpc_oda_commons/adapters/slurmctld/parser.py`
+  - Delete `src/hpc_oda_commons/adapters/slurmctld/mapping.py`
+  - Delete `src/hpc_oda_commons/adapters/slurmctld/labeling.py`
+  - Delete `src/hpc_oda_commons/adapters/slurmctld/fixtures.py`
+- baseline model stubs (classification leftovers):
+  - Delete `src/hpc_oda_commons/models/job_runtime_baseline/features.py`
+  - Delete `src/hpc_oda_commons/models/job_runtime_baseline/calibrate.py`
+  - Delete `src/hpc_oda_commons/models/job_runtime_baseline/explain.py`
+- QST scaffolding not used:
+  - Delete `src/hpc_oda_commons/qst/config.py`
+  - Delete `src/hpc_oda_commons/qst/project.py`
+  - Delete `src/hpc_oda_commons/qst/tui/render.py`
+- utils stubs not used:
+  - Delete `src/hpc_oda_commons/utils/io.py`
+  - Delete `src/hpc_oda_commons/utils/logging.py`
+  - Delete `src/hpc_oda_commons/utils/time.py`
+- version module decision:
+  - Either implement `src/hpc_oda_commons/version.py` (recommended: expose `__version__` via `importlib.metadata`)
+  - Or delete it and keep version capture only in `kernel/provenance.py`
+
+**Verify:** `ruff check .`, `ruff format .`, `pytest -q tests/unit`, `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+
+---
+
+### 3) Packaging and Install Correctness (Must-Have)
+
+- Add missing runtime dependency:
+  - Update `pyproject.toml` `[project].dependencies` to include `jsonschema>=4`
+- Fix sdist packaging:
+  - Update `MANIFEST.in` to include packaged assets under `src/hpc_oda_commons/...`:
+    - `src/hpc_oda_commons/schemas/**/*.json`
+    - `src/hpc_oda_commons/registry/*.json`
+    - `src/hpc_oda_commons/recipes/**/*.{yml,yaml,toml}`
+    - `src/hpc_oda_commons/datasets/**/*`
+  - Keep docs inclusion in sdist only if intentional (`recursive-include docs *`)
+- Ensure the tiny runtime parquet is actually committed:
+  - Confirm `src/hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet` is tracked
+
+**Verify:**
+- `pytest -q tests/unit`
+- `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+- optional build verification:
+  - `python -m pip wheel -w dist .` then install wheel in a clean venv and run `hpc-oda --help`
+
+---
+
+### 4) Scripts Cleanup (Make Real or Remove)
+
+- Fix `scripts/golden_path_local.sh`:
+  - determine repo root from the script location
+  - generate a tiny slurmctld log in the temp project (avoid relying on `tests/fixtures/slurmctld.log`)
+  - use a real recipe path (`recipes/job-runtime/baseline_tiny.yml` or packaged copy under `src/`)
+  - include `hpc-oda validate ...` and `hpc-oda analyze ...` to mirror docs
+- Handle stub scripts (choose one path per script):
+  - implement `scripts/validate_schemas.py` minimally (load all schema JSON files and ensure valid JSON objects; optionally validate `$id` presence)
+  - implement `scripts/build_registry_snapshot.py` as a “sync + validate” utility (validate `registry/snapshot.json` and copy into `src/hpc_oda_commons/registry/snapshot.json`)
+  - implement or remove `scripts/dev_bootstrap.sh` (currently placeholder)
+
+**Verify:** `python scripts/validate_recipes.py`, `python scripts/validate_schemas.py` (if implemented), plus test suite.
+
+---
+
+### 5) Docs/README Cleanup (Remove Scaffold Smell)
+
+- Update quickstarts consistently:
+  - Update `README.md` to include the `hpc-oda analyze --data ...` step
+  - Update `docs/index.md` 10-minute workflow to include analyze
+- Replace placeholder docs with minimal accurate content:
+  - Fill `docs/concepts/pillars.md` (map Find/Compare/Run to actual CLI commands + modules)
+  - Fill `docs/concepts/artifacts.md` (ODA table, manifest, result bundle, quality report, analysis report)
+  - Fill `docs/how-to/add-model.md` (what “adding a model” means in v0.1 and how to test it)
+  - Fill repo READMEs: `datasets/README.md`, `recipes/README.md`, `registry/README.md`, `containers/README.md`, `examples/README.md`, `examples/projects/sample_project/README.md`
+  - Fill/rename baseline model README:
+    - Update `src/hpc_oda_commons/models/job_runtime_baseline/README.md` (currently titled “Job Failure Baseline Model”)
+  - Fill adapter README:
+    - Update `src/hpc_oda_commons/adapters/slurmctld/README.md` with supported formats, limitations, and examples
+- Remove stale references to gitignored fixtures:
+  - scrub references to `tests/fixtures/slurmctld.log` in docs/checklists/scripts (prefer generated sample logs or inline snippets)
+
+**Verify:** `ruff check .`, `ruff format .`, `pytest -q`, `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+
+---
+
+### 6) Optional CI Guardrails
+
+- Add CI step for schema sanity checks if/when `scripts/validate_schemas.py` is implemented.
+- Decide what to do with disabled workflows (`.github/workflows/*.disabled`):
+  - keep as templates but update to current commands
+  - or remove redundant ones to reduce noise (CI already covers golden paths)
+
+---
+
+## Proposed Commit Order (PR Shape)
+
+1. Remove placeholder artifacts (fake parquet, placeholder signatures, unused failure dataset scaffolding).
+2. Remove dead stub Python modules; decide fate of `version.py`.
+3. Packaging fixes (`jsonschema` dependency, `MANIFEST.in` for `src/` packaged assets, ensure tiny parquet tracked).
+4. Scripts cleanup (fix golden path script; implement/remove stub scripts).
+5. Docs/README cleanup (fill placeholders, fix stale references).
+6. Optional CI guardrails (schema sanity check; workflow template decisions).
+
+## Verification Strategy (for cleanup PR)
+
+- After each commit:
+  - `ruff check .`
+  - `ruff format .`
+  - `pytest -q tests/unit`
+- At the end:
+  - `pytest -q`
+  - `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+  - `python scripts/validate_recipes.py`
+  - `python scripts/validate_schemas.py` (if implemented)
