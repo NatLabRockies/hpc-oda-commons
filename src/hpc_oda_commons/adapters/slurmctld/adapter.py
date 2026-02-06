@@ -78,7 +78,7 @@ def parse_slurmctld_log(path: Path) -> list[dict[str, Any]]:
             jobs[job_id].update({"job_id": job_id, "end_time": ts})
             continue
 
-    # Finalize rows: compute runtime_seconds when possible
+    # Finalize rows: compute runtime_seconds when possible; skip incomplete jobs
     rows: list[dict[str, Any]] = []
     for job_id, rec in sorted(jobs.items()):
         start = rec.get("start_time")
@@ -88,6 +88,8 @@ def parse_slurmctld_log(path: Path) -> list[dict[str, Any]]:
             sdt = datetime.fromisoformat(start.replace("Z", "+00:00"))
             edt = datetime.fromisoformat(end.replace("Z", "+00:00"))
             runtime = max(0.0, (edt - sdt).total_seconds())
+        else:
+            continue
 
         row = {
             "job_id": rec.get("job_id", job_id),
