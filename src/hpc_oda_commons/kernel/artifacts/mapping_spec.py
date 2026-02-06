@@ -54,4 +54,3 @@ def read_mapping_spec(path: Path, *, validate: bool = True) -> dict[str, Any]:
 
 def validate_mapping_spec(path: Path) -> dict[str, Any]:
     return read_mapping_spec(path, validate=True)
-

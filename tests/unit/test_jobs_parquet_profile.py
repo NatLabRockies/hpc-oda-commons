@@ -43,4 +43,3 @@ def test_profile_parquet_basic(tmp_path: Path) -> None:
     assert by_name["Elapsed"].inferred_kind == "numeric"
     assert by_name["User"].null_rate == 0.5
     assert by_name["StartTime"].sample_values
-

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from hpc_oda_commons.ingest.jobs_parquet.profile import ColumnProfile
-
 
 _ALIASES: dict[str, tuple[str, ...]] = {
     "job_id": ("job_id", "jobid", "jobid_raw", "slurm_job_id", "slurmjobid"),
@@ -129,7 +129,9 @@ def suggest_mapping(
     return results
 
 
-def suggest_mapping_from_parquet(path: str, *, sample_rows: int = 200) -> dict[str, list[dict[str, Any]]]:
+def suggest_mapping_from_parquet(
+    path: str, *, sample_rows: int = 200
+) -> dict[str, list[dict[str, Any]]]:
     from hpc_oda_commons.ingest.jobs_parquet.profile import profile_parquet
 
     profiles = profile_parquet(path, sample_rows=sample_rows)

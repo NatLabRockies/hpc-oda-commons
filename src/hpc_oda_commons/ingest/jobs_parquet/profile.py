@@ -94,4 +94,3 @@ def profile_parquet(path: Path, *, sample_rows: int = 200) -> list[ColumnProfile
         )
 
     return profiles
-

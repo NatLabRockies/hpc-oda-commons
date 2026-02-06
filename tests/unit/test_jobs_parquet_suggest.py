@@ -51,4 +51,3 @@ def test_suggest_mapping_basic(tmp_path: Path) -> None:
     assert any(c["column"] == "ReqCPUS" for c in suggestions["processors_requested"])
     assert any(c["column"] == "ReqGRES" for c in suggestions["gpus_requested"])
     assert any(c["column"] == "TimeLimit" for c in suggestions["wallclock_requested"])
-

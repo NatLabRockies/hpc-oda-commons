@@ -36,4 +36,3 @@ def test_mapping_spec_validation_fails_without_fields(tmp_path: Path) -> None:
     path.write_text("schema_version: oda.mapping.v0.1.0\n", encoding="utf-8")
     with pytest.raises(SchemaValidationError):
         read_mapping_spec(path, validate=True)
-
