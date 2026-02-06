@@ -863,3 +863,224 @@ Delete unused docstring-only modules that are not imported and provide no behavi
   - `HPC_ODA_OFFLINE=1 pytest -q -m integration`
   - `python scripts/validate_recipes.py`
   - `python scripts/validate_schemas.py` (if implemented)
+
+---
+
+## Next Feature Plan: Jobs Parquet Ingestion Wizard (DB Export → ODA Job Table)
+
+This plan addresses a common HPC ODA reality: researchers often cannot access `slurmctld` logs or `sacct`
+exports directly, but can query an internal database and export a **jobs table** as Parquet.
+
+### Goal
+
+Add a new ingestion helper that:
+- inspects a jobs Parquet file (columns + dtypes + a small sample),
+- proposes best-effort mappings to the **v0.1 runtime prediction slice** fields,
+- runs an **interactive confirmation** workflow (including units and timestamp formats),
+- writes a reusable **mapping spec** + schema-valid ODA artifacts (Parquet + manifest).
+
+### Scope (First Pass)
+
+Assumptions for the first pass (per expected DB export shape):
+- the jobs table includes `start_time`, `end_time`, and `submit_time` (or equivalents)
+- the jobs table includes `state` (e.g., `PENDING`, `RUNNING`, `COMPLETED`, `TIMEOUT`, `FAILED`)
+- the jobs table includes (or can derive) `runtime_seconds`
+
+Fields to detect and map in v0.1 (minimum useful set):
+- Required ODA fields: `job_id`, `start_time`, `end_time`, `runtime_seconds`
+- Additional v0.1 fields to include for this first pass: `submit_time`, `state`
+- Categorical features (if present): `user`, `account`, `partition`, `qos`
+- Numeric features (if present): wallclock requested, nodes requested, memory requested, processors requested, gpus requested, wallclock used
+
+### Design Decisions
+
+1. New CLI command (under `ingest`)
+- `hpc-oda ingest jobs-parquet --path <jobs.parquet>`
+- Default mode is interactive (wizard).
+- A non-interactive mode reuses an existing mapping spec:
+  - `hpc-oda ingest jobs-parquet --path <jobs.parquet> --mapping mapping.yml`
+
+2. Mapping spec is a first-class artifact
+- Store mapping as a versioned artifact: `oda.mapping.v0.1.0`.
+- Format: YAML (human-editable, easy to review in diffs).
+- The mapping spec records:
+  - input column selections
+  - timestamp parsing expectations (ISO vs epoch seconds/ms/us)
+  - unit conversions (durations, memory)
+  - safe transformations (hash/redact identifiers)
+  - derivations (e.g., runtime from start/end)
+
+3. Schema-valid outputs by default
+- The command writes a schema-valid `oda.job.v0.1.0` Parquet + manifest.
+- Rows missing required fields are skipped by default (mirrors `slurmctld` adapter behavior).
+- The command prints counts (kept vs skipped) and records them in the manifest notes/provenance.
+
+4. Safe-by-default identifiers
+- The wizard defaults to hashing `user` and `account` using `kernel.transformations.hash_identifier`.
+- The mapping spec must record transformations; avoid embedding secrets (prefer env var name for salts).
+
+### Step-by-Step Implementation Plan (Small Increments)
+
+#### Increment 0: Mapping Spec Artifact (Foundation)
+
+WIP already present in working tree (expected to be committed as the first increment):
+- `src/hpc_oda_commons/schemas/oda/mapping/v0.1.0.json`
+- `src/hpc_oda_commons/kernel/artifacts/mapping_spec.py`
+- `tests/unit/test_mapping_spec_artifact.py`
+
+Tasks:
+- Ensure `oda.mapping.v0.1.0` loads through the canonical schema loader (`kernel.schemas`).
+- Add `oda.mapping.v0.1.0` to `tests/unit/test_packaged_assets.py` so packaging contracts cover it.
+
+Verify:
+- `pytest -q tests/unit`
+
+#### Increment 1: Parquet Inspection + Column Profiling (Non-interactive Core)
+
+Add a reusable library that profiles a Parquet file:
+- column names and normalized aliases
+- Arrow dtypes (string, integer, float, timestamp)
+- sample non-null values (small N)
+- null rate (estimate or from Arrow statistics if available cheaply)
+
+Proposed new files:
+- `src/hpc_oda_commons/ingest/jobs_parquet/profile.py`
+- `tests/unit/test_jobs_parquet_profile.py`
+
+Verify:
+- `pytest -q tests/unit`
+
+#### Increment 2: Deterministic Mapping Suggestions (Explainable Heuristics)
+
+Implement a suggestion engine that ranks candidate columns for:
+- Required fields: `job_id`, `start_time`, `end_time`, `submit_time`, `state`, `runtime_seconds`
+- Categorical: `user`, `account`, `partition`, `qos`
+- Numeric: wallclock requested, nodes requested, memory requested, processors requested, gpus requested, wallclock used
+
+Heuristic signals (v0.1):
+- column-name patterns and common aliases (case-insensitive, snake/camel tolerant)
+- dtype compatibility (timestamp-like vs numeric vs string)
+- value-shape checks for durations (e.g., `HH:MM:SS`, minutes, seconds)
+- value-shape checks for GPU request encodings (e.g., `gpu:2` in a `gres`-like string)
+
+Proposed new files:
+- `src/hpc_oda_commons/ingest/jobs_parquet/suggest.py`
+- `tests/unit/test_jobs_parquet_suggest.py`
+
+Verify:
+- `pytest -q tests/unit`
+
+#### Increment 3: Interactive Wizard (Confirm Mappings + Units + Transformations)
+
+Add an interactive wizard (Typer prompts) that:
+- shows suggestions per canonical field and asks the user to confirm or choose a different column
+- asks unit questions only when needed:
+  - timestamps: ISO vs epoch seconds/ms/us
+  - durations: seconds/minutes/hours or `HH:MM:SS`
+  - memory: bytes/KB/MB/GB/MiB/GiB and whether memory is per-node vs total
+- asks safe-transform questions (defaults):
+  - hash `user` and `account` (default yes)
+  - optional redaction for sensitive free-form columns
+- writes `mapping.yml` and validates it against `oda.mapping.v0.1.0`
+
+Proposed new files:
+- `src/hpc_oda_commons/ingest/jobs_parquet/wizard.py`
+- `tests/unit/test_jobs_parquet_units.py` (unit conversion logic, non-interactive)
+
+Verify:
+- `pytest -q tests/unit`
+
+#### Increment 4: Apply Mapping Spec (Produce Canonical ODA Artifacts)
+
+Implement the execution engine that applies a mapping spec to an input Parquet:
+- reads in batches (avoid loading huge datasets in memory)
+- renames/selects columns
+- applies conversions (timestamps to ISO-8601 `Z`, durations to seconds, memory to bytes or MB)
+- applies safe transforms (hash/redact)
+- derives `runtime_seconds` if missing (from `start_time` and `end_time`)
+- filters/skips rows missing required fields by default
+- writes:
+  - `data/ingested/jobs_parquet/<run_id>/data.parquet`
+  - `data/ingested/jobs_parquet/<run_id>/manifest.json`
+  - `data/ingested/jobs_parquet/<run_id>/mapping.yml`
+
+Proposed new files:
+- `src/hpc_oda_commons/ingest/jobs_parquet/apply.py`
+- `tests/unit/test_jobs_parquet_apply.py`
+
+Verify:
+- `pytest -q tests/unit`
+
+#### Increment 5: CLI Wiring (`hpc-oda ingest jobs-parquet`)
+
+Wire the command into the CLI:
+- `hpc-oda ingest jobs-parquet --path ...` runs wizard + apply
+- `--mapping mapping.yml` skips wizard
+- expose basic knobs:
+  - `--sample-rows`
+  - `--batch-size`
+  - `--non-interactive` (fail if required mapping cannot be inferred or provided)
+  - `--hash-identifiers/--no-hash-identifiers`
+
+Files to change:
+- `src/hpc_oda_commons/qst/cli.py`
+
+Integration test:
+- Extend `tests/integration/test_cli_golden_path.py`:
+  - generate a tiny Parquet on the fly
+  - run `hpc-oda ingest jobs-parquet ...`
+  - run `hpc-oda validate` on the output Parquet and manifest
+
+Verify:
+- `pytest -q tests/unit`
+- `pytest -q`
+- `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+
+#### Increment 6: Docs + Registry (Discoverability)
+
+Docs:
+- Add `docs/how-to/ingest-jobs-parquet.md`
+- Update `docs/how-to/quickstart.md` to mention the DB-export ingestion path as an alternative to `slurmctld`
+
+Registry (optional but consistent with “Find”):
+- Add an entry in `registry/snapshot.json` describing the new ingest helper.
+
+Verify:
+- `pytest -q`
+- `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+
+### File-Level Change Checklist (Expected)
+
+- New:
+  - `src/hpc_oda_commons/ingest/jobs_parquet/profile.py`
+  - `src/hpc_oda_commons/ingest/jobs_parquet/suggest.py`
+  - `src/hpc_oda_commons/ingest/jobs_parquet/wizard.py`
+  - `src/hpc_oda_commons/ingest/jobs_parquet/apply.py`
+  - `src/hpc_oda_commons/kernel/artifacts/mapping_spec.py`
+  - `src/hpc_oda_commons/schemas/oda/mapping/v0.1.0.json`
+  - `tests/unit/test_jobs_parquet_*.py`
+  - `tests/unit/test_mapping_spec_artifact.py`
+  - `docs/how-to/ingest-jobs-parquet.md`
+
+- Update:
+  - `src/hpc_oda_commons/qst/cli.py`
+  - `tests/integration/test_cli_golden_path.py`
+  - `tests/unit/test_packaged_assets.py`
+  - `registry/snapshot.json` (optional)
+
+### Test Strategy (While Implementing)
+
+- After each increment:
+  - `pytest -q tests/unit`
+- When CLI wiring lands:
+  - `pytest -q`
+  - `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+
+### Acceptance Criteria
+
+- Given a DB-export Parquet jobs table, a user can run:
+  - `hpc-oda ingest jobs-parquet --path jobs.parquet`
+  - and obtain schema-valid `oda.job.v0.1.0` Parquet + manifest under `data/ingested/...`
+- The wizard produces a reusable `mapping.yml` and re-running with `--mapping` is deterministic.
+- The output includes `submit_time` and `state` when available (and records any skipping/filtering).
+- CI remains green (`ruff` + unit + integration).

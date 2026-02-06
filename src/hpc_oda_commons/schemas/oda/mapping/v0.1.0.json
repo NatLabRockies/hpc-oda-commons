@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hpc-oda-commons.org/schemas/oda/mapping/v0.1.0.json",
+  "title": "ODA Mapping Spec Schema v0.1.0",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "created_at", "kind", "output_schema_version", "fields"],
+  "properties": {
+    "schema_version": { "const": "oda.mapping.v0.1.0" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "kind": {
+      "description": "Mapping kind (e.g., jobs_parquet).",
+      "type": "string"
+    },
+    "output_schema_version": {
+      "description": "Schema version the mapping outputs (e.g., oda.job.v0.1.0).",
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "fields": {
+      "description": "Mapping field specs; keys become output column names.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "source": { "type": ["string", "null"] },
+          "derive": { "type": ["string", "null"] },
+          "role": { "type": ["string", "null"] },
+          "units": { "type": ["string", "null"] },
+          "transform": { "type": ["object", "null"], "additionalProperties": true }
+        }
+      }
+    }
+  }
+}
+

@@ -13,6 +13,7 @@ def test_packaged_schemas_load() -> None:
         "oda.registry.v0.1.0",
         "oda.recipe.v0.1.0",
         "oda.mdl.v0.1.0",
+        "oda.mapping.v0.1.0",
     ):
         assert load_schema(schema_id)
 
