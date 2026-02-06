@@ -9,7 +9,11 @@ from typing import Any
 
 import pyarrow.parquet as pq
 
-from hpc_oda_commons.kernel.validate import SchemaValidationError, validate_json, validate_parquet_rows
+from hpc_oda_commons.kernel.validate import (
+    SchemaValidationError,
+    validate_json,
+    validate_parquet_rows,
+)
 from hpc_oda_commons.schema.quality_rules import build_quality_report
 
 JOB_SCHEMA_ID = "oda.job.v0.1.0"
@@ -75,6 +79,8 @@ def validate_parquet_with_quality(
     if report_path:
         import json
 
-        report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        report_path.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
 
     return report

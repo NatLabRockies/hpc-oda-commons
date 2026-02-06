@@ -4,8 +4,8 @@ In-memory indices and filtering logic (tags, schema compat, etc.).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from hpc_oda_commons.registry.models import RegistryEntry
 
@@ -16,7 +16,7 @@ class RegistryIndex:
     by_id: dict[str, RegistryEntry]
 
     @classmethod
-    def from_entries(cls, entries: Iterable[RegistryEntry]) -> "RegistryIndex":
+    def from_entries(cls, entries: Iterable[RegistryEntry]) -> RegistryIndex:
         entries_tuple = tuple(entries)
         by_id = {entry.id: entry for entry in entries_tuple}
         return cls(entries=entries_tuple, by_id=by_id)

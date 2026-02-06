@@ -2,23 +2,23 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 import typer
 import yaml
 from rich.console import Console
 
 from hpc_oda_commons.adapters.slurmctld.adapter import parse_slurmctld_log
+from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
 from hpc_oda_commons.kernel.artifacts.manifest import new_manifest, write_manifest
 from hpc_oda_commons.kernel.artifacts.oda_table import table_hash, write_table_parquet
 from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
 from hpc_oda_commons.kernel.provenance import build_provenance
 from hpc_oda_commons.kernel.validate import validate_json
-from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
-from hpc_oda_commons.schema.validator import validate_parquet_with_quality
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
 from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.info import info
+from hpc_oda_commons.schema.validator import validate_parquet_with_quality
 from hpc_oda_commons.tools.report import render_leaderboard_html
 
 app = typer.Typer(add_completion=False, help="hpc-oda-commons Quickstart Toolkit (v0.1)")
@@ -350,7 +350,9 @@ def validate(path: Path) -> None:
 
     if path.is_file() and path.suffix == ".parquet":
         report_path = path.with_suffix(path.suffix + ".quality.json")
-        report = validate_parquet_with_quality(path, schema_id="oda.job.v0.1.0", report_path=report_path)
+        report = validate_parquet_with_quality(
+            path, schema_id="oda.job.v0.1.0", report_path=report_path
+        )
         console.print(f"[green]Valid parquet rows[/green]: {path}")
         console.print(
             f"[green]Quality report written[/green]: {report_path} "
@@ -363,12 +365,12 @@ def validate(path: Path) -> None:
 
 @app.command()
 def leaderboard(
-    runs: Path = typer.Option(
-        Path("runs"), "--runs", exists=False, help="Runs directory containing result bundles."
-    ),
-    out: Path = typer.Option(
-        Path("leaderboard"), "--out", exists=False, help="Output directory for leaderboard."
-    ),
+    runs: Annotated[
+        Path, typer.Option("--runs", exists=False, help="Runs directory containing result bundles.")
+    ] = Path("runs"),
+    out: Annotated[
+        Path, typer.Option("--out", exists=False, help="Output directory for leaderboard.")
+    ] = Path("leaderboard"),
 ) -> None:
     """
     Generate leaderboard.json + index.html from result bundles under runs/.

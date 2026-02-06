@@ -5,6 +5,7 @@ Implements  for adapters/models/recipes metadata display.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -17,10 +18,15 @@ console = Console()
 
 
 def info(
-    entry_id: str = typer.Argument(..., help="Registry entry ID (e.g., model.job_runtime_baseline)."),
-    snapshot: Path | None = typer.Option(
-        None, "--snapshot", exists=True, readable=True, help="Path to registry snapshot JSON."
+    entry_id: str = typer.Argument(
+        ..., help="Registry entry ID (e.g., model.job_runtime_baseline)."
     ),
+    snapshot: Annotated[
+        Path | None,
+        typer.Option(
+            "--snapshot", exists=True, readable=True, help="Path to registry snapshot JSON."
+        ),
+    ] = None,
 ) -> None:
     snapshot_obj = load_registry_snapshot(snapshot)
     index = RegistryIndex.from_entries(snapshot_obj.entries)

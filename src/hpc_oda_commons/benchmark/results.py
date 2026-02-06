@@ -9,7 +9,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from hpc_oda_commons.kernel.artifacts.result_bundle import read_result_bundle, validate_result_bundle
+from hpc_oda_commons.kernel.artifacts.result_bundle import (
+    read_result_bundle,
+    validate_result_bundle,
+)
 from hpc_oda_commons.kernel.paths import ensure_dir
 
 LEADERBOARD_SCHEMA_VERSION = "oda.leaderboard.v0.1.0"

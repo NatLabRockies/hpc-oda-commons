@@ -4,8 +4,9 @@ Metadata models for adapters/models/tools/recipes (registry entries).
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any, Iterable, Literal, Mapping
+from typing import Any, Literal
 
 
 @dataclass(frozen=True)
@@ -16,7 +17,7 @@ class RegistryReference:
     path: str | None = None
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "RegistryReference":
+    def from_dict(cls, payload: Mapping[str, Any]) -> RegistryReference:
         kind = payload.get("kind")
         if kind not in ("python", "path"):
             raise ValueError(f"Unknown reference kind: {kind!r}")
@@ -52,7 +53,7 @@ class RegistryEntry:
     reference: RegistryReference | None = None
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "RegistryEntry":
+    def from_dict(cls, payload: Mapping[str, Any]) -> RegistryEntry:
         entry_type = payload.get("entry_type")
         if entry_type not in ("adapter", "model", "recipe"):
             raise ValueError(f"Invalid entry_type: {entry_type!r}")
@@ -94,7 +95,7 @@ class RegistrySnapshot:
     source: str | None = None
 
     @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> "RegistrySnapshot":
+    def from_dict(cls, payload: Mapping[str, Any]) -> RegistrySnapshot:
         entries = tuple(RegistryEntry.from_dict(e) for e in (payload.get("entries") or []))
         return cls(
             schema_version=str(payload.get("schema_version")),

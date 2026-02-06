@@ -168,12 +168,17 @@ If you intentionally store the tiny dataset elsewhere:
   - [ ] DoD-3 ingest fixture logs → schema-valid artifacts
   - [ ] DoD-4 benchmark baseline_tiny → result bundle with provenance
 - [ ] CI runtime is reasonable (ideally <10 minutes total).
+- [ ] CI workflows are enabled (e.g., `ci.yml` is not disabled/renamed).
 
 ---
 
 ## 10) Packaging & Installation Validation
 
 - [ ] `pip install -e .` works in a clean environment.
+- [ ] Wheel build succeeds locally (for release):
+  - [ ] `python -m pip wheel -w dist .` (or `python -m build` if available)
+- [ ] Wheel install works in a clean environment:
+  - [ ] `pip install --no-index --find-links dist hpc-oda-commons` (or equivalent wheelhouse)
 - [ ] `pip install .` (wheel/sdist) includes required non-code artifacts:
   - [ ] schemas
   - [ ] registry snapshot

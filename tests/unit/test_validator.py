@@ -6,8 +6,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from hpc_oda_commons.kernel.artifacts.oda_table import write_table_parquet
 from hpc_oda_commons.schema.quality_rules import build_quality_report, compute_missingness
 from hpc_oda_commons.schema.validator import validate_parquet_with_quality

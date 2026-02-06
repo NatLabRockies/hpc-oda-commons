@@ -26,7 +26,9 @@ def _make_bundle(bundle_dir: Path) -> None:
             "hash": "abc12345",
         },
     }
-    write_result_bundle(bundle_dir, result=result, metrics=result["metrics"], provenance=result["provenance"])
+    write_result_bundle(
+        bundle_dir, result=result, metrics=result["metrics"], provenance=result["provenance"]
+    )
 
 
 def test_build_leaderboard(tmp_path: Path) -> None:

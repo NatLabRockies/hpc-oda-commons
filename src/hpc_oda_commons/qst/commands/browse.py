@@ -5,6 +5,7 @@ Implements  (Find pillar via registry snapshot).
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -17,20 +18,27 @@ console = Console(width=120)
 
 
 def browse(
-    tag: str | None = typer.Option(None, "--tag", help="Filter by tag or problem domain."),
-    entry_type: str | None = typer.Option(
-        None, "--type", help="Filter by entry type (adapter, model, recipe)."
-    ),
-    source: str | None = typer.Option(None, "--source", help="Filter by supported source."),
-    input_schema: str | None = typer.Option(
-        None, "--input-schema", help="Filter by input schema version."
-    ),
-    output_schema: str | None = typer.Option(
-        None, "--output-schema", help="Filter by output schema version."
-    ),
-    snapshot: Path | None = typer.Option(
-        None, "--snapshot", exists=True, readable=True, help="Path to registry snapshot JSON."
-    ),
+    tag: Annotated[
+        str | None, typer.Option("--tag", help="Filter by tag or problem domain.")
+    ] = None,
+    entry_type: Annotated[
+        str | None, typer.Option("--type", help="Filter by entry type (adapter, model, recipe).")
+    ] = None,
+    source: Annotated[
+        str | None, typer.Option("--source", help="Filter by supported source.")
+    ] = None,
+    input_schema: Annotated[
+        str | None, typer.Option("--input-schema", help="Filter by input schema version.")
+    ] = None,
+    output_schema: Annotated[
+        str | None, typer.Option("--output-schema", help="Filter by output schema version.")
+    ] = None,
+    snapshot: Annotated[
+        Path | None,
+        typer.Option(
+            "--snapshot", exists=True, readable=True, help="Path to registry snapshot JSON."
+        ),
+    ] = None,
 ) -> None:
     if entry_type and entry_type not in {"adapter", "model", "recipe"}:
         raise typer.BadParameter("type must be one of: adapter, model, recipe")
