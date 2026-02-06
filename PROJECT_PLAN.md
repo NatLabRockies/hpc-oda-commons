@@ -890,7 +890,8 @@ Fields to detect and map in v0.1 (minimum useful set):
 - Required ODA fields: `job_id`, `start_time`, `end_time`, `runtime_seconds`
 - Additional v0.1 fields to include for this first pass: `submit_time`, `state`
 - Categorical features (if present): `user`, `account`, `partition`, `qos`
-- Numeric features (if present): wallclock requested, nodes requested, memory requested, processors requested, gpus requested, wallclock used
+- Numeric features (if present): wallclock requested, nodes requested, memory requested, processors requested, gpus requested
+  - Note: “wallclock used” is treated as `runtime_seconds` and not a separate canonical field.
 
 ### Design Decisions
 
@@ -955,7 +956,8 @@ Verify:
 Implement a suggestion engine that ranks candidate columns for:
 - Required fields: `job_id`, `start_time`, `end_time`, `submit_time`, `state`, `runtime_seconds`
 - Categorical: `user`, `account`, `partition`, `qos`
-- Numeric: wallclock requested, nodes requested, memory requested, processors requested, gpus requested, wallclock used
+- Numeric: wallclock requested, nodes requested, memory requested, processors requested, gpus requested
+  - “wallclock used” should map to `runtime_seconds` and not a separate field.
 
 Heuristic signals (v0.1):
 - column-name patterns and common aliases (case-insensitive, snake/camel tolerant)
