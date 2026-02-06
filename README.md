@@ -40,8 +40,9 @@ This repository is under active development toward **v0.1.0**, focused on a vert
 4. Run baseline: `HPC_ODA_OFFLINE=1 hpc-oda run-baseline`
 5. Ingest logs: `hpc-oda ingest slurmctld --path /path/to/slurmctld.log`
 6. Validate data: `hpc-oda validate data/ingested/slurmctld/<run>/data.parquet`
-7. Benchmark: `HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
-8. Leaderboard: `hpc-oda leaderboard --runs runs --out leaderboard`
+7. Analyze data: `hpc-oda analyze --data data/ingested/slurmctld/<run>`
+8. Benchmark: `HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
+9. Leaderboard: `hpc-oda leaderboard --runs runs --out leaderboard`
 
 
 ## Repo organization:
@@ -258,9 +259,7 @@ hpc-oda-commons/
 │  │  ├─ test_slurmctld_ingest.py    # Parses fixture logs and produces schema-valid outputs
 │  │  └─ test_benchmark_smoke.py     # Runs baseline_tiny recipe and validates outputs
 │  └─ fixtures/
-│     ├─ slurmctld.log               # Small sample log for parser tests
-│     ├─ expected_job_table.parquet  # Expected parsed output for regression checks
-│     ├─ expected_manifest.json      # Expected manifest output (minus volatile fields)
+│     ├─ recipes/                    # Fixture recipes used in tests
 │     └─ recipes/
 │        └─ baseline_tiny.yml        # Fixture recipe for tests
 │

@@ -15,5 +15,6 @@ Welcome to the documentation for **hpc-oda-commons**. v0.1 focuses on a vertical
 4. Run baseline: `HPC_ODA_OFFLINE=1 hpc-oda run-baseline`
 5. Ingest logs: `hpc-oda ingest slurmctld --path /path/to/slurmctld.log`
 6. Validate data: `hpc-oda validate data/ingested/slurmctld/<run>/data.parquet`
-7. Benchmark: `HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
-8. Leaderboard: `hpc-oda leaderboard --runs runs --out leaderboard`
+7. Analyze data: `hpc-oda analyze --data data/ingested/slurmctld/<run>`
+8. Benchmark: `HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
+9. Leaderboard: `hpc-oda leaderboard --runs runs --out leaderboard`

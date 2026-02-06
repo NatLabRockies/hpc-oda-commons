@@ -105,9 +105,8 @@ If you intentionally store the tiny dataset elsewhere:
 
 **Goal:** Ingest works deterministically and produces schema-valid artifacts.
 
-- [ ] Fixture log exists:
-  - [ ] `tests/fixtures/slurmctld.log`
-- [ ] `hpc-oda ingest slurmctld --path tests/fixtures/slurmctld.log ...` succeeds.
+- [ ] Fixture log exists or a local sample is generated for testing.
+- [ ] `hpc-oda ingest slurmctld --path /path/to/slurmctld.log ...` succeeds.
 - [ ] Output Parquet + manifest validate against the v0.1 schema/requirements.
 - [ ] Runtime targets/labels required for training/eval are derivable for the vertical slice:
   - [ ] runtime = end_time - start_time (or equivalent canonical definition)

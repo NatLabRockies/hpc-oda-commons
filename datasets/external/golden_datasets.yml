@@ -1,1 +1,6 @@
-# Curated golden dataset references (if any) for v0.1 benchmarks.
+# Curated golden dataset references for benchmarks.
+# Example:
+# - id: golden:runtime:v0.1
+#   title: Public runtime benchmark
+#   schema_version: oda.job.v0.1.0
+#   url: <link>

@@ -1,1 +1,6 @@
-# Pointers to externally hosted datasets (Zenodo URLs/DOIs + checksums).
+# External dataset pointers (Zenodo URLs/DOIs + checksums).
+# Example:
+# - id: zenodo:1234567
+#   title: Example dataset
+#   url: https://zenodo.org/record/1234567
+#   sha256: <checksum>

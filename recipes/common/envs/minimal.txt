@@ -1,1 +1,3 @@
-# Minimal pip requirements for smoke tests (placeholder).\n
+# Minimal pip requirements for benchmark runs.
+hpc-oda-commons
+pyarrow>=14
