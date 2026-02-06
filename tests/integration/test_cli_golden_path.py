@@ -7,7 +7,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from hpc_oda_commons.kernel.schemas import load_schema
-from tests.conftest import find_first, load_json, run_cli
+from tests.conftest import find_first, load_json, run_cli, write_slurmctld_log
 
 REQUIRED_RESULT_FILES = ("result.json", "metrics.json", "provenance.json")
 
@@ -85,17 +85,7 @@ def test_dod_3_ingest_slurmctld_creates_schema_valid_artifacts(
 
     fixture_log = repo_root / "tests/fixtures/slurmctld.log"
     if not fixture_log.exists():
-        fixture_log = tmp_project / "slurmctld.log"
-        fixture_log.write_text(
-            "\n".join(
-                [
-                    "[2026-01-01T00:00:00.000] Allocate JobId=1 NodeList=node1 #CPUs=2 Partition=debug",
-                    "[2026-01-01T00:01:00.000] _job_complete: JobId=1 done",
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        fixture_log = write_slurmctld_log(tmp_project / "slurmctld.log")
 
     run_cli(
         ["ingest", "slurmctld", "--path", str(fixture_log)], cwd=tmp_project, timeout_s=180
@@ -174,17 +164,7 @@ def test_analyze_command_creates_report_bundle(repo_root: Path, tmp_project: Pat
 
     fixture_log = repo_root / "tests/fixtures/slurmctld.log"
     if not fixture_log.exists():
-        fixture_log = tmp_project / "slurmctld.log"
-        fixture_log.write_text(
-            "\n".join(
-                [
-                    "[2026-01-01T00:00:00.000] Allocate JobId=1 NodeList=node1 #CPUs=2 Partition=debug",
-                    "[2026-01-01T00:01:00.000] _job_complete: JobId=1 done",
-                ]
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        fixture_log = write_slurmctld_log(tmp_project / "slurmctld.log")
 
     run_cli(
         ["ingest", "slurmctld", "--path", str(fixture_log)], cwd=tmp_project, timeout_s=180

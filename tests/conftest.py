@@ -86,3 +86,16 @@ def find_first(path: Path, pattern: str) -> Path:
     if not matches:
         raise AssertionError(f"Expected to find {pattern} under {path}, found none.")
     return matches[0]
+
+
+def write_slurmctld_log(path: Path, lines: Iterable[str] | None = None) -> Path:
+    """
+    Write a minimal slurmctld log for tests. Returns the path.
+    """
+    if lines is None:
+        lines = [
+            "[2026-01-01T00:00:00.000] Allocate JobId=1 NodeList=node1 #CPUs=2 Partition=debug",
+            "[2026-01-01T00:01:00.000] _job_complete: JobId=1 done",
+        ]
+    path.write_text("\n".join(list(lines)) + "\n", encoding="utf-8")
+    return path
