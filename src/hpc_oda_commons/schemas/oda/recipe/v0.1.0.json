@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hpc-oda-commons.org/schemas/oda/recipe/v0.1.0.json",
+  "title": "hpc-oda-commons recipe schema v0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["recipe_id", "problem_domain", "schema_version", "dataset", "model", "metrics"],
+  "properties": {
+    "recipe_id": { "type": "string", "minLength": 3 },
+    "problem_domain": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^oda\\.[a-z0-9_.-]+\\.v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "table_path"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "table_path": { "type": "string", "minLength": 1 },
+        "manifest_path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "object" }
+    },
+    "split": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "train_fraction", "seed"],
+      "properties": {
+        "method": { "type": "string", "enum": ["fixed"] },
+        "train_fraction": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "seed": { "type": "integer" }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "output_dir": { "type": "string", "minLength": 1 },
+        "overwrite": { "type": "boolean" }
+      }
+    }
+  }
+}

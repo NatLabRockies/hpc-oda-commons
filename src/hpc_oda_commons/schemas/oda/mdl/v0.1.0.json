@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hpc-oda-commons.org/schemas/oda/mdl/v0.1.0.json",
+  "title": "hpc-oda-commons metric definition language v0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "target"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "enum": ["mae", "rmse", "mape", "r2"],
+      "description": "Metric identifier (v0.1 regression)."
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Target field name in the input schema (e.g., runtime_seconds)."
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Optional metric parameters (reserved for future use)."
+    }
+  }
+}

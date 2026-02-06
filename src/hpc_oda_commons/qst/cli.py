@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
-import yaml
 from rich.console import Console
 
 from hpc_oda_commons.adapters.slurmctld.adapter import SlurmctldAdapter
+from hpc_oda_commons.benchmark.recipes import load_recipe
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
 from hpc_oda_commons.kernel.artifacts.manifest import new_manifest, write_manifest
 from hpc_oda_commons.kernel.artifacts.oda_table import table_hash, write_table_parquet
@@ -74,6 +74,29 @@ def _compute_regression_metrics(y_true: list[float], y_pred: list[float]) -> dic
     return {"mae": float(mae), "rmse": float(rmse)}
 
 
+def _compute_regression_metrics_from_defs(
+    y_true: list[float], y_pred: list[float], metric_defs: list[dict[str, Any]]
+) -> dict[str, float]:
+    base = _compute_regression_metrics(y_true, y_pred)
+    requested = {str(m.get("name", "")) for m in metric_defs}
+    metrics: dict[str, float] = {k: v for k, v in base.items() if k in requested}
+
+    if "mape" in requested:
+        denom = [abs(v) for v in y_true if v != 0]
+        if not denom:
+            raise ValueError("MAPE is undefined when all targets are zero.")
+        mape = sum(abs(a - b) / abs(a) for a, b in zip(y_true, y_pred) if a != 0) / len(denom)
+        metrics["mape"] = float(mape)
+
+    if "r2" in requested:
+        mean = sum(y_true) / float(len(y_true))
+        ss_tot = sum((v - mean) ** 2 for v in y_true)
+        ss_res = sum((a - b) ** 2 for a, b in zip(y_true, y_pred))
+        metrics["r2"] = float(1.0 - ss_res / ss_tot) if ss_tot != 0 else 0.0
+
+    return metrics
+
+
 def _generate_tiny_runtime_dataset(out_dir: Path) -> tuple[Path, Path]:
     """
     Deterministically generate a tiny synthetic dataset in Parquet + minimal manifest-like JSON.
@@ -117,10 +140,10 @@ def _generate_tiny_runtime_dataset(out_dir: Path) -> tuple[Path, Path]:
 
 
 def _load_recipe(recipe_path: Path) -> dict[str, Any]:
-    payload = yaml.safe_load(recipe_path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise typer.BadParameter("Recipe YAML must be a mapping/object.")
-    return payload
+    try:
+        return load_recipe(recipe_path, validate=True)
+    except Exception as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
 
 @app.command()
@@ -161,7 +184,12 @@ def run_baseline() -> None:
     model.fit(rows)
     y_pred = model.predict(rows)
 
-    metrics = _compute_regression_metrics(y_true, y_pred)
+    metric_defs = [
+        {"name": "mae", "target": "runtime_seconds"},
+        {"name": "rmse", "target": "runtime_seconds"},
+    ]
+    metrics = _compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
+    metrics_payload: dict[str, Any] = {**metrics, "definitions": metric_defs}
 
     prov = build_provenance(
         input_schema="oda.job.v0.1.0",
@@ -192,7 +220,7 @@ def run_baseline() -> None:
 
     validate_json(result_payload, "oda.result.v0.1.0")
     write_result_bundle(
-        bundle_dir, result=result_payload, metrics=metrics, provenance=prov, validate=True
+        bundle_dir, result=result_payload, metrics=metrics_payload, provenance=prov, validate=True
     )
 
     console.print(f"[green]Baseline run complete[/green] → runs/{run_id}/")
@@ -287,14 +315,16 @@ def benchmark(recipe: Path) -> None:
     model.fit(train_rows)
     y_pred = model.predict(test_rows)
 
-    metrics = _compute_regression_metrics(y_true, y_pred)
+    metric_defs = recipe_payload.get("metrics", []) or []
+    metrics = _compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
+    metrics_payload: dict[str, Any] = {**metrics, "definitions": metric_defs}
 
     prov = build_provenance(
         input_schema=input_schema,
         result_schema="oda.result.v0.1.0",
         inputs=[recipe, table_path],
         project_root=root,
-        capture_packages=False,
+        capture_packages=True,
     )
 
     run_id = f"benchmark-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
@@ -318,7 +348,7 @@ def benchmark(recipe: Path) -> None:
 
     validate_json(result_payload, "oda.result.v0.1.0")
     write_result_bundle(
-        bundle_dir, result=result_payload, metrics=metrics, provenance=prov, validate=True
+        bundle_dir, result=result_payload, metrics=metrics_payload, provenance=prov, validate=True
     )
 
     console.print(f"[green]Benchmark complete[/green] → runs/{run_id}/")
