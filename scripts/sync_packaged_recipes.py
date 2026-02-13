@@ -8,6 +8,7 @@ Packaged destination: src/hpc_oda_commons/recipes/
 from __future__ import annotations
 
 import argparse
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -28,22 +29,55 @@ class RecipeDiff:
         )
 
 
-def _recipe_files(root: Path) -> dict[Path, Path]:
+def _git_tracked_paths(root: Path) -> set[Path] | None:
+    try:
+        root_resolved = root.resolve()
+        repo_root_raw = subprocess.check_output(
+            ["git", "-C", str(root_resolved), "rev-parse", "--show-toplevel"],
+            text=True,
+        ).strip()
+        repo_root = Path(repo_root_raw).resolve()
+        root_rel = root_resolved.relative_to(repo_root).as_posix()
+        tracked_raw = subprocess.check_output(
+            ["git", "-C", str(repo_root), "ls-files", "--", root_rel],
+            text=True,
+        )
+    except (
+        OSError,
+        subprocess.CalledProcessError,
+        ValueError,
+    ):
+        return None
+
+    rel_paths: set[Path] = set()
+    prefix = f"{root_rel}/"
+    for line in tracked_raw.splitlines():
+        normalized = line.strip()
+        if not normalized.startswith(prefix):
+            continue
+        rel_paths.add(Path(normalized[len(prefix) :]))
+    return rel_paths
+
+
+def _recipe_files(root: Path, *, tracked_only: bool = False) -> dict[Path, Path]:
     files: dict[Path, Path] = {}
     if not root.exists():
         return files
+    tracked_paths = _git_tracked_paths(root) if tracked_only else None
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
         if path.suffix.lower() not in RECIPE_SUFFIXES:
             continue
         rel = path.relative_to(root)
+        if tracked_paths is not None and rel not in tracked_paths:
+            continue
         files[rel] = path
     return files
 
 
 def diff_recipes(canonical_root: Path, packaged_root: Path) -> RecipeDiff:
-    canonical = _recipe_files(canonical_root)
+    canonical = _recipe_files(canonical_root, tracked_only=True)
     packaged = _recipe_files(packaged_root)
 
     canonical_keys = set(canonical.keys())
@@ -73,7 +107,7 @@ def _prune_empty_dirs(root: Path) -> None:
 
 
 def sync_recipes(canonical_root: Path, packaged_root: Path) -> RecipeDiff:
-    canonical = _recipe_files(canonical_root)
+    canonical = _recipe_files(canonical_root, tracked_only=True)
     packaged = _recipe_files(packaged_root)
 
     packaged_root.mkdir(parents=True, exist_ok=True)
