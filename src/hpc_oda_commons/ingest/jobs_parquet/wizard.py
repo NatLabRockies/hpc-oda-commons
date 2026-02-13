@@ -112,13 +112,24 @@ def _prompt_yes_no(prompt: str, default: bool) -> bool:
 
 
 def _prompt_duration_unit(field: str) -> str:
-    value = typer.prompt(f"Unit for '{field}' (seconds/minutes/hours/HH:MM:SS)", default="seconds")
+    value = typer.prompt(
+        (
+            f"Unit for '{field}' "
+            "(seconds e.g. 3600, minutes e.g. 60, hours e.g. 1.0, HH:MM:SS e.g. 01:00:00)"
+        ),
+        default="seconds",
+    )
     return normalize_duration_unit(value)
 
 
 def _prompt_timestamp_format(field: str) -> str:
     value = typer.prompt(
-        f"Timestamp format for '{field}' (iso8601/epoch_s/epoch_ms/epoch_us)",
+        (
+            f"Timestamp format for '{field}' "
+            "(iso8601 e.g. 2026-01-01T00:00:00Z, "
+            "epoch_s e.g. 1735689600, epoch_ms e.g. 1735689600000, "
+            "epoch_us e.g. 1735689600000000)"
+        ),
         default="iso8601",
     )
     return normalize_timestamp_format(value)

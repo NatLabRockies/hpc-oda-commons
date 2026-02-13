@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import difflib
 import json
+import sys
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any
@@ -14,7 +17,15 @@ from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboa
 from hpc_oda_commons.ingest.jobs_parquet.apply import apply_mapping_spec
 from hpc_oda_commons.ingest.jobs_parquet.profile import profile_parquet
 from hpc_oda_commons.ingest.jobs_parquet.suggest import suggest_mapping
-from hpc_oda_commons.ingest.jobs_parquet.wizard import build_mapping_spec_interactive
+from hpc_oda_commons.ingest.jobs_parquet.wizard import (
+    OPTIONAL_FIELDS as JOB_OPTIONAL_FIELDS,
+)
+from hpc_oda_commons.ingest.jobs_parquet.wizard import (
+    REQUIRED_FIELDS as JOB_REQUIRED_FIELDS,
+)
+from hpc_oda_commons.ingest.jobs_parquet.wizard import (
+    build_mapping_spec_interactive,
+)
 from hpc_oda_commons.kernel.artifacts.manifest import new_manifest, write_manifest
 from hpc_oda_commons.kernel.artifacts.mapping_spec import (
     read_mapping_spec,
@@ -109,6 +120,310 @@ def _compute_regression_metrics_from_defs(
         metrics["r2"] = float(1.0 - ss_res / ss_tot) if ss_tot != 0 else 0.0
 
     return metrics
+
+
+def _expected_job_fields() -> tuple[str, ...]:
+    return tuple(JOB_REQUIRED_FIELDS) + tuple(JOB_OPTIONAL_FIELDS)
+
+
+def _to_jsonable(value: Any) -> Any:
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.isoformat()
+        return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    if isinstance(value, dict):
+        return {str(key): _to_jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_to_jsonable(item) for item in value]
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)
+
+
+def _short_row_preview(row: dict[str, Any], *, max_value_chars: int = 120) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in row.items():
+        normalized = _to_jsonable(value)
+        if isinstance(normalized, str) and len(normalized) > max_value_chars:
+            out[key] = normalized[: max_value_chars - 3] + "..."
+        else:
+            out[key] = normalized
+    return out
+
+
+def _read_parquet_head(
+    path: Path, *, max_rows: int = 3
+) -> tuple[list[str], int, list[dict[str, Any]]]:
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    parquet = pq.ParquetFile(path)
+    nrows = int(parquet.metadata.num_rows) if parquet.metadata is not None else 0
+    columns = list(parquet.schema.names)
+
+    head: list[dict[str, Any]] = []
+    if max_rows > 0 and nrows > 0:
+        for batch in parquet.iter_batches(batch_size=max_rows):
+            head = pa.Table.from_batches([batch]).to_pylist()
+            break
+
+    return columns, nrows, head[:max_rows]
+
+
+def _print_parquet_preview(path: Path, *, label: str, max_rows: int = 3) -> None:
+    columns, row_count, head_rows = _read_parquet_head(path, max_rows=max_rows)
+    console.print(f"[blue]{label}[/blue]: {path}")
+    console.print(f"Rows: {row_count}")
+    console.print(f"Columns ({len(columns)}): {', '.join(columns)}")
+    if not head_rows:
+        console.print("[yellow]No rows available for preview.[/yellow]")
+        return
+    console.print(f"Sample rows (head {len(head_rows)}):")
+    for row in head_rows:
+        console.print(json.dumps(_short_row_preview(row), ensure_ascii=True, sort_keys=True))
+
+
+def _print_time_format_examples() -> None:
+    console.print("[blue]Time format examples[/blue]")
+    console.print("timestamp iso8601: 2026-01-01T00:00:00Z")
+    console.print("timestamp epoch_s: 1735689600")
+    console.print("timestamp epoch_ms: 1735689600000")
+    console.print("timestamp epoch_us: 1735689600000000")
+    console.print("duration seconds: 3600")
+    console.print("duration minutes: 60")
+    console.print("duration hours: 1.0")
+    console.print("duration HH:MM:SS: 01:00:00")
+
+
+def _print_expected_field_coverage_from_suggestions(
+    suggestions: dict[str, list[dict[str, Any]]],
+) -> None:
+    expected = _expected_job_fields()
+    missing_candidates = [field for field in expected if not suggestions.get(field)]
+    if missing_candidates:
+        console.print(
+            "[yellow]Expected canonical fields with no source-column candidates[/yellow]: "
+            + ", ".join(missing_candidates)
+        )
+    else:
+        console.print(
+            "[green]All expected canonical fields have at least one source candidate.[/green]"
+        )
+
+
+def _print_mapping_coverage(
+    *,
+    mapping_payload: dict[str, Any],
+    available_columns: list[str],
+) -> None:
+    fields = mapping_payload.get("fields", {})
+    if not isinstance(fields, dict):
+        console.print("[yellow]Mapping spec has no fields section.[/yellow]")
+        return
+
+    expected = _expected_job_fields()
+    missing_expected: list[str] = []
+    used_input_columns: set[str] = set()
+
+    for field in expected:
+        spec = fields.get(field, {})
+        if not isinstance(spec, dict):
+            missing_expected.append(field)
+            continue
+        source = spec.get("source")
+        derive = spec.get("derive")
+        if source:
+            used_input_columns.add(str(source))
+        if not source and not derive:
+            missing_expected.append(field)
+
+    if missing_expected:
+        console.print(
+            "[yellow]Expected canonical fields not provided by mapping[/yellow]: "
+            + ", ".join(missing_expected)
+        )
+    else:
+        console.print("[green]Mapping provides all expected canonical fields.[/green]")
+
+    unused_input = [column for column in available_columns if column not in used_input_columns]
+    if unused_input:
+        console.print(
+            "[yellow]Input columns not used by mapping[/yellow]: " + ", ".join(unused_input)
+        )
+    else:
+        console.print("[green]All input columns are used by the mapping.[/green]")
+
+
+def _state_source_column(mapping_payload: dict[str, Any]) -> str | None:
+    fields = mapping_payload.get("fields", {})
+    if not isinstance(fields, dict):
+        return None
+    state_spec = fields.get("state", {})
+    if not isinstance(state_spec, dict):
+        return None
+    source = state_spec.get("source")
+    if source is None or str(source).strip() == "":
+        return None
+    return str(source)
+
+
+def _collect_state_counts(path: Path, state_source_column: str) -> dict[str, int]:
+    import pyarrow.parquet as pq
+
+    table = pq.read_table(path, columns=[state_source_column])
+    values = table.column(state_source_column).to_pylist()
+    counts: Counter[str] = Counter()
+    for value in values:
+        if value is None:
+            continue
+        text = str(value).strip()
+        if not text:
+            continue
+        counts[text] += 1
+    return dict(counts)
+
+
+def _validate_state_filter_selection(
+    selected_values: list[str], valid_values: set[str]
+) -> tuple[set[str] | None, dict[str, list[str]]]:
+    cleaned = [value.strip() for value in selected_values if value.strip()]
+    if not cleaned:
+        return None, {}
+
+    invalid = [value for value in cleaned if value not in valid_values]
+    if invalid:
+        suggestions = {
+            value: difflib.get_close_matches(value, sorted(valid_values), n=3, cutoff=0.6)
+            for value in invalid
+        }
+        return None, suggestions
+    return set(cleaned), {}
+
+
+def _prompt_state_allowlist(
+    *,
+    path: Path,
+    mapping_payload: dict[str, Any],
+    non_interactive: bool,
+) -> set[str] | None:
+    if non_interactive:
+        return None
+
+    if not sys.stdin.isatty():
+        console.print(
+            "[blue]State filter prompt skipped[/blue]: non-interactive input stream detected."
+        )
+        return None
+
+    state_source = _state_source_column(mapping_payload)
+    if state_source is None:
+        console.print(
+            "[yellow]State filter unavailable[/yellow]: mapping does not provide a state source column."
+        )
+        return None
+
+    try:
+        counts = _collect_state_counts(path, state_source)
+    except Exception as exc:
+        console.print(
+            f"[yellow]State filter unavailable[/yellow]: could not profile state values ({exc})."
+        )
+        return None
+
+    if not counts:
+        console.print(
+            "[yellow]State filter unavailable[/yellow]: state column has no non-empty values in input data."
+        )
+        return None
+
+    apply_filter = typer.prompt(
+        "Filter rows by state? [y/N]",
+        default="n",
+    )
+    if apply_filter.strip().lower() not in {"y", "yes"}:
+        return None
+
+    ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    top = ranked[:20]
+    console.print("[blue]State options (top 20 by frequency)[/blue]:")
+    for value, count in top:
+        console.print(f"- {value}: {count}")
+
+    valid_values = set(counts.keys())
+    while True:
+        raw = typer.prompt("Enter comma-separated state values to include (exact match)")
+        selected, suggestions = _validate_state_filter_selection(raw.split(","), valid_values)
+        if selected is not None:
+            console.print("[green]State filter selected[/green]: " + ", ".join(sorted(selected)))
+            return selected
+        if not raw.strip():
+            console.print(
+                "[yellow]No values provided. Please enter at least one state value.[/yellow]"
+            )
+            continue
+
+        invalid_values = [
+            value.strip()
+            for value in raw.split(",")
+            if value.strip() and value.strip() not in valid_values
+        ]
+        console.print("[red]Invalid state values[/red]: " + ", ".join(invalid_values))
+        for value in invalid_values:
+            matches = suggestions.get(value, [])
+            if matches:
+                console.print(f"  suggestion for '{value}': {', '.join(matches)}")
+            else:
+                console.print(f"  no close match for '{value}'")
+
+
+def _print_validation_issues(report: dict[str, Any]) -> None:
+    validation = report.get("validation", {})
+    if not isinstance(validation, dict):
+        return
+
+    schema_count = int(validation.get("schema_error_count", 0))
+    semantic_count = int(validation.get("semantic_error_count", 0))
+    if schema_count == 0 and semantic_count == 0:
+        console.print("[green]Validation summary[/green]: no schema or semantic issues detected.")
+        return
+
+    console.print(
+        "[yellow]Validation summary[/yellow]: "
+        f"schema_errors={schema_count}, semantic_errors={semantic_count}. "
+        "Ingest continued; inspect sample rows below."
+    )
+
+    for section_name, display in (
+        ("schema_errors", "Schema issues"),
+        ("semantic_errors", "Semantic issues"),
+    ):
+        entries = validation.get(section_name, [])
+        if not isinstance(entries, list) or not entries:
+            continue
+        console.print(f"[yellow]{display}[/yellow]:")
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            issue = str(entry.get("issue", "unknown issue"))
+            count = int(entry.get("count", 0))
+            console.print(f"- {issue} (count={count})")
+            examples = entry.get("examples", [])
+            if not isinstance(examples, list):
+                continue
+            for sample in examples[:3]:
+                if not isinstance(sample, dict):
+                    continue
+                row_index = sample.get("row_index")
+                row = sample.get("row")
+                if not isinstance(row, dict):
+                    continue
+                preview = _short_row_preview(row)
+                console.print(
+                    "  row "
+                    + str(row_index)
+                    + ": "
+                    + json.dumps(preview, ensure_ascii=True, sort_keys=True)
+                )
 
 
 def _tiny_dataset_is_rolling_compatible(table_path: Path) -> bool:
@@ -358,8 +673,15 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
     parquet_path = out_dir / "data.parquet"
     write_table_parquet(rows, parquet_path)
 
-    # Validate some rows against the job schema (human-friendly errors on failure)
-    validate_parquet_with_quality(parquet_path, schema_id="oda.job.v0.1.0", sample=10)
+    report_path = parquet_path.with_suffix(".parquet.quality.json")
+    report = validate_parquet_with_quality(
+        parquet_path,
+        schema_id="oda.job.v0.1.0",
+        sample=10,
+        strict=False,
+        report_path=report_path,
+    )
+    _print_validation_issues(report)
 
     prov = build_provenance(
         input_schema="oda.job.v0.1.0",
@@ -417,11 +739,18 @@ def ingest_jobs_parquet(
     out_dir = root / "data" / "ingested" / "jobs_parquet" / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    _print_parquet_preview(path, label="Input parquet preview", max_rows=3)
+    _print_time_format_examples()
+
+    profiles = profile_parquet(path, sample_rows=sample_rows)
+    suggestions = suggest_mapping(profiles)
+    _print_expected_field_coverage_from_suggestions(suggestions)
+    available_columns = [profile.name for profile in profiles]
+
+    mapping_payload: dict[str, Any]
     if mapping is None:
         if non_interactive:
             raise typer.BadParameter("Non-interactive mode requires --mapping.")
-        profiles = profile_parquet(path, sample_rows=sample_rows)
-        suggestions = suggest_mapping(profiles)
         mapping_payload = build_mapping_spec_interactive(
             profiles,
             suggestions,
@@ -431,7 +760,17 @@ def ingest_jobs_parquet(
         mapping = out_dir / "mapping.yml"
         write_mapping_spec(mapping, mapping_payload, validate=True)
     else:
-        read_mapping_spec(mapping, validate=True)
+        mapping_payload = read_mapping_spec(mapping, validate=True)
+
+    _print_mapping_coverage(
+        mapping_payload=mapping_payload,
+        available_columns=available_columns,
+    )
+    state_allowlist = _prompt_state_allowlist(
+        path=path,
+        mapping_payload=mapping_payload,
+        non_interactive=non_interactive,
+    )
 
     parquet_path = out_dir / "data.parquet"
     summary = apply_mapping_spec(
@@ -440,9 +779,20 @@ def ingest_jobs_parquet(
         parquet_path,
         batch_size=batch_size,
         skip_incomplete=True,
+        state_allowlist=state_allowlist,
     )
 
-    validate_parquet_with_quality(parquet_path, schema_id="oda.job.v0.1.0", sample=10)
+    _print_parquet_preview(parquet_path, label="Canonical output preview", max_rows=3)
+
+    report_path = parquet_path.with_suffix(".parquet.quality.json")
+    report = validate_parquet_with_quality(
+        parquet_path,
+        schema_id="oda.job.v0.1.0",
+        sample=10,
+        strict=False,
+        report_path=report_path,
+    )
+    _print_validation_issues(report)
 
     prov = build_provenance(
         input_schema="oda.job.v0.1.0",

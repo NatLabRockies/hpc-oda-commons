@@ -4,6 +4,8 @@ Unit tests for schema validation and data quality rules.
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -97,3 +99,68 @@ def test_validate_parquet_with_quality_rejects_bad_timestamp(tmp_path: Path) -> 
 
     with pytest.raises(SchemaValidationError):
         validate_parquet_with_quality(parquet_path)
+
+
+def test_validate_parquet_with_quality_non_strict_collects_issues(tmp_path: Path) -> None:
+    parquet_path = tmp_path / "data.parquet"
+    rows = [
+        {
+            "job_id": 1,
+            "start_time": "2026-01-01T00:02:00Z",
+            "end_time": "2026-01-01T00:01:00Z",
+            "runtime_seconds": -5.0,
+        },
+        {
+            "job_id": 2,
+            "start_time": "bad-time",
+            "end_time": None,
+            "runtime_seconds": 5.0,
+        },
+    ]
+    write_table_parquet(rows, parquet_path)
+
+    report = validate_parquet_with_quality(
+        parquet_path,
+        strict=False,
+        error_example_limit=3,
+    )
+
+    validation = report["validation"]
+    assert validation["strict"] is False
+    assert validation["schema_error_count"] >= 1
+    assert validation["semantic_error_count"] >= 1
+    assert validation["schema_errors"]
+    assert validation["semantic_errors"]
+
+    first_semantic = validation["semantic_errors"][0]
+    assert first_semantic["count"] >= 1
+    assert first_semantic["examples"]
+
+
+def test_validate_parquet_with_quality_non_strict_serializes_datetime_examples(
+    tmp_path: Path,
+) -> None:
+    parquet_path = tmp_path / "data.parquet"
+    rows = [
+        {
+            "job_id": 1,
+            "start_time": datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc),
+            "end_time": datetime(2026, 1, 1, 0, 1, tzinfo=timezone.utc),
+            "runtime_seconds": 60.0,
+        }
+    ]
+    write_table_parquet(rows, parquet_path)
+
+    report_path = tmp_path / "data.parquet.quality.json"
+    validate_parquet_with_quality(
+        parquet_path,
+        strict=False,
+        report_path=report_path,
+    )
+
+    assert report_path.exists()
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    assert payload["validation"]["schema_error_count"] >= 1
+    first_schema = payload["validation"]["schema_errors"][0]
+    assert first_schema["examples"]
+    assert isinstance(first_schema["examples"][0]["row"]["start_time"], str)

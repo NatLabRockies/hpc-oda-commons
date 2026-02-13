@@ -74,3 +74,78 @@ def test_apply_mapping_spec_derives_runtime(tmp_path: Path) -> None:
     assert rows[0]["runtime_seconds"] == 300.0
     assert rows[0]["submit_time"].endswith("Z")
     assert rows[0]["user"] != "alice"
+
+
+def test_apply_mapping_spec_filters_by_state_allowlist(tmp_path: Path) -> None:
+    input_path = tmp_path / "jobs.parquet"
+    rows = [
+        {
+            "JobID": 1,
+            "StartTime": "2026-01-01T00:00:00Z",
+            "EndTime": "2026-01-01T00:05:00Z",
+            "SubmitTime": "2026-01-01T00:00:00Z",
+            "State": "COMPLETED",
+            "Elapsed": 300.0,
+        },
+        {
+            "JobID": 2,
+            "StartTime": "2026-01-01T01:00:00Z",
+            "EndTime": "2026-01-01T01:04:00Z",
+            "SubmitTime": "2026-01-01T01:00:00Z",
+            "State": "FAILED",
+            "Elapsed": 240.0,
+        },
+        {
+            "JobID": 3,
+            "StartTime": "2026-01-01T02:00:00Z",
+            "EndTime": "2026-01-01T02:03:00Z",
+            "SubmitTime": "2026-01-01T02:00:00Z",
+            "State": "RUNNING",
+            "Elapsed": 180.0,
+        },
+    ]
+    pq.write_table(pa.Table.from_pylist(rows), input_path)
+
+    mapping = new_mapping_spec(
+        kind="jobs_parquet",
+        output_schema_version="oda.job.v0.1.0",
+        fields={
+            "job_id": {"source": "JobID"},
+            "start_time": {
+                "source": "StartTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "end_time": {
+                "source": "EndTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "runtime_seconds": {
+                "source": "Elapsed",
+                "transform": {"type": "duration", "unit": "seconds"},
+            },
+            "submit_time": {
+                "source": "SubmitTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "state": {"source": "State"},
+        },
+    )
+    mapping_path = tmp_path / "mapping.yml"
+    write_mapping_spec(mapping_path, mapping, validate=True)
+
+    out_path = tmp_path / "out.parquet"
+    summary = apply_mapping_spec(
+        input_path,
+        mapping_path,
+        out_path,
+        state_allowlist={"COMPLETED", "FAILED"},
+    )
+
+    table = pq.read_table(out_path)
+    out_rows = table.to_pylist()
+    assert len(out_rows) == 2
+    assert {row["state"] for row in out_rows} == {"COMPLETED", "FAILED"}
+    assert summary["rows_total"] == 3
+    assert summary["rows_kept"] == 2
+    assert summary["rows_skipped_state_filter"] == 1
+    assert summary["state_filter_values"] == ["COMPLETED", "FAILED"]

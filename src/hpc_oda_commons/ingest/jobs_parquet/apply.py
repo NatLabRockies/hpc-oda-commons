@@ -112,6 +112,7 @@ def apply_mapping_spec(
     *,
     batch_size: int = 50_000,
     skip_incomplete: bool = True,
+    state_allowlist: set[str] | None = None,
 ) -> dict[str, Any]:
     """
     Apply a mapping spec to a jobs Parquet export and write canonical ODA job Parquet.
@@ -125,6 +126,7 @@ def apply_mapping_spec(
     total = 0
     kept = 0
     skipped = 0
+    skipped_state_filter = 0
 
     parquet = pq.ParquetFile(input_path)
     for batch in parquet.iter_batches(batch_size=batch_size):
@@ -145,6 +147,12 @@ def apply_mapping_spec(
                 if fields.get("runtime_seconds", {}).get("derive") == "end_time - start_time":
                     out_row["runtime_seconds"] = _derive_runtime(out_row)
 
+            if state_allowlist is not None:
+                state_value = out_row.get("state")
+                if state_value is None or str(state_value) not in state_allowlist:
+                    skipped_state_filter += 1
+                    continue
+
             if skip_incomplete and any(out_row.get(field) in (None, "") for field in required):
                 skipped += 1
                 continue
@@ -162,4 +170,6 @@ def apply_mapping_spec(
         "rows_total": total,
         "rows_kept": kept,
         "rows_skipped": skipped,
+        "rows_skipped_state_filter": skipped_state_filter,
+        "state_filter_values": sorted(state_allowlist) if state_allowlist is not None else [],
     }
