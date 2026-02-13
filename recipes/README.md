@@ -2,6 +2,21 @@
 
 Recipes define reproducible benchmark runs for v0.1.
 
+## Canonical Source
+
+`recipes/` is the canonical source of truth.
+
+Packaged copies under `src/hpc_oda_commons/recipes/` are synchronized from this
+directory so installed wheels include built-in recipe assets.
+
+Sync packaged copies from repo root:
+
+`./.venv/bin/python scripts/sync_packaged_recipes.py`
+
+Check drift only:
+
+`./.venv/bin/python scripts/sync_packaged_recipes.py --check`
+
 ## Requirements (v0.1)
 
 Recipes must conform to:

@@ -1,0 +1,7 @@
+# Examples of Metric Definition Language (MDL) for runtime prediction.
+- name: mae
+  target: runtime_seconds
+- name: rmse
+  target: runtime_seconds
+- name: r2
+  target: runtime_seconds

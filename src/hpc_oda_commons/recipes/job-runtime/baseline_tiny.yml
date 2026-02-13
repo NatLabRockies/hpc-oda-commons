@@ -1,5 +1,5 @@
 # Tiny synthetic benchmark recipe for SLURM job runtime prediction (v0.1).
-# Bundled copy for packaging; source of truth remains recipes/job-runtime/baseline_tiny.yml.
+# Used for CI smoke tests and offline demo runs.
 
 recipe_id: recipe.job_runtime.baseline_tiny
 problem_domain:

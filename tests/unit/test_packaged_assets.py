@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.resources as ir
+from pathlib import Path
 
 import pyarrow.parquet as pq
 
@@ -50,3 +51,23 @@ def test_packaged_tiny_dataset_is_rolling_compatible() -> None:
 
     hour_bins = {str(v)[:13] for v in submit_values}
     assert len(hour_bins) >= 3
+
+
+def test_packaged_recipes_match_canonical_recipe_tree() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    canonical_root = repo_root / "recipes"
+    packaged_root = repo_root / "src/hpc_oda_commons" / "recipes"
+    suffixes = {".yml", ".yaml", ".toml"}
+
+    canonical = {
+        path.relative_to(canonical_root).as_posix(): path.read_bytes()
+        for path in sorted(canonical_root.rglob("*"))
+        if path.is_file() and path.suffix.lower() in suffixes
+    }
+    packaged = {
+        path.relative_to(packaged_root).as_posix(): path.read_bytes()
+        for path in sorted(packaged_root.rglob("*"))
+        if path.is_file() and path.suffix.lower() in suffixes
+    }
+
+    assert packaged == canonical

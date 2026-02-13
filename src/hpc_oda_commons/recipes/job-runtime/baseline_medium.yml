@@ -1,30 +1,24 @@
-# Rolling-hourly XGBoost alternate model recipe for runtime prediction.
-# Uses automatic categorical preprocessing analysis + daily preprocessing refresh.
-
-recipe_id: recipe.job_runtime.xgb_hourly_recent
+# Scheduled recipe (medium synthetic): baseline model for regression/perf checks.
+recipe_id: recipe.job_runtime.baseline_medium
 problem_domain:
   - job-runtime-prediction
 schema_version: oda.job.v0.1.0
-
 dataset:
   id: hpc_oda_commons/datasets/synthetic/job-runtime/tiny
   table_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet
   manifest_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/manifest.json
-
 model:
-  id: model.job_runtime_xgboost
+  id: model.job_runtime_baseline
   version: "0.1.0"
-
 metrics:
   - name: mae
     target: runtime_seconds
   - name: rmse
     target: runtime_seconds
-
 split:
-  method: rolling_hourly
-  n_recent_hours: 1000
-
+  method: fixed
+  train_fraction: 0.8
+  seed: 42
 run:
   output_dir: runs
   overwrite: false
