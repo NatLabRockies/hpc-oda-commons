@@ -1,53 +1,71 @@
-# Job Runtime XGBoost Model (Increment 1-2 Scaffold)
+# Job Runtime XGBoost Model
 
-This package is the first alternate model scaffold for runtime prediction.
+This model is the alternate runtime predictor for `oda.job.v0.1.0` benchmark
+recipes. It trains XGBoost regressors in a rolling-hour evaluation loop and
+reports global and per-hour regression metrics.
 
-## Increment 1 Scope
+## Preprocessing Pipeline
 
-- Adds model configuration surface and dependency checks for:
-  - `xgboost`
-  - `scikit-learn` (imported as `sklearn`)
-- Defines public methods:
-  - `fit()`
-  - `predict()`
-  - `evaluate_hourly()`
+The model automatically prepares mixed-type job features before training:
 
-These methods intentionally raise `NotImplementedError` in Increment 1. The
-next increments will implement automatic categorical preprocessing (one-hot +
-dimensionality reduction), rolling hourly splits, and daily preprocessing
-refresh behavior.
+- Detects categorical columns and profiles cardinality/frequency patterns.
+- Applies one-hot encoding with infrequent-category handling to control feature
+  growth.
+- Applies `TruncatedSVD` over the sparse one-hot matrix to keep a compact,
+  variance-preserving representation.
+- Combines reduced categorical features with numeric features.
 
-## Increment 2 Scope
+For reproducibility and tuning support, preprocessing diagnostics can be
+generated via:
 
-- Adds automatic preprocessing analysis:
-  - categorical feature profiling (cardinality, null rate, category frequencies),
-  - one-hot configuration with infrequent-category handling,
-  - TruncatedSVD component selection to satisfy target explained-variance coverage.
-- Adds diagnostics emission for reproducibility:
-  - `JobRuntimeXGBoostModel.analyze_preprocessing(..., diagnostics_path=...)`
-  - standalone utilities in `preprocessing.py`.
+- `JobRuntimeXGBoostModel.analyze_preprocessing(...)`
+- helpers in `preprocessing.py`
 
-Model training/evaluation loops remain deferred to later increments.
+## Rolling-Hour Evaluation Behavior
 
-## Increment 3 Scope
+The benchmark path uses strict hourly splits:
 
-- Adds rolling split engine with strict semantics:
-  - train rows: `end_time < split_time`
-  - test rows: `split_time <= submit_time < split_time + 1h`
-- Adds day-keyed preprocessing cache to support daily OHE/SVD refits.
-- Exposes helpers:
-  - `build_hourly_rolling_splits(...)`
-  - `materialize_split_rows(...)`
-  - `DailyPreprocessingCache`
-  - `JobRuntimeXGBoostModel.build_hourly_split_plan(...)`
+- Train rows: `end_time < split_time`
+- Test rows: `split_time <= submit_time < split_time + 1 hour`
 
-## Increment 4 Scope
+A new XGBoost regressor is trained each split hour. One-hot/SVD preprocessing
+artifacts are refreshed once per day (at the first split of each day) and then
+reused for subsequent hours in that day.
 
-- Implements `JobRuntimeXGBoostModel.evaluate_hourly(...)`:
-  - trains one XGBoost regressor per split hour,
-  - reuses day-keyed preprocessing artifacts (one-hot + SVD),
-  - computes per-hour metrics and global MAE/RMSE over concatenated predictions.
-- Returns payload shaped for future benchmark integration:
-  - top-level `mae`, `rmse`, `definitions`,
-  - `hourly` entries with status, split metadata, feature info, and per-hour metrics,
-  - `summary` including scored/skipped hours and preprocessing refit count.
+## How To Run
+
+Prerequisites:
+
+- install dependencies (from repo root):
+
+```bash
+pip install -e ".[dev]"
+```
+
+Run the default rolling-hour XGBoost recipe:
+
+```bash
+HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/xgb_hourly_recent.yml
+```
+
+Run a faster local variant (smaller rolling window):
+
+```bash
+HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/alt_model_example.yml
+```
+
+The benchmark writes a result bundle under `runs/benchmark-*/` containing:
+
+- `result.json`
+- `metrics.json` (includes per-hour details and summary)
+- `provenance.json`
+
+## Recipe Requirements
+
+For this model in v0.1, use:
+
+- `model.id: model.job_runtime_xgboost`
+- `split.method: rolling_hourly`
+- `split.n_recent_hours: <positive integer>`
+
+Supported benchmark metrics for rolling-hourly mode are `mae` and `rmse`.
