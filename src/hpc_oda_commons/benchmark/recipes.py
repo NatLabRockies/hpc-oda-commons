@@ -63,3 +63,21 @@ def validate_recipe(payload: dict[str, Any], *, path: Path | None = None) -> Non
             message="All metrics must share the same non-empty target field.",
             path=str(path) if path else None,
         )
+
+    split = payload.get("split") or {}
+    if split:
+        if not isinstance(split, dict):
+            raise SchemaValidationError(
+                schema_id=RECIPE_SCHEMA_ID,
+                message="split must be an object",
+                path=str(path) if path else None,
+            )
+        method = str(split.get("method", ""))
+        if method == "rolling_hourly":
+            n_recent_hours = split.get("n_recent_hours")
+            if not isinstance(n_recent_hours, int) or n_recent_hours <= 0:
+                raise SchemaValidationError(
+                    schema_id=RECIPE_SCHEMA_ID,
+                    message="split.n_recent_hours must be a positive integer for rolling_hourly",
+                    path=str(path) if path else None,
+                )

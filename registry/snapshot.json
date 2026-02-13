@@ -43,6 +43,27 @@
       }
     },
     {
+      "id": "model.job_runtime_xgboost",
+      "entry_type": "model",
+      "name": "Job Runtime XGBoost (Hourly Rolling)",
+      "version": "0.1.0",
+      "description": "Alternate runtime prediction model using XGBoost regression with automatic categorical one-hot/SVD preprocessing and rolling-hourly evaluation.",
+      "problem_domain": ["job-runtime-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.1.0",
+      "output_schema_version": "oda.prediction.v0.1.0",
+      "license": "Apache-2.0",
+      "dependencies": ["xgboost>=2.0.0", "scikit-learn>=1.3.0"],
+      "tags": ["alternate", "xgboost", "regression", "runtime", "hourly", "rolling"],
+      "reference": {
+        "kind": "python",
+        "python": {
+          "module": "hpc_oda_commons.models.job_runtime_xgboost.model",
+          "object": "JobRuntimeXGBoostModel"
+        }
+      }
+    },
+    {
       "id": "recipe.job_runtime.baseline_tiny",
       "entry_type": "recipe",
       "name": "Baseline Tiny (Job Runtime Prediction)",
@@ -56,6 +77,22 @@
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml"
+      }
+    },
+    {
+      "id": "recipe.job_runtime.xgb_hourly_recent",
+      "entry_type": "recipe",
+      "name": "XGBoost Hourly Recent (Job Runtime Prediction)",
+      "version": "0.1.0",
+      "description": "Rolling-hourly benchmark recipe for the XGBoost alternate runtime model over the most recent hours.",
+      "problem_domain": ["job-runtime-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.1.0",
+      "license": "Apache-2.0",
+      "tags": ["xgboost", "alternate", "hourly", "rolling", "offline"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml"
       }
     }
   ]

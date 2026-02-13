@@ -11,6 +11,11 @@ Recipes are YAML files that specify:
 
 Example recipe path for v0.1:
 `hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
+`hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml`
+
+Supported split methods in v0.1:
+1. `fixed` (baseline model path)
+2. `rolling_hourly` (XGBoost alternate model path)
 
 ## Metrics
 The runtime prediction baseline uses regression metrics:

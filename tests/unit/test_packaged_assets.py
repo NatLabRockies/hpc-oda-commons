@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.resources as ir
 
+import pyarrow.parquet as pq
+
 from hpc_oda_commons.kernel.schemas import load_schema
 from hpc_oda_commons.registry.snapshot import snapshot_resource_path
 
@@ -25,10 +27,26 @@ def test_packaged_registry_snapshot_exists() -> None:
 
 def test_packaged_recipe_and_dataset_assets_exist() -> None:
     base = ir.files("hpc_oda_commons")
-    recipe = base / "recipes" / "job-runtime" / "baseline_tiny.yml"
+    baseline_recipe = base / "recipes" / "job-runtime" / "baseline_tiny.yml"
+    xgb_recipe = base / "recipes" / "job-runtime" / "xgb_hourly_recent.yml"
     manifest = base / "datasets" / "synthetic" / "job-runtime" / "tiny" / "manifest.json"
     parquet = base / "datasets" / "synthetic" / "job-runtime" / "tiny" / "data.parquet"
 
-    assert recipe.is_file()
+    assert baseline_recipe.is_file()
+    assert xgb_recipe.is_file()
     assert manifest.is_file()
     assert parquet.is_file()
+
+
+def test_packaged_tiny_dataset_is_rolling_compatible() -> None:
+    base = ir.files("hpc_oda_commons")
+    parquet = base / "datasets" / "synthetic" / "job-runtime" / "tiny" / "data.parquet"
+    table = pq.read_table(parquet)
+
+    assert "submit_time" in table.column_names
+
+    submit_values = [v for v in table.column("submit_time").to_pylist() if v not in (None, "")]
+    assert submit_values
+
+    hour_bins = {str(v)[:13] for v in submit_values}
+    assert len(hour_bins) >= 3

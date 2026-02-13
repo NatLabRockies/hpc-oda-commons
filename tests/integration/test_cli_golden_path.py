@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+import yaml
 from jsonschema import Draft202012Validator
 
 from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec, write_mapping_spec
 from hpc_oda_commons.kernel.schemas import load_schema
+from hpc_oda_commons.qst import cli
 from tests.conftest import find_first, load_json, run_cli, write_slurmctld_log
 
 REQUIRED_RESULT_FILES = ("result.json", "metrics.json", "provenance.json")
@@ -122,6 +125,122 @@ def test_dod_3_ingest_slurmctld_creates_schema_valid_artifacts(
     assert "provenance" in manifest or "inputs" in manifest, (
         "manifest.json should include provenance/inputs info"
     )
+
+
+@pytest.mark.integration
+def test_benchmark_xgboost_recipe_small_window(
+    repo_root: Path,
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Integration coverage for alternate model benchmark path.
+    Uses a small rolling window for CI speed and monkeypatches the model class to
+    keep execution deterministic in restricted sandbox environments.
+    """
+
+    class _FakeXGBModel:
+        seen_n_recent_hours: int | None = None
+
+        def __init__(self, config: object) -> None:
+            _FakeXGBModel.seen_n_recent_hours = int(config.n_recent_hours)
+
+        def evaluate_hourly(self, rows: list[dict[str, object]]) -> dict[str, object]:
+            assert rows
+            return {
+                "mae": 10.0,
+                "rmse": 12.0,
+                "definitions": [
+                    {"name": "mae", "target": "runtime_seconds"},
+                    {"name": "rmse", "target": "runtime_seconds"},
+                ],
+                "hourly": [
+                    {
+                        "split_time": "2026-01-01T00:00:00Z",
+                        "status": "ok",
+                        "preprocessing_refit": True,
+                        "metrics": {"mae": 10.0, "rmse": 12.0},
+                    }
+                ],
+                "summary": {
+                    "hours_total": 24,
+                    "hours_scored": 1,
+                    "hours_skipped": 23,
+                    "preprocessing_refits": 1,
+                    "rows_scored": len(rows),
+                    "days_with_cached_preprocessing": ["2026-01-01"],
+                    "n_recent_hours": 24,
+                },
+            }
+
+    run_cli(["init"], cwd=tmp_project).assert_ok()
+
+    recipe_src = repo_root / "recipes/job-runtime/xgb_hourly_recent.yml"
+    recipe_payload = yaml.safe_load(recipe_src.read_text(encoding="utf-8"))
+    assert isinstance(recipe_payload, dict)
+    recipe_payload["split"] = {"method": "rolling_hourly", "n_recent_hours": 24}
+
+    recipe_path = tmp_project / "xgb_hourly_recent_small.yml"
+    recipe_path.write_text(yaml.safe_dump(recipe_payload, sort_keys=False), encoding="utf-8")
+
+    monkeypatch.chdir(tmp_project)
+    monkeypatch.setattr(cli, "JobRuntimeXGBoostModel", _FakeXGBModel)
+
+    cli.benchmark(recipe_path)
+
+    bundle_dir = _find_result_bundle_dir(tmp_project)
+    _assert_result_bundle_dir(bundle_dir)
+    result_payload = load_json(bundle_dir / "result.json")
+    metrics_payload = load_json(bundle_dir / "metrics.json")
+
+    assert _FakeXGBModel.seen_n_recent_hours == 24
+    assert result_payload["model"]["id"] == "model.job_runtime_xgboost"
+    assert result_payload["metrics"]["mae"] == 10.0
+    assert result_payload["metrics"]["rmse"] == 12.0
+    assert metrics_payload["summary"]["n_recent_hours"] == 24
+    assert metrics_payload["summary"]["hours_total"] == 24
+
+
+@pytest.mark.integration
+def test_benchmark_xgboost_recipe_small_window_native_cli(
+    repo_root: Path,
+    tmp_project: Path,
+) -> None:
+    """
+    Optional native lane for real XGBoost execution.
+    Enable with HPC_ODA_ENABLE_NATIVE_XGBOOST_IT=1 on environments that allow
+    OpenMP shared-memory primitives (outside restricted sandboxes).
+    """
+    if os.environ.get("HPC_ODA_ENABLE_NATIVE_XGBOOST_IT") != "1":
+        pytest.skip("Set HPC_ODA_ENABLE_NATIVE_XGBOOST_IT=1 to run native XGBoost integration.")
+
+    run_cli(["init"], cwd=tmp_project).assert_ok()
+
+    recipe_src = repo_root / "recipes/job-runtime/alt_model_example.yml"
+    recipe_payload = yaml.safe_load(recipe_src.read_text(encoding="utf-8"))
+    assert isinstance(recipe_payload, dict)
+    recipe_payload["split"] = {"method": "rolling_hourly", "n_recent_hours": 24}
+
+    recipe_path = tmp_project / "xgb_hourly_recent_native.yml"
+    recipe_path.write_text(yaml.safe_dump(recipe_payload, sort_keys=False), encoding="utf-8")
+
+    run_cli(
+        ["benchmark", str(recipe_path)],
+        cwd=tmp_project,
+        env={"HPC_ODA_OFFLINE": "1"},
+        timeout_s=600,
+    ).assert_ok()
+
+    bundle_dir = _find_result_bundle_dir(tmp_project)
+    _assert_result_bundle_dir(bundle_dir)
+    result_payload = load_json(bundle_dir / "result.json")
+    metrics_payload = load_json(bundle_dir / "metrics.json")
+
+    assert result_payload["model"]["id"] == "model.job_runtime_xgboost"
+    assert result_payload["metrics"]["mae"] >= 0.0
+    assert result_payload["metrics"]["rmse"] >= 0.0
+    assert isinstance(metrics_payload.get("hourly"), list)
+    assert metrics_payload.get("summary", {}).get("n_recent_hours") == 24
 
 
 @pytest.mark.integration

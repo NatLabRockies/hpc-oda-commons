@@ -1086,3 +1086,111 @@ Verify:
 - The wizard produces a reusable `mapping.yml` and re-running with `--mapping` is deterministic.
 - The output includes `submit_time` and `state` when available (and records any skipping/filtering).
 - CI remains green (`ruff` + unit + integration).
+
+---
+
+## Next Feature Plan: XGBoost Runtime Model Alternate (Hourly Rolling Evaluation)
+
+### Requested Phase
+This work maps to `PROJECT_PLAN.md` Phase 6 (“add another runtime model”) with Phase 3 implications (recipe/benchmark reproducibility).
+
+### Scope and Assumptions
+1. Add a new alternate runtime model based on `XGBoost` regression.
+2. Implement automatic categorical preprocessing:
+   one-hot encoding + PCA-equivalent dimensionality reduction on encoded categorical space.
+3. Implement rolling hourly evaluation:
+   for each split hour, train on jobs with `end_time < split_time`, test on jobs with `submit_time` in `[split_time, split_time + 1h)`.
+4. Default window count is `n_recent_hours=1000`, configurable in recipe split settings.
+5. Refit one-hot/PCA only at midnight boundaries; retrain XGBoost every hour.
+6. Keep current baseline model and behavior unchanged.
+7. Integrate as the first alternate model via registry + recipe.
+8. Use `TruncatedSVD` for sparse one-hot PCA behavior (same objective: variance coverage with much lower memory cost).
+
+### Implementation Plan (Incremental)
+1. **Dependencies + model scaffold**
+   - Add `xgboost` and `scikit-learn` dependencies.
+   - Create new model package under `src/hpc_oda_commons/models/` for XGBoost runtime model.
+   - Add README for model behavior and constraints.
+
+2. **Automatic preprocessing analysis module**
+   - Implement feature profiling for categorical columns (cardinality, sparsity, frequency distribution).
+   - Implement automatic one-hot config selection (including infrequent-category handling).
+   - Implement automatic PCA coverage selection (target explained variance; choose smallest component count meeting threshold).
+   - Persist/emit preprocessing diagnostics for reproducibility.
+
+3. **Rolling split engine + daily preprocessor refresh**
+   - Implement hourly split generator for last `n_recent_hours`.
+   - Implement day-keyed cache so one-hot/SVD fit is recomputed only once per day (at first split for that day).
+   - Implement strict filtering semantics for train/test rows using `end_time` and `submit_time`.
+
+4. **XGBoost hourly train/eval loop**
+   - Train one XGBoost model per split hour.
+   - Aggregate predictions/targets across hours and compute global `mae`/`rmse` for result schema compatibility.
+   - Store per-hour metrics/details in `metrics.json`.
+
+5. **Benchmark integration**
+   - Add model resolution in benchmark path (current code is baseline-hardcoded).
+   - Extend recipe split handling to support `rolling_hourly` + `n_recent_hours`.
+   - Keep existing `fixed` split fully backward-compatible.
+
+6. **Registry + recipe assets**
+   - Add new registry entry for the XGBoost model as first alternate.
+   - Add new recipe for the hourly XGBoost run (and packaged copy under `src/.../recipes/...`).
+   - Run `python scripts/build_registry_snapshot.py` because registry changes.
+
+7. **Dataset compatibility**
+   - Ensure benchmarkable dataset has `submit_time`.
+   - Update/regenerate tiny synthetic packaged dataset (and manifest notes) if needed.
+
+8. **Tests**
+   - Unit tests for:
+     - preprocessing analysis and auto component selection
+     - hourly split semantics
+     - daily refresh behavior (refit only on day change)
+     - model determinism and fit/predict behavior
+     - recipe validation for new split method
+   - Integration test:
+     - benchmark with XGBoost recipe (small `n_recent_hours` for CI speed).
+   - Update packaged-assets and registry tests for new model/recipe assets.
+
+9. **Docs**
+   - Update model/recipe reference docs and add short how-to for alternate model benchmarking.
+   - No CLI command changes expected; if any CLI surface changes occur, also update `README.md`, `docs/how-to/quickstart.md`, and `docs/reference/cli.md` per repo rule.
+
+### Planned File Changes
+1. `pyproject.toml`
+2. `src/hpc_oda_commons/models/job_runtime_xgboost/__init__.py` (new)
+3. `src/hpc_oda_commons/models/job_runtime_xgboost/model.py` (new)
+4. `src/hpc_oda_commons/models/job_runtime_xgboost/README.md` (new)
+5. `src/hpc_oda_commons/qst/cli.py`
+6. `src/hpc_oda_commons/benchmark/recipes.py`
+7. `src/hpc_oda_commons/schemas/oda/recipe/v0.1.0.json`
+8. `recipes/job-runtime/xgb_hourly_recent.yml` (new)
+9. `src/hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml` (new)
+10. `recipes/job-runtime/alt_model_example.yml`
+11. `registry/snapshot.json`
+12. `src/hpc_oda_commons/registry/snapshot.json` (via sync script)
+13. `src/hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet` (if submit_time missing)
+14. `src/hpc_oda_commons/datasets/synthetic/job-runtime/tiny/manifest.json` (if dataset updated)
+15. `tests/unit/test_job_runtime_xgboost_model.py` (new)
+16. `tests/unit/test_job_runtime_xgboost_preprocessing.py` (new)
+17. `tests/unit/test_job_runtime_xgboost_hourly_split.py` (new)
+18. `tests/unit/test_recipe_validation.py`
+19. `tests/unit/test_registry.py`
+20. `tests/unit/test_packaged_assets.py`
+21. `tests/integration/test_cli_golden_path.py`
+22. `docs/reference/recipes.md`
+23. `docs/how-to/add-model.md` (and related model docs as needed)
+
+### Verification Plan
+1. After each increment:
+   - `./.venv/bin/ruff check .`
+   - `./.venv/bin/ruff format . --check`
+   - `./.venv/bin/pytest -q tests/unit`
+   - If formatting fails: `./.venv/bin/ruff format .` then re-check.
+2. When feature is complete:
+   - `./.venv/bin/pytest -q`
+   - `HPC_ODA_OFFLINE=1 ./.venv/bin/pytest -q -m integration`
+3. Extra validation when registry changes:
+   - `python scripts/build_registry_snapshot.py`
+   - `python scripts/validate_recipes.py`

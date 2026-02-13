@@ -28,8 +28,26 @@ def _valid_recipe() -> dict:
     }
 
 
+def _valid_rolling_recipe() -> dict:
+    payload = _valid_recipe()
+    payload["model"] = {"id": "model.job_runtime_xgboost", "version": "0.1.0"}
+    payload["split"] = {"method": "rolling_hourly", "n_recent_hours": 24}
+    return payload
+
+
 def test_validate_recipe_ok() -> None:
     validate_recipe(_valid_recipe())
+
+
+def test_validate_recipe_rolling_hourly_ok() -> None:
+    validate_recipe(_valid_rolling_recipe())
+
+
+def test_validate_recipe_rolling_hourly_requires_n_recent_hours() -> None:
+    payload = _valid_rolling_recipe()
+    payload["split"] = {"method": "rolling_hourly"}
+    with pytest.raises(SchemaValidationError):
+        validate_recipe(payload)
 
 
 def test_validate_recipe_missing_required_metric() -> None:

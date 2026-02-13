@@ -1,0 +1,123 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+
+import numpy as np
+import pytest
+
+from hpc_oda_commons.models.job_runtime_xgboost.model import (
+    JobRuntimeXGBoostConfig,
+    JobRuntimeXGBoostModel,
+)
+
+
+def _iso(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _sample_rows() -> list[dict[str, object]]:
+    base = datetime(2026, 1, 1, 20, 0, 0, tzinfo=timezone.utc)
+    rows: list[dict[str, object]] = []
+    for hour in range(10):
+        hour_start = base + timedelta(hours=hour)
+        for j in range(4):
+            submit_time = hour_start + timedelta(minutes=10 * j)
+            end_time = submit_time + timedelta(minutes=20 + j)
+            partition = "compute" if (hour + j) % 2 == 0 else "debug"
+            account = f"acct_{hour % 3}"
+            qos = "high" if j == 0 else "normal"
+            requested_cpus = float((j % 4) + 1)
+            memory_requested = float(2048 + 128 * j + 32 * hour)
+            runtime_seconds = float(
+                900 + 30 * hour + 20 * j + (60 if partition == "compute" else 0)
+            )
+
+            rows.append(
+                {
+                    "submit_time": _iso(submit_time),
+                    "end_time": _iso(end_time),
+                    "partition": partition,
+                    "account": account,
+                    "qos": qos,
+                    "requested_cpus": requested_cpus,
+                    "memory_requested": memory_requested,
+                    "runtime_seconds": runtime_seconds,
+                }
+            )
+    return rows
+
+
+class _FakeRegressor:
+    def __init__(self) -> None:
+        self._mean: float = 0.0
+
+    def fit(self, x: np.ndarray, y: np.ndarray) -> _FakeRegressor:
+        _ = x
+        self._mean = float(np.mean(y)) if len(y) else 0.0
+        return self
+
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        return np.full((x.shape[0],), self._mean, dtype=float)
+
+
+def test_evaluate_hourly_returns_metrics_and_hourly_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = JobRuntimeXGBoostConfig(
+        n_recent_hours=10,
+        n_estimators=16,
+        max_depth=4,
+        learning_rate=0.1,
+        subsample=1.0,
+        colsample_bytree=1.0,
+        max_svd_components=8,
+        target_max_one_hot_width=64,
+        random_state=7,
+    )
+    model = JobRuntimeXGBoostModel(config)
+    monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
+    payload = model.evaluate_hourly(_sample_rows())
+
+    assert payload["mae"] >= 0.0
+    assert payload["rmse"] >= 0.0
+    assert payload["summary"]["hours_total"] == 10
+    assert payload["summary"]["hours_scored"] > 0
+    assert payload["summary"]["hours_skipped"] >= 0
+    assert payload["summary"]["preprocessing_refits"] == 2
+    assert payload["summary"]["rows_scored"] > 0
+
+    hourly = payload["hourly"]
+    assert len(hourly) == 10
+    assert any(entry["status"] == "ok" for entry in hourly)
+    assert (
+        sum(1 for entry in hourly if entry["status"] == "ok") == payload["summary"]["hours_scored"]
+    )
+    assert (
+        sum(1 for entry in hourly if entry["preprocessing_refit"])
+        == payload["summary"]["preprocessing_refits"]
+    )
+
+
+def test_evaluate_hourly_raises_when_no_scored_predictions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {
+            "submit_time": "2026-01-01T00:00:00Z",
+            "end_time": "2026-01-01T00:10:00Z",
+            "partition": "debug",
+            "runtime_seconds": None,
+        },
+        {
+            "submit_time": "2026-01-01T01:00:00Z",
+            "end_time": "2026-01-01T01:10:00Z",
+            "partition": "compute",
+            "runtime_seconds": None,
+        },
+    ]
+    config = JobRuntimeXGBoostConfig(n_recent_hours=2, n_estimators=8, max_depth=3)
+    model = JobRuntimeXGBoostModel(config)
+    monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
+
+    with pytest.raises(ValueError, match="No hourly splits produced scored predictions"):
+        model.evaluate_hourly(rows)

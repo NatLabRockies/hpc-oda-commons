@@ -3,9 +3,12 @@
 ## Built-in Recipes (v0.1)
 1. `hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
    Tiny synthetic runtime prediction benchmark (offline).
+2. `hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml`
+   Rolling-hourly XGBoost alternate benchmark over recent hours.
 
 Bundled copy (for packaged installs):
 `src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
+`src/hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml`
 
 ## Recipe Schema (v0.1)
 
@@ -19,3 +22,7 @@ Required fields in v0.1:
 - `dataset` (with `id` + `table_path`)
 - `model` (with `id` + `version`)
 - `metrics` (must include `mae` and `rmse` for runtime prediction)
+
+Split modes in v0.1:
+- `fixed` with `train_fraction` and `seed`
+- `rolling_hourly` with `n_recent_hours`

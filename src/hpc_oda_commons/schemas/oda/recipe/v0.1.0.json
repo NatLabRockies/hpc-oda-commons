@@ -43,12 +43,33 @@
     "split": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["method", "train_fraction", "seed"],
       "properties": {
-        "method": { "type": "string", "enum": ["fixed"] },
+        "method": { "type": "string", "enum": ["fixed", "rolling_hourly"] },
         "train_fraction": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
-        "seed": { "type": "integer" }
-      }
+        "seed": { "type": "integer" },
+        "n_recent_hours": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["method"],
+      "allOf": [
+        {
+          "if": {
+            "properties": { "method": { "const": "fixed" } },
+            "required": ["method"]
+          },
+          "then": {
+            "required": ["train_fraction", "seed"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "method": { "const": "rolling_hourly" } },
+            "required": ["method"]
+          },
+          "then": {
+            "required": ["n_recent_hours"]
+          }
+        }
+      ]
     },
     "run": {
       "type": "object",

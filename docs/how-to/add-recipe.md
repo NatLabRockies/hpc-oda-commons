@@ -14,3 +14,7 @@ Minimum required fields (v0.1):
 - `dataset` (with `id` + `table_path`)
 - `model` (with `id` + `version`)
 - `metrics` (must include `mae` and `rmse` for runtime prediction)
+
+Split notes (v0.1):
+- `fixed` split requires `train_fraction` and `seed`
+- `rolling_hourly` split requires `n_recent_hours`

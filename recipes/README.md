@@ -19,3 +19,4 @@ Required fields:
 ## Example
 
 - `recipes/job-runtime/baseline_tiny.yml`
+- `recipes/job-runtime/xgb_hourly_recent.yml`

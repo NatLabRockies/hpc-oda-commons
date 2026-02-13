@@ -28,6 +28,10 @@ This reference covers the v0.1 `hpc-oda` commands.
 ## Compare
 1. `hpc-oda benchmark <recipe.yml>`
    Runs a benchmark recipe and emits a result bundle under `runs/`.
+   Supported v0.1 model/split pairs:
+   - `model.job_runtime_baseline` + `split.method: fixed`
+   - `model.job_runtime_xgboost` + `split.method: rolling_hourly`
+   For rolling-hourly recipes, `split.n_recent_hours` is required.
 
 ## Leaderboard
 1. `hpc-oda leaderboard --runs <dir> --out <dir>`

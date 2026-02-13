@@ -55,6 +55,14 @@ hpc-oda analyze --data data/ingested/slurmctld/<run>
 HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 ```
 
+## 8a) Benchmark the alternate XGBoost model
+```bash
+HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
+```
+
+Tip for faster local iteration: copy the recipe and reduce the rolling window:
+`split.n_recent_hours: 24`.
+
 ## 9) Generate a local leaderboard
 ```bash
 hpc-oda leaderboard --runs runs --out leaderboard

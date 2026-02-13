@@ -25,3 +25,11 @@ This document summarizes the test strategy for **hpc-oda-commons**.
   - `pytest -q`
 - Offline integration:
   - `HPC_ODA_OFFLINE=1 pytest -q -m integration`
+
+## Optional Native XGBoost Integration Lane
+
+Some restricted sandboxes block OpenMP shared-memory primitives used by native
+XGBoost builds. The native CLI XGBoost integration test is therefore opt-in.
+
+- Run native XGBoost integration:
+  - `HPC_ODA_ENABLE_NATIVE_XGBOOST_IT=1 HPC_ODA_OFFLINE=1 pytest -q -m integration -k native_cli`
