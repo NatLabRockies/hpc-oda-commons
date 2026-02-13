@@ -62,6 +62,8 @@ HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hour
 
 Tip for faster local iteration: copy the recipe and reduce the rolling window:
 `split.n_recent_hours: 24`.
+You can also limit each split's training history with:
+`split.training_lookback_days: 30` (default is `100`).
 
 ## 9) Generate a local leaderboard
 ```bash

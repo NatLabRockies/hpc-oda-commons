@@ -84,9 +84,11 @@ def test_benchmark_rolling_hourly_uses_xgboost_path(
 ) -> None:
     class FakeXGBModel:
         seen_n_recent_hours: int | None = None
+        seen_training_lookback_days: int | None = None
 
         def __init__(self, config: object) -> None:
             FakeXGBModel.seen_n_recent_hours = int(config.n_recent_hours)
+            FakeXGBModel.seen_training_lookback_days = int(config.training_lookback_days)
 
         def evaluate_hourly(self, rows: list[dict[str, object]]) -> dict[str, object]:
             assert rows
@@ -102,6 +104,7 @@ def test_benchmark_rolling_hourly_uses_xgboost_path(
                     "rows_scored": 3,
                     "days_with_cached_preprocessing": ["2026-01-01"],
                     "n_recent_hours": 4,
+                    "training_lookback_days": 7,
                 },
             }
 
@@ -114,7 +117,13 @@ def test_benchmark_rolling_hourly_uses_xgboost_path(
     _write_recipe(
         recipe_path,
         model_id="model.job_runtime_xgboost",
-        split_block="\n".join(["  method: rolling_hourly", "  n_recent_hours: 4"]),
+        split_block="\n".join(
+            [
+                "  method: rolling_hourly",
+                "  n_recent_hours: 4",
+                "  training_lookback_days: 7",
+            ]
+        ),
         table_path=table_path,
     )
 
@@ -125,6 +134,7 @@ def test_benchmark_rolling_hourly_uses_xgboost_path(
     metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
 
     assert FakeXGBModel.seen_n_recent_hours == 4
+    assert FakeXGBModel.seen_training_lookback_days == 7
     assert result["model"]["id"] == "model.job_runtime_xgboost"
     assert result["metrics"]["mae"] == 1.25
     assert result["metrics"]["rmse"] == 2.5
@@ -155,3 +165,47 @@ def test_benchmark_rejects_unsupported_model_split_combo(
 
     with pytest.raises(typer.BadParameter, match="Unsupported model/split combination"):
         cli.benchmark(recipe_path)
+
+
+def test_benchmark_rolling_hourly_uses_default_training_lookback_days(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class FakeXGBModel:
+        seen_training_lookback_days: int | None = None
+
+        def __init__(self, config: object) -> None:
+            FakeXGBModel.seen_training_lookback_days = int(config.training_lookback_days)
+
+        def evaluate_hourly(self, rows: list[dict[str, object]]) -> dict[str, object]:
+            assert rows
+            return {
+                "mae": 1.0,
+                "rmse": 1.5,
+                "hourly": [{"status": "ok", "metrics": {"mae": 1.0, "rmse": 1.5}}],
+                "summary": {
+                    "hours_total": 3,
+                    "hours_scored": 1,
+                    "hours_skipped": 2,
+                    "preprocessing_refits": 1,
+                    "rows_scored": 2,
+                    "days_with_cached_preprocessing": ["2026-01-01"],
+                    "n_recent_hours": 3,
+                    "training_lookback_days": 100,
+                },
+            }
+
+    monkeypatch.setattr(cli, "JobRuntimeXGBoostModel", FakeXGBModel)
+    monkeypatch.chdir(tmp_path)
+
+    table_path = tmp_path / "jobs.parquet"
+    recipe_path = tmp_path / "rolling_default_lookback.yml"
+    _write_dataset(table_path)
+    _write_recipe(
+        recipe_path,
+        model_id="model.job_runtime_xgboost",
+        split_block="\n".join(["  method: rolling_hourly", "  n_recent_hours: 3"]),
+        table_path=table_path,
+    )
+
+    cli.benchmark(recipe_path)
+    assert FakeXGBModel.seen_training_lookback_days == 100

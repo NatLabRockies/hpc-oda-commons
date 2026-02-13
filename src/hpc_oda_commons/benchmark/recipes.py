@@ -81,3 +81,14 @@ def validate_recipe(payload: dict[str, Any], *, path: Path | None = None) -> Non
                     message="split.n_recent_hours must be a positive integer for rolling_hourly",
                     path=str(path) if path else None,
                 )
+            lookback_days = split.get("training_lookback_days")
+            if lookback_days is not None and (
+                not isinstance(lookback_days, int) or lookback_days <= 0
+            ):
+                raise SchemaValidationError(
+                    schema_id=RECIPE_SCHEMA_ID,
+                    message=(
+                        "split.training_lookback_days must be a positive integer for rolling_hourly"
+                    ),
+                    path=str(path) if path else None,
+                )

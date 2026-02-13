@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from hpc_oda_commons.models.job_runtime_xgboost.split import (
     DailyPreprocessingCache,
     build_hourly_rolling_splits,
@@ -80,6 +82,37 @@ def test_daily_refresh_flags_fire_once_per_day() -> None:
     ]
 
 
+def test_training_lookback_days_limits_training_rows() -> None:
+    rows = [
+        {
+            "job_id": 1,
+            "submit_time": "2025-10-15T10:00:00Z",
+            "end_time": "2025-10-15T11:00:00Z",
+        },
+        {
+            "job_id": 2,
+            "submit_time": "2025-12-31T22:05:00Z",
+            "end_time": "2025-12-31T22:30:00Z",
+        },
+        {
+            "job_id": 3,
+            "submit_time": "2026-01-01T00:05:00Z",
+            "end_time": "2026-01-01T00:10:00Z",
+        },
+    ]
+
+    default_window = build_hourly_rolling_splits(rows, n_recent_hours=1)[0]
+    short_window = build_hourly_rolling_splits(
+        rows,
+        n_recent_hours=1,
+        training_lookback_days=1,
+    )[0]
+
+    assert default_window.train_row_indices == (0, 1)
+    assert short_window.train_row_indices == (1,)
+    assert short_window.test_row_indices == (2,)
+
+
 def test_daily_preprocessing_cache_recomputes_once_per_day() -> None:
     cache = DailyPreprocessingCache()
     calls: list[str] = []
@@ -99,3 +132,9 @@ def test_daily_preprocessing_cache_recomputes_once_per_day() -> None:
     assert calls == ["2026-01-01", "2026-01-02"]
     assert len(cache) == 2
     assert cache.keys() == ("2026-01-01", "2026-01-02")
+
+
+def test_lookback_days_must_be_positive() -> None:
+    rows = [{"submit_time": "2026-01-01T00:00:00Z", "end_time": "2026-01-01T00:10:00Z"}]
+    with pytest.raises(ValueError, match="training_lookback_days must be positive"):
+        build_hourly_rolling_splits(rows, training_lookback_days=0)

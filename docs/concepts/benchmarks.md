@@ -16,6 +16,8 @@ Example recipe path for v0.1:
 Supported split methods in v0.1:
 1. `fixed` (baseline model path)
 2. `rolling_hourly` (XGBoost alternate model path)
+   Rolling-hourly uses required `n_recent_hours` and optional
+   `training_lookback_days` (default `100`).
 
 ## Metrics
 The runtime prediction baseline uses regression metrics:

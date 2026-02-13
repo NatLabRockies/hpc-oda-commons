@@ -25,7 +25,7 @@ generated via:
 
 The benchmark path uses strict hourly splits:
 
-- Train rows: `end_time < split_time`
+- Train rows: `split_time - training_lookback_days <= end_time < split_time`
 - Test rows: `split_time <= submit_time < split_time + 1 hour`
 
 A new XGBoost regressor is trained each split hour. One-hot/SVD preprocessing
@@ -67,5 +67,6 @@ For this model in v0.1, use:
 - `model.id: model.job_runtime_xgboost`
 - `split.method: rolling_hourly`
 - `split.n_recent_hours: <positive integer>`
+- `split.training_lookback_days: <positive integer>` (optional, default `100`)
 
 Supported benchmark metrics for rolling-hourly mode are `mae` and `rmse`.

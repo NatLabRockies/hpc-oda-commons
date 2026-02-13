@@ -47,7 +47,8 @@
         "method": { "type": "string", "enum": ["fixed", "rolling_hourly"] },
         "train_fraction": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
         "seed": { "type": "integer" },
-        "n_recent_hours": { "type": "integer", "minimum": 1 }
+        "n_recent_hours": { "type": "integer", "minimum": 1 },
+        "training_lookback_days": { "type": "integer", "minimum": 1 }
       },
       "required": ["method"],
       "allOf": [

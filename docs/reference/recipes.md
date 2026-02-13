@@ -25,4 +25,5 @@ Required fields in v0.1:
 
 Split modes in v0.1:
 - `fixed` with `train_fraction` and `seed`
-- `rolling_hourly` with `n_recent_hours`
+- `rolling_hourly` with required `n_recent_hours` and optional
+  `training_lookback_days` (default `100`)

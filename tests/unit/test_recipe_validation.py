@@ -43,10 +43,23 @@ def test_validate_recipe_rolling_hourly_ok() -> None:
     validate_recipe(_valid_rolling_recipe())
 
 
+def test_validate_recipe_rolling_hourly_with_optional_lookback_ok() -> None:
+    payload = _valid_rolling_recipe()
+    payload["split"]["training_lookback_days"] = 30
+    validate_recipe(payload)
+
+
 def test_validate_recipe_rolling_hourly_requires_n_recent_hours() -> None:
     payload = _valid_rolling_recipe()
     payload["split"] = {"method": "rolling_hourly"}
     with pytest.raises(SchemaValidationError):
+        validate_recipe(payload)
+
+
+def test_validate_recipe_rolling_hourly_invalid_lookback_days() -> None:
+    payload = _valid_rolling_recipe()
+    payload["split"]["training_lookback_days"] = 0
+    with pytest.raises(SchemaValidationError, match="training_lookback_days"):
         validate_recipe(payload)
 
 

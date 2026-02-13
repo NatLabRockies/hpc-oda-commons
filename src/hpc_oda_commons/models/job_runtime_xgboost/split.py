@@ -58,16 +58,19 @@ def build_hourly_rolling_splits(
     rows: list[dict[str, Any]],
     *,
     n_recent_hours: int = 1000,
+    training_lookback_days: int = 100,
     submit_time_field: str = "submit_time",
     end_time_field: str = "end_time",
 ) -> list[HourlyRollingSplit]:
     """
     Build rolling-hour split windows with strict train/test semantics:
-    - train: end_time < split_time
+    - train: split_time - lookback_days <= end_time < split_time
     - test: split_time <= submit_time < split_time + 1 hour
     """
     if n_recent_hours <= 0:
         raise ValueError("n_recent_hours must be positive")
+    if training_lookback_days <= 0:
+        raise ValueError("training_lookback_days must be positive")
 
     parsed: list[tuple[int, datetime | None, datetime | None]] = []
     max_ts: datetime | None = None
@@ -93,12 +96,15 @@ def build_hourly_rolling_splits(
     previous_day: str | None = None
     for split_time in split_hours:
         split_end = split_time + timedelta(hours=1)
+        training_window_start = split_time - timedelta(days=training_lookback_days)
         day_key = split_time.date().isoformat()
         refresh = previous_day is None or day_key != previous_day
         previous_day = day_key
 
         train_indices = tuple(
-            idx for idx, _submit_ts, end_ts in parsed if end_ts is not None and end_ts < split_time
+            idx
+            for idx, _submit_ts, end_ts in parsed
+            if end_ts is not None and training_window_start <= end_ts < split_time
         )
         test_indices = tuple(
             idx

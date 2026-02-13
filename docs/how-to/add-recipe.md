@@ -17,4 +17,5 @@ Minimum required fields (v0.1):
 
 Split notes (v0.1):
 - `fixed` split requires `train_fraction` and `seed`
-- `rolling_hourly` split requires `n_recent_hours`
+- `rolling_hourly` split requires `n_recent_hours` and accepts optional
+  `training_lookback_days` (default `100`)

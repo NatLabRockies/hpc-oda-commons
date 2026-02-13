@@ -85,6 +85,7 @@ def test_evaluate_hourly_returns_metrics_and_hourly_details(
     assert payload["summary"]["hours_skipped"] >= 0
     assert payload["summary"]["preprocessing_refits"] == 2
     assert payload["summary"]["rows_scored"] > 0
+    assert payload["summary"]["training_lookback_days"] == 100
 
     hourly = payload["hourly"]
     assert len(hourly) == 10

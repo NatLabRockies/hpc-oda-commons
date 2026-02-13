@@ -564,7 +564,13 @@ def _run_rolling_hourly_xgboost_benchmark(
         )
 
     n_recent_hours = int(split.get("n_recent_hours", 1000))
-    model = JobRuntimeXGBoostModel(config=JobRuntimeXGBoostConfig(n_recent_hours=n_recent_hours))
+    training_lookback_days = int(split.get("training_lookback_days", 100))
+    model = JobRuntimeXGBoostModel(
+        config=JobRuntimeXGBoostConfig(
+            n_recent_hours=n_recent_hours,
+            training_lookback_days=training_lookback_days,
+        )
+    )
     eval_payload = model.evaluate_hourly(rows)
 
     metrics = {

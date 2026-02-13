@@ -46,6 +46,7 @@ class JobRuntimeXGBoostConfig:
     """
 
     n_recent_hours: int = 1000
+    training_lookback_days: int = 100
     submit_time_field: str = "submit_time"
     end_time_field: str = "end_time"
     explained_variance_target: float = 0.95
@@ -113,6 +114,7 @@ class JobRuntimeXGBoostModel:
         splits = build_hourly_rolling_splits(
             rows,
             n_recent_hours=self.config.n_recent_hours,
+            training_lookback_days=self.config.training_lookback_days,
             submit_time_field=self.config.submit_time_field,
             end_time_field=self.config.end_time_field,
         )
@@ -211,6 +213,7 @@ class JobRuntimeXGBoostModel:
             "rows_scored": len(all_y_true),
             "days_with_cached_preprocessing": list(cache.keys()),
             "n_recent_hours": self.config.n_recent_hours,
+            "training_lookback_days": self.config.training_lookback_days,
         }
 
         return {
@@ -228,11 +231,18 @@ class JobRuntimeXGBoostModel:
         rows: list[dict[str, Any]],
         *,
         n_recent_hours: int | None = None,
+        training_lookback_days: int | None = None,
     ) -> list[dict[str, Any]]:
         split_count = n_recent_hours if n_recent_hours is not None else self.config.n_recent_hours
+        lookback_days = (
+            training_lookback_days
+            if training_lookback_days is not None
+            else self.config.training_lookback_days
+        )
         splits = build_hourly_rolling_splits(
             rows,
             n_recent_hours=split_count,
+            training_lookback_days=lookback_days,
             submit_time_field=self.config.submit_time_field,
             end_time_field=self.config.end_time_field,
         )

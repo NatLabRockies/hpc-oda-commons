@@ -46,4 +46,5 @@ and setting:
 split:
   method: rolling_hourly
   n_recent_hours: 24
+  training_lookback_days: 30
 ```

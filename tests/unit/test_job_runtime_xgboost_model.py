@@ -15,6 +15,7 @@ from hpc_oda_commons.models.job_runtime_xgboost.model import (
 def test_config_defaults() -> None:
     config = JobRuntimeXGBoostConfig()
     assert config.n_recent_hours == 1000
+    assert config.training_lookback_days == 100
     assert config.submit_time_field == "submit_time"
     assert config.end_time_field == "end_time"
     assert config.explained_variance_target == 0.95
@@ -84,5 +85,31 @@ def test_build_hourly_split_plan() -> None:
     assert len(plan) == 2
     assert plan[0]["split_time"] == "2026-01-01T22:00:00Z"
     assert plan[0]["refresh_preprocessing"] is True
+    assert plan[0]["train_row_count"] == 0
     assert plan[1]["split_time"] == "2026-01-01T23:00:00Z"
     assert plan[1]["refresh_preprocessing"] is False
+    assert plan[1]["train_row_count"] == 1
+
+
+def test_build_hourly_split_plan_respects_training_lookback_override() -> None:
+    rows = [
+        {
+            "submit_time": "2025-10-15T10:00:00Z",
+            "end_time": "2025-10-15T11:00:00Z",
+        },
+        {
+            "submit_time": "2025-12-31T22:05:00Z",
+            "end_time": "2025-12-31T22:30:00Z",
+        },
+        {
+            "submit_time": "2026-01-01T00:05:00Z",
+            "end_time": "2026-01-01T00:10:00Z",
+        },
+    ]
+    model = JobRuntimeXGBoostModel()
+
+    wide = model.build_hourly_split_plan(rows, n_recent_hours=1)
+    narrow = model.build_hourly_split_plan(rows, n_recent_hours=1, training_lookback_days=1)
+
+    assert wide[0]["train_row_count"] == 2
+    assert narrow[0]["train_row_count"] == 1

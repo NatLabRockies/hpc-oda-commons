@@ -32,6 +32,8 @@ This reference covers the v0.1 `hpc-oda` commands.
    - `model.job_runtime_baseline` + `split.method: fixed`
    - `model.job_runtime_xgboost` + `split.method: rolling_hourly`
    For rolling-hourly recipes, `split.n_recent_hours` is required.
+   Optional: `split.training_lookback_days` (default `100`) limits training rows
+   to the previous `n` days before each split hour.
 
 ## Leaderboard
 1. `hpc-oda leaderboard --runs <dir> --out <dir>`
