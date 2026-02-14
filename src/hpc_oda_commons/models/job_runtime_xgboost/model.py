@@ -409,6 +409,7 @@ class JobRuntimeXGBoostModel:
             infrequent_fraction=self.config.infrequent_category_fraction,
             min_frequency_floor=self.config.min_frequency_floor,
             target_max_one_hot_width=self.config.target_max_one_hot_width,
+            reference_row_count=len(train_rows),
         )
 
         numeric_columns = self._detect_numeric_columns(

@@ -6,10 +6,12 @@ from types import SimpleNamespace
 
 import pytest
 
+from hpc_oda_commons.models.job_runtime_xgboost import model as model_module
 from hpc_oda_commons.models.job_runtime_xgboost.model import (
     JobRuntimeXGBoostConfig,
     JobRuntimeXGBoostModel,
 )
+from hpc_oda_commons.models.job_runtime_xgboost.preprocessing import select_one_hot_config
 
 
 def test_config_defaults() -> None:
@@ -113,3 +115,47 @@ def test_build_hourly_split_plan_respects_training_lookback_override() -> None:
 
     assert wide[0]["train_row_count"] == 2
     assert narrow[0]["train_row_count"] == 1
+
+
+def test_daily_preprocessing_passes_training_row_count_to_one_hot_selector(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {
+            "submit_time": "2026-01-01T22:05:00Z",
+            "end_time": "2026-01-01T22:55:00Z",
+            "runtime_seconds": 30.0,
+            "user": "alice",
+            "partition": "debug",
+            "account": "acct_a",
+            "allocated_cpus": 4.0,
+        },
+        {
+            "submit_time": "2026-01-01T22:15:00Z",
+            "end_time": "2026-01-01T22:45:00Z",
+            "runtime_seconds": 35.0,
+            "user": "bob",
+            "partition": "compute",
+            "account": "acct_b",
+            "allocated_cpus": 8.0,
+        },
+        {
+            "submit_time": "2026-01-01T22:25:00Z",
+            "end_time": "2026-01-01T22:40:00Z",
+            "runtime_seconds": 40.0,
+            "user": "carol",
+            "partition": "debug",
+            "account": "acct_a",
+            "allocated_cpus": 16.0,
+        },
+    ]
+    model = JobRuntimeXGBoostModel(JobRuntimeXGBoostConfig(max_svd_components=2))
+    seen: dict[str, int | None] = {"reference_row_count": None}
+
+    def spy_select_one_hot_config(*args: object, **kwargs: object) -> object:
+        seen["reference_row_count"] = int(kwargs["reference_row_count"])
+        return select_one_hot_config(*args, **kwargs)
+
+    monkeypatch.setattr(model_module, "select_one_hot_config", spy_select_one_hot_config)
+    _ = model._build_daily_preprocessing_artifacts(rows)
+    assert seen["reference_row_count"] == len(rows)
