@@ -566,6 +566,13 @@ def _run_rolling_hourly_xgboost_benchmark(
 
     n_recent_hours = int(split.get("n_recent_hours", 1000))
     training_lookback_days = int(split.get("training_lookback_days", 100))
+    if verbose:
+        console.print(
+            "[blue][verbose][/blue] rolling_hourly/xgboost config: "
+            f"rows={len(rows)}, "
+            f"n_recent_hours={n_recent_hours}, "
+            f"training_lookback_days={training_lookback_days}"
+        )
     model = JobRuntimeXGBoostModel(
         config=JobRuntimeXGBoostConfig(
             n_recent_hours=n_recent_hours,
@@ -861,6 +868,11 @@ def benchmark(
     if table_path is None or not table_path.exists():
         ds_dir = root / ".hpc_oda" / "cache" / "datasets" / "synthetic_job_runtime_tiny"
         table_path, _meta = _generate_tiny_runtime_dataset(ds_dir)
+        if verbose:
+            console.print(
+                "[blue][verbose][/blue] dataset path missing in recipe; "
+                f"using generated tiny dataset at {table_path}"
+            )
 
     ds_hash = table_hash(table_path)
 
@@ -876,6 +888,19 @@ def benchmark(
     model_version = str(model_ref.get("version", "0.1.0"))
     split_method = split.get("method", "fixed")
     metric_defs = recipe_payload.get("metrics", []) or []
+    if verbose:
+        console.print(
+            "[blue][verbose][/blue] benchmark resolved: "
+            f"recipe_id={recipe_id}, "
+            f"model={model_id}@{model_version}, "
+            f"split={split_method}, "
+            f"table={table_path}, "
+            f"rows={len(rows)}"
+        )
+        console.print(
+            "[blue][verbose][/blue] metrics requested: "
+            + ", ".join(str(m.get("name", "")) for m in metric_defs)
+        )
 
     if model_id == "model.job_runtime_baseline" and split_method == "fixed":
         metrics, metrics_payload = _run_fixed_baseline_benchmark(
@@ -921,6 +946,13 @@ def benchmark(
     write_result_bundle(
         bundle_dir, result=result_payload, metrics=metrics_payload, provenance=prov, validate=True
     )
+
+    if verbose:
+        console.print(
+            "[blue][verbose][/blue] benchmark metrics: "
+            + ", ".join(f"{k}={v:.6f}" for k, v in sorted(metrics.items()))
+        )
+        console.print(f"[blue][verbose][/blue] result bundle written: {bundle_dir}")
 
     console.print(f"[green]Benchmark complete[/green] → runs/{run_id}/")
 

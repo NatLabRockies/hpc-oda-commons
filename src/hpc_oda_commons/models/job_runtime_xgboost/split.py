@@ -61,6 +61,7 @@ def build_hourly_rolling_splits(
     training_lookback_days: int = 100,
     submit_time_field: str = "submit_time",
     end_time_field: str = "end_time",
+    verbose: bool = False,
 ) -> list[HourlyRollingSplit]:
     """
     Build rolling-hour split windows with strict train/test semantics:
@@ -71,6 +72,14 @@ def build_hourly_rolling_splits(
         raise ValueError("n_recent_hours must be positive")
     if training_lookback_days <= 0:
         raise ValueError("training_lookback_days must be positive")
+
+    if verbose:
+        print(
+            "[split][verbose] building hourly splits "
+            f"rows={len(rows)} "
+            f"n_recent_hours={n_recent_hours} "
+            f"training_lookback_days={training_lookback_days}"
+        )
 
     parsed: list[tuple[int, datetime | None, datetime | None]] = []
     max_ts: datetime | None = None
@@ -91,6 +100,12 @@ def build_hourly_rolling_splits(
     latest_hour = _floor_hour(max_ts)
     start_hour = latest_hour - timedelta(hours=n_recent_hours - 1)
     split_hours = [start_hour + timedelta(hours=i) for i in range(n_recent_hours)]
+    if verbose:
+        print(
+            "[split][verbose] split window "
+            f"start={_to_iso_z(start_hour)} end={_to_iso_z(latest_hour)} "
+            f"latest_hour={_to_iso_z(latest_hour)}"
+        )
 
     splits: list[HourlyRollingSplit] = []
     previous_day: str | None = None
@@ -124,6 +139,18 @@ def build_hourly_rolling_splits(
                 train_row_count=len(train_indices),
                 test_row_count=len(test_indices),
             )
+        )
+
+    if verbose:
+        nonempty_train = sum(1 for split in splits if split.train_row_count > 0)
+        nonempty_test = sum(1 for split in splits if split.test_row_count > 0)
+        refresh_points = sum(1 for split in splits if split.refresh_preprocessing)
+        print(
+            "[split][verbose] built splits "
+            f"total={len(splits)} "
+            f"nonempty_train={nonempty_train} "
+            f"nonempty_test={nonempty_test} "
+            f"refresh_points={refresh_points}"
         )
 
     return splits

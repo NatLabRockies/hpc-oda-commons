@@ -149,3 +149,60 @@ def test_evaluate_hourly_verbose_uses_tqdm(
     assert kwargs["desc"] == "rolling_hourly/xgboost"
     assert kwargs["unit"] == "hour"
     assert kwargs["disable"] is False
+
+
+def test_evaluate_hourly_passes_verbose_to_split_builder(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = JobRuntimeXGBoostConfig(n_recent_hours=2)
+    model = JobRuntimeXGBoostModel(config)
+    monkeypatch.setattr(model, "_check_dependencies", lambda: None)
+
+    seen_verbose: dict[str, bool | None] = {"value": None}
+
+    def fake_build_hourly_rolling_splits(
+        rows: list[dict[str, object]],
+        *,
+        n_recent_hours: int = 1000,
+        training_lookback_days: int = 100,
+        submit_time_field: str = "submit_time",
+        end_time_field: str = "end_time",
+        verbose: bool = False,
+    ) -> list[object]:
+        _ = (
+            rows,
+            n_recent_hours,
+            training_lookback_days,
+            submit_time_field,
+            end_time_field,
+        )
+        seen_verbose["value"] = verbose
+        return []
+
+    monkeypatch.setattr(
+        "hpc_oda_commons.models.job_runtime_xgboost.model.build_hourly_rolling_splits",
+        fake_build_hourly_rolling_splits,
+    )
+
+    with pytest.raises(ValueError, match="No hourly splits produced scored predictions"):
+        model.evaluate_hourly(_sample_rows(), verbose=True)
+
+    assert seen_verbose["value"] is True
+
+
+def test_evaluate_hourly_verbose_prints_summary(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config = JobRuntimeXGBoostConfig(
+        n_recent_hours=4,
+        max_svd_components=8,
+        target_max_one_hot_width=64,
+    )
+    model = JobRuntimeXGBoostModel(config)
+    monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
+
+    _ = model.evaluate_hourly(_sample_rows(), verbose=True)
+    captured = capsys.readouterr()
+    assert "[xgboost][verbose] starting hourly evaluation" in captured.out
+    assert "[xgboost][verbose] summary" in captured.out

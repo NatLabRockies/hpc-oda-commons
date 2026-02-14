@@ -226,6 +226,7 @@ def test_benchmark_rolling_hourly_uses_default_training_lookback_days(
 def test_benchmark_verbose_prints_progress(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     class FakeXGBModel:
         seen_verbose: bool | None = None
@@ -278,3 +279,7 @@ def test_benchmark_verbose_prints_progress(
 
     cli.benchmark(recipe_path, verbose=True)
     assert FakeXGBModel.seen_verbose is True
+    captured = capsys.readouterr()
+    assert "benchmark resolved:" in captured.out
+    assert "rolling_hourly/xgboost config:" in captured.out
+    assert "benchmark metrics:" in captured.out

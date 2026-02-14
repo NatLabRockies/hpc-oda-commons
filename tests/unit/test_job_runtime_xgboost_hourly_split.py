@@ -138,3 +138,22 @@ def test_lookback_days_must_be_positive() -> None:
     rows = [{"submit_time": "2026-01-01T00:00:00Z", "end_time": "2026-01-01T00:10:00Z"}]
     with pytest.raises(ValueError, match="training_lookback_days must be positive"):
         build_hourly_rolling_splits(rows, training_lookback_days=0)
+
+
+def test_build_hourly_splits_verbose_prints_summary(capsys: pytest.CaptureFixture[str]) -> None:
+    rows = [
+        {
+            "submit_time": "2026-01-01T22:05:00Z",
+            "end_time": "2026-01-01T22:45:00Z",
+        },
+        {
+            "submit_time": "2026-01-01T23:15:00Z",
+            "end_time": "2026-01-01T23:30:00Z",
+        },
+    ]
+    splits = build_hourly_rolling_splits(rows, n_recent_hours=2, verbose=True)
+    assert len(splits) == 2
+    captured = capsys.readouterr()
+    assert "[split][verbose] building hourly splits" in captured.out
+    assert "[split][verbose] split window" in captured.out
+    assert "[split][verbose] built splits" in captured.out

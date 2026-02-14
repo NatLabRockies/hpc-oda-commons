@@ -123,6 +123,7 @@ class JobRuntimeXGBoostModel:
             training_lookback_days=self.config.training_lookback_days,
             submit_time_field=self.config.submit_time_field,
             end_time_field=self.config.end_time_field,
+            verbose=verbose,
         )
         cache = self.new_daily_preprocessing_cache()
 
@@ -130,6 +131,13 @@ class JobRuntimeXGBoostModel:
         all_y_true: list[float] = []
         all_y_pred: list[float] = []
         preprocessing_refits = 0
+        if verbose:
+            print(
+                "[xgboost][verbose] starting hourly evaluation "
+                f"splits={len(splits)} "
+                f"n_recent_hours={self.config.n_recent_hours} "
+                f"training_lookback_days={self.config.training_lookback_days}"
+            )
         split_iter = tqdm(
             splits,
             desc="rolling_hourly/xgboost",
@@ -150,6 +158,13 @@ class JobRuntimeXGBoostModel:
                         preprocessing_refit=False,
                     )
                 )
+                if verbose:
+                    print(
+                        "[xgboost][verbose] split="
+                        f"{split.split_time_iso} status=skipped "
+                        "reason=insufficient_training_rows "
+                        f"train={len(train_rows)} test={len(test_rows)}"
+                    )
                 continue
 
             artifacts, was_refit = cache.get_or_create(
@@ -158,6 +173,11 @@ class JobRuntimeXGBoostModel:
             )
             if was_refit:
                 preprocessing_refits += 1
+                if verbose:
+                    print(
+                        "[xgboost][verbose] split="
+                        f"{split.split_time_iso} preprocessing_refit=True day={split.day_key}"
+                    )
 
             if len(test_rows) < 1:
                 hourly_entries.append(
@@ -167,6 +187,14 @@ class JobRuntimeXGBoostModel:
                         preprocessing_refit=was_refit,
                     )
                 )
+                if verbose:
+                    print(
+                        "[xgboost][verbose] split="
+                        f"{split.split_time_iso} status=skipped "
+                        "reason=insufficient_test_rows "
+                        f"train={len(train_rows)} test={len(test_rows)} "
+                        f"preprocessing_refit={was_refit}"
+                    )
                 continue
 
             x_train = self._transform_rows(train_rows, artifacts)
@@ -179,6 +207,14 @@ class JobRuntimeXGBoostModel:
                         preprocessing_refit=was_refit,
                     )
                 )
+                if verbose:
+                    print(
+                        "[xgboost][verbose] split="
+                        f"{split.split_time_iso} status=skipped "
+                        "reason=no_features_after_preprocessing "
+                        f"train={len(train_rows)} test={len(test_rows)} "
+                        f"preprocessing_refit={was_refit}"
+                    )
                 continue
 
             model = self._new_xgb_regressor()
@@ -187,6 +223,15 @@ class JobRuntimeXGBoostModel:
             y_pred = [float(v) for v in pred]
             y_true = [float(v) for v in y_test]
             metrics = self._compute_regression_metrics(y_true, y_pred)
+            if verbose:
+                print(
+                    "[xgboost][verbose] split="
+                    f"{split.split_time_iso} status=ok "
+                    f"train={len(train_rows)} test={len(test_rows)} "
+                    f"preprocessing_refit={was_refit} "
+                    f"features={int(x_train.shape[1])} "
+                    f"mae={metrics['mae']:.6f} rmse={metrics['rmse']:.6f}"
+                )
 
             all_y_true.extend(y_true)
             all_y_pred.extend(y_pred)
@@ -227,6 +272,16 @@ class JobRuntimeXGBoostModel:
             "n_recent_hours": self.config.n_recent_hours,
             "training_lookback_days": self.config.training_lookback_days,
         }
+        if verbose:
+            print(
+                "[xgboost][verbose] summary "
+                f"hours_total={summary['hours_total']} "
+                f"hours_scored={summary['hours_scored']} "
+                f"hours_skipped={summary['hours_skipped']} "
+                f"preprocessing_refits={summary['preprocessing_refits']} "
+                f"rows_scored={summary['rows_scored']} "
+                f"mae={global_metrics['mae']:.6f} rmse={global_metrics['rmse']:.6f}"
+            )
 
         return {
             **global_metrics,
@@ -257,6 +312,7 @@ class JobRuntimeXGBoostModel:
             training_lookback_days=lookback_days,
             submit_time_field=self.config.submit_time_field,
             end_time_field=self.config.end_time_field,
+            verbose=False,
         )
         return [split.to_dict() for split in splits]
 
