@@ -171,7 +171,6 @@ def select_one_hot_config(
     infrequent_fraction: float = 0.01,
     min_frequency_floor: int = 2,
     target_max_one_hot_width: int = 2048,
-    reference_row_count: int | None = None,
 ) -> OneHotConfig:
     columns = tuple(sorted(name for name, profile in profiles.items() if profile.cardinality > 0))
     if not columns:
@@ -196,29 +195,19 @@ def select_one_hot_config(
             category_widths=empty_widths,
         )
 
-    frequency_reference = (
-        int(reference_row_count) if reference_row_count is not None else max_non_null
-    )
-    if frequency_reference <= 0:
-        frequency_reference = max_non_null
-
     start = max(
         min_frequency_floor,
-        int(math.ceil(float(frequency_reference) * infrequent_fraction)),
+        int(math.ceil(float(max_non_null) * infrequent_fraction)),
         1,
     )
-    baseline_min_freq = min(start, max_non_null)
-    min_freq = baseline_min_freq
+    min_freq = min(start, max_non_null)
 
     total_width, widths = _total_estimated_width(profiles, columns, min_freq)
     while total_width > target_max_one_hot_width and min_freq < max_non_null:
         min_freq += 1
         total_width, widths = _total_estimated_width(profiles, columns, min_freq)
 
-    min_allowed = (
-        baseline_min_freq if reference_row_count is not None else max(1, min_frequency_floor)
-    )
-    while min_freq > min_allowed:
+    while min_freq > max(1, min_frequency_floor):
         candidate = min_freq - 1
         candidate_total, candidate_widths = _total_estimated_width(profiles, columns, candidate)
         if candidate_total > target_max_one_hot_width:
@@ -446,7 +435,6 @@ def build_preprocessing_diagnostics(
         infrequent_fraction=infrequent_fraction,
         min_frequency_floor=min_frequency_floor,
         target_max_one_hot_width=target_max_one_hot_width,
-        reference_row_count=len(rows),
     )
     one_hot_analysis, encoded = analyze_one_hot_encoding(rows, one_hot_config)
     svd_plan = select_svd_components(

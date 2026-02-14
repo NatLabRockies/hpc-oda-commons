@@ -58,29 +58,6 @@ def test_select_one_hot_config_controls_estimated_width() -> None:
     assert config.columns
 
 
-def test_select_one_hot_config_reference_row_count_sets_min_frequency() -> None:
-    rows = _sample_rows()
-    profiles = profile_categorical_features(rows)
-
-    full_window = select_one_hot_config(
-        profiles,
-        infrequent_fraction=0.02,
-        min_frequency_floor=2,
-        target_max_one_hot_width=5000,
-        reference_row_count=240,
-    )
-    small_window = select_one_hot_config(
-        profiles,
-        infrequent_fraction=0.02,
-        min_frequency_floor=2,
-        target_max_one_hot_width=5000,
-        reference_row_count=50,
-    )
-
-    assert full_window.min_frequency_count == 5
-    assert small_window.min_frequency_count == 2
-
-
 def test_select_svd_components_for_target_coverage() -> None:
     rows = _sample_rows()
     profiles = profile_categorical_features(rows)

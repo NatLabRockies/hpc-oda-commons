@@ -50,15 +50,15 @@ class JobRuntimeXGBoostConfig:
     training_lookback_days: int = 100
     submit_time_field: str = "submit_time"
     end_time_field: str = "end_time"
-    explained_variance_target: float = 0.95
-    infrequent_category_fraction: float = 0.01
+    explained_variance_target: float = 0.98
+    infrequent_category_fraction: float = 0.001
     min_frequency_floor: int = 2
     target_max_one_hot_width: int = 2048
     max_svd_components: int = 256
     categorical_top_k: int = 10
     random_state: int = 42
 
-    n_estimators: int = 300
+    n_estimators: int = 100
     max_depth: int = 8
     learning_rate: float = 0.05
     subsample: float = 0.8
@@ -350,14 +350,14 @@ class JobRuntimeXGBoostModel:
         from xgboost import XGBRegressor
 
         return XGBRegressor(
-            objective="reg:squarederror",
-            n_estimators=self.config.n_estimators,
-            max_depth=self.config.max_depth,
-            learning_rate=self.config.learning_rate,
-            subsample=self.config.subsample,
-            colsample_bytree=self.config.colsample_bytree,
+            # objective="reg:squarederror",
+            # n_estimators=self.config.n_estimators,
+            # max_depth=self.config.max_depth,
+            # learning_rate=self.config.learning_rate,
+            # subsample=self.config.subsample,
+            # colsample_bytree=self.config.colsample_bytree,
             random_state=self.config.random_state,
-            n_jobs=1,
+            # n_jobs=1,
             verbosity=0,
         )
 
@@ -409,7 +409,6 @@ class JobRuntimeXGBoostModel:
             infrequent_fraction=self.config.infrequent_category_fraction,
             min_frequency_floor=self.config.min_frequency_floor,
             target_max_one_hot_width=self.config.target_max_one_hot_width,
-            reference_row_count=len(train_rows),
         )
 
         numeric_columns = self._detect_numeric_columns(
