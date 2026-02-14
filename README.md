@@ -56,6 +56,8 @@ HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml
 
 # Benchmark the alternate XGBoost rolling-hourly recipe
 HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/xgb_hourly_recent.yml
+# Add -v/--verbose for progress updates during long rolling-hour runs
+HPC_ODA_OFFLINE=1 hpc-oda benchmark -v recipes/job-runtime/xgb_hourly_recent.yml
 
 # Generate a static leaderboard from runs/
 hpc-oda leaderboard --runs runs --out leaderboard

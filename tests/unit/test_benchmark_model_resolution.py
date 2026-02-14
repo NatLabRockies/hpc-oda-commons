@@ -209,3 +209,97 @@ def test_benchmark_rolling_hourly_uses_default_training_lookback_days(
 
     cli.benchmark(recipe_path)
     assert FakeXGBModel.seen_training_lookback_days == 100
+
+
+def test_benchmark_verbose_prints_progress(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    class FakeXGBModel:
+        def __init__(self, config: object) -> None:
+            _ = config
+
+        def evaluate_hourly(
+            self,
+            rows: list[dict[str, object]],
+            *,
+            progress_callback: object | None = None,
+            progress_interval_hours: int = 50,
+        ) -> dict[str, object]:
+            assert rows
+            assert progress_interval_hours == 50
+            if callable(progress_callback):
+                progress_callback(
+                    {
+                        "event": "start",
+                        "hours_total": 4,
+                        "split_start_time": "2026-01-01T00:00:00Z",
+                        "split_end_time": "2026-01-01T03:00:00Z",
+                        "training_lookback_days": 7,
+                    }
+                )
+                progress_callback(
+                    {
+                        "event": "checkpoint",
+                        "hours_processed": 4,
+                        "hours_total": 4,
+                        "hours_scored": 1,
+                        "hours_skipped": 3,
+                        "preprocessing_refits": 1,
+                        "split_time": "2026-01-01T03:00:00Z",
+                    }
+                )
+                progress_callback(
+                    {
+                        "event": "done",
+                        "status": "ok",
+                        "hours_total": 4,
+                        "hours_scored": 1,
+                        "hours_skipped": 3,
+                        "rows_scored": 3,
+                        "mae": 1.25,
+                        "rmse": 2.5,
+                    }
+                )
+            return {
+                "mae": 1.25,
+                "rmse": 2.5,
+                "hourly": [{"status": "ok", "metrics": {"mae": 1.25, "rmse": 2.5}}],
+                "summary": {
+                    "hours_total": 4,
+                    "hours_scored": 1,
+                    "hours_skipped": 3,
+                    "preprocessing_refits": 1,
+                    "rows_scored": 3,
+                    "days_with_cached_preprocessing": ["2026-01-01"],
+                    "n_recent_hours": 4,
+                    "training_lookback_days": 7,
+                },
+            }
+
+    monkeypatch.setattr(cli, "JobRuntimeXGBoostModel", FakeXGBModel)
+    monkeypatch.chdir(tmp_path)
+
+    table_path = tmp_path / "jobs.parquet"
+    recipe_path = tmp_path / "rolling_verbose.yml"
+    _write_dataset(table_path)
+    _write_recipe(
+        recipe_path,
+        model_id="model.job_runtime_xgboost",
+        split_block="\n".join(
+            [
+                "  method: rolling_hourly",
+                "  n_recent_hours: 4",
+                "  training_lookback_days: 7",
+            ]
+        ),
+        table_path=table_path,
+    )
+
+    cli.benchmark(recipe_path, verbose=True)
+    output = capsys.readouterr().out
+    assert "Benchmark started" in output
+    assert "rolling_hourly/xgboost" in output
+    assert "processed=4/4" in output
+    assert "Benchmark complete" in output

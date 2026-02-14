@@ -122,3 +122,28 @@ def test_evaluate_hourly_raises_when_no_scored_predictions(
 
     with pytest.raises(ValueError, match="No hourly splits produced scored predictions"):
         model.evaluate_hourly(rows)
+
+
+def test_evaluate_hourly_emits_progress_events(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = JobRuntimeXGBoostConfig(
+        n_recent_hours=4, max_svd_components=8, target_max_one_hot_width=64
+    )
+    model = JobRuntimeXGBoostModel(config)
+    monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
+
+    events: list[dict[str, object]] = []
+    payload = model.evaluate_hourly(
+        _sample_rows(),
+        progress_callback=events.append,
+        progress_interval_hours=1,
+    )
+
+    assert payload["summary"]["hours_total"] == 4
+    assert events[0]["event"] == "start"
+    assert events[-1]["event"] == "done"
+    checkpoints = [event for event in events if event["event"] == "checkpoint"]
+    assert len(checkpoints) == 4
+    assert checkpoints[-1]["hours_processed"] == 4
+    assert checkpoints[-1]["hours_total"] == 4

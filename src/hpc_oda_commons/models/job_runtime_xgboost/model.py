@@ -5,7 +5,7 @@ import inspect
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
@@ -106,10 +106,18 @@ class JobRuntimeXGBoostModel:
             "Prediction logic lands in later increments."
         )
 
-    def evaluate_hourly(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    def evaluate_hourly(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        progress_callback: Callable[[dict[str, Any]], None] | None = None,
+        progress_interval_hours: int = 50,
+    ) -> dict[str, Any]:
         self._check_dependencies()
         if not rows:
             raise ValueError("rows must be non-empty")
+        if progress_interval_hours <= 0:
+            raise ValueError("progress_interval_hours must be positive")
 
         splits = build_hourly_rolling_splits(
             rows,
@@ -118,19 +126,52 @@ class JobRuntimeXGBoostModel:
             submit_time_field=self.config.submit_time_field,
             end_time_field=self.config.end_time_field,
         )
+        total_hours = len(splits)
         cache = self.new_daily_preprocessing_cache()
 
         hourly_entries: list[dict[str, Any]] = []
         all_y_true: list[float] = []
         all_y_pred: list[float] = []
         preprocessing_refits = 0
+        hours_scored = 0
+        hours_skipped = 0
 
-        for split in splits:
+        if progress_callback is not None and splits:
+            progress_callback(
+                {
+                    "event": "start",
+                    "hours_total": total_hours,
+                    "split_start_time": splits[0].split_time_iso,
+                    "split_end_time": splits[-1].split_time_iso,
+                    "n_recent_hours": self.config.n_recent_hours,
+                    "training_lookback_days": self.config.training_lookback_days,
+                }
+            )
+
+        def _maybe_emit_checkpoint(split_idx: int, split_time_iso: str) -> None:
+            if progress_callback is None:
+                return
+            if split_idx % progress_interval_hours != 0 and split_idx != total_hours:
+                return
+            progress_callback(
+                {
+                    "event": "checkpoint",
+                    "hours_processed": split_idx,
+                    "hours_total": total_hours,
+                    "hours_scored": hours_scored,
+                    "hours_skipped": hours_skipped,
+                    "preprocessing_refits": preprocessing_refits,
+                    "split_time": split_time_iso,
+                }
+            )
+
+        for split_idx, split in enumerate(splits, start=1):
             train_rows_all, test_rows_all = materialize_split_rows(rows, split)
             train_rows, y_train = self._rows_with_target(train_rows_all)
             test_rows, y_test = self._rows_with_target(test_rows_all)
 
             if len(train_rows) < 2:
+                hours_skipped += 1
                 hourly_entries.append(
                     self._build_skip_entry(
                         split,
@@ -138,6 +179,7 @@ class JobRuntimeXGBoostModel:
                         preprocessing_refit=False,
                     )
                 )
+                _maybe_emit_checkpoint(split_idx, split.split_time_iso)
                 continue
 
             artifacts, was_refit = cache.get_or_create(
@@ -148,6 +190,7 @@ class JobRuntimeXGBoostModel:
                 preprocessing_refits += 1
 
             if len(test_rows) < 1:
+                hours_skipped += 1
                 hourly_entries.append(
                     self._build_skip_entry(
                         split,
@@ -155,11 +198,13 @@ class JobRuntimeXGBoostModel:
                         preprocessing_refit=was_refit,
                     )
                 )
+                _maybe_emit_checkpoint(split_idx, split.split_time_iso)
                 continue
 
             x_train = self._transform_rows(train_rows, artifacts)
             x_test = self._transform_rows(test_rows, artifacts)
             if x_train.shape[1] == 0:
+                hours_skipped += 1
                 hourly_entries.append(
                     self._build_skip_entry(
                         split,
@@ -167,6 +212,7 @@ class JobRuntimeXGBoostModel:
                         preprocessing_refit=was_refit,
                     )
                 )
+                _maybe_emit_checkpoint(split_idx, split.split_time_iso)
                 continue
 
             model = self._new_xgb_regressor()
@@ -178,6 +224,7 @@ class JobRuntimeXGBoostModel:
 
             all_y_true.extend(y_true)
             all_y_pred.extend(y_pred)
+            hours_scored += 1
 
             hourly_entries.append(
                 {
@@ -199,22 +246,48 @@ class JobRuntimeXGBoostModel:
                     "metrics": metrics,
                 }
             )
+            _maybe_emit_checkpoint(split_idx, split.split_time_iso)
 
         if not all_y_true:
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "event": "done",
+                        "status": "error",
+                        "reason": "no_scored_predictions",
+                        "hours_total": total_hours,
+                        "hours_scored": hours_scored,
+                        "hours_skipped": hours_skipped,
+                        "preprocessing_refits": preprocessing_refits,
+                    }
+                )
             raise ValueError("No hourly splits produced scored predictions.")
 
         global_metrics = self._compute_regression_metrics(all_y_true, all_y_pred)
-        hours_scored = sum(1 for entry in hourly_entries if entry["status"] == "ok")
         summary = {
-            "hours_total": len(splits),
+            "hours_total": total_hours,
             "hours_scored": hours_scored,
-            "hours_skipped": len(splits) - hours_scored,
+            "hours_skipped": hours_skipped,
             "preprocessing_refits": preprocessing_refits,
             "rows_scored": len(all_y_true),
             "days_with_cached_preprocessing": list(cache.keys()),
             "n_recent_hours": self.config.n_recent_hours,
             "training_lookback_days": self.config.training_lookback_days,
         }
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "event": "done",
+                    "status": "ok",
+                    "hours_total": total_hours,
+                    "hours_scored": hours_scored,
+                    "hours_skipped": hours_skipped,
+                    "preprocessing_refits": preprocessing_refits,
+                    "rows_scored": len(all_y_true),
+                    "mae": float(global_metrics["mae"]),
+                    "rmse": float(global_metrics["rmse"]),
+                }
+            )
 
         return {
             **global_metrics,

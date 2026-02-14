@@ -58,6 +58,8 @@ HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline
 ## 8a) Benchmark the alternate XGBoost model
 ```bash
 HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
+# For long rolling-hour runs, use verbose progress output
+HPC_ODA_OFFLINE=1 hpc-oda benchmark -v hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
 ```
 
 Tip for faster local iteration: copy the recipe and reduce the rolling window:
