@@ -145,8 +145,14 @@ def test_benchmark_xgboost_recipe_small_window(
         def __init__(self, config: object) -> None:
             _FakeXGBModel.seen_n_recent_hours = int(config.n_recent_hours)
 
-        def evaluate_hourly(self, rows: list[dict[str, object]]) -> dict[str, object]:
+        def evaluate_hourly(
+            self,
+            rows: list[dict[str, object]],
+            *,
+            verbose: bool = False,
+        ) -> dict[str, object]:
             assert rows
+            _ = verbose
             return {
                 "mae": 10.0,
                 "rmse": 12.0,

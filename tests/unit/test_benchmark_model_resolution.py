@@ -90,8 +90,14 @@ def test_benchmark_rolling_hourly_uses_xgboost_path(
             FakeXGBModel.seen_n_recent_hours = int(config.n_recent_hours)
             FakeXGBModel.seen_training_lookback_days = int(config.training_lookback_days)
 
-        def evaluate_hourly(self, rows: list[dict[str, object]]) -> dict[str, object]:
+        def evaluate_hourly(
+            self,
+            rows: list[dict[str, object]],
+            *,
+            verbose: bool = False,
+        ) -> dict[str, object]:
             assert rows
+            _ = verbose
             return {
                 "mae": 1.25,
                 "rmse": 2.5,
@@ -176,8 +182,14 @@ def test_benchmark_rolling_hourly_uses_default_training_lookback_days(
         def __init__(self, config: object) -> None:
             FakeXGBModel.seen_training_lookback_days = int(config.training_lookback_days)
 
-        def evaluate_hourly(self, rows: list[dict[str, object]]) -> dict[str, object]:
+        def evaluate_hourly(
+            self,
+            rows: list[dict[str, object]],
+            *,
+            verbose: bool = False,
+        ) -> dict[str, object]:
             assert rows
+            _ = verbose
             return {
                 "mae": 1.0,
                 "rmse": 1.5,
@@ -214,9 +226,10 @@ def test_benchmark_rolling_hourly_uses_default_training_lookback_days(
 def test_benchmark_verbose_prints_progress(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     class FakeXGBModel:
+        seen_verbose: bool | None = None
+
         def __init__(self, config: object) -> None:
             _ = config
 
@@ -224,44 +237,10 @@ def test_benchmark_verbose_prints_progress(
             self,
             rows: list[dict[str, object]],
             *,
-            progress_callback: object | None = None,
-            progress_interval_hours: int = 50,
+            verbose: bool = False,
         ) -> dict[str, object]:
             assert rows
-            assert progress_interval_hours == 50
-            if callable(progress_callback):
-                progress_callback(
-                    {
-                        "event": "start",
-                        "hours_total": 4,
-                        "split_start_time": "2026-01-01T00:00:00Z",
-                        "split_end_time": "2026-01-01T03:00:00Z",
-                        "training_lookback_days": 7,
-                    }
-                )
-                progress_callback(
-                    {
-                        "event": "checkpoint",
-                        "hours_processed": 4,
-                        "hours_total": 4,
-                        "hours_scored": 1,
-                        "hours_skipped": 3,
-                        "preprocessing_refits": 1,
-                        "split_time": "2026-01-01T03:00:00Z",
-                    }
-                )
-                progress_callback(
-                    {
-                        "event": "done",
-                        "status": "ok",
-                        "hours_total": 4,
-                        "hours_scored": 1,
-                        "hours_skipped": 3,
-                        "rows_scored": 3,
-                        "mae": 1.25,
-                        "rmse": 2.5,
-                    }
-                )
+            FakeXGBModel.seen_verbose = verbose
             return {
                 "mae": 1.25,
                 "rmse": 2.5,
@@ -298,8 +277,4 @@ def test_benchmark_verbose_prints_progress(
     )
 
     cli.benchmark(recipe_path, verbose=True)
-    output = capsys.readouterr().out
-    assert "Benchmark started" in output
-    assert "rolling_hourly/xgboost" in output
-    assert "processed=4/4" in output
-    assert "Benchmark complete" in output
+    assert FakeXGBModel.seen_verbose is True

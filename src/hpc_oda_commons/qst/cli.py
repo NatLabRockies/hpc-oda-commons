@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import difflib
-import inspect
 import json
 import sys
 from collections import Counter
@@ -573,62 +572,7 @@ def _run_rolling_hourly_xgboost_benchmark(
             training_lookback_days=training_lookback_days,
         )
     )
-    progress_supported = False
-    try:
-        params = inspect.signature(model.evaluate_hourly).parameters
-        progress_supported = "progress_callback" in params
-    except (TypeError, ValueError):
-        progress_supported = False
-
-    def _emit_progress(payload: dict[str, Any]) -> None:
-        event = str(payload.get("event", ""))
-        if event == "start":
-            console.print(
-                "[cyan]rolling_hourly/xgboost[/cyan] "
-                f"hours={payload.get('hours_total')} "
-                f"range={payload.get('split_start_time')}..{payload.get('split_end_time')} "
-                f"lookback_days={payload.get('training_lookback_days')}"
-            )
-            return
-        if event == "checkpoint":
-            console.print(
-                "[cyan]rolling_hourly/xgboost[/cyan] "
-                f"processed={payload.get('hours_processed')}/{payload.get('hours_total')} "
-                f"scored={payload.get('hours_scored')} "
-                f"skipped={payload.get('hours_skipped')} "
-                f"refits={payload.get('preprocessing_refits')} "
-                f"split={payload.get('split_time')}"
-            )
-            return
-        if event == "done":
-            status = str(payload.get("status", "ok"))
-            if status == "ok":
-                mae = float(payload.get("mae", 0.0))
-                rmse = float(payload.get("rmse", 0.0))
-                console.print(
-                    "[cyan]rolling_hourly/xgboost done[/cyan] "
-                    f"scored={payload.get('hours_scored')}/{payload.get('hours_total')} "
-                    f"rows_scored={payload.get('rows_scored')} "
-                    f"mae={mae:.4f} rmse={rmse:.4f}"
-                )
-            else:
-                console.print(
-                    "[yellow]rolling_hourly/xgboost finished without scored predictions[/yellow]"
-                )
-
-    if verbose and progress_supported:
-        eval_payload = model.evaluate_hourly(
-            rows,
-            progress_callback=_emit_progress,
-            progress_interval_hours=50,
-        )
-    else:
-        if verbose and not progress_supported:
-            console.print(
-                "[yellow]Verbose progress unavailable for model implementation; running without "
-                "progress callbacks.[/yellow]"
-            )
-        eval_payload = model.evaluate_hourly(rows)
+    eval_payload = model.evaluate_hourly(rows, verbose=verbose)
 
     metrics = {
         "mae": float(eval_payload["mae"]),
@@ -905,7 +849,6 @@ def benchmark(
     """
     root = Path.cwd()
     _ensure_dirs(root)
-    console.print(f"[cyan]Benchmark started[/cyan] → {recipe}")
 
     recipe_payload = _load_recipe(recipe)
     recipe_id = str(recipe_payload.get("recipe_id", "recipe.unknown"))
@@ -925,10 +868,6 @@ def benchmark(
 
     table = pq.read_table(table_path)
     rows = table.to_pylist()
-    if verbose:
-        console.print(
-            f"[cyan]Loaded dataset[/cyan] path={table_path} rows={len(rows)} schema={input_schema}"
-        )
 
     split = _normalize_split(recipe_payload)
 
@@ -937,11 +876,6 @@ def benchmark(
     model_version = str(model_ref.get("version", "0.1.0"))
     split_method = split.get("method", "fixed")
     metric_defs = recipe_payload.get("metrics", []) or []
-    if verbose:
-        console.print(
-            f"[cyan]Executing benchmark[/cyan] model={model_id}@{model_version} "
-            f"split={split_method}"
-        )
 
     if model_id == "model.job_runtime_baseline" and split_method == "fixed":
         metrics, metrics_payload = _run_fixed_baseline_benchmark(
@@ -987,8 +921,6 @@ def benchmark(
     write_result_bundle(
         bundle_dir, result=result_payload, metrics=metrics_payload, provenance=prov, validate=True
     )
-    if verbose:
-        console.print(f"[cyan]Metrics[/cyan] mae={metrics.get('mae')} rmse={metrics.get('rmse')}")
 
     console.print(f"[green]Benchmark complete[/green] → runs/{run_id}/")
 

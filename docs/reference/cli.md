@@ -28,7 +28,7 @@ This reference covers the v0.1 `hpc-oda` commands.
 ## Compare
 1. `hpc-oda benchmark <recipe.yml> [--verbose|-v]`
    Runs a benchmark recipe and emits a result bundle under `runs/`.
-   `--verbose` prints progress checkpoints for long-running benchmarks.
+   `--verbose` enables progress bar output for long-running benchmarks.
    Supported v0.1 model/split pairs:
    - `model.job_runtime_baseline` + `split.method: fixed`
    - `model.job_runtime_xgboost` + `split.method: rolling_hourly`
