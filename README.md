@@ -1,123 +1,237 @@
 # hpc-oda-commons
 
-A local-first CLI + standards toolkit for **HPC Operational Data Analytics (ODA)**, focused in v0.1 on
-**SLURM job runtime prediction**.
+A local-first CLI + standards toolkit for **HPC Operational Data Analytics (ODA)**.
 
-Python: **3.9+**.
+v0.1 delivers a complete vertical slice for **SLURM job runtime prediction**: ingest scheduler data, validate it against versioned schemas, train and evaluate prediction models, and generate comparable leaderboards — all without sending data off-cluster.
 
-## What This Solves
+**Python 3.9+** | **License:** see `LICENSE`
 
-HPC operational analytics is hard to compare across sites because data formats, ingestion pipelines, and
-evaluation metrics vary. This repo standardizes the **artifacts**, **schemas**, and **benchmark recipes**
-needed to run the same evaluation on different data sources.
+---
 
-## What This Repo Provides Today (v0.1)
+## The Problem
 
-A working, CLI-first vertical slice for **job runtime prediction**:
+HPC operational analytics is hard to compare across sites:
 
-- **Find:** browse a bundled registry snapshot (`hpc-oda browse`, `hpc-oda info ...`)
-- **Run:** ingest data and run a baseline locally (`hpc-oda ingest ...`, `hpc-oda analyze ...`)
-- **Compare:** run a recipe-backed benchmark and generate a leaderboard (`hpc-oda benchmark ...`, `hpc-oda leaderboard ...`)
+- **Semantic fragmentation** — scheduler logs, accounting exports, and monitoring streams vary by site. Even overlapping fields (job ID, start/end time, resources) drift in naming and semantics.
+- **Comparability gaps** — "benchmarking" often means running different metrics, splits, preprocessing, or dataset versions. Reported scores are difficult to compare across institutions.
+- **Reproducibility gaps** — results lack provenance: input versions, schema versions, code version, environment snapshot. Minor pipeline changes silently shift results.
+- **Adoption friction** — operators need local-first tools that don't require uploading sensitive logs. Getting from "clone repo" to "run something meaningful" is often too slow.
 
-The stable surface area for v0.1 is the CLI (`hpc-oda`). Python APIs are minimal/experimental.
+The net effect is that promising ODA ideas remain siloed, and the community lacks a reliable substrate for apples-to-apples evaluation.
 
-## Quickstart (10-minute workflow)
+## How hpc-oda-commons Solves This
+
+The system is built around a simple premise: **artifacts are the interface**. Every stage of the pipeline reads and writes stable, versioned artifacts — so results are reproducible and comparable by construction.
+
+The toolkit is organized around three pillars:
+
+| Pillar | What it does | CLI commands |
+|--------|-------------|--------------|
+| **Find** | Browse available models, adapters, recipes, and datasets from a bundled offline registry | `hpc-oda browse`, `hpc-oda info <id>` |
+| **Run** | Ingest data locally, validate against schemas, run analysis — all without network access | `hpc-oda init`, `hpc-oda ingest ...`, `hpc-oda validate ...`, `hpc-oda analyze ...` |
+| **Compare** | Execute recipe-driven benchmarks and aggregate results into leaderboards | `hpc-oda benchmark <recipe>`, `hpc-oda leaderboard ...` |
+
+## Quickstart
+
+### Install
 
 ```bash
-# Install (from a repo clone)
+git clone <repo-url> && cd hpc-oda-commons
 pip install -e ".[dev]"
+```
 
-# Initialize a project (creates .hpc_oda/, data/, runs/)
+### Try it in 5 minutes (no data needed)
+
+```bash
+# Initialize project directory structure
 hpc-oda init
 
-# Discover what's available (offline registry snapshot)
+# Browse the offline registry
 hpc-oda browse
 hpc-oda info model.job_runtime_baseline
 
-# Offline demo: generate a tiny synthetic dataset and run a deterministic baseline
+# Run a deterministic baseline on a bundled synthetic dataset (no network)
 HPC_ODA_OFFLINE=1 hpc-oda run-baseline
 
-# Ingest option A: slurmctld logs
-hpc-oda ingest slurmctld --path /path/to/slurmctld.log
-
-# Ingest option B: jobs table exported as Parquet (interactive mapping wizard)
-hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
-
-# Validate Parquet rows + emit a quality report (*.parquet.quality.json)
-hpc-oda validate data/ingested/slurmctld/<run>/data.parquet
-# or:
-hpc-oda validate data/ingested/jobs_parquet/<run>/data.parquet
-
-# Analyze local data (baseline model) → reports/<id>/{analysis.json,index.html}
-hpc-oda analyze --data data/ingested/slurmctld/<run>
-
-# Benchmark a recipe (repo-local path)
+# Benchmark using the v0.1 baseline recipe
 HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml
 
-# Benchmark the alternate XGBoost rolling-hourly recipe
-HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/xgb_hourly_recent.yml
-# Add -v/--verbose for progress updates during long rolling-hour runs
-HPC_ODA_OFFLINE=1 hpc-oda benchmark -v recipes/job-runtime/xgb_hourly_recent.yml
-
-# Generate a static leaderboard from runs/
+# Generate a leaderboard from the result bundles
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
 
-For reproducible non-interactive jobs-parquet ingestion, reuse a mapping:
+### Ingest your own data
 
+hpc-oda-commons supports two ingestion paths:
+
+**Option A: slurmctld logs**
+```bash
+hpc-oda ingest slurmctld --path /path/to/slurmctld.log
+```
+
+**Option B: any jobs table exported as Parquet** (interactive mapping wizard)
+```bash
+hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
+```
+
+The wizard walks you through mapping your columns to the canonical ODA schema. To replay a mapping non-interactively:
 ```bash
 hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet --mapping /path/to/mapping.yml
 ```
 
-## What You Get (Artifacts)
+### Validate, analyze, and benchmark your data
+
+```bash
+# Validate ingested data and generate a quality report
+hpc-oda validate data/ingested/slurmctld/<run>/data.parquet
+
+# Run a baseline analysis → reports/<id>/{analysis.json, index.html}
+hpc-oda analyze --data data/ingested/slurmctld/<run>
+
+# Benchmark with the XGBoost rolling-hourly model
+HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/xgb_hourly_recent.yml
+# Use -v/--verbose for progress on long rolling-hourly runs
+HPC_ODA_OFFLINE=1 hpc-oda benchmark -v recipes/job-runtime/xgb_hourly_recent.yml
+```
+
+## Core Concepts
+
+### Schemas
+
+All artifacts are validated against versioned JSON Schemas following the pattern `oda.<type>.v<MAJOR>.<MINOR>.<PATCH>`:
+
+| Schema | Purpose |
+|--------|---------|
+| `oda.job.v0.1.0` | Canonical job record (the rows in an ODA table) |
+| `oda.result.v0.1.0` | Benchmark result bundle |
+| `oda.recipe.v0.1.0` | Benchmark recipe definition |
+| `oda.manifest.v0.1.0` | Ingest provenance manifest |
+| `oda.mapping.v0.1.0` | Field mapping specification |
+| `oda.registry.v0.1.0` | Registry snapshot |
+| `oda.mdl.v0.1.0` | Metric definition |
+
+Schema changes are proposed through a **Schema Evolution Request (SER)** — see `CONTRIBUTING.md`. During v0.1 the core job schema is frozen except for non-breaking fixes.
+
+### Artifacts
+
+The pipeline produces four types of artifacts:
+
+**ODA Table** — A Parquet file of job records conforming to `oda.job.v0.1.0`. This is the primary input for validation, analysis, and benchmarks.
+
+**Manifest** — JSON written alongside each ingested Parquet file. Captures the adapter used, inputs, transformations applied, and provenance (including content hashes).
+
+**Result Bundle** — A directory produced by benchmarks and baseline runs containing `result.json`, `metrics.json`, and `provenance.json`. Result bundles are the input to leaderboard generation.
+
+**Quality Report** — JSON written by `hpc-oda validate`, recording schema violations, semantic checks (e.g., negative runtimes, inverted timestamps), and missingness statistics.
+
+### Benchmark Recipes
+
+Recipes are YAML files that fully specify a reproducible evaluation:
+
+```yaml
+recipe_id: recipe.job_runtime.baseline_tiny
+problem_domain: [job-runtime-prediction]
+schema_version: oda.job.v0.1.0
+
+dataset:
+  id: hpc_oda_commons/datasets/synthetic/job-runtime/tiny
+  table_path: <path-to-parquet>
+
+model:
+  id: model.job_runtime_baseline
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: runtime_seconds
+  - name: rmse
+    target: runtime_seconds
+
+split:
+  method: fixed          # or rolling_hourly
+  train_fraction: 0.8
+  seed: 42
+
+run:
+  output_dir: runs
+  overwrite: false
+```
+
+v0.1 supports two split methods:
+- **`fixed`** — deterministic train/test split (used with the baseline model)
+- **`rolling_hourly`** — sliding-window evaluation that simulates production retraining (used with XGBoost). Parameters: `n_recent_hours`, `training_lookback_days`
+
+### Models (v0.1)
+
+**Baseline** (`model.job_runtime_baseline`) — Deterministic mean-prediction model. Computes `mean(runtime_seconds)` on the training set and predicts that constant for all test rows. Fast, explainable, and useful as a floor for comparison.
+
+**XGBoost** (`model.job_runtime_xgboost`) — Gradient-boosted tree model with automatic categorical preprocessing (one-hot encoding + SVD dimensionality reduction). Uses a daily preprocessing cache so OHE/SVD are only refit on day boundaries during rolling-hourly evaluation.
+
+### Provenance
+
+Every result bundle includes `provenance.json` capturing:
+- Schema versions used
+- Python version and installed packages (`pip freeze`)
+- Package version and git commit
+- SHA-256 hashes and sizes of input files
+
+This enables full traceability: a leaderboard entry can trace back to exactly what ran, on what data, and in what environment.
+
+## Data Privacy and Security
+
+hpc-oda-commons is **local-first**: ingestion and analysis run entirely on your machine. No data is uploaded or transmitted.
+
+For sharing derived artifacts, the toolkit provides deterministic transformation helpers:
+- `hash_identifier(value, salt=...)` — pseudonymize user/account identifiers
+- `bin_timestamp(value, interval_seconds=...)` — reduce timestamp precision
+- `redact_value(value, replacement=...)` — remove or replace sensitive values
+
+All transformations are recorded in the manifest's transformation ledger. The hash salt can be provided via the `HPC_ODA_HASH_SALT` environment variable.
+
+## Artifact Output Paths
 
 | Command | Output |
-| --- | --- |
-| `hpc-oda ingest slurmctld ...` | `data/ingested/slurmctld/<run>/{data.parquet,manifest.json}` |
-| `hpc-oda ingest jobs-parquet ...` | `data/ingested/jobs_parquet/<run>/{data.parquet,manifest.json,mapping.yml}` |
+|---------|--------|
+| `hpc-oda ingest slurmctld ...` | `data/ingested/slurmctld/<run>/{data.parquet, manifest.json}` |
+| `hpc-oda ingest jobs-parquet ...` | `data/ingested/jobs_parquet/<run>/{data.parquet, manifest.json, mapping.yml}` |
 | `hpc-oda validate <parquet>` | `<parquet>.quality.json` |
-| `hpc-oda run-baseline` | `runs/run-baseline-*/{result.json,metrics.json,provenance.json}` |
-| `hpc-oda benchmark <recipe>` | `runs/benchmark-*/{result.json,metrics.json,provenance.json}` |
-| `hpc-oda analyze --data ...` | `reports/analysis-*/{analysis.json,index.html}` |
-| `hpc-oda leaderboard ...` | `leaderboard/{leaderboard.json,index.html}` |
+| `hpc-oda run-baseline` | `runs/run-baseline-*/{result.json, metrics.json, provenance.json}` |
+| `hpc-oda benchmark <recipe>` | `runs/benchmark-*/{result.json, metrics.json, provenance.json}` |
+| `hpc-oda analyze --data ...` | `reports/analysis-*/{analysis.json, index.html}` |
+| `hpc-oda leaderboard ...` | `leaderboard/{leaderboard.json, index.html}` |
 
-## Offline Mode + Safety
+## Repo Layout
 
-- **Local-first:** ingestion and analysis run locally; this repo does not require shipping raw logs off-site.
-- **Offline demos:** set `HPC_ODA_OFFLINE=1` to ensure workflows do not depend on network access.
-- **Identifier handling:** the jobs-parquet ingest workflow can hash identifiers (e.g., `user`, `account`). If a
-  mapping uses a salt, it can be provided via `HPC_ODA_HASH_SALT`.
-
-## Repo Layout (Key Locations)
-
-- `src/hpc_oda_commons/`: package implementation (CLI, schemas, adapters, models)
-- `recipes/`: benchmark recipes (repo-local)
-- `registry/`: source registry snapshot (synced into the package)
-- `docs/`: user and contributor documentation
-- `tests/`: unit + integration (“golden path”) tests
-- `scripts/`: validation and release helpers
+```
+src/hpc_oda_commons/     Package implementation
+  qst/                   CLI (Typer-based, entry point: hpc-oda)
+  kernel/                Core: artifacts, provenance, validation, schemas
+  models/                Baseline and XGBoost runtime models
+  adapters/              Source parsers (slurmctld)
+  ingest/                Data ingestion pipeline (profile, suggest, wizard, apply)
+  benchmark/             Recipe loading and results aggregation
+  intelligence/          Mapping suggestions, metadata graph, synthetic scoring
+  schema/                JSON Schema validation and quality rules
+  schemas/               Bundled JSON Schema files
+  datasets/              Bundled synthetic datasets
+  registry/              Offline registry snapshot
+  tools/                 HTML report generation
+recipes/                 Benchmark recipes (YAML)
+tests/                   Unit + integration tests
+docs/                    User and contributor documentation
+scripts/                 Validation and release helpers
+```
 
 ## Documentation
 
-- Quickstart: `docs/how-to/quickstart.md`
-- CLI reference: `docs/reference/cli.md`
-- Ingest (slurmctld): `docs/how-to/ingest-slurmctld.md`
-- Ingest (jobs parquet): `docs/how-to/ingest-jobs-parquet.md`
-- Concepts (pillars): `docs/concepts/pillars.md`
-- Concepts (artifacts): `docs/concepts/artifacts.md`
-- Concepts (schema): `docs/concepts/schema.md`
-- Concepts (benchmarks): `docs/concepts/benchmarks.md`
-- Concepts (security): `docs/concepts/security-data-handling.md`
-- Deep dive: `WHITEPAPER.md`
-- Development process: `PROJECT_PLAN.md`
+- **How-to guides:** `docs/how-to/quickstart.md`, `ingest-slurmctld.md`, `ingest-jobs-parquet.md`
+- **Concepts:** `docs/concepts/` — pillars, artifacts, schema, benchmarks, security
+- **CLI reference:** `docs/reference/cli.md`
+- **Deep dive:** `WHITEPAPER.md`
 
 ## Contributing
 
-- Start here: `CONTRIBUTING.md`
-- Code of Conduct: `CODE_OF_CONDUCT.md`
-- Governance: `GOVERNANCE.md`
-- Security: `SECURITY.md`
-- Support: `SUPPORT.md`
+See `CONTRIBUTING.md` for branching conventions, code style (Ruff), testing expectations, and the Schema Evolution Request process.
 
 ## Citation
 

@@ -18,7 +18,7 @@ def test_config_defaults() -> None:
     assert config.training_lookback_days == 100
     assert config.submit_time_field == "submit_time"
     assert config.end_time_field == "end_time"
-    assert config.explained_variance_target == 0.98
+    assert config.explained_variance_target == 0.95
     assert config.infrequent_category_fraction == 0.001
     assert config.min_frequency_floor == 2
     assert config.target_max_one_hot_width == 2048

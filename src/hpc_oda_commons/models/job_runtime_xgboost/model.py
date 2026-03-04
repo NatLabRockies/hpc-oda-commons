@@ -50,7 +50,7 @@ class JobRuntimeXGBoostConfig:
     training_lookback_days: int = 100
     submit_time_field: str = "submit_time"
     end_time_field: str = "end_time"
-    explained_variance_target: float = 0.98
+    explained_variance_target: float = 0.95
     infrequent_category_fraction: float = 0.001
     min_frequency_floor: int = 2
     target_max_one_hot_width: int = 2048
