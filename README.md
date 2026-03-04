@@ -1,48 +1,43 @@
 # hpc-oda-commons
 
-A local-first CLI + standards toolkit for **HPC Operational Data Analytics (ODA)**.
+**A community-driven platform for standardizing HPC operational data analytics.**
 
-v0.1 delivers a complete vertical slice for **SLURM job runtime prediction**: ingest scheduler data, validate it against versioned schemas, train and evaluate prediction models, and generate comparable leaderboards — all without sending data off-cluster.
+HPC sites generate enormous volumes of operational data — scheduler logs, accounting records, monitoring streams — but turning that data into actionable insight is needlessly hard. Each site builds bespoke parsers, schemas, and evaluation pipelines. Results can't be compared across institutions. Promising analytics ideas stay siloed because there's no shared language for describing the data, the experiments, or the outcomes.
 
-**Python 3.9+** | **License:** see `LICENSE`
+hpc-oda-commons fixes this by establishing **community-governed contracts** — versioned schemas, canonical artifacts, and benchmark recipes — that make ODA workflows **discoverable**, **reproducible**, and **comparable**. It pairs these standards with a practical, CLI-first toolkit that lets operators and researchers go from raw logs to standardized results without sending data off-cluster.
+
+## Design Principles
+
+- **Artifacts are the interface.** Every stage of the pipeline reads and writes stable, versioned artifacts (Parquet tables, JSON manifests, result bundles). Standards live in the artifact contracts, not in any particular tool's internals.
+- **Local-first.** Ingestion and analysis run entirely on your machine. No data is uploaded or transmitted. Transformation helpers (hashing, binning, redaction) let you sanitize artifacts before sharing.
+- **Recipe-driven evaluation.** Benchmarks are defined by YAML recipes that fully specify dataset, model, metrics, and split strategy — so "running the same benchmark" actually means the same thing across sites.
+- **Domain-extensible.** The platform is designed to support multiple ODA problem domains over time. v0.1 delivers job runtime prediction as the first complete vertical slice; future domains include energy/power prediction, queue wait time estimation, and more.
+
+## The Three Pillars
+
+| Pillar | Purpose | v0.1 commands |
+|--------|---------|---------------|
+| **Find** | Discover available models, adapters, recipes, and datasets from a community registry | `hpc-oda browse`, `hpc-oda info <id>` |
+| **Run** | Ingest data, validate against schemas, and run local analysis | `hpc-oda init`, `hpc-oda ingest ...`, `hpc-oda validate ...`, `hpc-oda analyze ...` |
+| **Compare** | Execute recipe-driven benchmarks and aggregate results into leaderboards | `hpc-oda benchmark <recipe>`, `hpc-oda leaderboard ...` |
+
+Together, these let a site operator go from local logs to comparable, provenance-tracked results — and let a researcher publish results that others can actually reproduce.
 
 ---
 
-## The Problem
+## v0.1: Job Runtime Prediction
 
-HPC operational analytics is hard to compare across sites:
+The first vertical slice delivers a complete end-to-end workflow for SLURM job runtime prediction.
 
-- **Semantic fragmentation** — scheduler logs, accounting exports, and monitoring streams vary by site. Even overlapping fields (job ID, start/end time, resources) drift in naming and semantics.
-- **Comparability gaps** — "benchmarking" often means running different metrics, splits, preprocessing, or dataset versions. Reported scores are difficult to compare across institutions.
-- **Reproducibility gaps** — results lack provenance: input versions, schema versions, code version, environment snapshot. Minor pipeline changes silently shift results.
-- **Adoption friction** — operators need local-first tools that don't require uploading sensitive logs. Getting from "clone repo" to "run something meaningful" is often too slow.
+**Python 3.9+**
 
-The net effect is that promising ODA ideas remain siloed, and the community lacks a reliable substrate for apples-to-apples evaluation.
-
-## How hpc-oda-commons Solves This
-
-The system is built around a simple premise: **artifacts are the interface**. Every stage of the pipeline reads and writes stable, versioned artifacts — so results are reproducible and comparable by construction.
-
-The toolkit is organized around three pillars:
-
-| Pillar | What it does | CLI commands |
-|--------|-------------|--------------|
-| **Find** | Browse available models, adapters, recipes, and datasets from a bundled offline registry | `hpc-oda browse`, `hpc-oda info <id>` |
-| **Run** | Ingest data locally, validate against schemas, run analysis — all without network access | `hpc-oda init`, `hpc-oda ingest ...`, `hpc-oda validate ...`, `hpc-oda analyze ...` |
-| **Compare** | Execute recipe-driven benchmarks and aggregate results into leaderboards | `hpc-oda benchmark <recipe>`, `hpc-oda leaderboard ...` |
-
-## Quickstart
-
-### Install
+### Quickstart
 
 ```bash
+# Install from a repo clone
 git clone <repo-url> && cd hpc-oda-commons
 pip install -e ".[dev]"
-```
 
-### Try it in 5 minutes (no data needed)
-
-```bash
 # Initialize project directory structure
 hpc-oda init
 
@@ -56,11 +51,11 @@ HPC_ODA_OFFLINE=1 hpc-oda run-baseline
 # Benchmark using the v0.1 baseline recipe
 HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml
 
-# Generate a leaderboard from the result bundles
+# Generate a leaderboard from result bundles
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
 
-### Ingest your own data
+### Ingest Your Own Data
 
 hpc-oda-commons supports two ingestion paths:
 
@@ -79,7 +74,7 @@ The wizard walks you through mapping your columns to the canonical ODA schema. T
 hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet --mapping /path/to/mapping.yml
 ```
 
-### Validate, analyze, and benchmark your data
+### Validate, Analyze, and Benchmark
 
 ```bash
 # Validate ingested data and generate a quality report
@@ -93,6 +88,14 @@ HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/xgb_hourly_recent.yml
 # Use -v/--verbose for progress on long rolling-hourly runs
 HPC_ODA_OFFLINE=1 hpc-oda benchmark -v recipes/job-runtime/xgb_hourly_recent.yml
 ```
+
+### v0.1 Models
+
+**Baseline** (`model.job_runtime_baseline`) — Deterministic mean-prediction model. Computes `mean(runtime_seconds)` on the training set and predicts that constant for all test rows. Fast, explainable, and useful as a floor for comparison.
+
+**XGBoost** (`model.job_runtime_xgboost`) — Gradient-boosted tree model with automatic categorical preprocessing (one-hot encoding + SVD dimensionality reduction). Uses a daily preprocessing cache so OHE/SVD are only refit on day boundaries during rolling-hourly evaluation.
+
+---
 
 ## Core Concepts
 
@@ -116,7 +119,7 @@ Schema changes are proposed through a **Schema Evolution Request (SER)** — see
 
 The pipeline produces four types of artifacts:
 
-**ODA Table** — A Parquet file of job records conforming to `oda.job.v0.1.0`. This is the primary input for validation, analysis, and benchmarks.
+**ODA Table** — A Parquet file of job records conforming to the domain's schema (e.g., `oda.job.v0.1.0`). This is the primary input for validation, analysis, and benchmarks.
 
 **Manifest** — JSON written alongside each ingested Parquet file. Captures the adapter used, inputs, transformations applied, and provenance (including content hashes).
 
@@ -161,12 +164,6 @@ v0.1 supports two split methods:
 - **`fixed`** — deterministic train/test split (used with the baseline model)
 - **`rolling_hourly`** — sliding-window evaluation that simulates production retraining (used with XGBoost). Parameters: `n_recent_hours`, `training_lookback_days`
 
-### Models (v0.1)
-
-**Baseline** (`model.job_runtime_baseline`) — Deterministic mean-prediction model. Computes `mean(runtime_seconds)` on the training set and predicts that constant for all test rows. Fast, explainable, and useful as a floor for comparison.
-
-**XGBoost** (`model.job_runtime_xgboost`) — Gradient-boosted tree model with automatic categorical preprocessing (one-hot encoding + SVD dimensionality reduction). Uses a daily preprocessing cache so OHE/SVD are only refit on day boundaries during rolling-hourly evaluation.
-
 ### Provenance
 
 Every result bundle includes `provenance.json` capturing:
@@ -177,16 +174,14 @@ Every result bundle includes `provenance.json` capturing:
 
 This enables full traceability: a leaderboard entry can trace back to exactly what ran, on what data, and in what environment.
 
-## Data Privacy and Security
-
-hpc-oda-commons is **local-first**: ingestion and analysis run entirely on your machine. No data is uploaded or transmitted.
+### Data Privacy
 
 For sharing derived artifacts, the toolkit provides deterministic transformation helpers:
-- `hash_identifier(value, salt=...)` — pseudonymize user/account identifiers
+- `hash_identifier(value, salt=...)` — pseudonymize user/account identifiers (salt via `HPC_ODA_HASH_SALT`)
 - `bin_timestamp(value, interval_seconds=...)` — reduce timestamp precision
 - `redact_value(value, replacement=...)` — remove or replace sensitive values
 
-All transformations are recorded in the manifest's transformation ledger. The hash salt can be provided via the `HPC_ODA_HASH_SALT` environment variable.
+All transformations are recorded in the manifest's transformation ledger.
 
 ## Artifact Output Paths
 
