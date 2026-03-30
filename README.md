@@ -113,7 +113,7 @@ All artifacts are validated against versioned JSON Schemas following the pattern
 | `oda.registry.v0.1.0` | Registry snapshot |
 | `oda.mdl.v0.1.0` | Metric definition |
 
-Schema changes are proposed through a **Schema Evolution Request (SER)** — see `CONTRIBUTING.md`. During v0.1 the core job schema is frozen except for non-breaking fixes.
+During v0.1 the core job schema is frozen except for non-breaking fixes.
 
 ### Artifacts
 
@@ -222,6 +222,3 @@ scripts/                 Validation and release helpers
 - **CLI reference:** `docs/reference/cli.md`
 - **Deep dive:** `WHITEPAPER.md`
 
-## Contributing
-
-See `CONTRIBUTING.md` for branching conventions, code style (Ruff), testing expectations, and the Schema Evolution Request process.
