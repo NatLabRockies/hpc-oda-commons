@@ -8,7 +8,7 @@
 | `xgb_hourly_recent.yml` | XGBoost | Rolling hourly (1000h, 100d) | Full XGBoost benchmark |
 | `alt_model_example.yml` | XGBoost | Rolling hourly (24h, 30d) | Alternate config example |
 
-Recipes are located at `src/hpc_oda_commons/recipes/job-runtime/` and bundled with the package.
+Bundled recipes are shipped with the package at `hpc_oda_commons/recipes/job-runtime/`.
 
 ## Recipe Schema (`oda.recipe.v0.1.0`)
 
@@ -71,3 +71,15 @@ run:
 - `metrics` must include at least `mae` and `rmse`
 - All metrics must target the same field (e.g., `runtime_seconds`)
 - For `rolling_hourly`, `n_recent_hours` must be positive
+
+## Custom Recipes
+
+To create a custom recipe, copy a bundled one and modify it:
+
+```bash
+cp hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml my_recipe.yml
+# Edit my_recipe.yml: change dataset.table_path, split params, etc.
+hpc-oda benchmark my_recipe.yml
+```
+
+Custom recipes can live anywhere on disk. The `hpc-oda benchmark` command accepts any file path.

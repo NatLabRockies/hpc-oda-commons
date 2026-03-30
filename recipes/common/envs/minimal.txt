@@ -1,3 +1,0 @@
-# Minimal pip requirements for benchmark runs.
-hpc-oda-commons
-pyarrow>=14

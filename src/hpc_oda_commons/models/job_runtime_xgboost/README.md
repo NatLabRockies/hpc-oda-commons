@@ -45,13 +45,13 @@ pip install -e ".[dev]"
 Run the default rolling-hour XGBoost recipe:
 
 ```bash
-HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/xgb_hourly_recent.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
 ```
 
 Run a faster local variant (smaller rolling window):
 
 ```bash
-HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/alt_model_example.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/alt_model_example.yml
 ```
 
 The benchmark writes a result bundle under `runs/benchmark-*/` containing:

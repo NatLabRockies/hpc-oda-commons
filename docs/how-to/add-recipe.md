@@ -5,7 +5,7 @@ Recipes define reproducible benchmarks and must conform to:
 - `oda.recipe.v0.1.0`
 - metric definitions in `oda.mdl.v0.1.0`
 
-See `recipes/job-runtime/baseline_tiny.yml` for a reference recipe.
+See `hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml` for a reference recipe.
 
 Minimum required fields (v0.1):
 - `recipe_id`

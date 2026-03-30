@@ -31,12 +31,12 @@ The first alternate model is:
 `model.job_runtime_xgboost`
 
 Reference recipe:
-`recipes/job-runtime/xgb_hourly_recent.yml`
+`hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml`
 
 Run it with:
 
 ```bash
-HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/xgb_hourly_recent.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
 ```
 
 For faster local test cycles, use a small rolling window by copying the recipe

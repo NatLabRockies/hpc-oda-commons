@@ -259,7 +259,7 @@ hpc-oda validate data/ingested/slurmctld/*/data.parquet
 ```bash
 hpc-oda init
 hpc-oda ingest jobs-parquet --path site_jobs.parquet
-hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml
+hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
 

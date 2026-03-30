@@ -49,7 +49,7 @@ hpc-oda info model.job_runtime_baseline
 HPC_ODA_OFFLINE=1 hpc-oda run-baseline
 
 # Benchmark using the v0.1 baseline recipe
-HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/baseline_tiny.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 
 # Generate a leaderboard from result bundles
 hpc-oda leaderboard --runs runs --out leaderboard
@@ -84,9 +84,9 @@ hpc-oda validate data/ingested/slurmctld/<run>/data.parquet
 hpc-oda analyze --data data/ingested/slurmctld/<run>
 
 # Benchmark with the XGBoost rolling-hourly model
-HPC_ODA_OFFLINE=1 hpc-oda benchmark recipes/job-runtime/xgb_hourly_recent.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
 # Use -v/--verbose for progress on long rolling-hourly runs
-HPC_ODA_OFFLINE=1 hpc-oda benchmark -v recipes/job-runtime/xgb_hourly_recent.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark -v hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
 ```
 
 ### v0.1 Models

@@ -13,7 +13,7 @@ Describe what this change does and why.
 - [ ] DoD-1 (install + `hpc-oda --help`) unaffected or updated tests accordingly
 - [ ] DoD-2 (`run-baseline` offline result bundle) unaffected or updated tests accordingly
 - [ ] DoD-3 (slurmctld ingest → schema-valid Parquet + manifest) unaffected or updated tests accordingly
-- [ ] DoD-4 (benchmark `recipes/job-runtime/baseline_tiny.yml` → metrics + provenance) unaffected or updated tests accordingly
+- [ ] DoD-4 (benchmark `hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml` → metrics + provenance) unaffected or updated tests accordingly
 
 ## Checklist
 

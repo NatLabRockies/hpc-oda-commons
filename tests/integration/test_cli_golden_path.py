@@ -182,7 +182,7 @@ def test_benchmark_xgboost_recipe_small_window(
 
     run_cli(["init"], cwd=tmp_project).assert_ok()
 
-    recipe_src = repo_root / "recipes/job-runtime/xgb_hourly_recent.yml"
+    recipe_src = repo_root / "src/hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml"
     recipe_payload = yaml.safe_load(recipe_src.read_text(encoding="utf-8"))
     assert isinstance(recipe_payload, dict)
     recipe_payload["split"] = {"method": "rolling_hourly", "n_recent_hours": 24}
@@ -223,7 +223,7 @@ def test_benchmark_xgboost_recipe_small_window_native_cli(
 
     run_cli(["init"], cwd=tmp_project).assert_ok()
 
-    recipe_src = repo_root / "recipes/job-runtime/alt_model_example.yml"
+    recipe_src = repo_root / "src/hpc_oda_commons/recipes/job-runtime/alt_model_example.yml"
     recipe_payload = yaml.safe_load(recipe_src.read_text(encoding="utf-8"))
     assert isinstance(recipe_payload, dict)
     recipe_payload["split"] = {"method": "rolling_hourly", "n_recent_hours": 24}
@@ -260,7 +260,7 @@ def test_dod_4_benchmark_recipe_produces_metrics_and_provenance(
     """
     run_cli(["init"], cwd=tmp_project).assert_ok()
 
-    recipe = repo_root / "recipes/job-runtime/baseline_tiny.yml"
+    recipe = repo_root / "src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml"
     assert recipe.exists(), f"Missing recipe: {recipe}"
 
     run_cli(
