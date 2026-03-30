@@ -26,9 +26,6 @@ dependencies = [
 
 
 [project.optional-dependencies]
-viz = [
-  # Optional visualization extras (v0.1): choose one later (streamlit/dash).
-]
 dev = [
   "pytest>=8",
   "jsonschema>=4",
