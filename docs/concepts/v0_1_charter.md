@@ -148,4 +148,4 @@ A successful v0.1 should demonstrate:
 - CLI reference: `docs/reference/cli.md`
 - Schema overview: `docs/concepts/schema.md`
 - Benchmarks overview: `docs/concepts/benchmarks.md`
-- Roadmap: `ROADMAP.md`
+- Project Plan: `PROJECT_PLAN.md`

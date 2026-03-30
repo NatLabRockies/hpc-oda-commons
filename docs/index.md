@@ -1,20 +1,33 @@
-# hpc-oda-commons Docs
+# hpc-oda-commons Documentation
 
-Welcome to the documentation for **hpc-oda-commons**. v0.1 focuses on a vertical slice for SLURM job runtime prediction.
+**HPC ODA Commons** is a community-driven platform for standardizing HPC operational data analytics. v0.1 focuses on SLURM job runtime prediction.
 
-## Quick Links
-1. Quickstart: `docs/how-to/quickstart.md`
-2. CLI reference: `docs/reference/cli.md`
-3. Schema overview: `docs/concepts/schema.md`
-4. Benchmarks: `docs/concepts/benchmarks.md`
+## Where to Start
 
-## 10-minute Workflow (v0.1)
-1. Install: `pip install -e ".[dev]"`
-2. Initialize: `hpc-oda init`
-3. Browse: `hpc-oda browse`
-4. Run baseline: `HPC_ODA_OFFLINE=1 hpc-oda run-baseline`
-5. Ingest logs: `hpc-oda ingest slurmctld --path /path/to/slurmctld.log`
-6. Validate data: `hpc-oda validate data/ingested/slurmctld/<run>/data.parquet`
-7. Analyze data: `hpc-oda analyze --data data/ingested/slurmctld/<run>`
-8. Benchmark: `HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml`
-9. Leaderboard: `hpc-oda leaderboard --runs runs --out leaderboard`
+**I want to try it out** -- [Quickstart](how-to/quickstart.md) (10 minutes, no data required)
+
+**I have data to ingest** -- [Ingest slurmctld logs](how-to/ingest-slurmctld.md) | [Ingest Parquet exports](how-to/ingest-jobs-parquet.md)
+
+**I want to understand results** -- [Interpreting Results](how-to/interpret-results.md)
+
+**I want to contribute** -- [Contributing](how-to/contribute.md) | [Add a Model](how-to/add-model.md) | [Add an Adapter](how-to/add-adapter.md)
+
+**I need a reference** -- [CLI Reference](reference/cli.md) | [Recipes](reference/recipes.md) | [Schema Versions](reference/schema-versions.md)
+
+**I want to understand the design** -- [Pillars](concepts/pillars.md) | [Schemas](concepts/schema.md) | [Artifacts](concepts/artifacts.md) | [Benchmarks](concepts/benchmarks.md) | [Architecture Decisions](decisions/README.md)
+
+## 10-Minute Workflow
+
+```bash
+pip install -e ".[dev]"
+hpc-oda init
+hpc-oda browse
+HPC_ODA_OFFLINE=1 hpc-oda run-baseline
+hpc-oda ingest slurmctld --path /path/to/slurmctld.log
+hpc-oda validate data/ingested/slurmctld/<run>/data.parquet
+hpc-oda analyze --data data/ingested/slurmctld/<run>
+HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
+hpc-oda leaderboard --runs runs --out leaderboard
+```
+
+See the [Quickstart guide](how-to/quickstart.md) for a walkthrough of each step.
