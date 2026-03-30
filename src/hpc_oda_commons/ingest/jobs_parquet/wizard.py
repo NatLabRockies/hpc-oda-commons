@@ -140,6 +140,42 @@ def _prompt_memory_unit(field: str) -> str:
     return normalize_memory_unit(value)
 
 
+def _prompt_fields_to_hash(
+    fields: dict[str, Any],
+    *,
+    default_hash_identifiers: bool,
+) -> None:
+    """Prompt user to select fields for identifier hashing. Mutates fields in place."""
+    hashable = [
+        name
+        for name, spec in fields.items()
+        if spec.get("source") and not spec.get("transform") and not spec.get("derive")
+    ]
+    if not hashable:
+        return
+
+    defaults = {"user", "account"} if default_hash_identifiers else set()
+    default_selection = sorted(name for name in hashable if name in defaults)
+    default_display = ", ".join(default_selection) if default_selection else "none"
+
+    typer.echo(f"Fields eligible for identifier hashing: {', '.join(hashable)}")
+    raw = typer.prompt(
+        "Enter comma-separated field names to hash (or 'none')",
+        default=default_display,
+    ).strip()
+
+    if raw.lower() == "none":
+        return
+
+    selected = {name.strip() for name in raw.split(",") if name.strip()}
+    for name in selected:
+        if name in fields and name in hashable:
+            fields[name]["transform"] = {
+                "type": "hash_identifier",
+                "salt_env": "HPC_ODA_HASH_SALT",
+            }
+
+
 def build_mapping_spec_interactive(
     profiles: list[ColumnProfile],
     suggestions: dict[str, list[dict[str, Any]]],
@@ -149,18 +185,6 @@ def build_mapping_spec_interactive(
 ) -> dict[str, Any]:
     available = [p.name for p in profiles]
     fields: dict[str, Any] = {}
-
-    hash_identifiers = default_hash_identifiers
-    if any(
-        suggestions.get(name)
-        for name in (
-            "user",
-            "account",
-        )
-    ):
-        hash_identifiers = _prompt_yes_no(
-            "Hash user/account identifiers for safety?", default_hash_identifiers
-        )
 
     for field in REQUIRED_FIELDS + OPTIONAL_FIELDS:
         column = _prompt_column(field, suggestions.get(field, []), available)
@@ -190,10 +214,9 @@ def build_mapping_spec_interactive(
             unit = _prompt_memory_unit(field)
             entry["transform"] = {"type": "memory", "unit": unit}
 
-        if field in ("user", "account") and hash_identifiers:
-            entry["transform"] = {"type": "hash_identifier", "salt_env": "HPC_ODA_HASH_SALT"}
-
         fields[field] = entry
+
+    _prompt_fields_to_hash(fields, default_hash_identifiers=default_hash_identifiers)
 
     input_payload: dict[str, Any] = {}
     if input_path is not None:

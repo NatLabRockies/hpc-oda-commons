@@ -12,7 +12,7 @@ The wizard:
 1. **Profiles** your columns (data types, null rates, sample values)
 2. **Suggests** mappings to canonical fields based on column name matching
 3. **Asks** for timestamp format, duration units, and memory units for each mapped field
-4. **Offers** identifier hashing for sensitive fields like `user` and `account`
+4. **Offers** identifier hashing for any mapped field (defaults to `user` and `account`)
 5. **Writes** a reusable `mapping.yml` alongside the output
 
 ### Supported Transformations
@@ -22,7 +22,7 @@ The wizard:
 | Timestamp | `iso8601`, `epoch_s`, `epoch_ms`, `epoch_us` |
 | Duration | `seconds`, `minutes`, `hours`, `HH:MM:SS` |
 | Memory | `bytes`, `KB`, `MB`, `GB`, `KiB`, `MiB`, `GiB` |
-| Identifier | SHA-256 hash with optional salt (via `HPC_ODA_HASH_SALT` env var) |
+| Identifier | SHA-256 hash with optional salt (via `HPC_ODA_HASH_SALT` env var). Can be applied to any mapped field. |
 
 ## Non-Interactive (Reuse Mapping)
 
@@ -35,7 +35,7 @@ hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet --mapping mapping.yml
 - `--sample-rows <N>` -- rows to sample for profiling (default: 200)
 - `--batch-size <N>` -- rows per processing batch (default: 50,000)
 - `--non-interactive` -- skip wizard prompts, use suggestions only
-- `--hash-identifiers / --no-hash-identifiers` -- control identifier hashing
+- `--hash-identifiers / --no-hash-identifiers` -- control default selection for identifier hashing (default: on, pre-selects `user` and `account`)
 
 ## Mapping Spec Example
 
