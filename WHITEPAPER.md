@@ -39,7 +39,7 @@ In v0.1, the scope is intentionally narrow:
 - **Domain:** SLURM job runtime prediction
 - **Source:** `slurmctld` logs (minimal patterns)
 - **Data:** tiny packaged synthetic dataset (offline) + manifest
-- **Model:** deterministic baseline model
+- **Models:** deterministic baseline (mean predictor) + XGBoost with rolling-hourly evaluation
 - **Benchmark:** recipe-driven execution with regression metrics (MAE, RMSE)
 - **Outputs:** schema-valid artifacts and static leaderboard generation
 
@@ -88,6 +88,7 @@ Schemas are packaged JSON Schemas, loaded by ID at runtime:
 - `oda.registry.v0.1.0` (registry snapshot)
 - `oda.recipe.v0.1.0` (benchmark recipes)
 - `oda.mdl.v0.1.0` (metric definitions; “MDL v0”)
+- `oda.mapping.v0.1.0` (field mapping specifications for data ingestion)
 
 Implementation:
 
@@ -145,7 +146,7 @@ The system is designed to run without sending data off-cluster. When a site need
 
 - `hpc_oda_commons.kernel.transformations.hash_identifier(...)`
 
-Transformations are intended to be recorded in the manifest’s transformation ledger (v0.1 supports the ledger; deeper policy enforcement is an evolution path).
+Transformations are recorded in the manifest’s transformation ledger.
 
 ### 4.5 Adapter Contract and slurmctld Ingestion
 
@@ -184,14 +185,13 @@ Validation rules enforced by `hpc_oda_commons.benchmark.recipes.validate_recipe(
   - `rmse`
 - all metrics share the same target field (v0.1 expects `runtime_seconds`)
 
-Execution:
+Execution (`hpc_oda_commons.benchmark.runner`):
 
-- v0.1 benchmark runner is implemented in the CLI:
-  - loads recipe
-  - loads dataset parquet
-  - applies deterministic split (fixed fraction)
-  - trains and evaluates the baseline model
-  - writes a result bundle under `runs/`
+- loads recipe and dataset parquet
+- resolves the model and split strategy:
+  - **fixed split** with the baseline model (deterministic train/test partition)
+  - **rolling-hourly split** with the XGBoost model (sliding window evaluation simulating production retraining)
+- computes metrics and writes a result bundle under `runs/`
 
 ### 4.7 Leaderboard Generation
 
@@ -216,7 +216,7 @@ The “intelligence layer” in today’s codebase is intentionally modest and t
 - **Metadata graph:** static graph derived from the registry snapshot (entries, tags, domains, schemas)
   - `hpc_oda_commons.intelligence.metadata_graph.build_metadata_graph(...)`
 
-These are designed to support future UX improvements without requiring ML infrastructure.
+These are library-level APIs available for programmatic use but not currently integrated into the CLI.
 
 ### 4.9 Packaging, Offline Support, and CI
 
@@ -248,27 +248,22 @@ The practical impact is that sites and researchers can now share comparable *art
 
 ## 6) What Is Left To Be Done
 
-The current system is a stable “vertical slice”, not yet a fully general platform. The major next steps are:
+The current system is a stable vertical slice, not yet a fully general platform. The major next steps are:
 
-1. **Multiple models and adapters**
-   - add additional runtime models and additional ingestion sources
-   - evolve toward a true plugin mechanism if/when external contributions demand it
+1. **Additional adapters and data sources**
+   - support for additional ingestion sources beyond slurmctld and Parquet exports (e.g., PBS/Torque, sacct)
 2. **Environment locking**
    - recipes should carry a minimal environment descriptor (constraints/conda/container reference)
    - provenance should record environment descriptors and hashes
 3. **Richer validation and transformation policy**
-   - enforce transformation ledger expectations where needed
    - expand quality rules in a versioned way
+   - additional privacy-preserving transformations (timestamp binning, value redaction)
 4. **More data**
    - add external dataset references with immutable identifiers/checksums
-   - expand synthetic dataset generators with feedback loops
-5. **User experience**
-   - improve “analyze” outputs (more robust handling of missing targets; better reports)
-   - add guided ingest assistance beyond deterministic checks
-6. **Documentation and community process**
-   - mature SER/ADR guidance and contribution pathways for adapters/models/recipes
-7. **Publishing and automation**
-   - optional: automate leaderboard publication (e.g., GitHub Pages) from validated result bundles
+5. **New problem domains**
+   - extend beyond runtime prediction to job failure prediction, resource utilization, queue wait-time estimation
+6. **Publishing and automation**
+   - automate leaderboard publication (e.g., GitHub Pages) from validated result bundles
 
 ## 7) Future Vision for the HPC ODA Community
 
