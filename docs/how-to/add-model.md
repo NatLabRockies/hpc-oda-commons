@@ -6,8 +6,8 @@ registry metadata and recipes.
 ## Minimal Steps
 
 1. Implement a model class under `src/hpc_oda_commons/models/`.
-2. Add a registry entry for the model in `registry/snapshot.json`.
-3. Add a recipe that references the model (`recipes/`).
+2. Add a registry entry in `src/hpc_oda_commons/registry/snapshot.json`.
+3. Add a recipe in `src/hpc_oda_commons/recipes/`.
 4. Add unit tests that exercise the model's public API (e.g., `fit()`/`predict()` for simple models, or `evaluate_hourly()` for rolling-window models).
 
 ## Required Metadata
