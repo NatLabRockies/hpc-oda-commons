@@ -7,7 +7,7 @@ This reference covers the v0.1 `hpc-oda` commands.
 
 ## Project
 1. `hpc-oda init`
-   Creates `hpc-oda.toml`, `.hpc_oda/`, `data/`, and `runs/` in the current directory.
+   Creates `.hpc_oda/`, `data/`, and `runs/` in the current directory.
 
 ## Find
 1. `hpc-oda browse --tag <tag> --type <adapter|model|recipe> --source <source>`

@@ -1,6 +1,6 @@
 # ADR 0005 — Project Configuration Format for v0.1 (`hpc-oda.toml`)
 
-**Status:** Accepted  
+**Status:** Superseded
 **Date:** 2026-02-03  
 **Scope:** v0.1 vertical slice (SLURM job runtime prediction)
 
@@ -38,8 +38,6 @@ Parsing approach:
 - Code should define a minimal config schema/validation strategy (lightweight in v0.1).
 - The config file becomes a stable user-facing interface and should be versioned carefully.
 
-## Revisit Criteria
+## Superseded
 
-Revisit in v0.2+ if:
-- the config needs strong schema enforcement (may introduce a JSON Schema for config)
-- a multi-file config approach becomes necessary for large deployments
+As of v0.1 cleanup, `hpc-oda.toml` was removed because it was written by `init` but never read by any code. Project-level configuration will be re-introduced end-to-end when a concrete use case requires it.

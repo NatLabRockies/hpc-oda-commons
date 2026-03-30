@@ -450,12 +450,11 @@ run:
 
 ### 8.2 Bundled Recipes
 
-v0.1 ships four recipes:
+v0.1 ships three recipes:
 
 | Recipe | Model | Split | Purpose |
 |--------|-------|-------|---------|
 | `baseline_tiny.yml` | Baseline | Fixed 80/20 | CI smoke tests, offline demos |
-| `baseline_medium.yml` | Baseline | Fixed 80/20 | Scheduled regression checks |
 | `xgb_hourly_recent.yml` | XGBoost | Rolling hourly (1000h, 100d) | Full XGBoost benchmark |
 | `alt_model_example.yml` | XGBoost | Rolling hourly (24h, 30d) | Alternate configuration example |
 
@@ -521,8 +520,6 @@ Provenance tracking is woven throughout HPC ODA Commons. The `build_provenance()
 
 **Data transformation utilities** in `kernel/transformations.py` support privacy-preserving workflows:
 - `hash_identifier(value, salt)`: SHA-256 hashes sensitive identifiers (e.g., usernames) with an optional salt
-- `bin_timestamp(value, interval_seconds)`: Bins timestamps to fixed intervals to reduce temporal precision
-- `redact_value(value, replacement)`: Replaces sensitive values with null or a custom replacement
 
 ---
 
@@ -705,23 +702,7 @@ The ultimate vision is enabling rigorous cross-site comparison of ODA methods. W
 
 ---
 
-## 15. Project Configuration
-
-### 15.1 Project-Level Configuration (`hpc-oda.toml`)
-
-```toml
-[project]
-name = "hpc-oda-project"
-schema_job = "oda.job.v0.1.0"
-schema_result = "oda.result.v0.1.0"
-
-[paths]
-data_dir = "data"
-runs_dir = "runs"
-state_dir = ".hpc_oda"
-```
-
-### 15.2 Development Configuration
+## 15. Development Configuration
 
 - **Linting/Formatting**: Ruff with line length 100, Python 3.9 target, rules E/F/I/UP/B
 - **Pre-commit hooks**: trailing whitespace, end-of-file fixer, YAML/TOML/JSON validation, 512 KB file size limit, Ruff

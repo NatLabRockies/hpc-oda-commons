@@ -112,7 +112,7 @@ These gates anchor development and become CI “golden path” checks.
 **Goal:** immediate user value, no network required.
 
 1. Implement project initialization:
-   - `hpc-oda init` creates `hpc-oda.toml`, directories, and local state (`.hpc_oda/`)
+   - `hpc-oda init` creates directories and local state (`.hpc_oda/`, `data/`, `runs/`)
 2. Implement baseline runner path:
    - use included tiny synthetic dataset + manifest
    - run baseline model plugin

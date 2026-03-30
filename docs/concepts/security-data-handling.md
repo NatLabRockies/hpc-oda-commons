@@ -9,8 +9,6 @@ Before sharing artifacts, operators should apply explicit transformations to
 sensitive fields. For v0.1 we support simple, deterministic helpers:
 
 - `hash_identifier(value, salt=...)` — pseudonymize identifiers
-- `bin_timestamp(value, interval_seconds=...)` — reduce timestamp precision
-- `redact_value(value, replacement=...)` — remove or replace sensitive values
 
 All transformations should be recorded in the manifest transformation ledger.
 

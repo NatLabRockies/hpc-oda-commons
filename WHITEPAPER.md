@@ -54,7 +54,7 @@ At a high level, the system provides three user-visible capabilities.
 
 ### Run (local-first ingestion, validation, and analysis)
 
-- `hpc-oda init` creates a local project structure (`data/`, `runs/`, `.hpc_oda/`, `hpc-oda.toml`).
+- `hpc-oda init` creates a local project structure (`data/`, `runs/`, `.hpc_oda/`).
 - `HPC_ODA_OFFLINE=1 hpc-oda run-baseline` generates and caches a deterministic tiny synthetic dataset locally
   (offline), runs the baseline model, computes regression metrics (MAE/RMSE), and produces a result bundle
   under `runs/`. This is the fastest “sanity check” that the end-to-end toolchain is installed and working.
@@ -144,8 +144,6 @@ This enables “result bundles as evidence”: a leaderboard entry can trace bac
 The system is designed to run without sending data off-cluster. When a site needs to share derived artifacts, it can apply explicit transformations:
 
 - `hpc_oda_commons.kernel.transformations.hash_identifier(...)`
-- `hpc_oda_commons.kernel.transformations.bin_timestamp(...)`
-- `hpc_oda_commons.kernel.transformations.redact_value(...)`
 
 Transformations are intended to be recorded in the manifest’s transformation ledger (v0.1 supports the ledger; deeper policy enforcement is an evolution path).
 

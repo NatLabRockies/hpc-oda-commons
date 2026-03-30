@@ -178,8 +178,6 @@ This enables full traceability: a leaderboard entry can trace back to exactly wh
 
 For sharing derived artifacts, the toolkit provides deterministic transformation helpers:
 - `hash_identifier(value, salt=...)` — pseudonymize user/account identifiers (salt via `HPC_ODA_HASH_SALT`)
-- `bin_timestamp(value, interval_seconds=...)` — reduce timestamp precision
-- `redact_value(value, replacement=...)` — remove or replace sensitive values
 
 All transformations are recorded in the manifest's transformation ledger.
 
