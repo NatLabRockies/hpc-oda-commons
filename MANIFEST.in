@@ -1,6 +1,0 @@
-# Include non-Python artifacts in sdist/wheel.
-recursive-include src/hpc_oda_commons/schemas *.json
-recursive-include src/hpc_oda_commons/registry *.json
-recursive-include src/hpc_oda_commons/recipes *.yml *.yaml *.toml
-recursive-include src/hpc_oda_commons/datasets *
-recursive-include docs *

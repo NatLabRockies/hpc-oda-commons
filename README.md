@@ -225,7 +225,3 @@ scripts/                 Validation and release helpers
 ## Contributing
 
 See `CONTRIBUTING.md` for branching conventions, code style (Ruff), testing expectations, and the Schema Evolution Request process.
-
-## Citation
-
-If you use this in academic work, please cite via `CITATION.cff`.
