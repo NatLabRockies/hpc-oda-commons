@@ -215,10 +215,18 @@ docs/                    User and contributor documentation
 scripts/                 Validation and release helpers
 ```
 
+## Agent-Friendly
+
+hpc-oda-commons is developed with help from AI agents and designed to be useful to both humans and agents. The CLI is structured for automation, recipes are declarative YAML, and all outputs are machine-readable JSON.
+
+AI agents (Claude Code, Codex, OpenCode, etc.) can find complete guidance in:
+- **`CLAUDE.md`** — project context, CLI workflow, command reference, development standards
+- **`AGENTS.md`** — symlink to `CLAUDE.md` for agents that read `AGENTS.md`
+
 ## Documentation
 
-- **How-to guides:** `docs/how-to/quickstart.md`, `ingest-slurmctld.md`, `ingest-jobs-parquet.md`
-- **Concepts:** `docs/concepts/` — pillars, artifacts, schema, benchmarks, security
+- **How-to guides:** `docs/how-to/quickstart.md`, `ingest-slurmctld.md`, `ingest-jobs-parquet.md`, `interpret-results.md`
 - **CLI reference:** `docs/reference/cli.md`
+- **Recipes:** `docs/reference/recipes.md`
 - **Deep dive:** `WHITEPAPER.md`
 
