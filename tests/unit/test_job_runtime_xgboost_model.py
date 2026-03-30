@@ -41,16 +41,6 @@ def test_dependency_check_reports_missing(monkeypatch: pytest.MonkeyPatch) -> No
         model._check_dependencies()
 
 
-def test_fit_predict_and_hourly_are_scaffolded(monkeypatch: pytest.MonkeyPatch) -> None:
-    model = JobRuntimeXGBoostModel()
-    monkeypatch.setattr(model, "_check_dependencies", lambda: None)
-
-    with pytest.raises(NotImplementedError, match="scaffolded in Increment 1"):
-        model.fit([])
-    with pytest.raises(NotImplementedError, match="scaffolded in Increment 1"):
-        model.predict([])
-
-
 def test_analyze_preprocessing_writes_diagnostics(tmp_path: Path) -> None:
     rows = [
         {"user": "alice", "partition": "debug", "state": "COMPLETED"},

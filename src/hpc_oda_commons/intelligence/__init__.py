@@ -1,5 +1,8 @@
 """
-Minimal intelligence layer helpers (mapping suggestions, synthetic scoring, metadata graph).
+Intelligence layer: library-level APIs for programmatic use.
+
+These functions are part of the public API for consumers who import hpc_oda_commons
+as a library. They are not integrated into the CLI in v0.1.
 """
 
 from hpc_oda_commons.intelligence.mapping import (

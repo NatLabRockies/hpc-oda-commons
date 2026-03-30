@@ -252,8 +252,7 @@ def _require_sklearn() -> tuple[Any, Any]:
         from sklearn.preprocessing import OneHotEncoder
     except Exception as exc:
         raise RuntimeError(
-            "Increment 2 preprocessing analysis requires scikit-learn. "
-            'Install with `pip install -e ".[dev]"`.'
+            'Preprocessing analysis requires scikit-learn. Install with `pip install -e ".[dev]"`.'
         ) from exc
     return OneHotEncoder, TruncatedSVD
 

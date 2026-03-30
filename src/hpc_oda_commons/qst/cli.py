@@ -4,7 +4,7 @@ import difflib
 import json
 import sys
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -14,6 +14,10 @@ from rich.console import Console
 from hpc_oda_commons.adapters.slurmctld.adapter import SlurmctldAdapter
 from hpc_oda_commons.benchmark.recipes import load_recipe
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
+from hpc_oda_commons.benchmark.runner import run_fixed_baseline, run_rolling_hourly_xgboost
+from hpc_oda_commons.datasets.synthetic import (
+    generate_tiny_runtime_dataset,
+)
 from hpc_oda_commons.ingest.jobs_parquet.apply import apply_mapping_spec
 from hpc_oda_commons.ingest.jobs_parquet.profile import profile_parquet
 from hpc_oda_commons.ingest.jobs_parquet.suggest import suggest_mapping
@@ -33,13 +37,13 @@ from hpc_oda_commons.kernel.artifacts.mapping_spec import (
 )
 from hpc_oda_commons.kernel.artifacts.oda_table import table_hash, write_table_parquet
 from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
+from hpc_oda_commons.kernel.metrics import (
+    compute_regression_metrics_from_defs,
+)
 from hpc_oda_commons.kernel.provenance import build_provenance
+from hpc_oda_commons.kernel.serialization import to_jsonable
 from hpc_oda_commons.kernel.validate import validate_json
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
-from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostConfig,
-    JobRuntimeXGBoostModel,
-)
 from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.info import info
 from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
@@ -69,81 +73,18 @@ def _ensure_dirs(project_root: Path) -> None:
     (project_root / "runs").mkdir(parents=True, exist_ok=True)
 
 
-def _default_config_text() -> str:
-    return """# hpc-oda-commons project config (v0.1)
-# Vertical slice: SLURM job runtime prediction
-
-[project]
-name = "hpc-oda-project"
-schema_job = "oda.job.v0.1.0"
-schema_result = "oda.result.v0.1.0"
-
-[paths]
-data_dir = "data"
-runs_dir = "runs"
-state_dir = ".hpc_oda"
-"""
-
-
 def _result_bundle_dir(project_root: Path, run_id: str) -> Path:
     return project_root / "runs" / run_id
-
-
-def _compute_regression_metrics(y_true: list[float], y_pred: list[float]) -> dict[str, float]:
-    if len(y_true) != len(y_pred) or not y_true:
-        raise ValueError("y_true and y_pred must be the same non-zero length")
-
-    n = float(len(y_true))
-    mae = sum(abs(a - b) for a, b in zip(y_true, y_pred)) / n
-    rmse = (sum((a - b) ** 2 for a, b in zip(y_true, y_pred)) / n) ** 0.5
-    return {"mae": float(mae), "rmse": float(rmse)}
-
-
-def _compute_regression_metrics_from_defs(
-    y_true: list[float], y_pred: list[float], metric_defs: list[dict[str, Any]]
-) -> dict[str, float]:
-    base = _compute_regression_metrics(y_true, y_pred)
-    requested = {str(m.get("name", "")) for m in metric_defs}
-    metrics: dict[str, float] = {k: v for k, v in base.items() if k in requested}
-
-    if "mape" in requested:
-        denom = [abs(v) for v in y_true if v != 0]
-        if not denom:
-            raise ValueError("MAPE is undefined when all targets are zero.")
-        mape = sum(abs(a - b) / abs(a) for a, b in zip(y_true, y_pred) if a != 0) / len(denom)
-        metrics["mape"] = float(mape)
-
-    if "r2" in requested:
-        mean = sum(y_true) / float(len(y_true))
-        ss_tot = sum((v - mean) ** 2 for v in y_true)
-        ss_res = sum((a - b) ** 2 for a, b in zip(y_true, y_pred))
-        metrics["r2"] = float(1.0 - ss_res / ss_tot) if ss_tot != 0 else 0.0
-
-    return metrics
 
 
 def _expected_job_fields() -> tuple[str, ...]:
     return tuple(JOB_REQUIRED_FIELDS) + tuple(JOB_OPTIONAL_FIELDS)
 
 
-def _to_jsonable(value: Any) -> Any:
-    if isinstance(value, datetime):
-        if value.tzinfo is None:
-            return value.isoformat()
-        return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-    if isinstance(value, dict):
-        return {str(key): _to_jsonable(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_to_jsonable(item) for item in value]
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
-    return str(value)
-
-
 def _short_row_preview(row: dict[str, Any], *, max_value_chars: int = 120) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in row.items():
-        normalized = _to_jsonable(value)
+        normalized = to_jsonable(value)
         if isinstance(normalized, str) and len(normalized) > max_value_chars:
             out[key] = normalized[: max_value_chars - 3] + "..."
         else:
@@ -426,90 +367,6 @@ def _print_validation_issues(report: dict[str, Any]) -> None:
                 )
 
 
-def _tiny_dataset_is_rolling_compatible(table_path: Path) -> bool:
-    try:
-        import pyarrow.parquet as pq
-    except Exception:
-        return False
-
-    try:
-        table = pq.read_table(table_path)
-    except Exception:
-        return False
-
-    if "submit_time" not in table.column_names:
-        return False
-
-    submit_values = table.column("submit_time").to_pylist()
-    hour_bins: set[str] = set()
-    for value in submit_values:
-        if value in (None, ""):
-            continue
-        text = str(value)
-        try:
-            dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
-        except ValueError:
-            continue
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        hour_bins.add(
-            dt.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
-        )
-
-    return len(hour_bins) >= 3
-
-
-def _generate_tiny_runtime_dataset(out_dir: Path) -> tuple[Path, Path]:
-    """
-    Deterministically generate a tiny synthetic dataset in Parquet + minimal manifest-like JSON.
-    v0.1: keep generation local-first; no network access required.
-    """
-    import json
-
-    out_dir.mkdir(parents=True, exist_ok=True)
-    table_path = out_dir / "data.parquet"
-    meta_path = out_dir / "manifest.json"
-
-    if (
-        table_path.exists()
-        and meta_path.exists()
-        and _tiny_dataset_is_rolling_compatible(table_path)
-    ):
-        return table_path, meta_path
-
-    base_submit = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    rows: list[dict[str, Any]] = []
-    for i in range(30):
-        submit = base_submit + timedelta(hours=i, minutes=2)
-        start = submit + timedelta(minutes=3)
-        runtime = float(600 + (i % 10) * 120)  # 600..1680 seconds
-        end = start + timedelta(seconds=runtime)
-        rows.append(
-            {
-                "job_id": 1001 + i,
-                "submit_time": submit.isoformat().replace("+00:00", "Z"),
-                "start_time": start.isoformat().replace("+00:00", "Z"),
-                "end_time": end.isoformat().replace("+00:00", "Z"),
-                "runtime_seconds": runtime,
-                "allocated_cpus": int((i % 8) + 1),
-                "partition": "debug" if i % 2 == 0 else "compute",
-            }
-        )
-
-    write_table_parquet(rows, table_path)
-    meta = {
-        "schema_version": "oda.job.v0.1.0",
-        "generated_at": _now_utc_iso(),
-        "description": (
-            "Deterministic tiny synthetic dataset for v0.1 job runtime prediction "
-            "with submit_time for rolling-hour compatibility."
-        ),
-        "table_path": str(table_path),
-    }
-    meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    return table_path, meta_path
-
-
 def _load_recipe(recipe_path: Path) -> dict[str, Any]:
     try:
         return load_recipe(recipe_path, validate=True)
@@ -528,67 +385,6 @@ def _normalize_split(recipe_payload: dict[str, Any]) -> dict[str, Any]:
     return split
 
 
-def _run_fixed_baseline_benchmark(
-    rows: list[dict[str, Any]],
-    *,
-    split: dict[str, Any],
-    metric_defs: list[dict[str, Any]],
-) -> tuple[dict[str, float], dict[str, Any]]:
-    train_fraction = float(split.get("train_fraction", 0.8))
-    n_train = max(1, int(len(rows) * train_fraction))
-    train_rows = rows[:n_train]
-    test_rows = rows[n_train:] if n_train < len(rows) else rows[:]
-    y_true = [float(r["runtime_seconds"]) for r in test_rows]
-
-    model = JobRuntimeBaselineModel()
-    model.fit(train_rows)
-    y_pred = model.predict(test_rows)
-
-    metrics = _compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
-    metrics_payload: dict[str, Any] = {**metrics, "definitions": metric_defs}
-    return metrics, metrics_payload
-
-
-def _run_rolling_hourly_xgboost_benchmark(
-    rows: list[dict[str, Any]],
-    *,
-    split: dict[str, Any],
-    metric_defs: list[dict[str, Any]],
-    verbose: bool = False,
-) -> tuple[dict[str, float], dict[str, Any]]:
-    requested = {str(m.get("name", "")) for m in metric_defs}
-    unsupported = sorted(requested - {"mae", "rmse"})
-    if unsupported:
-        raise typer.BadParameter(
-            "rolling_hourly benchmark currently supports only mae/rmse metrics; "
-            f"unsupported: {', '.join(unsupported)}"
-        )
-
-    n_recent_hours = int(split.get("n_recent_hours", 1000))
-    training_lookback_days = int(split.get("training_lookback_days", 100))
-    if verbose:
-        console.print(
-            "[blue][verbose][/blue] rolling_hourly/xgboost config: "
-            f"rows={len(rows)}, "
-            f"n_recent_hours={n_recent_hours}, "
-            f"training_lookback_days={training_lookback_days}"
-        )
-    model = JobRuntimeXGBoostModel(
-        config=JobRuntimeXGBoostConfig(
-            n_recent_hours=n_recent_hours,
-            training_lookback_days=training_lookback_days,
-        )
-    )
-    eval_payload = model.evaluate_hourly(rows, verbose=verbose)
-
-    metrics = {
-        "mae": float(eval_payload["mae"]),
-        "rmse": float(eval_payload["rmse"]),
-    }
-    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
-    return metrics, metrics_payload
-
-
 @app.command()
 def init() -> None:
     """
@@ -596,10 +392,6 @@ def init() -> None:
     """
     root = Path.cwd()
     _ensure_dirs(root)
-
-    cfg = root / "hpc-oda.toml"
-    if not cfg.exists():
-        cfg.write_text(_default_config_text(), encoding="utf-8")
 
     console.print("[green]Initialized hpc-oda project[/green]")
 
@@ -614,7 +406,7 @@ def run_baseline() -> None:
     _ensure_dirs(root)
 
     ds_dir = root / ".hpc_oda" / "cache" / "datasets" / "synthetic_job_runtime_tiny"
-    table_path, _meta_path = _generate_tiny_runtime_dataset(ds_dir)
+    table_path, _meta_path = generate_tiny_runtime_dataset(ds_dir)
     ds_hash = table_hash(table_path)
 
     import pyarrow.parquet as pq
@@ -631,7 +423,7 @@ def run_baseline() -> None:
         {"name": "mae", "target": "runtime_seconds"},
         {"name": "rmse", "target": "runtime_seconds"},
     ]
-    metrics = _compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
+    metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
     metrics_payload: dict[str, Any] = {**metrics, "definitions": metric_defs}
 
     prov = build_provenance(
@@ -867,7 +659,7 @@ def benchmark(
 
     if table_path is None or not table_path.exists():
         ds_dir = root / ".hpc_oda" / "cache" / "datasets" / "synthetic_job_runtime_tiny"
-        table_path, _meta = _generate_tiny_runtime_dataset(ds_dir)
+        table_path, _meta = generate_tiny_runtime_dataset(ds_dir)
         if verbose:
             console.print(
                 "[blue][verbose][/blue] dataset path missing in recipe; "
@@ -903,11 +695,9 @@ def benchmark(
         )
 
     if model_id == "model.job_runtime_baseline" and split_method == "fixed":
-        metrics, metrics_payload = _run_fixed_baseline_benchmark(
-            rows, split=split, metric_defs=metric_defs
-        )
+        metrics, metrics_payload = run_fixed_baseline(rows, split=split, metric_defs=metric_defs)
     elif model_id == "model.job_runtime_xgboost" and split_method == "rolling_hourly":
-        metrics, metrics_payload = _run_rolling_hourly_xgboost_benchmark(
+        metrics, metrics_payload = run_rolling_hourly_xgboost(
             rows, split=split, metric_defs=metric_defs, verbose=verbose
         )
     else:
@@ -996,7 +786,7 @@ def analyze_my_data(
         {"name": "mae", "target": "runtime_seconds"},
         {"name": "rmse", "target": "runtime_seconds"},
     ]
-    metrics = _compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
+    metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
 
     prov = build_provenance(
         input_schema="oda.job.v0.1.0",

@@ -8,6 +8,7 @@ import pyarrow.parquet as pq
 import pytest
 import typer
 
+from hpc_oda_commons.benchmark import runner
 from hpc_oda_commons.qst import cli
 
 
@@ -114,7 +115,7 @@ def test_benchmark_rolling_hourly_uses_xgboost_path(
                 },
             }
 
-    monkeypatch.setattr(cli, "JobRuntimeXGBoostModel", FakeXGBModel)
+    monkeypatch.setattr(runner, "JobRuntimeXGBoostModel", FakeXGBModel)
     monkeypatch.chdir(tmp_path)
 
     table_path = tmp_path / "jobs.parquet"
@@ -206,7 +207,7 @@ def test_benchmark_rolling_hourly_uses_default_training_lookback_days(
                 },
             }
 
-    monkeypatch.setattr(cli, "JobRuntimeXGBoostModel", FakeXGBModel)
+    monkeypatch.setattr(runner, "JobRuntimeXGBoostModel", FakeXGBModel)
     monkeypatch.chdir(tmp_path)
 
     table_path = tmp_path / "jobs.parquet"
@@ -258,7 +259,7 @@ def test_benchmark_verbose_prints_progress(
                 },
             }
 
-    monkeypatch.setattr(cli, "JobRuntimeXGBoostModel", FakeXGBModel)
+    monkeypatch.setattr(runner, "JobRuntimeXGBoostModel", FakeXGBModel)
     monkeypatch.chdir(tmp_path)
 
     table_path = tmp_path / "jobs.parquet"
@@ -281,5 +282,4 @@ def test_benchmark_verbose_prints_progress(
     assert FakeXGBModel.seen_verbose is True
     captured = capsys.readouterr()
     assert "benchmark resolved:" in captured.out
-    assert "rolling_hourly/xgboost config:" in captured.out
     assert "benchmark metrics:" in captured.out

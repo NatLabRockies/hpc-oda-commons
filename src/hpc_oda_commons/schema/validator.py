@@ -11,6 +11,7 @@ import pyarrow.parquet as pq
 from jsonschema import Draft202012Validator
 
 from hpc_oda_commons.kernel.schemas import load_schema
+from hpc_oda_commons.kernel.serialization import to_jsonable
 from hpc_oda_commons.kernel.validate import (
     SchemaValidationError,
     validate_json,
@@ -18,22 +19,6 @@ from hpc_oda_commons.kernel.validate import (
 from hpc_oda_commons.schema.quality_rules import build_quality_report
 
 JOB_SCHEMA_ID = "oda.job.v0.1.0"
-
-
-def _to_jsonable(value: Any) -> Any:
-    from datetime import datetime, timezone
-
-    if isinstance(value, datetime):
-        if value.tzinfo is None:
-            return value.isoformat()
-        return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-    if isinstance(value, dict):
-        return {str(key): _to_jsonable(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_to_jsonable(item) for item in value]
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
-    return str(value)
 
 
 def validate_rows(rows: list[dict[str, Any]], schema_id: str) -> None:
@@ -86,7 +71,7 @@ def _append_issue_example(
     bucket["count"] = int(bucket["count"]) + 1
     examples = bucket["examples"]
     if len(examples) < example_limit:
-        examples.append({"row_index": row_index, "row": _to_jsonable(row)})
+        examples.append({"row_index": row_index, "row": to_jsonable(row)})
 
 
 def collect_schema_issues(

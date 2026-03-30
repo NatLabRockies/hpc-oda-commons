@@ -9,6 +9,7 @@ import pytest
 import yaml
 from jsonschema import Draft202012Validator
 
+from hpc_oda_commons.benchmark import runner
 from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec, write_mapping_spec
 from hpc_oda_commons.kernel.schemas import load_schema
 from hpc_oda_commons.qst import cli
@@ -190,7 +191,7 @@ def test_benchmark_xgboost_recipe_small_window(
     recipe_path.write_text(yaml.safe_dump(recipe_payload, sort_keys=False), encoding="utf-8")
 
     monkeypatch.chdir(tmp_project)
-    monkeypatch.setattr(cli, "JobRuntimeXGBoostModel", _FakeXGBModel)
+    monkeypatch.setattr(runner, "JobRuntimeXGBoostModel", _FakeXGBModel)
 
     cli.benchmark(recipe_path)
 

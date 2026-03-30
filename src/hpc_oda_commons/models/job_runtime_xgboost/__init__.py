@@ -1,5 +1,5 @@
 """
-XGBoost alternate model package for job runtime prediction (v0.1 incremental scaffold).
+XGBoost model package for job runtime prediction (v0.1).
 """
 
 from __future__ import annotations

@@ -15,7 +15,7 @@ from hpc_oda_commons.kernel.artifacts.result_bundle import (
 )
 from hpc_oda_commons.kernel.paths import ensure_dir
 
-LEADERBOARD_SCHEMA_VERSION = "oda.leaderboard.v0.1.0"
+LEADERBOARD_FORMAT_VERSION = "oda.leaderboard.v0.1.0"
 
 
 def _now_utc_iso() -> str:
@@ -55,7 +55,7 @@ def build_leaderboard(runs_dir: Path) -> dict[str, Any]:
 
     entries.sort(key=lambda e: e.get("created_at") or "")
     return {
-        "schema_version": LEADERBOARD_SCHEMA_VERSION,
+        "schema_version": LEADERBOARD_FORMAT_VERSION,
         "generated_at": _now_utc_iso(),
         "runs_dir": str(runs_dir),
         "entries": entries,

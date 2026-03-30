@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import inspect
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,7 +9,10 @@ from typing import Any
 import numpy as np
 from tqdm import tqdm
 
+from hpc_oda_commons.kernel.metrics import compute_regression_metrics
 from hpc_oda_commons.models.job_runtime_xgboost.preprocessing import (
+    _build_one_hot_encoder,
+    _normalize_category,
     build_preprocessing_diagnostics,
     detect_categorical_columns,
     profile_categorical_features,
@@ -40,10 +42,10 @@ class _DailyPreprocessingArtifacts:
 @dataclass(frozen=True)
 class JobRuntimeXGBoostConfig:
     """
-    Increment 1 config scaffold for the alternate runtime model.
+    Configuration for the XGBoost runtime prediction model.
 
-    Later increments will implement automatic one-hot + dimensionality reduction
-    and hourly rolling retraining/evaluation behavior that uses these settings.
+    Controls rolling-hourly evaluation windows, categorical preprocessing
+    (OHE + SVD), and XGBoost hyperparameters.
     """
 
     n_recent_hours: int = 1000
@@ -67,11 +69,12 @@ class JobRuntimeXGBoostConfig:
 
 class JobRuntimeXGBoostModel:
     """
-    Increment 1 scaffold for an alternate runtime prediction model.
+    XGBoost model for job runtime prediction with rolling-hourly evaluation.
 
-    This class intentionally defines the public shape and dependency checks
-    without training logic. Training and rolling evaluation are implemented in
-    follow-on increments.
+    Public API:
+    - evaluate_hourly(): rolling-hourly train/test evaluation with daily preprocessing cache
+    - build_hourly_split_plan(): preview split windows without running evaluation
+    - analyze_preprocessing(): profile categorical features and preview OHE/SVD config
     """
 
     def __init__(self, config: JobRuntimeXGBoostConfig | None = None) -> None:
@@ -90,22 +93,6 @@ class JobRuntimeXGBoostModel:
                 "Missing optional model dependencies: "
                 f'{missing_list}. Install with `pip install -e ".[dev]"`.'
             )
-
-    def fit(self, rows: list[dict[str, Any]]) -> None:
-        _ = rows
-        self._check_dependencies()
-        raise NotImplementedError(
-            "JobRuntimeXGBoostModel.fit() is scaffolded in Increment 1. "
-            "Training logic lands in later increments."
-        )
-
-    def predict(self, rows: list[dict[str, Any]]) -> list[float]:
-        _ = rows
-        self._check_dependencies()
-        raise NotImplementedError(
-            "JobRuntimeXGBoostModel.predict() is scaffolded in Increment 1. "
-            "Prediction logic lands in later increments."
-        )
 
     def evaluate_hourly(
         self,
@@ -323,10 +310,7 @@ class JobRuntimeXGBoostModel:
         diagnostics_path: Path | None = None,
         categorical_columns: list[str] | None = None,
     ) -> dict[str, Any]:
-        """
-        Increment 2 analysis helper:
-        profile categorical fields, choose one-hot config, and select SVD components.
-        """
+        """Profile categorical fields, choose one-hot config, and select SVD components."""
         payload = build_preprocessing_diagnostics(
             rows,
             explained_variance_target=self.config.explained_variance_target,
@@ -350,25 +334,19 @@ class JobRuntimeXGBoostModel:
         from xgboost import XGBRegressor
 
         return XGBRegressor(
-            # objective="reg:squarederror",
-            # n_estimators=self.config.n_estimators,
-            # max_depth=self.config.max_depth,
-            # learning_rate=self.config.learning_rate,
-            # subsample=self.config.subsample,
-            # colsample_bytree=self.config.colsample_bytree,
+            n_estimators=self.config.n_estimators,
+            max_depth=self.config.max_depth,
+            learning_rate=self.config.learning_rate,
+            subsample=self.config.subsample,
+            colsample_bytree=self.config.colsample_bytree,
             random_state=self.config.random_state,
-            # n_jobs=1,
+            n_jobs=1,
             verbosity=0,
         )
 
     @staticmethod
     def _compute_regression_metrics(y_true: list[float], y_pred: list[float]) -> dict[str, float]:
-        if len(y_true) != len(y_pred) or not y_true:
-            raise ValueError("y_true and y_pred must be the same non-zero length")
-        n = float(len(y_true))
-        mae = sum(abs(a - b) for a, b in zip(y_true, y_pred)) / n
-        rmse = (sum((a - b) ** 2 for a, b in zip(y_true, y_pred)) / n) ** 0.5
-        return {"mae": float(mae), "rmse": float(rmse)}
+        return compute_regression_metrics(y_true, y_pred)
 
     def _rows_with_target(
         self, rows: list[dict[str, Any]]
@@ -422,7 +400,7 @@ class JobRuntimeXGBoostModel:
         svd_coverage = 1.0
 
         if one_hot_config.columns:
-            encoder = self._build_one_hot_encoder(
+            encoder = _build_one_hot_encoder(
                 one_hot_config.min_frequency_count,
                 one_hot_config.handle_unknown,
             )
@@ -470,16 +448,10 @@ class JobRuntimeXGBoostModel:
             return numeric
         return np.hstack((numeric, categorical))
 
-    @staticmethod
-    def _normalize_category(value: Any) -> str | None:
-        if value is None or value == "":
-            return None
-        return str(value)
-
     def _categorical_matrix(
         self, rows: list[dict[str, Any]], columns: tuple[str, ...] | list[str]
     ) -> list[list[str | None]]:
-        return [[self._normalize_category(row.get(column)) for column in columns] for row in rows]
+        return [[_normalize_category(row.get(column)) for column in columns] for row in rows]
 
     def _categorical_features(
         self, rows: list[dict[str, Any]], artifacts: _DailyPreprocessingArtifacts
@@ -539,22 +511,6 @@ class JobRuntimeXGBoostModel:
                 except (TypeError, ValueError):
                     out[i, j] = 0.0
         return out
-
-    @staticmethod
-    def _build_one_hot_encoder(min_frequency_count: int, handle_unknown: str) -> Any:
-        from sklearn.preprocessing import OneHotEncoder
-
-        signature = inspect.signature(OneHotEncoder.__init__)
-        kwargs: dict[str, Any] = {
-            "handle_unknown": handle_unknown,
-            "min_frequency": min_frequency_count,
-            "dtype": float,
-        }
-        if "sparse_output" in signature.parameters:
-            kwargs["sparse_output"] = True
-        else:
-            kwargs["sparse"] = True
-        return OneHotEncoder(**kwargs)
 
     @staticmethod
     def _build_skip_entry(split: Any, *, reason: str, preprocessing_refit: bool) -> dict[str, Any]:
