@@ -36,13 +36,12 @@ make precommit  # Run all pre-commit hooks
 
 1. **Improve ingestion** -- enhance slurmctld parsing, add new adapters
 2. **Add models** -- implement new prediction models ([guide](add-model.md))
-3. **Add recipes** -- create benchmark recipes for new scenarios ([guide](add-recipe.md))
-4. **Add adapters** -- support new data sources ([guide](add-adapter.md))
-5. **Improve docs** -- expand guides, add examples
+3. **Add recipes** -- create benchmark recipes ([recipe format](../reference/recipes.md))
+4. **Improve docs** -- expand guides, add examples
 
 ## Schema Changes
 
-Schema changes require a Schema Evolution Request (SER). See [Schema Concepts](../concepts/schema.md) for the process.
+Schema changes require a Schema Evolution Request (SER) -- open an issue describing the compatibility impact and migration plan.
 
 ## What to Update When
 

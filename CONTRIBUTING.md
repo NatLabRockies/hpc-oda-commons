@@ -81,7 +81,7 @@ v0.1 is focused on runtime prediction, but contributions are welcome in these ca
 Schema changes are proposed via a Schema Evolution Request:
 1. Open an issue using the SER template.
 2. Describe compatibility impact and migration plan.
-3. Update schema docs under `docs/concepts/schema.md`.
+3. Update schema docs under `docs/reference/schema-versions.md`.
 
 ### Sensitive Data Policy
 - Do not commit real site logs or sensitive data.

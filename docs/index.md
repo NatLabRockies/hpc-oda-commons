@@ -10,11 +10,11 @@
 
 **I want to understand results** -- [Interpreting Results](how-to/interpret-results.md)
 
-**I want to contribute** -- [Contributing](how-to/contribute.md) | [Add a Model](how-to/add-model.md) | [Add an Adapter](how-to/add-adapter.md)
+**I want to contribute** -- [Contributing](how-to/contribute.md) | [Add a Model](how-to/add-model.md)
 
 **I need a reference** -- [CLI Reference](reference/cli.md) | [Recipes](reference/recipes.md) | [Schema Versions](reference/schema-versions.md)
 
-**I want to understand the design** -- [Pillars](concepts/pillars.md) | [Schemas](concepts/schema.md) | [Artifacts](concepts/artifacts.md) | [Benchmarks](concepts/benchmarks.md) | [Architecture Decisions](decisions/README.md)
+**I want to understand the design** -- [Benchmarks](concepts/benchmarks.md)
 
 ## 10-Minute Workflow
 

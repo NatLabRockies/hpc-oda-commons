@@ -16,4 +16,4 @@ All schemas follow the naming convention `oda.<type>.v<MAJOR>.<MINOR>.<PATCH>` a
 
 The job schema uses `additionalProperties: true`, so sites can include extra columns without breaking validation.
 
-See [Schema Concepts](../concepts/schema.md) for versioning rules and the Schema Evolution Request (SER) process.
+Schema IDs follow the pattern `oda.<type>.v<MAJOR>.<MINOR>.<PATCH>`. Schema files are stored as JSON Schema (Draft 2020-12) under `src/hpc_oda_commons/schemas/oda/`.
