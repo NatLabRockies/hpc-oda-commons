@@ -60,11 +60,12 @@ class _FakeRegressor:
         return np.full((x.shape[0],), self._mean, dtype=float)
 
 
-def test_evaluate_hourly_returns_metrics_and_hourly_details(
+def test_evaluate_returns_metrics_and_window_details(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = JobRuntimeXGBoostConfig(
-        n_recent_hours=10,
+        n_windows=10,
+        test_window_hours=1,
         n_estimators=16,
         max_depth=4,
         learning_rate=0.1,
@@ -76,30 +77,31 @@ def test_evaluate_hourly_returns_metrics_and_hourly_details(
     )
     model = JobRuntimeXGBoostModel(config)
     monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
-    payload = model.evaluate_hourly(_sample_rows())
+    payload = model.evaluate(_sample_rows())
 
     assert payload["mae"] >= 0.0
     assert payload["rmse"] >= 0.0
-    assert payload["summary"]["hours_total"] == 10
-    assert payload["summary"]["hours_scored"] > 0
-    assert payload["summary"]["hours_skipped"] >= 0
+    assert payload["summary"]["windows_total"] == 10
+    assert payload["summary"]["windows_scored"] > 0
+    assert payload["summary"]["windows_skipped"] >= 0
     assert payload["summary"]["preprocessing_refits"] == 2
     assert payload["summary"]["rows_scored"] > 0
     assert payload["summary"]["training_lookback_days"] == 100
 
-    hourly = payload["hourly"]
-    assert len(hourly) == 10
-    assert any(entry["status"] == "ok" for entry in hourly)
+    windows = payload["windows"]
+    assert len(windows) == 10
+    assert any(entry["status"] == "ok" for entry in windows)
     assert (
-        sum(1 for entry in hourly if entry["status"] == "ok") == payload["summary"]["hours_scored"]
+        sum(1 for entry in windows if entry["status"] == "ok")
+        == payload["summary"]["windows_scored"]
     )
     assert (
-        sum(1 for entry in hourly if entry["preprocessing_refit"])
+        sum(1 for entry in windows if entry["preprocessing_refit"])
         == payload["summary"]["preprocessing_refits"]
     )
 
 
-def test_evaluate_hourly_raises_when_no_scored_predictions(
+def test_evaluate_raises_when_no_scored_predictions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     rows = [
@@ -116,19 +118,19 @@ def test_evaluate_hourly_raises_when_no_scored_predictions(
             "runtime_seconds": None,
         },
     ]
-    config = JobRuntimeXGBoostConfig(n_recent_hours=2, n_estimators=8, max_depth=3)
+    config = JobRuntimeXGBoostConfig(n_windows=2, test_window_hours=1, n_estimators=8, max_depth=3)
     model = JobRuntimeXGBoostModel(config)
     monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
 
-    with pytest.raises(ValueError, match="No hourly splits produced scored predictions"):
-        model.evaluate_hourly(rows)
+    with pytest.raises(ValueError, match="No rolling splits produced scored predictions"):
+        model.evaluate(rows)
 
 
-def test_evaluate_hourly_verbose_uses_tqdm(
+def test_evaluate_verbose_uses_tqdm(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = JobRuntimeXGBoostConfig(
-        n_recent_hours=4, max_svd_components=8, target_max_one_hot_width=64
+        n_windows=4, test_window_hours=1, max_svd_components=8, target_max_one_hot_width=64
     )
     model = JobRuntimeXGBoostModel(config)
     monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
@@ -143,27 +145,28 @@ def test_evaluate_hourly_verbose_uses_tqdm(
         "hpc_oda_commons.models.job_runtime_xgboost.model.tqdm",
         fake_tqdm,
     )
-    payload = model.evaluate_hourly(_sample_rows(), verbose=True)
-    assert payload["summary"]["hours_total"] == 4
+    payload = model.evaluate(_sample_rows(), verbose=True)
+    assert payload["summary"]["windows_total"] == 4
     kwargs = seen["kwargs"]
-    assert kwargs["desc"] == "rolling_hourly/xgboost"
-    assert kwargs["unit"] == "hour"
+    assert kwargs["desc"] == "rolling/xgboost"
+    assert kwargs["unit"] == "window"
     assert kwargs["disable"] is False
 
 
-def test_evaluate_hourly_passes_verbose_to_split_builder(
+def test_evaluate_passes_verbose_to_split_builder(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = JobRuntimeXGBoostConfig(n_recent_hours=2)
+    config = JobRuntimeXGBoostConfig(n_windows=2, test_window_hours=1)
     model = JobRuntimeXGBoostModel(config)
     monkeypatch.setattr(model, "_check_dependencies", lambda: None)
 
     seen_verbose: dict[str, bool | None] = {"value": None}
 
-    def fake_build_hourly_rolling_splits(
+    def fake_build_rolling_splits(
         rows: list[dict[str, object]],
         *,
-        n_recent_hours: int = 1000,
+        n_windows: int = 1000,
+        test_window_hours: int = 6,
         training_lookback_days: int = 100,
         submit_time_field: str = "submit_time",
         end_time_field: str = "end_time",
@@ -171,7 +174,8 @@ def test_evaluate_hourly_passes_verbose_to_split_builder(
     ) -> list[object]:
         _ = (
             rows,
-            n_recent_hours,
+            n_windows,
+            test_window_hours,
             training_lookback_days,
             submit_time_field,
             end_time_field,
@@ -180,29 +184,30 @@ def test_evaluate_hourly_passes_verbose_to_split_builder(
         return []
 
     monkeypatch.setattr(
-        "hpc_oda_commons.models.job_runtime_xgboost.model.build_hourly_rolling_splits",
-        fake_build_hourly_rolling_splits,
+        "hpc_oda_commons.models.job_runtime_xgboost.model.build_rolling_splits",
+        fake_build_rolling_splits,
     )
 
-    with pytest.raises(ValueError, match="No hourly splits produced scored predictions"):
-        model.evaluate_hourly(_sample_rows(), verbose=True)
+    with pytest.raises(ValueError, match="No rolling splits produced scored predictions"):
+        model.evaluate(_sample_rows(), verbose=True)
 
     assert seen_verbose["value"] is True
 
 
-def test_evaluate_hourly_verbose_prints_summary(
+def test_evaluate_verbose_prints_summary(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     config = JobRuntimeXGBoostConfig(
-        n_recent_hours=4,
+        n_windows=4,
+        test_window_hours=1,
         max_svd_components=8,
         target_max_one_hot_width=64,
     )
     model = JobRuntimeXGBoostModel(config)
     monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
 
-    _ = model.evaluate_hourly(_sample_rows(), verbose=True)
+    _ = model.evaluate(_sample_rows(), verbose=True)
     captured = capsys.readouterr()
-    assert "[xgboost][verbose] starting hourly evaluation" in captured.out
+    assert "[xgboost][verbose] starting rolling evaluation" in captured.out
     assert "[xgboost][verbose] summary" in captured.out

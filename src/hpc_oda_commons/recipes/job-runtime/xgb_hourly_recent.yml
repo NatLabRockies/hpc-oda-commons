@@ -1,4 +1,4 @@
-# Rolling-hourly XGBoost alternate model recipe for runtime prediction.
+# Rolling XGBoost alternate model recipe for runtime prediction.
 # Uses automatic categorical preprocessing analysis + daily preprocessing refresh.
 
 recipe_id: recipe.job_runtime.xgb_hourly_recent
@@ -22,8 +22,9 @@ metrics:
     target: runtime_seconds
 
 split:
-  method: rolling_hourly
-  n_recent_hours: 1000
+  method: rolling
+  n_windows: 1000
+  test_window_hours: 6
   training_lookback_days: 100
 
 run:

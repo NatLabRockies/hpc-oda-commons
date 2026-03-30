@@ -16,8 +16,9 @@ metrics:
   - name: rmse
     target: runtime_seconds
 split:
-  method: rolling_hourly
-  n_recent_hours: 24
+  method: rolling
+  n_windows: 24
+  test_window_hours: 6
   training_lookback_days: 30
 run:
   output_dir: runs

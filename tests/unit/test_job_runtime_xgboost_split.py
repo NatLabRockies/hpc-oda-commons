@@ -4,7 +4,7 @@ import pytest
 
 from hpc_oda_commons.models.job_runtime_xgboost.split import (
     DailyPreprocessingCache,
-    build_hourly_rolling_splits,
+    build_rolling_splits,
     materialize_split_rows,
 )
 
@@ -27,7 +27,7 @@ def test_strict_train_test_time_semantics() -> None:
             "end_time": "2026-01-01T23:30:00Z",
         },
     ]
-    splits = build_hourly_rolling_splits(rows, n_recent_hours=2)
+    splits = build_rolling_splits(rows, n_windows=2, test_window_hours=1)
     assert [split.split_time_iso for split in splits] == [
         "2026-01-01T22:00:00Z",
         "2026-01-01T23:00:00Z",
@@ -66,7 +66,7 @@ def test_daily_refresh_flags_fire_once_per_day() -> None:
             "end_time": "2026-01-02T01:20:00Z",
         },
     ]
-    splits = build_hourly_rolling_splits(rows, n_recent_hours=4)
+    splits = build_rolling_splits(rows, n_windows=4, test_window_hours=1)
     assert [split.split_time_iso for split in splits] == [
         "2026-01-01T22:00:00Z",
         "2026-01-01T23:00:00Z",
@@ -101,10 +101,10 @@ def test_training_lookback_days_limits_training_rows() -> None:
         },
     ]
 
-    default_window = build_hourly_rolling_splits(rows, n_recent_hours=1)[0]
-    short_window = build_hourly_rolling_splits(
+    default_window = build_rolling_splits(rows, n_windows=1, test_window_hours=1)[0]
+    short_window = build_rolling_splits(
         rows,
-        n_recent_hours=1,
+        n_windows=1,
         training_lookback_days=1,
     )[0]
 
@@ -137,10 +137,10 @@ def test_daily_preprocessing_cache_recomputes_once_per_day() -> None:
 def test_lookback_days_must_be_positive() -> None:
     rows = [{"submit_time": "2026-01-01T00:00:00Z", "end_time": "2026-01-01T00:10:00Z"}]
     with pytest.raises(ValueError, match="training_lookback_days must be positive"):
-        build_hourly_rolling_splits(rows, training_lookback_days=0)
+        build_rolling_splits(rows, test_window_hours=1, training_lookback_days=0)
 
 
-def test_build_hourly_splits_verbose_prints_summary(capsys: pytest.CaptureFixture[str]) -> None:
+def test_build_rolling_splits_verbose_prints_summary(capsys: pytest.CaptureFixture[str]) -> None:
     rows = [
         {
             "submit_time": "2026-01-01T22:05:00Z",
@@ -151,9 +151,9 @@ def test_build_hourly_splits_verbose_prints_summary(capsys: pytest.CaptureFixtur
             "end_time": "2026-01-01T23:30:00Z",
         },
     ]
-    splits = build_hourly_rolling_splits(rows, n_recent_hours=2, verbose=True)
+    splits = build_rolling_splits(rows, n_windows=2, test_window_hours=1, verbose=True)
     assert len(splits) == 2
     captured = capsys.readouterr()
-    assert "[split][verbose] building hourly splits" in captured.out
+    assert "[split][verbose] building rolling splits" in captured.out
     assert "[split][verbose] split window" in captured.out
     assert "[split][verbose] built splits" in captured.out

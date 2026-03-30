@@ -14,7 +14,7 @@ from rich.console import Console
 from hpc_oda_commons.adapters.slurmctld.adapter import SlurmctldAdapter
 from hpc_oda_commons.benchmark.recipes import load_recipe
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
-from hpc_oda_commons.benchmark.runner import run_fixed_baseline, run_rolling_hourly_xgboost
+from hpc_oda_commons.benchmark.runner import run_fixed_baseline, run_rolling_xgboost
 from hpc_oda_commons.datasets.synthetic import (
     generate_tiny_runtime_dataset,
 )
@@ -379,7 +379,7 @@ def _normalize_split(recipe_payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(split, dict):
         raise typer.BadParameter("recipe.split must be an object")
     method = str(split.get("method", "fixed"))
-    if method not in {"fixed", "rolling_hourly"}:
+    if method not in {"fixed", "rolling"}:
         raise typer.BadParameter(f"Unsupported split method: {method}")
     split["method"] = method
     return split
@@ -696,8 +696,8 @@ def benchmark(
 
     if model_id == "model.job_runtime_baseline" and split_method == "fixed":
         metrics, metrics_payload = run_fixed_baseline(rows, split=split, metric_defs=metric_defs)
-    elif model_id == "model.job_runtime_xgboost" and split_method == "rolling_hourly":
-        metrics, metrics_payload = run_rolling_hourly_xgboost(
+    elif model_id == "model.job_runtime_xgboost" and split_method == "rolling":
+        metrics, metrics_payload = run_rolling_xgboost(
             rows, split=split, metric_defs=metric_defs, verbose=verbose
         )
     else:

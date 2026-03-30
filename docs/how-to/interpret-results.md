@@ -9,7 +9,7 @@ A benchmark produces a directory under `runs/<run-id>/` with three files:
 ```
 runs/benchmark-20260301-120000/
   result.json       # Summary: recipe, model, dataset, metrics
-  metrics.json      # Detailed metrics (per-hour entries for rolling-hourly)
+  metrics.json      # Detailed metrics (per-window entries for rolling)
   provenance.json   # Reproducibility record (code version, input hashes)
 ```
 
@@ -64,22 +64,23 @@ A useful model should achieve lower MAE and RMSE than the baseline. The baseline
 - `dataset.hash` -- SHA-256 of the input Parquet file. Two results with the same hash used the same data.
 - `model.id` + `model.version` -- exactly which model produced this result
 
-## Reading `metrics.json` (Rolling-Hourly)
+## Reading `metrics.json` (Rolling)
 
-For XGBoost rolling-hourly benchmarks, `metrics.json` contains per-hour detail:
+For XGBoost rolling benchmarks, `metrics.json` contains per-window detail:
 
 ```json
 {
   "mae": 280.5,
   "rmse": 340.2,
   "summary": {
-    "hours_total": 1000,
-    "hours_scored": 847,
-    "hours_skipped": 153,
+    "windows_total": 1000,
+    "windows_scored": 847,
+    "windows_skipped": 153,
     "preprocessing_refits": 42,
-    "rows_scored": 25340
+    "rows_scored": 25340,
+    "test_window_hours": 6
   },
-  "hourly": [
+  "windows": [
     {
       "split_time": "2026-01-15T08:00:00Z",
       "status": "ok",
@@ -91,9 +92,9 @@ For XGBoost rolling-hourly benchmarks, `metrics.json` contains per-hour detail:
 }
 ```
 
-- `hours_scored` vs `hours_skipped` -- some hours may lack enough data to train or test. A high skip rate suggests sparse data in parts of the evaluation window.
+- `windows_scored` vs `windows_skipped` -- some windows may lack enough data to train or test. A high skip rate suggests sparse data in parts of the evaluation window.
 - `preprocessing_refits` -- the OHE/SVD pipeline is refit once per day. This count shows how many unique days were covered.
-- Per-hour `metrics` show how prediction quality varies over time. Large swings may indicate workload pattern changes.
+- Per-window `metrics` show how prediction quality varies over time. Large swings may indicate workload pattern changes.
 
 ## Reading `provenance.json`
 

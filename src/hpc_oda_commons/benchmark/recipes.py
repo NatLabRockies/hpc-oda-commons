@@ -73,12 +73,21 @@ def validate_recipe(payload: dict[str, Any], *, path: Path | None = None) -> Non
                 path=str(path) if path else None,
             )
         method = str(split.get("method", ""))
-        if method == "rolling_hourly":
-            n_recent_hours = split.get("n_recent_hours")
-            if not isinstance(n_recent_hours, int) or n_recent_hours <= 0:
+        if method == "rolling":
+            n_windows = split.get("n_windows")
+            if not isinstance(n_windows, int) or n_windows <= 0:
                 raise SchemaValidationError(
                     schema_id=RECIPE_SCHEMA_ID,
-                    message="split.n_recent_hours must be a positive integer for rolling_hourly",
+                    message="split.n_windows must be a positive integer for rolling",
+                    path=str(path) if path else None,
+                )
+            test_window_hours = split.get("test_window_hours")
+            if test_window_hours is not None and (
+                not isinstance(test_window_hours, int) or test_window_hours <= 0
+            ):
+                raise SchemaValidationError(
+                    schema_id=RECIPE_SCHEMA_ID,
+                    message=("split.test_window_hours must be a positive integer for rolling"),
                     path=str(path) if path else None,
                 )
             lookback_days = split.get("training_lookback_days")
@@ -87,8 +96,6 @@ def validate_recipe(payload: dict[str, Any], *, path: Path | None = None) -> Non
             ):
                 raise SchemaValidationError(
                     schema_id=RECIPE_SCHEMA_ID,
-                    message=(
-                        "split.training_lookback_days must be a positive integer for rolling_hourly"
-                    ),
+                    message=("split.training_lookback_days must be a positive integer for rolling"),
                     path=str(path) if path else None,
                 )

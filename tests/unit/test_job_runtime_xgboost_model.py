@@ -14,7 +14,8 @@ from hpc_oda_commons.models.job_runtime_xgboost.model import (
 
 def test_config_defaults() -> None:
     config = JobRuntimeXGBoostConfig()
-    assert config.n_recent_hours == 1000
+    assert config.n_windows == 1000
+    assert config.test_window_hours == 6
     assert config.training_lookback_days == 100
     assert config.submit_time_field == "submit_time"
     assert config.end_time_field == "end_time"
@@ -59,7 +60,7 @@ def test_analyze_preprocessing_writes_diagnostics(tmp_path: Path) -> None:
     assert payload["one_hot_analysis"]["encoded_feature_count"] > 0
 
 
-def test_build_hourly_split_plan() -> None:
+def test_build_split_plan() -> None:
     rows = [
         {
             "submit_time": "2026-01-01T22:05:00Z",
@@ -71,7 +72,7 @@ def test_build_hourly_split_plan() -> None:
         },
     ]
     model = JobRuntimeXGBoostModel()
-    plan = model.build_hourly_split_plan(rows, n_recent_hours=2)
+    plan = model.build_split_plan(rows, n_windows=2, test_window_hours=1)
 
     assert len(plan) == 2
     assert plan[0]["split_time"] == "2026-01-01T22:00:00Z"
@@ -82,7 +83,7 @@ def test_build_hourly_split_plan() -> None:
     assert plan[1]["train_row_count"] == 1
 
 
-def test_build_hourly_split_plan_respects_training_lookback_override() -> None:
+def test_build_split_plan_respects_training_lookback_override() -> None:
     rows = [
         {
             "submit_time": "2025-10-15T10:00:00Z",
@@ -99,8 +100,10 @@ def test_build_hourly_split_plan_respects_training_lookback_override() -> None:
     ]
     model = JobRuntimeXGBoostModel()
 
-    wide = model.build_hourly_split_plan(rows, n_recent_hours=1)
-    narrow = model.build_hourly_split_plan(rows, n_recent_hours=1, training_lookback_days=1)
+    wide = model.build_split_plan(rows, n_windows=1, test_window_hours=1)
+    narrow = model.build_split_plan(
+        rows, n_windows=1, test_window_hours=1, training_lookback_days=1
+    )
 
     assert wide[0]["train_row_count"] == 2
     assert narrow[0]["train_row_count"] == 1

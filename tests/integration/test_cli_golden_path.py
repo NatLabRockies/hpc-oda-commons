@@ -141,12 +141,12 @@ def test_benchmark_xgboost_recipe_small_window(
     """
 
     class _FakeXGBModel:
-        seen_n_recent_hours: int | None = None
+        seen_n_windows: int | None = None
 
         def __init__(self, config: object) -> None:
-            _FakeXGBModel.seen_n_recent_hours = int(config.n_recent_hours)
+            _FakeXGBModel.seen_n_windows = int(config.n_windows)
 
-        def evaluate_hourly(
+        def evaluate(
             self,
             rows: list[dict[str, object]],
             *,
@@ -161,7 +161,7 @@ def test_benchmark_xgboost_recipe_small_window(
                     {"name": "mae", "target": "runtime_seconds"},
                     {"name": "rmse", "target": "runtime_seconds"},
                 ],
-                "hourly": [
+                "windows": [
                     {
                         "split_time": "2026-01-01T00:00:00Z",
                         "status": "ok",
@@ -170,13 +170,13 @@ def test_benchmark_xgboost_recipe_small_window(
                     }
                 ],
                 "summary": {
-                    "hours_total": 24,
-                    "hours_scored": 1,
-                    "hours_skipped": 23,
+                    "windows_total": 24,
+                    "windows_scored": 1,
+                    "windows_skipped": 23,
                     "preprocessing_refits": 1,
                     "rows_scored": len(rows),
                     "days_with_cached_preprocessing": ["2026-01-01"],
-                    "n_recent_hours": 24,
+                    "n_windows": 24,
                 },
             }
 
@@ -185,7 +185,7 @@ def test_benchmark_xgboost_recipe_small_window(
     recipe_src = repo_root / "src/hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml"
     recipe_payload = yaml.safe_load(recipe_src.read_text(encoding="utf-8"))
     assert isinstance(recipe_payload, dict)
-    recipe_payload["split"] = {"method": "rolling_hourly", "n_recent_hours": 24}
+    recipe_payload["split"] = {"method": "rolling", "n_windows": 24}
 
     recipe_path = tmp_project / "xgb_hourly_recent_small.yml"
     recipe_path.write_text(yaml.safe_dump(recipe_payload, sort_keys=False), encoding="utf-8")
@@ -200,12 +200,12 @@ def test_benchmark_xgboost_recipe_small_window(
     result_payload = load_json(bundle_dir / "result.json")
     metrics_payload = load_json(bundle_dir / "metrics.json")
 
-    assert _FakeXGBModel.seen_n_recent_hours == 24
+    assert _FakeXGBModel.seen_n_windows == 24
     assert result_payload["model"]["id"] == "model.job_runtime_xgboost"
     assert result_payload["metrics"]["mae"] == 10.0
     assert result_payload["metrics"]["rmse"] == 12.0
-    assert metrics_payload["summary"]["n_recent_hours"] == 24
-    assert metrics_payload["summary"]["hours_total"] == 24
+    assert metrics_payload["summary"]["n_windows"] == 24
+    assert metrics_payload["summary"]["windows_total"] == 24
 
 
 @pytest.mark.integration
@@ -226,7 +226,7 @@ def test_benchmark_xgboost_recipe_small_window_native_cli(
     recipe_src = repo_root / "src/hpc_oda_commons/recipes/job-runtime/alt_model_example.yml"
     recipe_payload = yaml.safe_load(recipe_src.read_text(encoding="utf-8"))
     assert isinstance(recipe_payload, dict)
-    recipe_payload["split"] = {"method": "rolling_hourly", "n_recent_hours": 24}
+    recipe_payload["split"] = {"method": "rolling", "n_windows": 24}
 
     recipe_path = tmp_project / "xgb_hourly_recent_native.yml"
     recipe_path.write_text(yaml.safe_dump(recipe_payload, sort_keys=False), encoding="utf-8")
@@ -246,8 +246,8 @@ def test_benchmark_xgboost_recipe_small_window_native_cli(
     assert result_payload["model"]["id"] == "model.job_runtime_xgboost"
     assert result_payload["metrics"]["mae"] >= 0.0
     assert result_payload["metrics"]["rmse"] >= 0.0
-    assert isinstance(metrics_payload.get("hourly"), list)
-    assert metrics_payload.get("summary", {}).get("n_recent_hours") == 24
+    assert isinstance(metrics_payload.get("windows"), list)
+    assert metrics_payload.get("summary", {}).get("n_windows") == 24
 
 
 @pytest.mark.integration

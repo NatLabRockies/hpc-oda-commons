@@ -31,7 +31,7 @@ def _floor_hour(dt: datetime) -> datetime:
 
 
 @dataclass(frozen=True)
-class HourlyRollingSplit:
+class RollingSplit:
     split_time_iso: str
     split_end_time_iso: str
     split_epoch: int
@@ -56,30 +56,33 @@ class HourlyRollingSplit:
         }
 
 
-def build_hourly_rolling_splits(
+def build_rolling_splits(
     rows: list[dict[str, Any]],
     *,
-    n_recent_hours: int = 1000,
+    n_windows: int = 1000,
+    test_window_hours: int = 6,
     training_lookback_days: int = 100,
     submit_time_field: str = "submit_time",
     end_time_field: str = "end_time",
     verbose: bool = False,
-) -> list[HourlyRollingSplit]:
+) -> list[RollingSplit]:
     """
-    Build rolling-hour split windows with strict train/test semantics:
+    Build rolling split windows with strict train/test semantics:
     - train: split_time - lookback_days <= end_time < split_time
-    - test: split_time <= submit_time < split_time + 1 hour
+    - test: split_time <= submit_time < split_time + test_window_hours
     """
-    if n_recent_hours <= 0:
-        raise ValueError("n_recent_hours must be positive")
+    if n_windows <= 0:
+        raise ValueError("n_windows must be positive")
+    if test_window_hours <= 0:
+        raise ValueError("test_window_hours must be positive")
     if training_lookback_days <= 0:
         raise ValueError("training_lookback_days must be positive")
 
     if verbose:
         print(
-            "[split][verbose] building hourly splits "
+            "[split][verbose] building rolling splits "
             f"rows={len(rows)} "
-            f"n_recent_hours={n_recent_hours} "
+            f"n_windows={n_windows} "
             f"training_lookback_days={training_lookback_days}"
         )
 
@@ -97,11 +100,11 @@ def build_hourly_rolling_splits(
                 max_ts = ts
 
     if max_ts is None:
-        raise ValueError("No valid submit/end timestamps found; cannot build rolling-hour splits.")
+        raise ValueError("No valid submit/end timestamps found; cannot build rolling splits.")
 
     latest_hour = _floor_hour(max_ts)
-    start_hour = latest_hour - timedelta(hours=n_recent_hours - 1)
-    split_hours = [start_hour + timedelta(hours=i) for i in range(n_recent_hours)]
+    start_hour = latest_hour - timedelta(hours=(n_windows - 1) * test_window_hours)
+    split_hours = [start_hour + timedelta(hours=i * test_window_hours) for i in range(n_windows)]
     if verbose:
         print(
             "[split][verbose] split window "
@@ -109,10 +112,10 @@ def build_hourly_rolling_splits(
             f"latest_hour={_to_iso_z(latest_hour)}"
         )
 
-    splits: list[HourlyRollingSplit] = []
+    splits: list[RollingSplit] = []
     previous_day: str | None = None
     for split_time in tqdm(split_hours, total=len(split_hours)):
-        split_end = split_time + timedelta(hours=1)
+        split_end = split_time + timedelta(hours=test_window_hours)
         training_window_start = split_time - timedelta(days=training_lookback_days)
         day_key = split_time.date().isoformat()
         refresh = previous_day is None or day_key != previous_day
@@ -130,7 +133,7 @@ def build_hourly_rolling_splits(
         )
 
         splits.append(
-            HourlyRollingSplit(
+            RollingSplit(
                 split_time_iso=_to_iso_z(split_time),
                 split_end_time_iso=_to_iso_z(split_end),
                 split_epoch=int(split_time.timestamp()),
@@ -160,7 +163,7 @@ def build_hourly_rolling_splits(
 
 def materialize_split_rows(
     rows: list[dict[str, Any]],
-    split: HourlyRollingSplit,
+    split: RollingSplit,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     train_rows = [rows[idx] for idx in split.train_row_indices]
     test_rows = [rows[idx] for idx in split.test_row_indices]

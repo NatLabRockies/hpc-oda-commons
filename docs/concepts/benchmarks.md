@@ -12,7 +12,7 @@ Recipes are YAML files that fully specify an evaluation:
 
 Built-in v0.1 recipes:
 - `hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml` -- baseline model, fixed split
-- `hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml` -- XGBoost, rolling-hourly
+- `hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml` -- XGBoost, rolling
 
 See the [Recipes Reference](../reference/recipes.md) for the full format specification with annotated examples.
 
@@ -24,12 +24,12 @@ A simple random partition of rows into training and test sets. Controlled by `tr
 
 This is fast and easy to understand, but it does not account for temporal dynamics in HPC workloads -- a model might train on future data and test on past data.
 
-### Rolling-Hourly Split
+### Rolling Split
 
-Simulates production deployment by evaluating the model as if it were retrained on a recurring schedule. For each hourly window:
+Simulates production deployment by evaluating the model as if it were retrained on a recurring schedule. For each window:
 
 ```
-         lookback_days              1 hour
+         lookback_days         test_window_hours
     |◄─────────────────────►|◄──────────────►|
     ┌───────────────────────┬────────────────┐
     │     Train window      │  Test window   │
@@ -42,17 +42,18 @@ Simulates production deployment by evaluating the model as if it were retrained 
 ```
 
 - **Train**: all jobs whose `end_time` falls in `[split_time - lookback_days, split_time)`
-- **Test**: all jobs whose `submit_time` falls in `[split_time, split_time + 1 hour)`
+- **Test**: all jobs whose `submit_time` falls in `[split_time, split_time + test_window_hours)`
 
 This enforces strict temporal separation -- the model never sees future data during training.
 
 **Parameters:**
-- `n_recent_hours` (required): how many hourly windows to evaluate
+- `n_windows` (required): how many windows to evaluate
+- `test_window_hours` (default 6): duration of each test window in hours
 - `training_lookback_days` (default 100): how far back to look for training data
 
 ### Daily Preprocessing Cache
 
-For the XGBoost model, categorical feature preprocessing (one-hot encoding + SVD dimensionality reduction) is computationally expensive. To avoid redundant computation, the preprocessing pipeline is cached by day -- the encoder and SVD are refit on the first hourly split of each new day, then reused for the remaining hours of that day. This mirrors realistic production behavior where preprocessing would be refreshed on a daily schedule.
+For the XGBoost model, categorical feature preprocessing (one-hot encoding + SVD dimensionality reduction) is computationally expensive. To avoid redundant computation, the preprocessing pipeline is cached by day -- the encoder and SVD are refit on the first split of each new day, then reused for the remaining windows of that day. This mirrors realistic production behavior where preprocessing would be refreshed on a daily schedule.
 
 ## Metrics
 
@@ -72,7 +73,7 @@ Every benchmark run produces a result bundle directory:
 ```
 runs/<run-id>/
   result.json       # Schema-validated result (oda.result.v0.1.0)
-  metrics.json      # Detailed metrics (includes per-hour data for rolling-hourly)
+  metrics.json      # Detailed metrics (includes per-window data for rolling)
   provenance.json   # Full reproducibility record
 ```
 

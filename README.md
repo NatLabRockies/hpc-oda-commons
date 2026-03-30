@@ -83,9 +83,9 @@ hpc-oda validate data/ingested/slurmctld/<run>/data.parquet
 # Run a baseline analysis → reports/<id>/{analysis.json, index.html}
 hpc-oda analyze --data data/ingested/slurmctld/<run>
 
-# Benchmark with the XGBoost rolling-hourly model
+# Benchmark with the XGBoost rolling model
 HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
-# Use -v/--verbose for progress on long rolling-hourly runs
+# Use -v/--verbose for progress on long rolling runs
 HPC_ODA_OFFLINE=1 hpc-oda benchmark -v hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
 ```
 
@@ -93,7 +93,7 @@ HPC_ODA_OFFLINE=1 hpc-oda benchmark -v hpc_oda_commons/recipes/job-runtime/xgb_h
 
 **Baseline** (`model.job_runtime_baseline`) — Deterministic mean-prediction model. Computes `mean(runtime_seconds)` on the training set and predicts that constant for all test rows. Fast, explainable, and useful as a floor for comparison.
 
-**XGBoost** (`model.job_runtime_xgboost`) — Gradient-boosted tree model with automatic categorical preprocessing (one-hot encoding + SVD dimensionality reduction). Uses a daily preprocessing cache so OHE/SVD are only refit on day boundaries during rolling-hourly evaluation.
+**XGBoost** (`model.job_runtime_xgboost`) — Gradient-boosted tree model with automatic categorical preprocessing (one-hot encoding + SVD dimensionality reduction). Uses a daily preprocessing cache so OHE/SVD are only refit on day boundaries during rolling evaluation.
 
 ---
 
@@ -151,7 +151,7 @@ metrics:
     target: runtime_seconds
 
 split:
-  method: fixed          # or rolling_hourly
+  method: fixed          # or rolling
   train_fraction: 0.8
   seed: 42
 
@@ -162,7 +162,7 @@ run:
 
 v0.1 supports two split methods:
 - **`fixed`** — deterministic train/test split (used with the baseline model)
-- **`rolling_hourly`** — sliding-window evaluation that simulates production retraining (used with XGBoost). Parameters: `n_recent_hours`, `training_lookback_days`
+- **`rolling`** — sliding-window evaluation that simulates production retraining (used with XGBoost). Parameters: `n_windows`, `test_window_hours`, `training_lookback_days`
 
 ### Provenance
 
@@ -227,6 +227,6 @@ AI agents (Claude Code, Codex, OpenCode, etc.) can find complete guidance in:
 
 - **How-to guides:** `docs/how-to/` — quickstart, ingest-slurmctld, ingest-jobs-parquet, interpret-results, install, contribute, add-model
 - **Reference:** `docs/reference/` — cli, recipes, schema-versions
-- **Concepts:** `docs/concepts/benchmarks.md` — rolling-hourly evaluation, split methods, preprocessing
+- **Concepts:** `docs/concepts/benchmarks.md` — rolling evaluation, split methods, preprocessing
 - **Deep dive:** `WHITEPAPER.md`
 

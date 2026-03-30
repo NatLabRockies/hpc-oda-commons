@@ -39,7 +39,7 @@ In v0.1, the scope is intentionally narrow:
 - **Domain:** SLURM job runtime prediction
 - **Source:** `slurmctld` logs (minimal patterns)
 - **Data:** tiny packaged synthetic dataset (offline) + manifest
-- **Models:** deterministic baseline (mean predictor) + XGBoost with rolling-hourly evaluation
+- **Models:** deterministic baseline (mean predictor) + XGBoost with rolling evaluation
 - **Benchmark:** recipe-driven execution with regression metrics (MAE, RMSE)
 - **Outputs:** schema-valid artifacts and static leaderboard generation
 
@@ -190,7 +190,7 @@ Execution (`hpc_oda_commons.benchmark.runner`):
 - loads recipe and dataset parquet
 - resolves the model and split strategy:
   - **fixed split** with the baseline model (deterministic train/test partition)
-  - **rolling-hourly split** with the XGBoost model (sliding window evaluation simulating production retraining)
+  - **rolling split** with the XGBoost model (sliding window evaluation simulating production retraining)
 - computes metrics and writes a result bundle under `runs/`
 
 ### 4.7 Leaderboard Generation

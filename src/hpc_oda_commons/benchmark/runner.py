@@ -38,31 +38,33 @@ def run_fixed_baseline(
     return metrics, metrics_payload
 
 
-def run_rolling_hourly_xgboost(
+def run_rolling_xgboost(
     rows: list[dict[str, Any]],
     *,
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
     verbose: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any]]:
-    """Run a rolling-hourly benchmark with the XGBoost model."""
+    """Run a rolling benchmark with the XGBoost model."""
     requested = {str(m.get("name", "")) for m in metric_defs}
     unsupported = sorted(requested - {"mae", "rmse"})
     if unsupported:
         raise ValueError(
-            "rolling_hourly benchmark currently supports only mae/rmse metrics; "
+            "rolling benchmark currently supports only mae/rmse metrics; "
             f"unsupported: {', '.join(unsupported)}"
         )
 
-    n_recent_hours = int(split.get("n_recent_hours", 1000))
+    n_windows = int(split.get("n_windows", 1000))
+    test_window_hours = int(split.get("test_window_hours", 6))
     training_lookback_days = int(split.get("training_lookback_days", 100))
     model = JobRuntimeXGBoostModel(
         config=JobRuntimeXGBoostConfig(
-            n_recent_hours=n_recent_hours,
+            n_windows=n_windows,
+            test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
         )
     )
-    eval_payload = model.evaluate_hourly(rows, verbose=verbose)
+    eval_payload = model.evaluate(rows, verbose=verbose)
 
     metrics = {
         "mae": float(eval_payload["mae"]),

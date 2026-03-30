@@ -18,7 +18,7 @@ from hpc_oda_commons.models.job_runtime_xgboost.preprocessing import (
 )
 from hpc_oda_commons.models.job_runtime_xgboost.split import (
     DailyPreprocessingCache,
-    build_hourly_rolling_splits,
+    build_rolling_splits,
     materialize_split_rows,
 )
 
@@ -26,7 +26,7 @@ __all__ = [
     "JobRuntimeXGBoostConfig",
     "JobRuntimeXGBoostModel",
     "build_preprocessing_diagnostics",
-    "build_hourly_rolling_splits",
+    "build_rolling_splits",
     "DailyPreprocessingCache",
     "detect_categorical_columns",
     "materialize_split_rows",

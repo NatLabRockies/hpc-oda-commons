@@ -80,18 +80,18 @@ def _first_result_bundle(runs_dir: Path) -> Path:
     return matches[0].parent
 
 
-def test_benchmark_rolling_hourly_uses_xgboost_path(
+def test_benchmark_rolling_uses_xgboost_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     class FakeXGBModel:
-        seen_n_recent_hours: int | None = None
+        seen_n_windows: int | None = None
         seen_training_lookback_days: int | None = None
 
         def __init__(self, config: object) -> None:
-            FakeXGBModel.seen_n_recent_hours = int(config.n_recent_hours)
+            FakeXGBModel.seen_n_windows = int(config.n_windows)
             FakeXGBModel.seen_training_lookback_days = int(config.training_lookback_days)
 
-        def evaluate_hourly(
+        def evaluate(
             self,
             rows: list[dict[str, object]],
             *,
@@ -102,15 +102,15 @@ def test_benchmark_rolling_hourly_uses_xgboost_path(
             return {
                 "mae": 1.25,
                 "rmse": 2.5,
-                "hourly": [{"status": "ok", "metrics": {"mae": 1.25, "rmse": 2.5}}],
+                "windows": [{"status": "ok", "metrics": {"mae": 1.25, "rmse": 2.5}}],
                 "summary": {
-                    "hours_total": 4,
-                    "hours_scored": 1,
-                    "hours_skipped": 3,
+                    "windows_total": 4,
+                    "windows_scored": 1,
+                    "windows_skipped": 3,
                     "preprocessing_refits": 1,
                     "rows_scored": 3,
                     "days_with_cached_preprocessing": ["2026-01-01"],
-                    "n_recent_hours": 4,
+                    "n_windows": 4,
                     "training_lookback_days": 7,
                 },
             }
@@ -126,8 +126,8 @@ def test_benchmark_rolling_hourly_uses_xgboost_path(
         model_id="model.job_runtime_xgboost",
         split_block="\n".join(
             [
-                "  method: rolling_hourly",
-                "  n_recent_hours: 4",
+                "  method: rolling",
+                "  n_windows: 4",
                 "  training_lookback_days: 7",
             ]
         ),
@@ -140,13 +140,13 @@ def test_benchmark_rolling_hourly_uses_xgboost_path(
     result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
     metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
 
-    assert FakeXGBModel.seen_n_recent_hours == 4
+    assert FakeXGBModel.seen_n_windows == 4
     assert FakeXGBModel.seen_training_lookback_days == 7
     assert result["model"]["id"] == "model.job_runtime_xgboost"
     assert result["metrics"]["mae"] == 1.25
     assert result["metrics"]["rmse"] == 2.5
-    assert "hourly" in metrics_payload
-    assert metrics_payload["summary"]["hours_total"] == 4
+    assert "windows" in metrics_payload
+    assert metrics_payload["summary"]["windows_total"] == 4
 
 
 def test_benchmark_rejects_unsupported_model_split_combo(
@@ -174,7 +174,7 @@ def test_benchmark_rejects_unsupported_model_split_combo(
         cli.benchmark(recipe_path)
 
 
-def test_benchmark_rolling_hourly_uses_default_training_lookback_days(
+def test_benchmark_rolling_uses_default_training_lookback_days(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     class FakeXGBModel:
@@ -183,7 +183,7 @@ def test_benchmark_rolling_hourly_uses_default_training_lookback_days(
         def __init__(self, config: object) -> None:
             FakeXGBModel.seen_training_lookback_days = int(config.training_lookback_days)
 
-        def evaluate_hourly(
+        def evaluate(
             self,
             rows: list[dict[str, object]],
             *,
@@ -194,15 +194,15 @@ def test_benchmark_rolling_hourly_uses_default_training_lookback_days(
             return {
                 "mae": 1.0,
                 "rmse": 1.5,
-                "hourly": [{"status": "ok", "metrics": {"mae": 1.0, "rmse": 1.5}}],
+                "windows": [{"status": "ok", "metrics": {"mae": 1.0, "rmse": 1.5}}],
                 "summary": {
-                    "hours_total": 3,
-                    "hours_scored": 1,
-                    "hours_skipped": 2,
+                    "windows_total": 3,
+                    "windows_scored": 1,
+                    "windows_skipped": 2,
                     "preprocessing_refits": 1,
                     "rows_scored": 2,
                     "days_with_cached_preprocessing": ["2026-01-01"],
-                    "n_recent_hours": 3,
+                    "n_windows": 3,
                     "training_lookback_days": 100,
                 },
             }
@@ -216,7 +216,7 @@ def test_benchmark_rolling_hourly_uses_default_training_lookback_days(
     _write_recipe(
         recipe_path,
         model_id="model.job_runtime_xgboost",
-        split_block="\n".join(["  method: rolling_hourly", "  n_recent_hours: 3"]),
+        split_block="\n".join(["  method: rolling", "  n_windows: 3"]),
         table_path=table_path,
     )
 
@@ -235,7 +235,7 @@ def test_benchmark_verbose_prints_progress(
         def __init__(self, config: object) -> None:
             _ = config
 
-        def evaluate_hourly(
+        def evaluate(
             self,
             rows: list[dict[str, object]],
             *,
@@ -246,15 +246,15 @@ def test_benchmark_verbose_prints_progress(
             return {
                 "mae": 1.25,
                 "rmse": 2.5,
-                "hourly": [{"status": "ok", "metrics": {"mae": 1.25, "rmse": 2.5}}],
+                "windows": [{"status": "ok", "metrics": {"mae": 1.25, "rmse": 2.5}}],
                 "summary": {
-                    "hours_total": 4,
-                    "hours_scored": 1,
-                    "hours_skipped": 3,
+                    "windows_total": 4,
+                    "windows_scored": 1,
+                    "windows_skipped": 3,
                     "preprocessing_refits": 1,
                     "rows_scored": 3,
                     "days_with_cached_preprocessing": ["2026-01-01"],
-                    "n_recent_hours": 4,
+                    "n_windows": 4,
                     "training_lookback_days": 7,
                 },
             }
@@ -270,8 +270,8 @@ def test_benchmark_verbose_prints_progress(
         model_id="model.job_runtime_xgboost",
         split_block="\n".join(
             [
-                "  method: rolling_hourly",
-                "  n_recent_hours: 4",
+                "  method: rolling",
+                "  n_windows: 4",
                 "  training_lookback_days: 7",
             ]
         ),

@@ -44,10 +44,11 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "method": { "type": "string", "enum": ["fixed", "rolling_hourly"] },
+        "method": { "type": "string", "enum": ["fixed", "rolling"] },
         "train_fraction": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
         "seed": { "type": "integer" },
-        "n_recent_hours": { "type": "integer", "minimum": 1 },
+        "n_windows": { "type": "integer", "minimum": 1 },
+        "test_window_hours": { "type": "integer", "minimum": 1 },
         "training_lookback_days": { "type": "integer", "minimum": 1 }
       },
       "required": ["method"],
@@ -63,11 +64,11 @@
         },
         {
           "if": {
-            "properties": { "method": { "const": "rolling_hourly" } },
+            "properties": { "method": { "const": "rolling" } },
             "required": ["method"]
           },
           "then": {
-            "required": ["n_recent_hours"]
+            "required": ["n_windows"]
           }
         }
       ]

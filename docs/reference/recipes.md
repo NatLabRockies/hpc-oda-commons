@@ -5,8 +5,8 @@
 | Recipe | Model | Split | Purpose |
 |--------|-------|-------|---------|
 | `baseline_tiny.yml` | Baseline (mean predictor) | Fixed 80/20 | CI smoke tests, offline demos |
-| `xgb_hourly_recent.yml` | XGBoost | Rolling hourly (1000h, 100d) | Full XGBoost benchmark |
-| `alt_model_example.yml` | XGBoost | Rolling hourly (24h, 30d) | Alternate config example |
+| `xgb_hourly_recent.yml` | XGBoost | Rolling (1000 windows, 6h, 100d) | Full XGBoost benchmark |
+| `alt_model_example.yml` | XGBoost | Rolling (24 windows, 6h, 30d) | Alternate config example |
 
 Bundled recipes are shipped with the package at `hpc_oda_commons/recipes/job-runtime/`.
 
@@ -47,7 +47,7 @@ metrics:
 
 # Train/test split strategy
 split:
-  method: fixed          # or "rolling_hourly"
+  method: fixed          # or "rolling"
   train_fraction: 0.8    # for fixed splits only
   seed: 42               # for fixed splits only
 
@@ -63,14 +63,15 @@ run:
 - `train_fraction` (float, required): fraction of data for training (e.g., `0.8`)
 - `seed` (int, required): random seed for reproducibility
 
-**`rolling_hourly`** -- Sliding hourly windows that simulate production retraining. Used with `model.job_runtime_xgboost`.
-- `n_recent_hours` (int, required): number of hourly windows to evaluate
+**`rolling`** -- Sliding windows that simulate production retraining. Used with `model.job_runtime_xgboost`.
+- `n_windows` (int, required): number of windows to evaluate
+- `test_window_hours` (int, default `6`): duration of each test window in hours
 - `training_lookback_days` (int, default `100`): days of history per training window
 
 ### Validation Rules
 - `metrics` must include at least `mae` and `rmse`
 - All metrics must target the same field (e.g., `runtime_seconds`)
-- For `rolling_hourly`, `n_recent_hours` must be positive
+- For `rolling`, `n_windows` must be positive
 
 ## Custom Recipes
 

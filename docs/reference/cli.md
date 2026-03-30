@@ -38,10 +38,11 @@ This reference covers the v0.1 `hpc-oda` commands.
    `--verbose` enables progress bar output for long-running benchmarks.
    Supported v0.1 model/split pairs:
    - `model.job_runtime_baseline` + `split.method: fixed`
-   - `model.job_runtime_xgboost` + `split.method: rolling_hourly`
-   For rolling-hourly recipes, `split.n_recent_hours` is required.
+   - `model.job_runtime_xgboost` + `split.method: rolling`
+   For rolling recipes, `split.n_windows` is required.
+   Optional: `split.test_window_hours` (default `6`) sets the test window duration.
    Optional: `split.training_lookback_days` (default `100`) limits training rows
-   to the previous `n` days before each split hour.
+   to the previous `n` days before each split.
 
 ## Leaderboard
 1. `hpc-oda leaderboard --runs <dir> --out <dir>`

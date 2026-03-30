@@ -58,12 +58,14 @@ HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline
 ## 8a) Benchmark the alternate XGBoost model
 ```bash
 HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
-# For long rolling-hour runs, use verbose progress output
+# For long rolling runs, use verbose progress output
 HPC_ODA_OFFLINE=1 hpc-oda benchmark -v hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
 ```
 
 Tip for faster local iteration: copy the recipe and reduce the rolling window:
-`split.n_recent_hours: 24`.
+`split.n_windows: 24`.
+You can also adjust the test window duration with:
+`split.test_window_hours: 6` (default is `6`).
 You can also limit each split's training history with:
 `split.training_lookback_days: 30` (default is `100`).
 

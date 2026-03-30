@@ -51,7 +51,7 @@ The codebase is organized into purpose-specific packages under `src/hpc_oda_comm
 |---------|---------|
 | `qst/` | **Quickstart Toolkit** -- CLI entry point built on Typer. All user-facing commands live here. |
 | `kernel/` | **Core artifact logic** -- ODA tables, manifests, result bundles, mapping specs, provenance, hashing, schema loading, and validation. This is the stable foundation other packages build on. |
-| `models/` | **Prediction models** -- Pluggable model implementations. v0.1 ships a deterministic baseline and an XGBoost model with rolling-hourly evaluation. |
+| `models/` | **Prediction models** -- Pluggable model implementations. v0.1 ships a deterministic baseline and an XGBoost model with rolling evaluation. |
 | `ingest/` | **Data adapters** -- Ingestion pipeline for transforming site-specific data into canonical format. Includes profiling, mapping suggestions, interactive wizard, and batch transformation. |
 | `adapters/` | **Source parsers** -- Protocol-based adapters for parsing raw data sources. v0.1 includes a slurmctld log parser. |
 | `benchmark/` | **Recipe loading and results aggregation** -- Validates benchmark recipes, aggregates result bundles into leaderboards. |
@@ -337,7 +337,7 @@ The baseline model has no dependencies beyond the Python standard library and se
 
 ### 7.2 XGBoost Model (`model.job_runtime_xgboost`)
 
-A gradient-boosted tree model with automatic categorical preprocessing and a rolling-hourly evaluation strategy that simulates production retraining. This is the primary model for demonstrating the HPC ODA Commons benchmarking workflow.
+A gradient-boosted tree model with automatic categorical preprocessing and a rolling evaluation strategy that simulates production retraining. This is the primary model for demonstrating the HPC ODA Commons benchmarking workflow.
 
 #### 7.2.1 Configuration
 
@@ -345,7 +345,7 @@ The model is controlled by `JobRuntimeXGBoostConfig`, a frozen dataclass with th
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `n_recent_hours` | 1000 | Number of recent hourly windows to evaluate |
+| `n_windows` | 1000 | Number of recent windows to evaluate |
 | `training_lookback_days` | 100 | Days of historical data for each training window |
 | `explained_variance_target` | 0.95 | Target explained variance for SVD dimensionality reduction |
 | `infrequent_category_fraction` | 0.001 | Fraction threshold for rare category collapsing |
@@ -373,40 +373,40 @@ The XGBoost model implements an automated feature engineering pipeline that hand
 
 6. **Feature Concatenation**: The final feature matrix is formed by horizontally stacking the numeric features and the SVD-reduced categorical features.
 
-#### 7.2.3 Rolling-Hourly Evaluation
+#### 7.2.3 Rolling Evaluation
 
-The rolling-hourly evaluation strategy (`evaluate_hourly()`) simulates how a model would perform if retrained and deployed on a recurring schedule. This is more realistic than a single train/test split because it captures temporal dynamics in HPC workloads.
+The rolling evaluation strategy (`evaluate()`) simulates how a model would perform if retrained and deployed on a recurring schedule. This is more realistic than a single train/test split because it captures temporal dynamics in HPC workloads.
 
 **Split construction** (`split.py`):
-- The evaluation window covers the `n_recent_hours` most recent hourly periods in the dataset
-- For each hourly split at time `t`:
+- The evaluation window covers the `n_windows` most recent periods in the dataset
+- For each split at time `t`:
   - **Train window**: all jobs where `end_time` falls in `[t - lookback_days, t)`
-  - **Test window**: all jobs where `submit_time` falls in `[t, t + 1 hour)`
+  - **Test window**: all jobs where `submit_time` falls in `[t, t + test_window_hours)`
 - This enforces strict temporal separation: the model is trained only on jobs that completed before the split point, and tested only on jobs submitted after the split point
 - Each split records a `day_key` (the date of the split time) to support daily preprocessing caching
 
 **Daily preprocessing cache** (`DailyPreprocessingCache`):
 - One-hot encoding and SVD are computationally expensive, especially with high-cardinality features
 - To avoid redundant computation, the preprocessing pipeline (encoder fitting, SVD fitting) is cached by `day_key`
-- The first hourly split of each day triggers a full preprocessing refit; subsequent splits within the same day reuse the cached encoder and SVD transformer
+- The first split of each day triggers a full preprocessing refit; subsequent splits within the same day reuse the cached encoder and SVD transformer
 - This provides a realistic simulation of production behavior (daily preprocessing refresh) while remaining computationally tractable
 
 **Evaluation loop**:
-- For each hourly split:
+- For each split:
   1. Materialize train and test rows from index lists
   2. Filter rows with valid, finite `runtime_seconds` targets
   3. Retrieve or create daily preprocessing artifacts (encoder + SVD)
   4. Transform train and test rows into feature matrices
   5. Fit a fresh XGBoost regressor on training features
   6. Generate predictions on test features
-  7. Compute per-hour MAE and RMSE
+  7. Compute per-window MAE and RMSE
   8. Skip splits with insufficient data (< 2 training rows, 0 test rows, or no features after preprocessing)
 - After all splits: compute global (aggregate) MAE and RMSE across all scored predictions
 
 **Output**: The model returns a structured dictionary containing:
-- Global metrics (MAE, RMSE aggregated across all scored hours)
-- Per-hour entries with status, metrics, feature info, preprocessing details
-- Summary statistics (hours scored/skipped, preprocessing refits, total rows scored)
+- Global metrics (MAE, RMSE aggregated across all scored windows)
+- Per-window entries with status, metrics, feature info, preprocessing details
+- Summary statistics (windows scored/skipped, preprocessing refits, total rows scored)
 
 ---
 
@@ -434,8 +434,9 @@ metrics:
   - name: rmse
     target: runtime_seconds
 split:
-  method: rolling_hourly
-  n_recent_hours: 1000
+  method: rolling
+  n_windows: 1000
+  test_window_hours: 6
   training_lookback_days: 100
 run:
   output_dir: runs
@@ -445,7 +446,7 @@ run:
 **Validation rules:**
 - Metrics must be a list with at minimum `mae` and `rmse`
 - All metrics must target the same field
-- For `rolling_hourly` splits: `n_recent_hours` must be positive; `training_lookback_days` defaults to 100
+- For `rolling` splits: `n_windows` must be positive; `test_window_hours` defaults to 6; `training_lookback_days` defaults to 100
 - For `fixed` splits: `train_fraction` and `seed` control the random split
 
 ### 8.2 Bundled Recipes
@@ -455,8 +456,8 @@ v0.1 ships three recipes:
 | Recipe | Model | Split | Purpose |
 |--------|-------|-------|---------|
 | `baseline_tiny.yml` | Baseline | Fixed 80/20 | CI smoke tests, offline demos |
-| `xgb_hourly_recent.yml` | XGBoost | Rolling hourly (1000h, 100d) | Full XGBoost benchmark |
-| `alt_model_example.yml` | XGBoost | Rolling hourly (24h, 30d) | Alternate configuration example |
+| `xgb_hourly_recent.yml` | XGBoost | Rolling (1000 windows, 6h, 100d) | Full XGBoost benchmark |
+| `alt_model_example.yml` | XGBoost | Rolling (24 windows, 6h, 30d) | Alternate configuration example |
 
 ### 8.3 Result Bundles
 
@@ -464,7 +465,7 @@ Each benchmark run produces a result bundle directory containing three JSON file
 
 **`result.json`** -- The primary result artifact, validated against `oda.result.v0.1.0`. Contains the recipe ID, problem domain, metrics summary, model metadata, dataset metadata (including content hash), and provenance.
 
-**`metrics.json`** -- Detailed metrics. For rolling-hourly evaluations, this includes per-hour entries with individual metrics, feature information, and skip reasons, as well as the summary statistics.
+**`metrics.json`** -- Detailed metrics. For rolling evaluations, this includes per-window entries with individual metrics, feature information, and skip reasons, as well as the summary statistics.
 
 **`provenance.json`** -- Complete reproducibility record:
 - Schema versions used (input and result)
@@ -547,9 +548,9 @@ The bundled registry snapshot contains five entries:
 |----|------|-------------|
 | `adapter.slurmctld` | adapter | Parses slurmctld log files into canonical job records |
 | `model.job_runtime_baseline` | model | Deterministic mean-prediction baseline |
-| `model.job_runtime_xgboost` | model | XGBoost with rolling-hourly evaluation |
+| `model.job_runtime_xgboost` | model | XGBoost with rolling evaluation |
 | `recipe.job_runtime.baseline_tiny` | recipe | Tiny synthetic dataset benchmark |
-| `recipe.job_runtime.xgb_hourly_recent` | recipe | XGBoost rolling-hourly benchmark |
+| `recipe.job_runtime.xgb_hourly_recent` | recipe | XGBoost rolling benchmark |
 
 ### 10.3 Registry Index and Filtering
 

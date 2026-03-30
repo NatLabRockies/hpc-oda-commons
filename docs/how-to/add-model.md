@@ -8,7 +8,7 @@ registry metadata and recipes.
 1. Implement a model class under `src/hpc_oda_commons/models/`.
 2. Add a registry entry in `src/hpc_oda_commons/registry/snapshot.json`.
 3. Add a recipe in `src/hpc_oda_commons/recipes/`.
-4. Add unit tests that exercise the model's public API (e.g., `fit()`/`predict()` for simple models, or `evaluate_hourly()` for rolling-window models).
+4. Add unit tests that exercise the model's public API (e.g., `fit()`/`predict()` for simple models, or `evaluate()` for rolling-window models).
 
 ## Required Metadata
 
@@ -44,7 +44,8 @@ and setting:
 
 ```yaml
 split:
-  method: rolling_hourly
-  n_recent_hours: 24
+  method: rolling
+  n_windows: 24
+  test_window_hours: 6
   training_lookback_days: 30
 ```

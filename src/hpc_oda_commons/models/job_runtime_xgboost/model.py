@@ -22,7 +22,7 @@ from hpc_oda_commons.models.job_runtime_xgboost.preprocessing import (
 )
 from hpc_oda_commons.models.job_runtime_xgboost.split import (
     DailyPreprocessingCache,
-    build_hourly_rolling_splits,
+    build_rolling_splits,
     materialize_split_rows,
 )
 
@@ -44,11 +44,12 @@ class JobRuntimeXGBoostConfig:
     """
     Configuration for the XGBoost runtime prediction model.
 
-    Controls rolling-hourly evaluation windows, categorical preprocessing
+    Controls rolling evaluation windows, categorical preprocessing
     (OHE + SVD), and XGBoost hyperparameters.
     """
 
-    n_recent_hours: int = 1000
+    n_windows: int = 1000
+    test_window_hours: int = 6
     training_lookback_days: int = 100
     submit_time_field: str = "submit_time"
     end_time_field: str = "end_time"
@@ -69,11 +70,11 @@ class JobRuntimeXGBoostConfig:
 
 class JobRuntimeXGBoostModel:
     """
-    XGBoost model for job runtime prediction with rolling-hourly evaluation.
+    XGBoost model for job runtime prediction with rolling evaluation.
 
     Public API:
-    - evaluate_hourly(): rolling-hourly train/test evaluation with daily preprocessing cache
-    - build_hourly_split_plan(): preview split windows without running evaluation
+    - evaluate(): rolling train/test evaluation with daily preprocessing cache
+    - build_split_plan(): preview split windows without running evaluation
     - analyze_preprocessing(): profile categorical features and preview OHE/SVD config
     """
 
@@ -94,7 +95,7 @@ class JobRuntimeXGBoostModel:
                 f'{missing_list}. Install with `pip install -e ".[dev]"`.'
             )
 
-    def evaluate_hourly(
+    def evaluate(
         self,
         rows: list[dict[str, Any]],
         *,
@@ -104,9 +105,10 @@ class JobRuntimeXGBoostModel:
         if not rows:
             raise ValueError("rows must be non-empty")
 
-        splits = build_hourly_rolling_splits(
+        splits = build_rolling_splits(
             rows,
-            n_recent_hours=self.config.n_recent_hours,
+            n_windows=self.config.n_windows,
+            test_window_hours=self.config.test_window_hours,
             training_lookback_days=self.config.training_lookback_days,
             submit_time_field=self.config.submit_time_field,
             end_time_field=self.config.end_time_field,
@@ -114,21 +116,21 @@ class JobRuntimeXGBoostModel:
         )
         cache = self.new_daily_preprocessing_cache()
 
-        hourly_entries: list[dict[str, Any]] = []
+        window_entries: list[dict[str, Any]] = []
         all_y_true: list[float] = []
         all_y_pred: list[float] = []
         preprocessing_refits = 0
         if verbose:
             print(
-                "[xgboost][verbose] starting hourly evaluation "
+                "[xgboost][verbose] starting rolling evaluation "
                 f"splits={len(splits)} "
-                f"n_recent_hours={self.config.n_recent_hours} "
+                f"n_windows={self.config.n_windows} "
                 f"training_lookback_days={self.config.training_lookback_days}"
             )
         split_iter = tqdm(
             splits,
-            desc="rolling_hourly/xgboost",
-            unit="hour",
+            desc="rolling/xgboost",
+            unit="window",
             disable=not verbose,
         )
 
@@ -138,7 +140,7 @@ class JobRuntimeXGBoostModel:
             test_rows, y_test = self._rows_with_target(test_rows_all)
 
             if len(train_rows) < 2:
-                hourly_entries.append(
+                window_entries.append(
                     self._build_skip_entry(
                         split,
                         reason="insufficient_training_rows",
@@ -167,7 +169,7 @@ class JobRuntimeXGBoostModel:
                     )
 
             if len(test_rows) < 1:
-                hourly_entries.append(
+                window_entries.append(
                     self._build_skip_entry(
                         split,
                         reason="insufficient_test_rows",
@@ -187,7 +189,7 @@ class JobRuntimeXGBoostModel:
             x_train = self._transform_rows(train_rows, artifacts)
             x_test = self._transform_rows(test_rows, artifacts)
             if x_train.shape[1] == 0:
-                hourly_entries.append(
+                window_entries.append(
                     self._build_skip_entry(
                         split,
                         reason="no_features_after_preprocessing",
@@ -223,7 +225,7 @@ class JobRuntimeXGBoostModel:
             all_y_true.extend(y_true)
             all_y_pred.extend(y_pred)
 
-            hourly_entries.append(
+            window_entries.append(
                 {
                     **split.to_dict(),
                     "status": "ok",
@@ -245,26 +247,27 @@ class JobRuntimeXGBoostModel:
             )
 
         if not all_y_true:
-            raise ValueError("No hourly splits produced scored predictions.")
+            raise ValueError("No rolling splits produced scored predictions.")
 
         global_metrics = self._compute_regression_metrics(all_y_true, all_y_pred)
-        hours_scored = sum(1 for entry in hourly_entries if entry["status"] == "ok")
+        windows_scored = sum(1 for entry in window_entries if entry["status"] == "ok")
         summary = {
-            "hours_total": len(splits),
-            "hours_scored": hours_scored,
-            "hours_skipped": len(splits) - hours_scored,
+            "windows_total": len(splits),
+            "windows_scored": windows_scored,
+            "windows_skipped": len(splits) - windows_scored,
             "preprocessing_refits": preprocessing_refits,
             "rows_scored": len(all_y_true),
             "days_with_cached_preprocessing": list(cache.keys()),
-            "n_recent_hours": self.config.n_recent_hours,
+            "n_windows": self.config.n_windows,
+            "test_window_hours": self.config.test_window_hours,
             "training_lookback_days": self.config.training_lookback_days,
         }
         if verbose:
             print(
                 "[xgboost][verbose] summary "
-                f"hours_total={summary['hours_total']} "
-                f"hours_scored={summary['hours_scored']} "
-                f"hours_skipped={summary['hours_skipped']} "
+                f"windows_total={summary['windows_total']} "
+                f"windows_scored={summary['windows_scored']} "
+                f"windows_skipped={summary['windows_skipped']} "
                 f"preprocessing_refits={summary['preprocessing_refits']} "
                 f"rows_scored={summary['rows_scored']} "
                 f"mae={global_metrics['mae']:.6f} rmse={global_metrics['rmse']:.6f}"
@@ -276,26 +279,33 @@ class JobRuntimeXGBoostModel:
                 {"name": "mae", "target": self.target_field},
                 {"name": "rmse", "target": self.target_field},
             ],
-            "hourly": hourly_entries,
+            "windows": window_entries,
             "summary": summary,
         }
 
-    def build_hourly_split_plan(
+    def build_split_plan(
         self,
         rows: list[dict[str, Any]],
         *,
-        n_recent_hours: int | None = None,
+        n_windows: int | None = None,
+        test_window_hours: int | None = None,
         training_lookback_days: int | None = None,
     ) -> list[dict[str, Any]]:
-        split_count = n_recent_hours if n_recent_hours is not None else self.config.n_recent_hours
+        split_count = n_windows if n_windows is not None else self.config.n_windows
+        window_hours = (
+            test_window_hours
+            if test_window_hours is not None
+            else self.config.test_window_hours
+        )
         lookback_days = (
             training_lookback_days
             if training_lookback_days is not None
             else self.config.training_lookback_days
         )
-        splits = build_hourly_rolling_splits(
+        splits = build_rolling_splits(
             rows,
-            n_recent_hours=split_count,
+            n_windows=split_count,
+            test_window_hours=window_hours,
             training_lookback_days=lookback_days,
             submit_time_field=self.config.submit_time_field,
             end_time_field=self.config.end_time_field,
