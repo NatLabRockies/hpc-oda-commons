@@ -10,7 +10,7 @@ from hpc_oda_commons.benchmark.recipes import load_recipe
 
 
 def _iter_recipe_paths() -> list[Path]:
-    roots = [Path("recipes"), Path("tests") / "fixtures" / "recipes"]
+    roots = [Path("src/hpc_oda_commons/recipes"), Path("tests") / "fixtures" / "recipes"]
     paths: list[Path] = []
     for root in roots:
         if not root.exists():
