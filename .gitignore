@@ -93,10 +93,8 @@ temp/
 .oda_runs/
 .oda_outputs/
 
-# Result bundles / leaderboard outputs that are generated locally
-# (Commit only if you intentionally publish generated artifacts.)
-leaderboard/public/
-!leaderboard/public/.gitkeep
+# Result bundles / leaderboard outputs / ingested data generated locally
+data/
 results/
 runs/
 outputs/
