@@ -9,7 +9,7 @@ hpc-oda-commons fixes this by establishing **community-governed contracts** — 
 ## Design Principles
 
 - **Artifacts are the interface.** Every stage of the pipeline reads and writes stable, versioned artifacts (Parquet tables, JSON manifests, result bundles). Standards live in the artifact contracts, not in any particular tool's internals.
-- **Local-first.** Ingestion and analysis run entirely on your machine. No data is uploaded or transmitted. Transformation helpers (hashing, binning, redaction) let you sanitize artifacts before sharing.
+- **Local-first.** Ingestion and analysis run entirely on your machine. No data is uploaded or transmitted. Identifier hashing lets you sanitize artifacts before sharing.
 - **Recipe-driven evaluation.** Benchmarks are defined by YAML recipes that fully specify dataset, model, metrics, and split strategy — so "running the same benchmark" actually means the same thing across sites.
 - **Domain-extensible.** The platform is designed to support multiple ODA problem domains over time. v0.1 delivers job runtime prediction as the first complete vertical slice; future domains include energy/power prediction, queue wait time estimation, and more.
 
@@ -208,8 +208,8 @@ src/hpc_oda_commons/     Package implementation
   schemas/               Bundled JSON Schema files
   datasets/              Bundled synthetic datasets
   registry/              Offline registry snapshot
+  recipes/               Bundled benchmark recipes (YAML)
   tools/                 HTML report generation
-recipes/                 Benchmark recipes (YAML)
 tests/                   Unit + integration tests
 docs/                    User and contributor documentation
 scripts/                 Validation and release helpers
@@ -225,8 +225,8 @@ AI agents (Claude Code, Codex, OpenCode, etc.) can find complete guidance in:
 
 ## Documentation
 
-- **How-to guides:** `docs/how-to/quickstart.md`, `ingest-slurmctld.md`, `ingest-jobs-parquet.md`, `interpret-results.md`
-- **CLI reference:** `docs/reference/cli.md`
-- **Recipes:** `docs/reference/recipes.md`
+- **How-to guides:** `docs/how-to/` — quickstart, ingest-slurmctld, ingest-jobs-parquet, interpret-results, install, contribute, add-model
+- **Reference:** `docs/reference/` — cli, recipes, schema-versions
+- **Concepts:** `docs/concepts/benchmarks.md` — rolling-hourly evaluation, split methods, preprocessing
 - **Deep dive:** `WHITEPAPER.md`
 
