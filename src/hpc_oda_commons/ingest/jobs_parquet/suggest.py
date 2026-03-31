@@ -64,6 +64,7 @@ _ALIASES: dict[str, tuple[str, ...]] = {
     "name": ("name", "job_name", "jobname"),
     "submit_line": ("submit_line", "command", "command_line", "cmdline"),
     "work_dir": ("work_dir", "workdir", "working_dir", "working_directory"),
+    "script": ("script", "job_script", "batch_script"),
 }
 
 
@@ -86,6 +87,7 @@ _FIELD_KINDS: dict[str, set[str]] = {
     "name": {"categorical"},
     "submit_line": {"categorical"},
     "work_dir": {"categorical"},
+    "script": {"categorical"},
 }
 
 

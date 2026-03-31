@@ -25,6 +25,7 @@ OPTIONAL_FIELDS = (
     "name",
     "submit_line",
     "work_dir",
+    "script",
 )
 
 
