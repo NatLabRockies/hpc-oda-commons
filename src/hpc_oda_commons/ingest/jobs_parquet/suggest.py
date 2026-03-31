@@ -54,6 +54,8 @@ _ALIASES: dict[str, tuple[str, ...]] = {
     ),
     "wallclock_requested": (
         "wallclock_requested",
+        "wallclock_req",
+        "wallclock_requested_seconds",
         "timelimit",
         "time_limit",
         "wallclock_limit",

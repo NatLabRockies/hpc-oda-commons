@@ -138,8 +138,13 @@ def _prompt_timestamp_format(field: str) -> str:
     return normalize_timestamp_format(value)
 
 
-def _prompt_memory_unit(field: str) -> str:
-    value = typer.prompt(f"Unit for '{field}' (bytes/KB/MB/GB/KiB/MiB/GiB)", default="MB")
+def _prompt_memory_unit(field: str) -> str | dict[str, str]:
+    value = typer.prompt(
+        f"Unit for '{field}' (bytes/KB/MB/GB/KiB/MiB/GiB, or 'slurm' for strings like 160G/2366M)",
+        default="MB",
+    )
+    if value.strip().lower() == "slurm":
+        return {"type": "memory_slurm"}
     return normalize_memory_unit(value)
 
 
@@ -214,8 +219,11 @@ def build_mapping_spec_interactive(
             entry["transform"] = {"type": "duration", "unit": unit}
 
         if field == "memory_requested":
-            unit = _prompt_memory_unit(field)
-            entry["transform"] = {"type": "memory", "unit": unit}
+            mem_result = _prompt_memory_unit(field)
+            if isinstance(mem_result, dict):
+                entry["transform"] = mem_result
+            else:
+                entry["transform"] = {"type": "memory", "unit": mem_result}
 
         fields[field] = entry
 

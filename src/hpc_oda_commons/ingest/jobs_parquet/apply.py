@@ -71,6 +71,38 @@ def _memory_to_mb(value: Any, unit: str) -> float | None:
     raise ValueError(f"Unsupported memory unit: {unit}")
 
 
+_SLURM_MEM_UNIT_TO_MIB: dict[str, float] = {
+    "K": 1 / 1024,
+    "k": 1 / 1024,
+    "M": 1,
+    "m": 1,
+    "G": 1024,
+    "g": 1024,
+    "T": 1024**2,
+    "t": 1024**2,
+    "P": 1024**3,
+    "p": 1024**3,
+    "": 1,
+}
+
+
+def _memory_slurm_to_mb(value: Any) -> float | None:
+    """Parse a SLURM memory string like '160G', '2366M', '4096' → MiB (float)."""
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    import re
+
+    m = re.match(r"^([\d.]+)([KMGTPkmgtp]?)$", raw)
+    if not m:
+        return None
+    num = float(m.group(1))
+    unit = m.group(2)
+    return num * _SLURM_MEM_UNIT_TO_MIB.get(unit, 1.0)
+
+
 def _apply_transform(value: Any, transform: dict[str, Any] | None) -> Any:
     if transform is None:
         return value
@@ -81,6 +113,8 @@ def _apply_transform(value: Any, transform: dict[str, Any] | None) -> Any:
         return _duration_to_seconds(value, str(transform.get("unit", "seconds")))
     if ttype == "memory":
         return _memory_to_mb(value, str(transform.get("unit", "mb")))
+    if ttype == "memory_slurm":
+        return _memory_slurm_to_mb(value)
     if ttype == "hash_identifier":
         salt_env = transform.get("salt_env")
         salt = None
