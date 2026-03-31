@@ -95,6 +95,7 @@ temp/
 
 # Result bundles / leaderboard outputs / ingested data generated locally
 data/
+leaderboard/
 recipes/
 results/
 runs/
