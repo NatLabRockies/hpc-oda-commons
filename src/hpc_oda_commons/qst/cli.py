@@ -431,12 +431,17 @@ def run_baseline() -> None:
     metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
     metrics_payload: dict[str, Any] = {**metrics, "definitions": metric_defs}
 
+    from hpc_oda_commons.kernel.integrity import check_integrity
+
+    integrity = check_integrity(project_root=root)
+
     prov = build_provenance(
         input_schema="oda.job.v0.1.0",
         result_schema="oda.result.v0.1.0",
         inputs=[table_path],
         project_root=root,
         capture_packages=False,
+        source_hash=integrity["code_hash"],
     )
 
     run_id = f"run-baseline-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
@@ -448,6 +453,7 @@ def run_baseline() -> None:
         "problem_domain": ["job-runtime-prediction"],
         "created_at": _now_utc_iso(),
         "metrics": metrics,
+        "integrity": integrity,
         "provenance": prov,
         "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
         "dataset": {
@@ -718,12 +724,17 @@ def benchmark(
             f"Unsupported model/split combination: model={model_id}, split.method={split_method}"
         )
 
+    from hpc_oda_commons.kernel.integrity import check_integrity
+
+    integrity = check_integrity(project_root=root)
+
     prov = build_provenance(
         input_schema=input_schema,
         result_schema="oda.result.v0.1.0",
         inputs=[recipe, table_path],
         project_root=root,
         capture_packages=True,
+        source_hash=integrity["code_hash"],
     )
 
     run_id = f"benchmark-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
@@ -735,6 +746,7 @@ def benchmark(
         "problem_domain": ["job-runtime-prediction"],
         "created_at": _now_utc_iso(),
         "metrics": metrics,
+        "integrity": integrity,
         "provenance": prov,
         "model": {"id": model_id, "version": model_version},
         "dataset": {
@@ -751,6 +763,11 @@ def benchmark(
     )
 
     if verbose:
+        validated_str = "yes" if integrity["validated"] else "NO"
+        console.print(
+            f"[blue][verbose][/blue] integrity: validated={validated_str} "
+            f"code_hash={integrity['code_hash'][:12] if integrity['code_hash'] else 'unknown'}..."
+        )
         console.print(
             "[blue][verbose][/blue] benchmark metrics: "
             + ", ".join(f"{k}={v:.6f}" for k, v in sorted(metrics.items()))
@@ -904,3 +921,25 @@ def leaderboard(
 
     console.print(f"[green]Leaderboard JSON[/green]: {json_path}")
     console.print(f"[green]Leaderboard HTML[/green]: {html_path}")
+
+
+@app.command("record-hash")
+def record_hash_cmd() -> None:
+    """Record the current source code hash for this git commit.
+
+    Appends a (git_commit, source_hash) entry to integrity/known_hashes.json.
+    Run this after tests pass on a clean commit to register it as validated.
+    """
+    from hpc_oda_commons.kernel.integrity import record_hash
+
+    result = record_hash(project_root=Path.cwd())
+    if result["git_commit"] is None:
+        console.print("[yellow]Warning[/yellow]: not in a git repository, no commit to record.")
+        return
+    if result["source_hash"] is None:
+        console.print("[yellow]Warning[/yellow]: could not resolve package directory.")
+        return
+    console.print(
+        f"[green]Recorded[/green]: commit={result['git_commit'][:12]}... "
+        f"hash={result['source_hash'][:12]}..."
+    )

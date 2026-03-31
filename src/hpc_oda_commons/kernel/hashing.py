@@ -21,6 +21,42 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def hash_package_source(
+    package_dir: Path,
+    *,
+    exclude_relative: set[str] | None = None,
+) -> str:
+    """Hash all .py files in a package directory for integrity verification.
+
+    Returns a deterministic SHA-256 hex digest. Files are sorted by relative path
+    so the hash is stable across platforms.
+    """
+    excl = exclude_relative or set()
+    py_files = sorted(package_dir.rglob("*.py"))
+    h = hashlib.sha256()
+    for py_file in py_files:
+        rel = str(py_file.relative_to(package_dir))
+        if rel in excl:
+            continue
+        file_hash = sha256_file(py_file)
+        h.update(f"{rel}\0{file_hash}\n".encode())
+    return h.hexdigest()
+
+
+def resolve_package_dir() -> Path | None:
+    """Resolve the installed hpc_oda_commons package directory."""
+    try:
+        from importlib.resources import files
+
+        pkg = files("hpc_oda_commons")
+        pkg_path = Path(str(pkg))
+        if pkg_path.is_dir():
+            return pkg_path
+    except Exception:
+        pass
+    return None
+
+
 def hash_input(path: Path, *, content: bool = True) -> HashedInput:
     """
     Hash an input path.

@@ -69,6 +69,7 @@ def build_provenance(
     inputs: list[Path],
     project_root: Path | None = None,
     capture_packages: bool = False,
+    source_hash: str | None = None,
 ) -> dict:
     hashed_inputs: list[HashedInput] = [hash_input(p, content=True) for p in inputs]
     env_pkgs: list[str] = pip_freeze_minimal() if capture_packages else []
@@ -79,6 +80,7 @@ def build_provenance(
         "code": {
             "package_version": package_version(),
             "git_commit": git_commit_if_available(project_root),
+            "source_hash": source_hash,
         },
         "inputs": [
             {

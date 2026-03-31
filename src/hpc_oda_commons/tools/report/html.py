@@ -15,6 +15,9 @@ def render_leaderboard_html(leaderboard: dict[str, Any]) -> str:
         model = entry.get("model", {})
         dataset = entry.get("dataset", {})
         metrics = entry.get("metrics", {})
+        integrity = entry.get("integrity") or {}
+        code_hash = integrity.get("code_hash", "")
+        validated = integrity.get("validated")
         rows.append(
             {
                 "created_at": entry.get("created_at", ""),
@@ -23,11 +26,18 @@ def render_leaderboard_html(leaderboard: dict[str, Any]) -> str:
                 "model_version": model.get("version", ""),
                 "dataset_id": dataset.get("id", ""),
                 "dataset_hash": dataset.get("hash", ""),
+                "validated": "yes" if validated else ("no" if validated is False else ""),
+                "code_hash": code_hash or "",
                 "metrics": ", ".join(f"{k}={v}" for k, v in metrics.items()),
             }
         )
 
     def _cell(value: str) -> str:
+        return f"<td>{escape(str(value))}</td>"
+
+    def _hash_cell(value: str) -> str:
+        if value and len(value) >= 12:
+            return f'<td title="{escape(value)}">{escape(value[:12])}&hellip;</td>'
         return f"<td>{escape(str(value))}</td>"
 
     body_rows = "\n".join(
@@ -37,7 +47,9 @@ def render_leaderboard_html(leaderboard: dict[str, Any]) -> str:
         + _cell(row["model_id"])
         + _cell(row["model_version"])
         + _cell(row["dataset_id"])
-        + _cell(row["dataset_hash"])
+        + _hash_cell(row["dataset_hash"])
+        + _cell(row["validated"])
+        + _hash_cell(row["code_hash"])
         + _cell(row["metrics"])
         + "</tr>"
         for row in rows
@@ -68,6 +80,8 @@ def render_leaderboard_html(leaderboard: dict[str, Any]) -> str:
         <th>Model Version</th>
         <th>Dataset</th>
         <th>Dataset Hash</th>
+        <th>Validated</th>
+        <th>Code Hash</th>
         <th>Metrics</th>
       </tr>
     </thead>

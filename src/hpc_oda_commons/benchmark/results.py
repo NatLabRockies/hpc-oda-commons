@@ -40,6 +40,7 @@ def build_leaderboard_entry(bundle_dir: Path) -> dict[str, Any]:
         "metrics": result.get("metrics", metrics),
         "model": result.get("model", {}),
         "dataset": result.get("dataset", {}),
+        "integrity": result.get("integrity"),
     }
     return entry
 

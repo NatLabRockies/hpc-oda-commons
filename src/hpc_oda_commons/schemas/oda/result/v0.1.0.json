@@ -119,6 +119,31 @@
         }
       }
     },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code_hash": {
+          "anyOf": [
+            { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            { "type": "null" }
+          ],
+          "description": "SHA-256 of all .py files in the hpc_oda_commons package."
+        },
+        "validated": {
+          "type": "boolean",
+          "description": "True if code_hash matches a known-good commit in known_hashes.json."
+        },
+        "git_commit": {
+          "anyOf": [
+            { "type": "string", "minLength": 7 },
+            { "type": "null" }
+          ],
+          "description": "Git commit SHA at benchmark time."
+        }
+      },
+      "description": "Code integrity verification: source hash and validation status."
+    },
     "notes": {
       "type": "string",
       "description": "Optional human-readable notes about the run."
