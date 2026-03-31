@@ -81,6 +81,8 @@ runs/<run-id>/
   provenance.json   # Full reproducibility record
 ```
 
+`result.json` includes an `integrity` block with the source code hash, validation status, and git commit. Two results with the same `code_hash` and `validated: true` are guaranteed to have used identical, test-validated code. The leaderboard surfaces these fields for easy comparison.
+
 Result bundles are the input to the [leaderboard](../reference/cli.md) generator, which aggregates multiple runs for comparison.
 
 See [Interpreting Results](../how-to/interpret-results.md) for guidance on reading these files.

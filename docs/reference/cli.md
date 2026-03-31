@@ -41,11 +41,19 @@ This reference covers the v0.1 `hpc-oda` commands.
    - `model.job_runtime_baseline` + `split.method: rolling`
    - `model.job_runtime_xgboost` + `split.method: rolling`
    - `model.job_runtime_tfidf_knn` + `split.method: rolling`
+   Result bundles include an `integrity` block with code hash and validation status.
    For rolling recipes, `split.n_windows` is required.
    Optional: `split.test_window_hours` (default `6`) sets the test window duration.
    Optional: `split.training_lookback_days` (default `100`) limits training rows
    to the previous `n` days before each split.
 
+## Integrity
+1. `hpc-oda record-hash`
+   Records the current source code hash (SHA-256 of all `.py` files) and git commit
+   in `integrity/known_hashes.json`. Run after tests pass on a clean commit to
+   register it as validated. Benchmark results on validated code show `integrity.validated: true`.
+
 ## Leaderboard
 1. `hpc-oda leaderboard --runs <dir> --out <dir>`
    Aggregates result bundles into `leaderboard.json` and `index.html`.
+   The HTML table includes Validated and Code Hash columns for integrity verification.

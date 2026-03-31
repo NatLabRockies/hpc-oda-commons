@@ -166,10 +166,12 @@ v0.1 supports two split methods:
 Every result bundle includes `provenance.json` capturing:
 - Schema versions used
 - Python version and installed packages (`pip freeze`)
-- Package version and git commit
+- Package version, git commit, and source code hash
 - SHA-256 hashes and sizes of input files
 
-This enables full traceability: a leaderboard entry can trace back to exactly what ran, on what data, and in what environment.
+Result bundles also include an `integrity` block that verifies the source code matches a known-good commit. Run `hpc-oda record-hash` after tests pass to register a commit; future benchmarks on that code will show `validated: true`.
+
+This enables full traceability: a leaderboard entry can trace back to exactly what ran, on what data, with what code, and in what environment.
 
 ### Data Privacy
 

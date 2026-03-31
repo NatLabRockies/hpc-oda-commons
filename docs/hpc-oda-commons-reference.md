@@ -229,7 +229,8 @@ The CLI is built on Typer and exposed as the `hpc-oda` command. It provides a co
 | `hpc-oda benchmark <recipe>` | Run a benchmark defined by a YAML recipe file. Resolves the model, loads the dataset, executes the evaluation strategy, computes metrics, and writes a validated result bundle. |
 | `hpc-oda analyze --data <path>` | Analyze a local dataset with the baseline model and emit a report bundle (JSON + HTML). |
 | `hpc-oda validate <path>` | Validate artifacts against their schemas. Accepts result bundles, manifests, or Parquet files. |
-| `hpc-oda leaderboard --runs <dir> --out <dir>` | Aggregate result bundles from a runs directory into a leaderboard (JSON + HTML). |
+| `hpc-oda leaderboard --runs <dir> --out <dir>` | Aggregate result bundles from a runs directory into a leaderboard (JSON + HTML). Includes Validated and Code Hash columns. |
+| `hpc-oda record-hash` | Record the current source code hash and git commit in `integrity/known_hashes.json`. Run after tests pass on a clean commit. |
 | `hpc-oda browse` | Browse the registry snapshot. Supports filters: `--tag`, `--type`, `--source`, `--input-schema`, `--output-schema`. |
 | `hpc-oda info <entry_id>` | Display detailed metadata for a registry entry (adapter, model, or recipe). |
 
@@ -533,7 +534,8 @@ Provenance tracking is woven throughout HPC ODA Commons. The `build_provenance()
     },
     "code": {
         "package_version": "0.1.0",
-        "git_commit": "abc123..."
+        "git_commit": "abc123...",
+        "source_hash": "def456..."
     },
     "inputs": [
         {
@@ -549,6 +551,8 @@ Provenance tracking is woven throughout HPC ODA Commons. The `build_provenance()
 **Content hashing**: Parquet tables are content-hashed using SHA-256 over the raw file bytes (read in 1 MB chunks). This hash is stored in the result bundle's `dataset.hash` field, enabling verification that the exact same data was used across different benchmark runs.
 
 **Input hashing**: The `HashedInput` dataclass captures path, SHA-256 hash, file size, and modification time for each input file. This enables detection of whether inputs have changed between runs.
+
+**Code integrity verification**: Result bundles include an `integrity` block with `code_hash` (SHA-256 of all `.py` files in the package), `validated` (true if the hash matches a known-good commit in `integrity/known_hashes.json`), and `git_commit`. This detects both accidental and intentional code modifications that could bias results. Run `hpc-oda record-hash` after tests pass on a clean commit to register it.
 
 **Data transformation utilities** in `kernel/transformations.py` support privacy-preserving workflows:
 - `hash_identifier(value, salt)`: SHA-256 hashes sensitive identifiers (e.g., usernames) with an optional salt

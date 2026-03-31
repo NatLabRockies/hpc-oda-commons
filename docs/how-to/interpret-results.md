@@ -53,6 +53,11 @@ Use rolling evaluation with the same `n_windows`, `test_window_hours`, and `trai
     "id": "...",
     "schema_version": "oda.job.v0.1.0",
     "hash": "e3b0c44..."
+  },
+  "integrity": {
+    "code_hash": "abc123def456...",
+    "validated": true,
+    "git_commit": "def456abc123..."
   }
 }
 ```
@@ -60,6 +65,8 @@ Use rolling evaluation with the same `n_windows`, `test_window_hours`, and `trai
 - `metrics` -- the headline numbers to compare
 - `dataset.hash` -- SHA-256 of the input Parquet file. Two results with the same hash used the same data.
 - `model.id` + `model.version` -- exactly which model produced this result
+- `integrity.code_hash` -- SHA-256 of all `.py` files in the package. Two results with the same hash used identical code.
+- `integrity.validated` -- `true` if the code hash matches a known-good commit registered via `hpc-oda record-hash`
 
 ## Reading `metrics.json` (Rolling)
 
@@ -117,6 +124,8 @@ This produces `leaderboard.json` (machine-readable) and `index.html` (human-read
 Open `index.html` in a browser to compare runs visually. Look for:
 - Which model achieves the lowest MAE/RMSE
 - Whether the same dataset hash was used across runs (apples-to-apples comparison)
+- Whether results show `Validated = yes` (code matches a known-good commit)
+- Whether results share the same `Code Hash` (identical code was used)
 - How metrics trend over time as models or data change
 
 ## Analysis Reports

@@ -16,6 +16,18 @@ HPC_ODA_OFFLINE=1 make test-integration  # Integration tests
 pytest tests/unit/test_foo.py    # Single file
 ```
 
+## Code Integrity
+
+After tests pass on a clean commit, register the source hash:
+
+```bash
+hpc-oda record-hash
+git add src/hpc_oda_commons/integrity/known_hashes.json
+git commit -m "Record source hash"
+```
+
+This enables future benchmark results to verify they ran validated code.
+
 ## Linting and Formatting
 
 Ruff is the single source of truth for style. Run before committing:
