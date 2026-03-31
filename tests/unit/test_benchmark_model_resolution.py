@@ -149,9 +149,7 @@ def test_benchmark_rolling_uses_xgboost_path(
     assert metrics_payload["summary"]["windows_total"] == 4
 
 
-def test_benchmark_baseline_rolling_path(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_benchmark_baseline_rolling_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """baseline + rolling dispatches to run_rolling_baseline."""
     monkeypatch.chdir(tmp_path)
 
@@ -180,6 +178,68 @@ def test_benchmark_baseline_rolling_path(
     assert result["model"]["id"] == "model.job_runtime_baseline"
     assert result["metrics"]["mae"] >= 0.0
     assert result["metrics"]["rmse"] >= 0.0
+    assert "windows" in metrics_payload
+    assert metrics_payload["summary"]["windows_total"] == 2
+
+
+def test_benchmark_tfidf_knn_rolling_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """tfidf_knn + rolling dispatches to run_rolling_tfidf_knn."""
+
+    class FakeTfidfKnnModel:
+        def __init__(self, config: object) -> None:
+            pass
+
+        def evaluate(
+            self,
+            rows: list[dict[str, object]],
+            *,
+            verbose: bool = False,
+        ) -> dict[str, object]:
+            assert rows
+            _ = verbose
+            return {
+                "mae": 2.0,
+                "rmse": 3.0,
+                "windows": [{"status": "ok", "metrics": {"mae": 2.0, "rmse": 3.0}}],
+                "summary": {
+                    "windows_total": 2,
+                    "windows_scored": 1,
+                    "windows_skipped": 1,
+                    "rows_scored": 3,
+                    "n_windows": 2,
+                    "test_window_hours": 1,
+                    "training_lookback_days": 100,
+                },
+            }
+
+    monkeypatch.setattr(runner, "JobRuntimeTfidfKnnModel", FakeTfidfKnnModel)
+    monkeypatch.chdir(tmp_path)
+
+    table_path = tmp_path / "jobs.parquet"
+    recipe_path = tmp_path / "tfidf_knn_rolling.yml"
+    _write_dataset(table_path)
+    _write_recipe(
+        recipe_path,
+        model_id="model.job_runtime_tfidf_knn",
+        split_block="\n".join(
+            [
+                "  method: rolling",
+                "  n_windows: 2",
+                "  test_window_hours: 1",
+            ]
+        ),
+        table_path=table_path,
+    )
+
+    cli.benchmark(recipe_path)
+
+    bundle = _first_result_bundle(tmp_path / "runs")
+    result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
+    metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
+
+    assert result["model"]["id"] == "model.job_runtime_tfidf_knn"
+    assert result["metrics"]["mae"] == 2.0
+    assert result["metrics"]["rmse"] == 3.0
     assert "windows" in metrics_payload
     assert metrics_payload["summary"]["windows_total"] == 2
 

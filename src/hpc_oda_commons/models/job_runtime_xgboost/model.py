@@ -293,9 +293,7 @@ class JobRuntimeXGBoostModel:
     ) -> list[dict[str, Any]]:
         split_count = n_windows if n_windows is not None else self.config.n_windows
         window_hours = (
-            test_window_hours
-            if test_window_hours is not None
-            else self.config.test_window_hours
+            test_window_hours if test_window_hours is not None else self.config.test_window_hours
         )
         lookback_days = (
             training_lookback_days

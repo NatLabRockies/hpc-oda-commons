@@ -22,6 +22,9 @@ OPTIONAL_FIELDS = (
     "processors_requested",
     "gpus_requested",
     "wallclock_requested",
+    "name",
+    "submit_line",
+    "work_dir",
 )
 
 

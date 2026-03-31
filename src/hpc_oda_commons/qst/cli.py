@@ -17,6 +17,7 @@ from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboa
 from hpc_oda_commons.benchmark.runner import (
     run_fixed_baseline,
     run_rolling_baseline,
+    run_rolling_tfidf_knn,
     run_rolling_xgboost,
 )
 from hpc_oda_commons.datasets.synthetic import (
@@ -702,6 +703,10 @@ def benchmark(
         metrics, metrics_payload = run_fixed_baseline(rows, split=split, metric_defs=metric_defs)
     elif model_id == "model.job_runtime_baseline" and split_method == "rolling":
         metrics, metrics_payload = run_rolling_baseline(
+            rows, split=split, metric_defs=metric_defs, verbose=verbose
+        )
+    elif model_id == "model.job_runtime_tfidf_knn" and split_method == "rolling":
+        metrics, metrics_payload = run_rolling_tfidf_knn(
             rows, split=split, metric_defs=metric_defs, verbose=verbose
         )
     elif model_id == "model.job_runtime_xgboost" and split_method == "rolling":

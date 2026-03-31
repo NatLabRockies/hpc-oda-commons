@@ -14,6 +14,10 @@ from hpc_oda_commons.kernel.metrics import (
     compute_regression_metrics_from_defs,
 )
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
+from hpc_oda_commons.models.job_runtime_tfidf_knn.model import (
+    JobRuntimeTfidfKnnConfig,
+    JobRuntimeTfidfKnnModel,
+)
 from hpc_oda_commons.models.job_runtime_xgboost.model import (
     JobRuntimeXGBoostConfig,
     JobRuntimeXGBoostModel,
@@ -235,6 +239,42 @@ def run_rolling_xgboost(
     training_lookback_days = int(split.get("training_lookback_days", 100))
     model = JobRuntimeXGBoostModel(
         config=JobRuntimeXGBoostConfig(
+            n_windows=n_windows,
+            test_window_hours=test_window_hours,
+            training_lookback_days=training_lookback_days,
+        )
+    )
+    eval_payload = model.evaluate(rows, verbose=verbose)
+
+    metrics = {
+        "mae": float(eval_payload["mae"]),
+        "rmse": float(eval_payload["rmse"]),
+    }
+    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
+    return metrics, metrics_payload
+
+
+def run_rolling_tfidf_knn(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+) -> tuple[dict[str, float], dict[str, Any]]:
+    """Run a rolling benchmark with the TF-IDF + kNN model."""
+    requested = {str(m.get("name", "")) for m in metric_defs}
+    unsupported = sorted(requested - {"mae", "rmse"})
+    if unsupported:
+        raise ValueError(
+            "rolling benchmark currently supports only mae/rmse metrics; "
+            f"unsupported: {', '.join(unsupported)}"
+        )
+
+    n_windows = int(split.get("n_windows", 1000))
+    test_window_hours = int(split.get("test_window_hours", 6))
+    training_lookback_days = int(split.get("training_lookback_days", 100))
+    model = JobRuntimeTfidfKnnModel(
+        config=JobRuntimeTfidfKnnConfig(
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,

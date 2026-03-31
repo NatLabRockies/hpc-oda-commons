@@ -59,6 +59,9 @@ _ALIASES: dict[str, tuple[str, ...]] = {
         "wallclock_limit",
         "limit",
     ),
+    "name": ("name", "job_name", "jobname"),
+    "submit_line": ("submit_line", "command", "command_line", "cmdline"),
+    "work_dir": ("work_dir", "workdir", "working_dir", "working_directory"),
 }
 
 
@@ -78,6 +81,9 @@ _FIELD_KINDS: dict[str, set[str]] = {
     "processors_requested": {"numeric"},
     "gpus_requested": {"numeric", "categorical"},
     "wallclock_requested": {"numeric", "categorical"},
+    "name": {"categorical"},
+    "submit_line": {"categorical"},
+    "work_dir": {"categorical"},
 }
 
 
