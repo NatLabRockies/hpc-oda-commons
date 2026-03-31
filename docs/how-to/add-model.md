@@ -21,26 +21,25 @@ The registry entry should include:
 6. `output_schema_version`
 7. `supported_sources`
 
-## Example
+## Reference Implementations
 
-See `src/hpc_oda_commons/models/job_runtime_baseline/` for a reference model.
+v0.1 ships three models, each illustrating a different complexity level:
 
-## Alternate Model Benchmarking (XGBoost)
+| Model | Package | Interface |
+|-------|---------|-----------|
+| `model.job_runtime_baseline` | `models/job_runtime_baseline/` | Simple `fit()`/`predict()` class, rolling loop in runner |
+| `model.job_runtime_xgboost` | `models/job_runtime_xgboost/` | `evaluate()` with OHE+SVD preprocessing and daily cache |
+| `model.job_runtime_tfidf_knn` | `models/job_runtime_tfidf_knn/` | `evaluate()` with TF-IDF vectorization and incremental hash cache |
 
-The first alternate model is:
-`model.job_runtime_xgboost`
+For a minimal starting point, see `models/job_runtime_baseline/`. For a rolling-evaluation model with internal state, see `models/job_runtime_tfidf_knn/`.
 
-Reference recipe:
-`hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml`
-
-Run it with:
+## Running Alternate Models
 
 ```bash
-HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
+hpc-oda benchmark -v hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
 ```
 
-For faster local test cycles, use a small rolling window by copying the recipe
-and setting:
+For faster local test cycles, copy the recipe and reduce the rolling window:
 
 ```yaml
 split:

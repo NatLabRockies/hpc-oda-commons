@@ -38,7 +38,9 @@ This reference covers the v0.1 `hpc-oda` commands.
    `--verbose` enables progress bar output for long-running benchmarks.
    Supported v0.1 model/split pairs:
    - `model.job_runtime_baseline` + `split.method: fixed`
+   - `model.job_runtime_baseline` + `split.method: rolling`
    - `model.job_runtime_xgboost` + `split.method: rolling`
+   - `model.job_runtime_tfidf_knn` + `split.method: rolling`
    For rolling recipes, `split.n_windows` is required.
    Optional: `split.test_window_hours` (default `6`) sets the test window duration.
    Optional: `split.training_lookback_days` (default `100`) limits training rows

@@ -59,11 +59,11 @@ run:
 
 ### Split Methods
 
-**`fixed`** -- Random train/test split. Used with `model.job_runtime_baseline`.
+**`fixed`** -- Deterministic train/test split. Used with `model.job_runtime_baseline`.
 - `train_fraction` (float, required): fraction of data for training (e.g., `0.8`)
 - `seed` (int, required): random seed for reproducibility
 
-**`rolling`** -- Sliding windows that simulate production retraining. Used with `model.job_runtime_xgboost`.
+**`rolling`** -- Sliding windows that simulate production retraining. Used with all three v0.1 models (`model.job_runtime_baseline`, `model.job_runtime_xgboost`, `model.job_runtime_tfidf_knn`).
 - `n_windows` (int, required): number of windows to evaluate
 - `test_window_hours` (int, default `6`): duration of each test window in hours
 - `training_lookback_days` (int, default `100`): days of history per training window

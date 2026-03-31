@@ -36,11 +36,6 @@ Point `pip` at your internal index and install normally:
 pip install hpc-oda-commons
 ```
 
-### Option C: Container image
-
-Use the provided container definitions under `containers/` if your site prefers
-Docker or Apptainer/Singularity.
-
 ### Notes on build isolation
 
 Some environments prevent network access during build. If you are installing from

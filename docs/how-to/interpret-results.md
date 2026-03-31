@@ -32,17 +32,14 @@ Like MAE but penalizes large errors more heavily. Always >= MAE.
 
 ### Comparing Models
 
-Run the baseline first to establish a reference:
-```bash
-hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
-```
+Run the baseline first to establish a reference, then run alternate models on the same data using the same rolling split parameters. A useful model should achieve lower MAE and RMSE than the baseline, which predicts the global mean runtime for every job.
 
-Then run the XGBoost model on the same data:
-```bash
-hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
-```
+v0.1 ships three models:
+- `model.job_runtime_baseline` -- mean predictor (supports fixed and rolling splits)
+- `model.job_runtime_xgboost` -- gradient-boosted trees with OHE+SVD preprocessing
+- `model.job_runtime_tfidf_knn` -- text similarity via TF-IDF + k-nearest neighbors
 
-A useful model should achieve lower MAE and RMSE than the baseline. The baseline predicts the global mean runtime for every job, so any model that learns from job features should improve on it.
+Use rolling evaluation with the same `n_windows`, `test_window_hours`, and `training_lookback_days` across all models for apples-to-apples comparison.
 
 ## Reading `result.json`
 
@@ -66,7 +63,7 @@ A useful model should achieve lower MAE and RMSE than the baseline. The baseline
 
 ## Reading `metrics.json` (Rolling)
 
-For XGBoost rolling benchmarks, `metrics.json` contains per-window detail:
+For rolling benchmarks (baseline, XGBoost, or TF-IDF kNN), `metrics.json` contains per-window detail:
 
 ```json
 {

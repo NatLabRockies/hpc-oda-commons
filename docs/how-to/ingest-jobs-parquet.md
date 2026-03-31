@@ -22,7 +22,10 @@ The wizard:
 | Timestamp | `iso8601`, `epoch_s`, `epoch_ms`, `epoch_us` |
 | Duration | `seconds`, `minutes`, `hours`, `HH:MM:SS` |
 | Memory | `bytes`, `KB`, `MB`, `GB`, `KiB`, `MiB`, `GiB` |
+| Memory (SLURM) | `slurm` -- parses SLURM-format strings like `160G`, `2366M`, `4096` → MiB |
 | Identifier | SHA-256 hash with optional salt (via `HPC_ODA_HASH_SALT` env var). Can be applied to any mapped field. |
+
+The wizard also offers an optional state filter after field mapping, allowing you to keep only specific job states (e.g., COMPLETED, TIMEOUT).
 
 ## Non-Interactive (Reuse Mapping)
 

@@ -38,9 +38,6 @@ The first vertical slice delivers a complete end-to-end workflow for SLURM job r
 git clone <repo-url> && cd hpc-oda-commons
 pip install -e ".[dev]"
 
-# Initialize project directory structure
-hpc-oda init
-
 # Browse the offline registry
 hpc-oda browse
 hpc-oda info model.job_runtime_baseline
@@ -78,22 +75,22 @@ hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet --mapping /path/to/mapp
 
 ```bash
 # Validate ingested data and generate a quality report
-hpc-oda validate data/ingested/slurmctld/<run>/data.parquet
+hpc-oda validate data/ingested/jobs_parquet/<run>/data.parquet
 
 # Run a baseline analysis → reports/<id>/{analysis.json, index.html}
-hpc-oda analyze --data data/ingested/slurmctld/<run>
+hpc-oda analyze --data data/ingested/jobs_parquet/<run>
 
-# Benchmark with the XGBoost rolling model
-HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
-# Use -v/--verbose for progress on long rolling runs
-HPC_ODA_OFFLINE=1 hpc-oda benchmark -v hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
+# Benchmark with a recipe (use -v for progress on rolling evaluations)
+hpc-oda benchmark -v my_recipe.yml
 ```
 
 ### v0.1 Models
 
-**Baseline** (`model.job_runtime_baseline`) — Deterministic mean-prediction model. Computes `mean(runtime_seconds)` on the training set and predicts that constant for all test rows. Fast, explainable, and useful as a floor for comparison.
+**Baseline** (`model.job_runtime_baseline`) — Deterministic mean-prediction model. Computes `mean(runtime_seconds)` on the training set and predicts that constant for all test rows. Supports both fixed and rolling evaluation. Fast, explainable, and useful as a floor for comparison.
 
 **XGBoost** (`model.job_runtime_xgboost`) — Gradient-boosted tree model with automatic categorical preprocessing (one-hot encoding + SVD dimensionality reduction). Uses a daily preprocessing cache so OHE/SVD are only refit on day boundaries during rolling evaluation.
+
+**TF-IDF + kNN** (`model.job_runtime_tfidf_knn`) — Text-similarity model that concatenates job metadata fields (user, account, partition, job name, submit line, working directory, script) into text, vectorizes with TF-IDF, and predicts runtime as the similarity-weighted average of the k nearest neighbors. Uses an incremental HashingVectorizer cache for efficient rolling evaluation.
 
 ---
 
@@ -199,7 +196,7 @@ All transformations are recorded in the manifest's transformation ledger.
 src/hpc_oda_commons/     Package implementation
   qst/                   CLI (Typer-based, entry point: hpc-oda)
   kernel/                Core: artifacts, provenance, validation, schemas
-  models/                Baseline and XGBoost runtime models
+  models/                Baseline, XGBoost, and TF-IDF kNN runtime models
   adapters/              Source parsers (slurmctld)
   ingest/                Data ingestion pipeline (profile, suggest, wizard, apply)
   benchmark/             Recipe loading and results aggregation

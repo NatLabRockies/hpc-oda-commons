@@ -1,75 +1,84 @@
 # Quickstart (v0.1) — SLURM Job Runtime Prediction
 
-This quickstart is the canonical 10-minute workflow for v0.1.
+This quickstart walks through the end-to-end workflow for v0.1: ingest job data, validate it, benchmark models, and compare results.
 
-> Docs Sync Rule: If any CLI command names, flags, or output paths change, update this doc and the README quickstart.
-
-## 1) Install (editable)
+## 1) Install
 
 ```bash
 pip install -e ".[dev]"
 ```
-## 2) Initialize a project
-```bash
-hpc-oda init
-```
 
-## 3) Browse available components (offline)
+## 2) Browse available components
+
 ```bash
 hpc-oda browse
 hpc-oda info model.job_runtime_baseline
 ```
 
-## 4) Run the offline baseline demo (no network)
+## 3) Ingest your data
+
+**Option A: Jobs Parquet export** (interactive wizard)
 ```bash
-HPC_ODA_OFFLINE=1 hpc-oda run-baseline
+hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
+```
+The wizard previews your data, suggests column mappings, and asks for timestamp/duration/memory formats. It also offers to hash sensitive fields (user, account). Once complete, it writes a reusable `mapping.yml` alongside the output.
+
+To replay a mapping non-interactively:
+```bash
+hpc-oda ingest jobs-parquet --path new_data.parquet \
+  --mapping data/ingested/jobs_parquet/<prior-run>/mapping.yml \
+  --non-interactive
 ```
 
-## 5) Ingest slurmctld logs
+**Option B: slurmctld logs**
 ```bash
 hpc-oda ingest slurmctld --path /path/to/slurmctld.log
 ```
 
-## 5a) Ingest jobs Parquet exports (alternative)
+## 4) Validate ingested artifacts
+
 ```bash
-hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
+hpc-oda validate data/ingested/jobs_parquet/<run>/data.parquet
+```
+Writes a quality report (`*.quality.json`) next to the parquet file with schema violations, semantic checks, and missingness statistics.
+
+## 5) Benchmark
+
+Run the offline baseline demo (no data required):
+```bash
+HPC_ODA_OFFLINE=1 hpc-oda run-baseline
 ```
 
-## 6) Validate ingested artifacts
+Run a benchmark recipe against your ingested data — copy a bundled recipe and update the `dataset.table_path`:
 ```bash
-hpc-oda validate data/ingested/slurmctld/<run>/data.parquet
-```
-This writes a quality report next to the parquet file:
-`data/ingested/slurmctld/<run>/data.parquet.quality.json`.
-
-For jobs Parquet ingestion, the equivalent path is:
-`data/ingested/jobs_parquet/<run>/data.parquet`.
-
-## 7) Analyze local data (baseline)
-```bash
-hpc-oda analyze --data data/ingested/slurmctld/<run>
+cp hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml my_recipe.yml
+# Edit my_recipe.yml: set table_path to your ingested parquet
+hpc-oda benchmark my_recipe.yml
 ```
 
-## 8) Benchmark using the v0.1 recipe
+### v0.1 models
+
+| Model | Split method | Description |
+|-------|-------------|-------------|
+| `model.job_runtime_baseline` | `fixed` or `rolling` | Mean-prediction baseline |
+| `model.job_runtime_xgboost` | `rolling` | XGBoost with automatic OHE+SVD categorical preprocessing |
+| `model.job_runtime_tfidf_knn` | `rolling` | TF-IDF text vectorization + k-nearest-neighbor regression |
+
+For rolling benchmarks, use `-v` for progress output:
 ```bash
-HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
+hpc-oda benchmark -v my_recipe.yml
 ```
 
-## 8a) Benchmark the alternate XGBoost model
-```bash
-HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
-# For long rolling runs, use verbose progress output
-HPC_ODA_OFFLINE=1 hpc-oda benchmark -v hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
-```
+### Rolling split parameters
 
-Tip for faster local iteration: copy the recipe and reduce the rolling window:
-`split.n_windows: 24`.
-You can also adjust the test window duration with:
-`split.test_window_hours: 6` (default is `6`).
-You can also limit each split's training history with:
-`split.training_lookback_days: 30` (default is `100`).
+Adjust these in the recipe's `split:` section:
+- `n_windows` — number of evaluation windows (default 1000)
+- `test_window_hours` — hours per test window (default 6)
+- `training_lookback_days` — training history limit (default 100)
 
-## 9) Generate a local leaderboard
+## 6) Compare results
+
 ```bash
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
+Aggregates all result bundles under `runs/` into `leaderboard.json` and `index.html`.

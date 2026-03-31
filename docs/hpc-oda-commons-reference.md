@@ -323,7 +323,7 @@ Each ingestion run produces a directory under `data/ingested/<adapter>/<run_id>/
 
 ## 7. Prediction Models
 
-HPC ODA Commons v0.1 ships two models for job runtime prediction. Both follow a common interface pattern: `fit(rows)` for training and `predict(rows)` for inference, where `rows` is a list of dictionaries conforming to the job schema. The target field is `runtime_seconds`.
+HPC ODA Commons v0.1 ships three models for job runtime prediction. All operate on `rows`, a list of dictionaries conforming to the job schema, with `runtime_seconds` as the target field.
 
 ### 7.1 Baseline Model (`model.job_runtime_baseline`)
 
@@ -407,6 +407,37 @@ The rolling evaluation strategy (`evaluate()`) simulates how a model would perfo
 - Global metrics (MAE, RMSE aggregated across all scored windows)
 - Per-window entries with status, metrics, feature info, preprocessing details
 - Summary statistics (windows scored/skipped, preprocessing refits, total rows scored)
+
+### 7.3 TF-IDF + kNN Model (`model.job_runtime_tfidf_knn`)
+
+A text-similarity model that predicts runtime by finding the most similar historical jobs based on their metadata text. This model is most effective when data includes rich text fields like job names, submit commands, working directories, and job scripts.
+
+#### 7.3.1 Configuration
+
+Controlled by `JobRuntimeTfidfKnnConfig`:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `n_windows` | 1000 | Number of rolling evaluation windows |
+| `test_window_hours` | 6 | Hours per test window |
+| `training_lookback_days` | 100 | Training lookback |
+| `k` | 5 | Number of nearest neighbors |
+| `n_hash_features` | 16384 | HashingVectorizer feature count |
+| `ngram_range` | (1, 1) | N-gram range for text vectorization |
+| `use_incremental_cache` | True | Reuse hash matrix across windows |
+| `log_target` | False | Predict in log-space |
+
+#### 7.3.2 How It Works
+
+1. **Text column auto-detection**: Scans for string-valued columns, excluding timestamps, target, and job_id.
+2. **Text concatenation**: Joins all text column values per job into a single space-separated string.
+3. **HashingVectorizer + TF-IDF**: Hashes text into a fixed-width sparse feature matrix, then applies TF-IDF weighting.
+4. **k-nearest neighbors**: Finds the k most similar training jobs by cosine distance.
+5. **Weighted prediction**: Predicts runtime as the similarity-weighted average of the neighbors' runtimes.
+
+#### 7.3.3 Incremental Cache
+
+The model maintains an incremental hash matrix cache across rolling windows. Between windows, only new/removed jobs are hashed -- the rest of the matrix is reused. This avoids re-vectorizing the full training set each window and provides significant speedup for rolling evaluation.
 
 ---
 
@@ -542,13 +573,14 @@ Each registry entry is a `RegistryEntry` dataclass with:
 
 ### 10.2 v0.1 Registry Contents
 
-The bundled registry snapshot contains five entries:
+The bundled registry snapshot contains six entries:
 
 | ID | Type | Description |
 |----|------|-------------|
 | `adapter.slurmctld` | adapter | Parses slurmctld log files into canonical job records |
 | `model.job_runtime_baseline` | model | Deterministic mean-prediction baseline |
 | `model.job_runtime_xgboost` | model | XGBoost with rolling evaluation |
+| `model.job_runtime_tfidf_knn` | model | TF-IDF + kNN with rolling evaluation |
 | `recipe.job_runtime.baseline_tiny` | recipe | Tiny synthetic dataset benchmark |
 | `recipe.job_runtime.xgb_hourly_recent` | recipe | XGBoost rolling benchmark |
 

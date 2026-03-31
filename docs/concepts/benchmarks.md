@@ -13,6 +13,7 @@ Recipes are YAML files that fully specify an evaluation:
 Built-in v0.1 recipes:
 - `hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml` -- baseline model, fixed split
 - `hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml` -- XGBoost, rolling
+- `hpc_oda_commons/recipes/job-runtime/alt_model_example.yml` -- XGBoost, smaller rolling window
 
 See the [Recipes Reference](../reference/recipes.md) for the full format specification with annotated examples.
 
@@ -20,7 +21,7 @@ See the [Recipes Reference](../reference/recipes.md) for the full format specifi
 
 ### Fixed Split
 
-A simple random partition of rows into training and test sets. Controlled by `train_fraction` and `seed`. Used with the baseline model.
+A deterministic partition of rows into training and test sets. Controlled by `train_fraction` and `seed`. Used with the baseline model.
 
 This is fast and easy to understand, but it does not account for temporal dynamics in HPC workloads -- a model might train on future data and test on past data.
 
@@ -51,9 +52,12 @@ This enforces strict temporal separation -- the model never sees future data dur
 - `test_window_hours` (default 6): duration of each test window in hours
 - `training_lookback_days` (default 100): how far back to look for training data
 
-### Daily Preprocessing Cache
+### Preprocessing Caches
 
-For the XGBoost model, categorical feature preprocessing (one-hot encoding + SVD dimensionality reduction) is computationally expensive. To avoid redundant computation, the preprocessing pipeline is cached by day -- the encoder and SVD are refit on the first split of each new day, then reused for the remaining windows of that day. This mirrors realistic production behavior where preprocessing would be refreshed on a daily schedule.
+The rolling models use caching to avoid redundant computation across windows:
+
+- **XGBoost**: Categorical feature preprocessing (one-hot encoding + SVD) is cached by day. The encoder and SVD are refit on the first split of each new day, then reused for remaining windows. This mirrors production behavior where preprocessing would be refreshed on a daily schedule.
+- **TF-IDF + kNN**: The HashingVectorizer hash matrix is cached incrementally. Between windows, only new/removed jobs are hashed -- the rest of the matrix is reused. This avoids re-vectorizing the full training set each window.
 
 ## Metrics
 
