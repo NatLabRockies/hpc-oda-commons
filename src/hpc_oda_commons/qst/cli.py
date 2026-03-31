@@ -14,7 +14,11 @@ from rich.console import Console
 from hpc_oda_commons.adapters.slurmctld.adapter import SlurmctldAdapter
 from hpc_oda_commons.benchmark.recipes import load_recipe
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
-from hpc_oda_commons.benchmark.runner import run_fixed_baseline, run_rolling_xgboost
+from hpc_oda_commons.benchmark.runner import (
+    run_fixed_baseline,
+    run_rolling_baseline,
+    run_rolling_xgboost,
+)
 from hpc_oda_commons.datasets.synthetic import (
     generate_tiny_runtime_dataset,
 )
@@ -696,6 +700,10 @@ def benchmark(
 
     if model_id == "model.job_runtime_baseline" and split_method == "fixed":
         metrics, metrics_payload = run_fixed_baseline(rows, split=split, metric_defs=metric_defs)
+    elif model_id == "model.job_runtime_baseline" and split_method == "rolling":
+        metrics, metrics_payload = run_rolling_baseline(
+            rows, split=split, metric_defs=metric_defs, verbose=verbose
+        )
     elif model_id == "model.job_runtime_xgboost" and split_method == "rolling":
         metrics, metrics_payload = run_rolling_xgboost(
             rows, split=split, metric_defs=metric_defs, verbose=verbose

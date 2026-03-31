@@ -149,6 +149,41 @@ def test_benchmark_rolling_uses_xgboost_path(
     assert metrics_payload["summary"]["windows_total"] == 4
 
 
+def test_benchmark_baseline_rolling_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """baseline + rolling dispatches to run_rolling_baseline."""
+    monkeypatch.chdir(tmp_path)
+
+    table_path = tmp_path / "jobs.parquet"
+    recipe_path = tmp_path / "baseline_rolling.yml"
+    _write_dataset(table_path)
+    _write_recipe(
+        recipe_path,
+        model_id="model.job_runtime_baseline",
+        split_block="\n".join(
+            [
+                "  method: rolling",
+                "  n_windows: 2",
+                "  test_window_hours: 1",
+            ]
+        ),
+        table_path=table_path,
+    )
+
+    cli.benchmark(recipe_path)
+
+    bundle = _first_result_bundle(tmp_path / "runs")
+    result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
+    metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
+
+    assert result["model"]["id"] == "model.job_runtime_baseline"
+    assert result["metrics"]["mae"] >= 0.0
+    assert result["metrics"]["rmse"] >= 0.0
+    assert "windows" in metrics_payload
+    assert metrics_payload["summary"]["windows_total"] == 2
+
+
 def test_benchmark_rejects_unsupported_model_split_combo(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
