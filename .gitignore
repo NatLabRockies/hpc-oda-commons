@@ -160,6 +160,11 @@ hpc-oda.local.toml
 docker-compose.override.yml
 
 # =========================
+# AI agent local config
+# =========================
+.claude/
+
+# =========================
 # Misc
 # =========================
 # JupyterLab / IPython

@@ -13,6 +13,37 @@ hpc-oda-commons fixes this by establishing **community-governed contracts** — 
 - **Recipe-driven evaluation.** Benchmarks are defined by YAML recipes that fully specify dataset, model, metrics, and split strategy — so "running the same benchmark" actually means the same thing across sites.
 - **Domain-extensible.** The platform is designed to support multiple ODA problem domains over time. v0.1 delivers job runtime prediction as the first complete vertical slice; future domains include energy/power prediction, queue wait time estimation, and more.
 
+## Agent-Friendly
+
+hpc-oda-commons is designed to work well with AI coding agents. The CLI is structured for scripting, recipes are declarative YAML, and all outputs are machine-readable JSON — so an agent can drive the full ingest-validate-benchmark-leaderboard workflow without special adapters.
+
+### Why it works with agents
+
+- **Deterministic CLI.** Every command produces the same output structure in the same location. Agents can rely on `data/ingested/`, `runs/`, and `leaderboard/` paths without guessing.
+- **Declarative recipes.** Benchmarks are specified as YAML — agents can read, modify, and create recipes without understanding model internals.
+- **Machine-readable results.** All outputs (`result.json`, `metrics.json`, `provenance.json`, `leaderboard.json`) are structured JSON that agents can parse and reason about directly.
+- **Non-interactive mode.** After running the ingestion wizard once to produce a `mapping.yml`, subsequent ingests can be fully automated with `--mapping <path> --non-interactive`.
+- **Self-documenting registry.** `hpc-oda browse` and `hpc-oda info <id>` let agents discover available models, adapters, and recipes at runtime.
+
+### Getting an agent started
+
+Point your agent at `CLAUDE.md` (or `AGENTS.md`, which links to the same file) for complete project context: architecture, CLI reference, available models, recipe format, and development standards. The typical agent workflow is:
+
+```bash
+pip install -e ".[dev]"
+
+# Ingest data
+hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
+
+# Run a benchmark
+hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
+
+# Compare results
+hpc-oda leaderboard --runs runs --out leaderboard
+```
+
+Agents that need to create custom benchmarks can copy a bundled recipe, adjust the dataset path or model selection, and run it — no code changes required.
+
 ## The Three Pillars
 
 | Pillar | Purpose | v0.1 commands |
@@ -213,14 +244,6 @@ tests/                   Unit + integration tests
 docs/                    User and contributor documentation
 scripts/                 Validation and release helpers
 ```
-
-## Agent-Friendly
-
-hpc-oda-commons is developed with help from AI agents and designed to be useful to both humans and agents. The CLI is structured for automation, recipes are declarative YAML, and all outputs are machine-readable JSON.
-
-AI agents (Claude Code, Codex, OpenCode, etc.) can find complete guidance in:
-- **`CLAUDE.md`** — project context, CLI workflow, command reference, development standards
-- **`AGENTS.md`** — symlink to `CLAUDE.md` for agents that read `AGENTS.md`
 
 ## Documentation
 
