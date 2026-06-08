@@ -10,10 +10,15 @@ from typing import Any
 from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import (
+    SUPPORTED_ROLLING_METRIC_NAMES,
     compute_regression_metrics,
     compute_regression_metrics_from_defs,
 )
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
+from hpc_oda_commons.models.job_runtime_random_forest.model import (
+    JobRuntimeRandomForestConfig,
+    JobRuntimeRandomForestModel,
+)
 from hpc_oda_commons.models.job_runtime_tfidf_knn.model import (
     JobRuntimeTfidfKnnConfig,
     JobRuntimeTfidfKnnModel,
@@ -26,6 +31,24 @@ from hpc_oda_commons.models.job_runtime_xgboost.split import (
     build_rolling_splits,
     materialize_split_rows,
 )
+
+
+def _validate_rolling_metric_defs(metric_defs: list[dict[str, Any]]) -> set[str]:
+    requested = {str(m.get("name", "")) for m in metric_defs}
+    unsupported = sorted(requested - SUPPORTED_ROLLING_METRIC_NAMES)
+    if unsupported:
+        raise ValueError(
+            "rolling benchmark currently supports only "
+            f"{', '.join(sorted(SUPPORTED_ROLLING_METRIC_NAMES))} metrics; "
+            f"unsupported: {', '.join(unsupported)}"
+        )
+    return requested
+
+
+def _metrics_from_eval_payload(
+    eval_payload: dict[str, Any], requested: set[str]
+) -> dict[str, float]:
+    return {name: float(eval_payload[name]) for name in requested if name in eval_payload}
 
 
 def run_fixed_baseline(
@@ -75,13 +98,7 @@ def run_rolling_baseline(
     verbose: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any]]:
     """Run a rolling benchmark with the baseline model."""
-    requested = {str(m.get("name", "")) for m in metric_defs}
-    unsupported = sorted(requested - {"mae", "rmse"})
-    if unsupported:
-        raise ValueError(
-            "rolling benchmark currently supports only mae/rmse metrics; "
-            f"unsupported: {', '.join(unsupported)}"
-        )
+    requested = _validate_rolling_metric_defs(metric_defs)
 
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
@@ -160,15 +177,16 @@ def run_rolling_baseline(
         y_pred = model.predict(test_supervised)
         y_true = [float(r["runtime_seconds"]) for r in test_supervised]
 
-        window_metrics = compute_regression_metrics(y_true, y_pred)
+        window_metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
         all_y_true.extend(y_true)
         all_y_pred.extend(y_pred)
 
         if verbose:
+            metric_bits = " ".join(f"{k}={window_metrics[k]:.6f}" for k in sorted(window_metrics))
             print(
                 f"[baseline][verbose] split={s.split_time_iso} status=ok "
                 f"train={len(train_supervised)} test={len(test_supervised)} "
-                f"mae={window_metrics['mae']:.6f} rmse={window_metrics['rmse']:.6f}"
+                f"{metric_bits}"
             )
 
         window_entries.append(
@@ -185,7 +203,7 @@ def run_rolling_baseline(
     if not all_y_true:
         raise ValueError("No rolling splits produced scored predictions.")
 
-    global_metrics = compute_regression_metrics(all_y_true, all_y_pred)
+    global_metrics = compute_regression_metrics_from_defs(all_y_true, all_y_pred, metric_defs)
     windows_scored = sum(1 for e in window_entries if e["status"] == "ok")
 
     summary = {
@@ -199,16 +217,17 @@ def run_rolling_baseline(
     }
 
     if verbose:
+        metric_bits = " ".join(f"{k}={global_metrics[k]:.6f}" for k in sorted(global_metrics))
         print(
             "[baseline][verbose] summary "
             f"windows_total={summary['windows_total']} "
             f"windows_scored={summary['windows_scored']} "
             f"windows_skipped={summary['windows_skipped']} "
             f"rows_scored={summary['rows_scored']} "
-            f"mae={global_metrics['mae']:.6f} rmse={global_metrics['rmse']:.6f}"
+            f"{metric_bits}"
         )
 
-    metrics = {"mae": float(global_metrics["mae"]), "rmse": float(global_metrics["rmse"])}
+    metrics = _metrics_from_eval_payload(global_metrics, requested)
     eval_payload: dict[str, Any] = {
         **global_metrics,
         "definitions": metric_defs,
@@ -226,13 +245,7 @@ def run_rolling_xgboost(
     verbose: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any]]:
     """Run a rolling benchmark with the XGBoost model."""
-    requested = {str(m.get("name", "")) for m in metric_defs}
-    unsupported = sorted(requested - {"mae", "rmse"})
-    if unsupported:
-        raise ValueError(
-            "rolling benchmark currently supports only mae/rmse metrics; "
-            f"unsupported: {', '.join(unsupported)}"
-        )
+    requested = _validate_rolling_metric_defs(metric_defs)
 
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
@@ -244,12 +257,36 @@ def run_rolling_xgboost(
             training_lookback_days=training_lookback_days,
         )
     )
-    eval_payload = model.evaluate(rows, verbose=verbose)
+    eval_payload = model.evaluate(rows, verbose=verbose, metric_defs=metric_defs)
 
-    metrics = {
-        "mae": float(eval_payload["mae"]),
-        "rmse": float(eval_payload["rmse"]),
-    }
+    metrics = _metrics_from_eval_payload(eval_payload, requested)
+    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
+    return metrics, metrics_payload
+
+
+def run_rolling_random_forest(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+) -> tuple[dict[str, float], dict[str, Any]]:
+    """Run a rolling benchmark with the Random Forest model."""
+    requested = _validate_rolling_metric_defs(metric_defs)
+
+    n_windows = int(split.get("n_windows", 1000))
+    test_window_hours = int(split.get("test_window_hours", 6))
+    training_lookback_days = int(split.get("training_lookback_days", 100))
+    model = JobRuntimeRandomForestModel(
+        config=JobRuntimeRandomForestConfig(
+            n_windows=n_windows,
+            test_window_hours=test_window_hours,
+            training_lookback_days=training_lookback_days,
+        )
+    )
+    eval_payload = model.evaluate(rows, verbose=verbose, metric_defs=metric_defs)
+
+    metrics = _metrics_from_eval_payload(eval_payload, requested)
     metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
     return metrics, metrics_payload
 
@@ -262,13 +299,7 @@ def run_rolling_tfidf_knn(
     verbose: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any]]:
     """Run a rolling benchmark with the TF-IDF + kNN model."""
-    requested = {str(m.get("name", "")) for m in metric_defs}
-    unsupported = sorted(requested - {"mae", "rmse"})
-    if unsupported:
-        raise ValueError(
-            "rolling benchmark currently supports only mae/rmse metrics; "
-            f"unsupported: {', '.join(unsupported)}"
-        )
+    requested = _validate_rolling_metric_defs(metric_defs)
 
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
@@ -280,11 +311,8 @@ def run_rolling_tfidf_knn(
             training_lookback_days=training_lookback_days,
         )
     )
-    eval_payload = model.evaluate(rows, verbose=verbose)
+    eval_payload = model.evaluate(rows, verbose=verbose, metric_defs=metric_defs)
 
-    metrics = {
-        "mae": float(eval_payload["mae"]),
-        "rmse": float(eval_payload["rmse"]),
-    }
+    metrics = _metrics_from_eval_payload(eval_payload, requested)
     metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
     return metrics, metrics_payload

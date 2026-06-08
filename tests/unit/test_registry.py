@@ -50,6 +50,7 @@ def test_index_filters_by_entry_type() -> None:
         "model.job_runtime_baseline",
         "model.job_runtime_xgboost",
         "model.job_runtime_tfidf_knn",
+        "model.job_runtime_random_forest",
     ]
 
 

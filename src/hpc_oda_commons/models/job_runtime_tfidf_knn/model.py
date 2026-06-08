@@ -17,7 +17,7 @@ from sklearn.feature_extraction.text import HashingVectorizer, TfidfTransformer
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 
-from hpc_oda_commons.kernel.metrics import compute_regression_metrics
+from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
 from hpc_oda_commons.models.job_runtime_tfidf_knn.vectorization import (
     build_text_column,
     detect_text_columns,
@@ -64,9 +64,15 @@ class JobRuntimeTfidfKnnModel:
         rows: list[dict[str, Any]],
         *,
         verbose: bool = False,
+        metric_defs: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         if not rows:
             raise ValueError("rows must be non-empty")
+
+        resolved_metric_defs = metric_defs or [
+            {"name": "mae", "target": self.target_field},
+            {"name": "rmse", "target": self.target_field},
+        ]
 
         splits = build_rolling_splits(
             rows,
@@ -123,15 +129,18 @@ class JobRuntimeTfidfKnnModel:
                 continue
 
             y_true, y_pred = self._fit_predict(train_rows, test_rows)
-            metrics = compute_regression_metrics(y_true, y_pred)
+            metrics = compute_regression_metrics_from_defs(
+                y_true, y_pred, resolved_metric_defs
+            )
             all_y_true.extend(y_true)
             all_y_pred.extend(y_pred)
 
             if verbose:
+                metric_bits = " ".join(f"{k}={metrics[k]:.6f}" for k in sorted(metrics))
                 print(
                     f"[tfidf_knn][verbose] split={split.split_time_iso} status=ok "
                     f"train={len(train_rows)} test={len(test_rows)} "
-                    f"mae={metrics['mae']:.6f} rmse={metrics['rmse']:.6f}"
+                    f"{metric_bits}"
                 )
 
             window_entries.append(
@@ -148,7 +157,9 @@ class JobRuntimeTfidfKnnModel:
         if not all_y_true:
             raise ValueError("No rolling splits produced scored predictions.")
 
-        global_metrics = compute_regression_metrics(all_y_true, all_y_pred)
+        global_metrics = compute_regression_metrics_from_defs(
+            all_y_true, all_y_pred, resolved_metric_defs
+        )
         windows_scored = sum(1 for e in window_entries if e["status"] == "ok")
 
         summary = {
@@ -162,21 +173,19 @@ class JobRuntimeTfidfKnnModel:
         }
 
         if verbose:
+            metric_bits = " ".join(f"{k}={global_metrics[k]:.6f}" for k in sorted(global_metrics))
             print(
                 "[tfidf_knn][verbose] summary "
                 f"windows_total={summary['windows_total']} "
                 f"windows_scored={summary['windows_scored']} "
                 f"windows_skipped={summary['windows_skipped']} "
                 f"rows_scored={summary['rows_scored']} "
-                f"mae={global_metrics['mae']:.6f} rmse={global_metrics['rmse']:.6f}"
+                f"{metric_bits}"
             )
 
         return {
             **global_metrics,
-            "definitions": [
-                {"name": "mae", "target": self.target_field},
-                {"name": "rmse", "target": self.target_field},
-            ],
+            "definitions": resolved_metric_defs,
             "windows": window_entries,
             "summary": summary,
         }

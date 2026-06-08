@@ -17,6 +17,7 @@ from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboa
 from hpc_oda_commons.benchmark.runner import (
     run_fixed_baseline,
     run_rolling_baseline,
+    run_rolling_random_forest,
     run_rolling_tfidf_knn,
     run_rolling_xgboost,
 )
@@ -717,6 +718,10 @@ def benchmark(
         )
     elif model_id == "model.job_runtime_xgboost" and split_method == "rolling":
         metrics, metrics_payload = run_rolling_xgboost(
+            rows, split=split, metric_defs=metric_defs, verbose=verbose
+        )
+    elif model_id == "model.job_runtime_random_forest" and split_method == "rolling":
+        metrics, metrics_payload = run_rolling_random_forest(
             rows, split=split, metric_defs=metric_defs, verbose=verbose
         )
     else:

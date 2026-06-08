@@ -1,7 +1,7 @@
 # Tiny synthetic benchmark recipe for SLURM job runtime prediction (v0.1).
 # Used for CI smoke tests and offline demo runs.
 
-recipe_id: recipe.job_runtime.baseline_tiny
+recipe_id: recipe.job_runtime.baseline.2025_Dec
 problem_domain:
   - job-runtime-prediction
 
@@ -9,9 +9,9 @@ problem_domain:
 schema_version: oda.job.v0.1.0
 
 dataset:
-  id: hpc_oda_commons/datasets/synthetic/job-runtime/tiny
-  table_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet
-  manifest_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/manifest.json
+  id: hpc_oda_commons/datasets/ingested/jobs_parquet/jobs-parquet-20260601-083301
+  table_path: /global/u2/b/boztop/hpc-oda-commons/data/ingested/jobs_parquet/jobs-parquet-20260601-083301/data.parquet
+  manifest_path: /global/u2/b/boztop/hpc-oda-commons/data/ingested/jobs_parquet/jobs-parquet-20260601-083301/manifest.json
 
 model:
   id: model.job_runtime_baseline
