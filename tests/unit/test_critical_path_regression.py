@@ -31,10 +31,10 @@ from hpc_oda_commons.models.job_runtime_xgboost.model import (
 
 EXPECTED_BASELINE_MAE = 127.5
 EXPECTED_BASELINE_RMSE = 133.93095235978873
-EXPECTED_XGBOOST_MAE = 40.480323791503906
-EXPECTED_XGBOOST_RMSE = 45.299687968515784
-EXPECTED_TFIDF_MAE = 149.27537525072694
-EXPECTED_TFIDF_RMSE = 152.78054891954585
+EXPECTED_XGBOOST_MAE = 32.481109619140625
+EXPECTED_XGBOOST_RMSE = 39.60722858044224
+EXPECTED_TFIDF_MAE = 140.6418001651764
+EXPECTED_TFIDF_RMSE = 144.8613827761819
 
 EXPECTED_WINDOWS_SCORED = 4
 EXPECTED_ROWS_SCORED = 16
@@ -95,7 +95,7 @@ def _regression_rows() -> list[dict[str, object]]:
 
 def test_baseline_rolling_regression() -> None:
     rows = _regression_rows()
-    metrics, payload = run_rolling_baseline(
+    metrics, payload, _artifacts = run_rolling_baseline(
         rows, split=SPLIT_PARAMS, metric_defs=METRIC_DEFS
     )
     summary = payload["summary"]
@@ -148,7 +148,7 @@ def test_all_models_same_splits() -> None:
     """All three models should score the same windows and rows."""
     rows = _regression_rows()
 
-    _, baseline_payload = run_rolling_baseline(
+    _, baseline_payload, _artifacts = run_rolling_baseline(
         rows, split=SPLIT_PARAMS, metric_defs=METRIC_DEFS
     )
 

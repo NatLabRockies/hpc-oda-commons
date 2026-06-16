@@ -104,6 +104,7 @@ class JobRuntimeXGBoostModel:
         *,
         verbose: bool = False,
         metric_defs: list[dict[str, Any]] | None = None,
+        capture_artifacts: bool = False,
     ) -> dict[str, Any]:
         self._check_dependencies()
         if not rows:
@@ -129,6 +130,7 @@ class JobRuntimeXGBoostModel:
         all_y_true: list[float] = []
         all_y_pred: list[float] = []
         preprocessing_refits = 0
+        last_model_state: dict[str, Any] | None = None
         if verbose:
             print(
                 f"[{self._log_prefix}][verbose] starting rolling evaluation "
@@ -234,6 +236,14 @@ class JobRuntimeXGBoostModel:
 
             all_y_true.extend(y_true)
             all_y_pred.extend(y_pred)
+            if capture_artifacts:
+                last_model_state = {
+                    "kind": self._log_prefix,
+                    "split_time": split.split_time_iso,
+                    "config": self.config,
+                    "preprocessing_artifacts": artifacts,
+                    "estimator": model,
+                }
 
             window_entries.append(
                 {
@@ -286,12 +296,17 @@ class JobRuntimeXGBoostModel:
                 f"{metric_bits}"
             )
 
-        return {
+        result: dict[str, Any] = {
             **global_metrics,
             "definitions": resolved_metric_defs,
             "windows": window_entries,
             "summary": summary,
         }
+        if capture_artifacts:
+            result["_y_true"] = all_y_true
+            result["_y_pred"] = all_y_pred
+            result["_last_model"] = last_model_state
+        return result
 
     def build_split_plan(
         self,

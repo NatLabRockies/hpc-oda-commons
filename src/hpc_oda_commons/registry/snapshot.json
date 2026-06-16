@@ -106,6 +106,48 @@
       }
     },
     {
+      "id": "model.job_runtime_mlp",
+      "entry_type": "model",
+      "name": "Job Runtime Feed-Forward MLP (Rolling)",
+      "version": "0.1.0",
+      "description": "Alternate runtime prediction model using a feed-forward neural network (sklearn MLPRegressor) with automatic categorical one-hot/SVD preprocessing and rolling evaluation.",
+      "problem_domain": ["job-runtime-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.1.0",
+      "output_schema_version": "oda.prediction.v0.1.0",
+      "license": "Apache-2.0",
+      "dependencies": ["scikit-learn>=1.3.0"],
+      "tags": ["alternate", "mlp", "neural-network", "regression", "runtime", "rolling"],
+      "reference": {
+        "kind": "python",
+        "python": {
+          "module": "hpc_oda_commons.models.job_runtime_mlp.model",
+          "object": "JobRuntimeMlpModel"
+        }
+      }
+    },
+    {
+      "id": "model.job_power_uopc",
+      "entry_type": "model",
+      "name": "Job Power UoPC (User kNN, Fixed)",
+      "version": "0.1.0",
+      "description": "User-based online power prediction using per-user kNN regression on label-encoded job features (UoPC-style).",
+      "problem_domain": ["job-power-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.1.0",
+      "output_schema_version": "oda.prediction.v0.1.0",
+      "license": "Apache-2.0",
+      "dependencies": ["scikit-learn>=1.3.0"],
+      "tags": ["uopc", "knn", "regression", "power", "fixed", "user-based"],
+      "reference": {
+        "kind": "python",
+        "python": {
+          "module": "hpc_oda_commons.models.job_power_uopc.model",
+          "object": "JobPowerUopcModel"
+        }
+      }
+    },
+    {
       "id": "recipe.job_runtime.baseline_tiny",
       "entry_type": "recipe",
       "name": "Baseline Tiny (Job Runtime Prediction)",
@@ -135,6 +177,38 @@
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml"
+      }
+    },
+    {
+      "id": "recipe.job_runtime.mlp_rolling",
+      "entry_type": "recipe",
+      "name": "Feed-Forward MLP Rolling (Job Runtime Prediction)",
+      "version": "0.1.0",
+      "description": "Rolling benchmark recipe for the feed-forward MLP alternate runtime model.",
+      "problem_domain": ["job-runtime-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.1.0",
+      "license": "Apache-2.0",
+      "tags": ["mlp", "neural-network", "alternate", "rolling", "offline"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/recipes/job-runtime/mlp_rolling.yml"
+      }
+    },
+    {
+      "id": "recipe.job_power.uopc_fugaku_maxpcon",
+      "entry_type": "recipe",
+      "name": "UoPC Fugaku maxpcon (Job Power Prediction)",
+      "version": "0.1.0",
+      "description": "Fixed-split UoPC user-based kNN benchmark for Fugaku max job power (maxpcon).",
+      "problem_domain": ["job-power-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.1.0",
+      "license": "Apache-2.0",
+      "tags": ["uopc", "knn", "power", "fixed", "fugaku", "offline"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/recipes/job-runtime/uopc_fugaku_maxpcon.yml"
       }
     }
   ]

@@ -149,3 +149,105 @@ def test_apply_mapping_spec_filters_by_state_allowlist(tmp_path: Path) -> None:
     assert summary["rows_kept"] == 2
     assert summary["rows_skipped_state_filter"] == 1
     assert summary["state_filter_values"] == ["COMPLETED", "FAILED"]
+
+
+def test_apply_mapping_spec_accepts_space_separated_timestamp_with_short_tz(tmp_path: Path) -> None:
+    input_path = tmp_path / "jobs.parquet"
+    rows = [
+        {
+            "JobID": 1,
+            "StartTime": "2024-04-07 02:28:25+09",
+            "EndTime": "2024-04-07 02:33:25+09",
+            "SubmitTime": "2024-04-07 02:20:00+09",
+            "Elapsed": 300.0,
+            "State": "COMPLETED",
+        }
+    ]
+    pq.write_table(pa.Table.from_pylist(rows), input_path)
+
+    mapping = new_mapping_spec(
+        kind="jobs_parquet",
+        output_schema_version="oda.job.v0.1.0",
+        fields={
+            "job_id": {"source": "JobID"},
+            "start_time": {
+                "source": "StartTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "end_time": {
+                "source": "EndTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "runtime_seconds": {
+                "source": "Elapsed",
+                "transform": {"type": "duration", "unit": "seconds"},
+            },
+            "submit_time": {
+                "source": "SubmitTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "state": {"source": "State"},
+        },
+    )
+    mapping_path = tmp_path / "mapping.yml"
+    write_mapping_spec(mapping_path, mapping, validate=True)
+
+    out_path = tmp_path / "out.parquet"
+    _summary = apply_mapping_spec(input_path, mapping_path, out_path)
+
+    table = pq.read_table(out_path)
+    out_rows = table.to_pylist()
+    assert out_rows[0]["start_time"].endswith("Z")
+    assert out_rows[0]["end_time"].endswith("Z")
+
+
+def test_apply_mapping_spec_omits_optional_null_fields(tmp_path: Path) -> None:
+    input_path = tmp_path / "jobs.parquet"
+    rows = [
+        {
+            "JobID": 1,
+            "StartTime": "2026-01-01T00:00:00Z",
+            "EndTime": "2026-01-01T00:05:00Z",
+            "SubmitTime": "2026-01-01T00:00:00Z",
+            "State": "COMPLETED",
+            "Partition": None,
+            "QOS": None,
+            "Elapsed": 300.0,
+        }
+    ]
+    pq.write_table(pa.Table.from_pylist(rows), input_path)
+
+    mapping = new_mapping_spec(
+        kind="jobs_parquet",
+        output_schema_version="oda.job.v0.1.0",
+        fields={
+            "job_id": {"source": "JobID"},
+            "start_time": {
+                "source": "StartTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "end_time": {
+                "source": "EndTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "runtime_seconds": {
+                "source": "Elapsed",
+                "transform": {"type": "duration", "unit": "seconds"},
+            },
+            "submit_time": {
+                "source": "SubmitTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "state": {"source": "State"},
+            "partition": {"source": "Partition"},
+            "qos": {"source": "QOS"},
+        },
+    )
+    mapping_path = tmp_path / "mapping.yml"
+    write_mapping_spec(mapping_path, mapping, validate=True)
+
+    out_path = tmp_path / "out.parquet"
+    apply_mapping_spec(input_path, mapping_path, out_path)
+    out_rows = pq.read_table(out_path).to_pylist()
+    assert "partition" not in out_rows[0]
+    assert "qos" not in out_rows[0]

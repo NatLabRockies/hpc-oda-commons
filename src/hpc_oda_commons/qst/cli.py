@@ -3,6 +3,7 @@ from __future__ import annotations
 import difflib
 import json
 import sys
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,10 +14,18 @@ from rich.console import Console
 
 from hpc_oda_commons.adapters.slurmctld.adapter import SlurmctldAdapter
 from hpc_oda_commons.benchmark.recipes import load_recipe
+from hpc_oda_commons.benchmark.leaderboard_display import resolve_dataset_folder_name
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
+from hpc_oda_commons.benchmark.run_extras import (
+    needs_artifact_capture,
+    parse_run_extras,
+    write_run_extras,
+)
 from hpc_oda_commons.benchmark.runner import (
     run_fixed_baseline,
+    run_fixed_uopc,
     run_rolling_baseline,
+    run_rolling_mlp,
     run_rolling_random_forest,
     run_rolling_tfidf_knn,
     run_rolling_xgboost,
@@ -54,7 +63,7 @@ from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.info import info
 from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
 from hpc_oda_commons.schema.validator import validate_parquet_with_quality
-from hpc_oda_commons.tools.report import render_analysis_html, render_leaderboard_html
+from hpc_oda_commons.tools.report import render_analysis_html, render_leaderboard_console, render_leaderboard_html
 
 app = typer.Typer(add_completion=False, help="hpc-oda-commons Quickstart Toolkit (v0.1)")
 ingest_app = typer.Typer(
@@ -422,7 +431,9 @@ def run_baseline() -> None:
     y_true = [float(r["runtime_seconds"]) for r in rows]
 
     model = JobRuntimeBaselineModel()
+    training_started = time.perf_counter()
     model.fit(rows)
+    total_training_seconds = round(time.perf_counter() - training_started, 3)
     y_pred = model.predict(rows)
 
     metric_defs = [
@@ -463,6 +474,7 @@ def run_baseline() -> None:
             "hash": ds_hash,
         },
         "notes": "Offline baseline demo run (v0.1).",
+        "timing": {"total_training_seconds": total_training_seconds},
     }
 
     validate_json(result_payload, "oda.result.v0.1.0")
@@ -659,7 +671,9 @@ def benchmark(
     Writes a result bundle under ./runs/.
     """
     root = Path.cwd()
-    _ensure_dirs(root)
+    nested_project = root / "hpc-oda-commons"
+    project_dir = nested_project if nested_project.is_dir() else root
+    _ensure_dirs(project_dir)
 
     recipe_payload = _load_recipe(recipe)
     recipe_id = str(recipe_payload.get("recipe_id", "recipe.unknown"))
@@ -670,7 +684,7 @@ def benchmark(
     table_path = Path(table_path_str) if table_path_str else None
 
     if table_path is None or not table_path.exists():
-        ds_dir = root / ".hpc_oda" / "cache" / "datasets" / "synthetic_job_runtime_tiny"
+        ds_dir = project_dir / ".hpc_oda" / "cache" / "datasets" / "synthetic_job_runtime_tiny"
         table_path, _meta = generate_tiny_runtime_dataset(ds_dir)
         if verbose:
             console.print(
@@ -692,6 +706,8 @@ def benchmark(
     model_version = str(model_ref.get("version", "0.1.0"))
     split_method = split.get("method", "fixed")
     metric_defs = recipe_payload.get("metrics", []) or []
+    run_extras = parse_run_extras(recipe_payload)
+    capture_artifacts = needs_artifact_capture(run_extras)
     if verbose:
         console.print(
             "[blue][verbose][/blue] benchmark resolved: "
@@ -706,44 +722,85 @@ def benchmark(
             + ", ".join(str(m.get("name", "")) for m in metric_defs)
         )
 
+    training_started = time.perf_counter()
     if model_id == "model.job_runtime_baseline" and split_method == "fixed":
-        metrics, metrics_payload = run_fixed_baseline(rows, split=split, metric_defs=metric_defs)
+        metrics, metrics_payload, artifacts = run_fixed_baseline(
+            rows, split=split, metric_defs=metric_defs, capture_artifacts=capture_artifacts
+        )
+    elif model_id == "model.job_power_uopc" and split_method == "fixed":
+        metrics, metrics_payload, artifacts = run_fixed_uopc(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
     elif model_id == "model.job_runtime_baseline" and split_method == "rolling":
-        metrics, metrics_payload = run_rolling_baseline(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose
+        metrics, metrics_payload, artifacts = run_rolling_baseline(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
         )
     elif model_id == "model.job_runtime_tfidf_knn" and split_method == "rolling":
-        metrics, metrics_payload = run_rolling_tfidf_knn(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose
+        metrics, metrics_payload, artifacts = run_rolling_tfidf_knn(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
         )
     elif model_id == "model.job_runtime_xgboost" and split_method == "rolling":
-        metrics, metrics_payload = run_rolling_xgboost(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose
+        metrics, metrics_payload, artifacts = run_rolling_xgboost(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
         )
     elif model_id == "model.job_runtime_random_forest" and split_method == "rolling":
-        metrics, metrics_payload = run_rolling_random_forest(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose
+        metrics, metrics_payload, artifacts = run_rolling_random_forest(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
+    elif model_id == "model.job_runtime_mlp" and split_method == "rolling":
+        metrics, metrics_payload, artifacts = run_rolling_mlp(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
         )
     else:
         raise typer.BadParameter(
             f"Unsupported model/split combination: model={model_id}, split.method={split_method}"
         )
+    total_training_seconds = round(time.perf_counter() - training_started, 3)
 
     from hpc_oda_commons.kernel.integrity import check_integrity
 
-    integrity = check_integrity(project_root=root)
+    integrity = check_integrity(project_root=project_dir)
 
     prov = build_provenance(
         input_schema=input_schema,
         result_schema="oda.result.v0.1.0",
         inputs=[recipe, table_path],
-        project_root=root,
+        project_root=project_dir,
         capture_packages=True,
         source_hash=integrity["code_hash"],
     )
 
+    run_cfg = recipe_payload.get("run") or {}
+    runs_rel = str(run_cfg.get("output_dir", "runs"))
+    runs_dir = project_dir / runs_rel
+    runs_dir.mkdir(parents=True, exist_ok=True)
+
     run_id = f"benchmark-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    bundle_dir = _result_bundle_dir(root, run_id)
+    bundle_dir = runs_dir / run_id
 
     result_payload: dict[str, Any] = {
         "schema_version": "oda.result.v0.1.0",
@@ -755,17 +812,26 @@ def benchmark(
         "provenance": prov,
         "model": {"id": model_id, "version": model_version},
         "dataset": {
-            "id": str(dataset.get("id", "synthetic_job_runtime_tiny")),
+            "id": resolve_dataset_folder_name(
+                str(dataset.get("id", "")),
+                table_path=str(table_path) if table_path is not None else None,
+            )
+            or "synthetic_job_runtime_tiny",
             "schema_version": input_schema,
             "hash": ds_hash,
         },
         "notes": f"Benchmark run for {recipe_id}.",
+        "timing": {"total_training_seconds": total_training_seconds},
     }
 
     validate_json(result_payload, "oda.result.v0.1.0")
     write_result_bundle(
         bundle_dir, result=result_payload, metrics=metrics_payload, provenance=prov, validate=True
     )
+
+    extras_written: list[str] = []
+    if capture_artifacts:
+        extras_written = write_run_extras(bundle_dir, run_extras, artifacts)
 
     if verbose:
         validated_str = "yes" if integrity["validated"] else "NO"
@@ -777,9 +843,18 @@ def benchmark(
             "[blue][verbose][/blue] benchmark metrics: "
             + ", ".join(f"{k}={v:.6f}" for k, v in sorted(metrics.items()))
         )
+        if extras_written:
+            console.print(
+                "[blue][verbose][/blue] run extras written: " + ", ".join(extras_written)
+            )
         console.print(f"[blue][verbose][/blue] result bundle written: {bundle_dir}")
 
-    console.print(f"[green]Benchmark complete[/green] → runs/{run_id}/")
+    runs_display = (
+        f"hpc-oda-commons/{runs_rel}/{run_id}"
+        if project_dir == nested_project
+        else f"{runs_rel}/{run_id}"
+    )
+    console.print(f"[green]Benchmark complete[/green] → {runs_display}/")
 
 
 @app.command("analyze")
@@ -923,6 +998,8 @@ def leaderboard(
     html = render_leaderboard_html(leaderboard_data)
     html_path = out_dir / "index.html"
     html_path.write_text(html, encoding="utf-8")
+
+    render_leaderboard_console(leaderboard_data, console=console)
 
     console.print(f"[green]Leaderboard JSON[/green]: {json_path}")
     console.print(f"[green]Leaderboard HTML[/green]: {html_path}")

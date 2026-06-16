@@ -157,3 +157,24 @@ def test_build_rolling_splits_verbose_prints_summary(capsys: pytest.CaptureFixtu
     assert "[split][verbose] building rolling splits" in captured.out
     assert "[split][verbose] split window" in captured.out
     assert "[split][verbose] built splits" in captured.out
+
+
+def test_rolling_splits_anchor_to_latest_submit_not_late_end_time() -> None:
+    """Long-running jobs can end after the last submission; windows must follow submits."""
+    rows = [
+        {
+            "job_id": 1,
+            "submit_time": "2024-04-28T10:00:00Z",
+            "end_time": "2024-04-28T12:00:00Z",
+        },
+        {
+            "job_id": 2,
+            "submit_time": "2024-04-30T14:30:00Z",
+            "end_time": "2024-05-13T17:00:00Z",
+        },
+    ]
+    splits = build_rolling_splits(rows, n_windows=2, test_window_hours=6)
+
+    assert splits[-1].split_time_iso == "2024-04-30T14:00:00Z"
+    assert splits[-1].test_row_count >= 1
+    assert any(split.test_row_count > 0 for split in splits)

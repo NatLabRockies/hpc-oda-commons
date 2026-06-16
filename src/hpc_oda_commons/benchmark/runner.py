@@ -9,12 +9,18 @@ from typing import Any
 
 from tqdm import tqdm
 
+from hpc_oda_commons.benchmark.run_extras import BenchmarkArtifacts, pop_eval_artifact_keys
 from hpc_oda_commons.kernel.metrics import (
     SUPPORTED_ROLLING_METRIC_NAMES,
     compute_regression_metrics,
     compute_regression_metrics_from_defs,
 )
+from hpc_oda_commons.models.job_power_uopc.model import JobPowerUopcModel
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
+from hpc_oda_commons.models.job_runtime_mlp.model import (
+    JobRuntimeMlpConfig,
+    JobRuntimeMlpModel,
+)
 from hpc_oda_commons.models.job_runtime_random_forest.model import (
     JobRuntimeRandomForestConfig,
     JobRuntimeRandomForestModel,
@@ -56,7 +62,8 @@ def run_fixed_baseline(
     *,
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
-) -> tuple[dict[str, float], dict[str, Any]]:
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed train/test split benchmark with the baseline model."""
     train_fraction = float(split.get("train_fraction", 0.8))
     n_train = max(1, int(len(rows) * train_fraction))
@@ -70,7 +77,38 @@ def run_fixed_baseline(
 
     metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
     metrics_payload: dict[str, Any] = {**metrics, "definitions": metric_defs}
-    return metrics, metrics_payload
+    artifacts = BenchmarkArtifacts()
+    if capture_artifacts:
+        artifacts = BenchmarkArtifacts(
+            y_true=y_true,
+            y_pred=y_pred,
+            last_model={"kind": "job_runtime_baseline", "model": model},
+        )
+    return metrics, metrics_payload, artifacts
+
+
+def run_fixed_uopc(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run a fixed chronological split benchmark with the UoPC kNN model."""
+    model = JobPowerUopcModel()
+    eval_payload = model.evaluate_fixed(
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
+    requested = {str(m.get("name", "")) for m in metric_defs}
+    artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
+    metrics = _metrics_from_eval_payload(eval_payload, requested)
+    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
+    return metrics, metrics_payload, artifacts
 
 
 def _filter_runtime_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -96,7 +134,8 @@ def run_rolling_baseline(
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
     verbose: bool = False,
-) -> tuple[dict[str, float], dict[str, Any]]:
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the baseline model."""
     requested = _validate_rolling_metric_defs(metric_defs)
 
@@ -115,6 +154,7 @@ def run_rolling_baseline(
     window_entries: list[dict[str, Any]] = []
     all_y_true: list[float] = []
     all_y_pred: list[float] = []
+    last_model: JobRuntimeBaselineModel | None = None
 
     if verbose:
         print(
@@ -180,6 +220,8 @@ def run_rolling_baseline(
         window_metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
         all_y_true.extend(y_true)
         all_y_pred.extend(y_pred)
+        if capture_artifacts:
+            last_model = model
 
         if verbose:
             metric_bits = " ".join(f"{k}={window_metrics[k]:.6f}" for k in sorted(window_metrics))
@@ -234,7 +276,40 @@ def run_rolling_baseline(
         "windows": window_entries,
         "summary": summary,
     }
-    return metrics, eval_payload
+    artifacts = BenchmarkArtifacts()
+    if capture_artifacts:
+        artifacts = BenchmarkArtifacts(
+            y_true=all_y_true,
+            y_pred=all_y_pred,
+            last_model=(
+                {"kind": "job_runtime_baseline", "model": last_model}
+                if last_model is not None
+                else None
+            ),
+        )
+    return metrics, eval_payload, artifacts
+
+
+def _run_rolling_model_evaluate(
+    model: Any,
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool,
+    capture_artifacts: bool,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    requested = _validate_rolling_metric_defs(metric_defs)
+    eval_payload = model.evaluate(
+        rows,
+        verbose=verbose,
+        metric_defs=metric_defs,
+        capture_artifacts=capture_artifacts,
+    )
+    artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
+    metrics = _metrics_from_eval_payload(eval_payload, requested)
+    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
+    return metrics, metrics_payload, artifacts
 
 
 def run_rolling_xgboost(
@@ -243,10 +318,9 @@ def run_rolling_xgboost(
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
     verbose: bool = False,
-) -> tuple[dict[str, float], dict[str, Any]]:
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the XGBoost model."""
-    requested = _validate_rolling_metric_defs(metric_defs)
-
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
     training_lookback_days = int(split.get("training_lookback_days", 100))
@@ -257,11 +331,14 @@ def run_rolling_xgboost(
             training_lookback_days=training_lookback_days,
         )
     )
-    eval_payload = model.evaluate(rows, verbose=verbose, metric_defs=metric_defs)
-
-    metrics = _metrics_from_eval_payload(eval_payload, requested)
-    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
-    return metrics, metrics_payload
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
 
 
 def run_rolling_random_forest(
@@ -270,10 +347,9 @@ def run_rolling_random_forest(
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
     verbose: bool = False,
-) -> tuple[dict[str, float], dict[str, Any]]:
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the Random Forest model."""
-    requested = _validate_rolling_metric_defs(metric_defs)
-
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
     training_lookback_days = int(split.get("training_lookback_days", 100))
@@ -284,11 +360,43 @@ def run_rolling_random_forest(
             training_lookback_days=training_lookback_days,
         )
     )
-    eval_payload = model.evaluate(rows, verbose=verbose, metric_defs=metric_defs)
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
 
-    metrics = _metrics_from_eval_payload(eval_payload, requested)
-    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
-    return metrics, metrics_payload
+
+def run_rolling_mlp(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run a rolling benchmark with the feed-forward MLP model."""
+    n_windows = int(split.get("n_windows", 1000))
+    test_window_hours = int(split.get("test_window_hours", 6))
+    training_lookback_days = int(split.get("training_lookback_days", 100))
+    model = JobRuntimeMlpModel(
+        config=JobRuntimeMlpConfig(
+            n_windows=n_windows,
+            test_window_hours=test_window_hours,
+            training_lookback_days=training_lookback_days,
+        )
+    )
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
 
 
 def run_rolling_tfidf_knn(
@@ -297,10 +405,9 @@ def run_rolling_tfidf_knn(
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
     verbose: bool = False,
-) -> tuple[dict[str, float], dict[str, Any]]:
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the TF-IDF + kNN model."""
-    requested = _validate_rolling_metric_defs(metric_defs)
-
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
     training_lookback_days = int(split.get("training_lookback_days", 100))
@@ -311,8 +418,11 @@ def run_rolling_tfidf_knn(
             training_lookback_days=training_lookback_days,
         )
     )
-    eval_payload = model.evaluate(rows, verbose=verbose, metric_defs=metric_defs)
-
-    metrics = _metrics_from_eval_payload(eval_payload, requested)
-    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
-    return metrics, metrics_payload
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )

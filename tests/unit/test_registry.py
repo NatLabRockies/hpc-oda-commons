@@ -38,7 +38,7 @@ def test_index_filters_by_tag_and_source() -> None:
 
     slurm = index.filter(source="slurmctld")
     slurm_ids = {entry.id for entry in slurm}
-    assert slurm_ids == job_runtime_ids
+    assert job_runtime_ids.issubset(slurm_ids)
 
 
 def test_index_filters_by_entry_type() -> None:
@@ -51,6 +51,8 @@ def test_index_filters_by_entry_type() -> None:
         "model.job_runtime_xgboost",
         "model.job_runtime_tfidf_knn",
         "model.job_runtime_random_forest",
+        "model.job_runtime_mlp",
+        "model.job_power_uopc",
     ]
 
 

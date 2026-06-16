@@ -43,6 +43,20 @@ def test_validate_recipe_rolling_ok() -> None:
     validate_recipe(_valid_rolling_recipe())
 
 
+def test_validate_recipe_run_extras_ok() -> None:
+    payload = _valid_rolling_recipe()
+    payload["run"] = {
+        "output_dir": "runs",
+        "overwrite": False,
+        "extras": {
+            "save_predictions": True,
+            "save_plot": True,
+            "save_model": True,
+        },
+    }
+    validate_recipe(payload)
+
+
 def test_validate_recipe_rolling_with_optional_lookback_ok() -> None:
     payload = _valid_rolling_recipe()
     payload["split"]["training_lookback_days"] = 30
