@@ -68,6 +68,26 @@ class JobRuntimeXGBoostConfig:
     colsample_bytree: float = 0.8
 
 
+def base_xgboost_config(config: Any) -> JobRuntimeXGBoostConfig:
+    """Build an XGBoost config from the window/preprocessing fields shared by
+    any model config (used by the RandomForest and MLP subclasses, which reuse
+    XGBoost preprocessing but supply their own regressor hyperparameters)."""
+    return JobRuntimeXGBoostConfig(
+        n_windows=config.n_windows,
+        test_window_hours=config.test_window_hours,
+        training_lookback_days=config.training_lookback_days,
+        submit_time_field=config.submit_time_field,
+        end_time_field=config.end_time_field,
+        explained_variance_target=config.explained_variance_target,
+        infrequent_category_fraction=config.infrequent_category_fraction,
+        min_frequency_floor=config.min_frequency_floor,
+        target_max_one_hot_width=config.target_max_one_hot_width,
+        max_svd_components=config.max_svd_components,
+        categorical_top_k=config.categorical_top_k,
+        random_state=config.random_state,
+    )
+
+
 class JobRuntimeXGBoostModel:
     """
     XGBoost model for job runtime prediction with rolling evaluation.
@@ -217,7 +237,7 @@ class JobRuntimeXGBoostModel:
                     )
                 continue
 
-            model = self._new_xgb_regressor()
+            model = self._new_regressor(x_train.shape[0])
             model.fit(x_train, y_train)
             pred = model.predict(x_test)
             y_pred = [float(v) for v in pred]
@@ -363,8 +383,10 @@ class JobRuntimeXGBoostModel:
     def new_daily_preprocessing_cache() -> DailyPreprocessingCache:
         return DailyPreprocessingCache()
 
-    def _new_xgb_regressor(self) -> Any:
+    def _new_regressor(self, n_train: int) -> Any:
         from xgboost import XGBRegressor
+
+        _ = n_train  # XGBoost does not size-adapt; the seam is shared with subclasses
 
         return XGBRegressor(
             n_estimators=self.config.n_estimators,

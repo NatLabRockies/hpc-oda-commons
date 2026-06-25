@@ -94,6 +94,21 @@ def _feature_value(row: dict[str, Any], field: str) -> Any:
     return _first_present(row, field)
 
 
+def _feature_float(raw: Any) -> float:
+    """Coerce a numeric feature value to float, falling back to 0.0.
+
+    SLURM-derived fields (e.g. processors/nodes requested) may arrive as
+    non-numeric strings; mirror the XGBoost preprocessing convention of
+    tolerating them rather than crashing the whole benchmark.
+    """
+    if raw is None:
+        return 0.0
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 class _LabelFeatureEncoder:
     """Per-column label encoders fit on the user's training history."""
 
@@ -123,13 +138,11 @@ class _LabelFeatureEncoder:
                 else:
                     x_query[0, col_idx] = -1.0
             else:
-                train_numeric = []
-                for row in history:
-                    raw = _feature_value(row, field)
-                    train_numeric.append(float(raw) if raw is not None else 0.0)
+                train_numeric = [
+                    _feature_float(_feature_value(row, field)) for row in history
+                ]
                 x_train[:, col_idx] = np.asarray(train_numeric, dtype=np.float64)
-                raw_query = _feature_value(query, field)
-                x_query[0, col_idx] = float(raw_query) if raw_query is not None else 0.0
+                x_query[0, col_idx] = _feature_float(_feature_value(query, field))
 
         return x_train, x_query
 
@@ -197,6 +210,10 @@ class JobPowerUopcModel:
             )
             context = history[: cfg.theta]
 
+            # Online evaluation: every test job is appended to its user's history
+            # after being seen, so it becomes context for that user's later jobs --
+            # whether or not it was scored. This mirrors the streaming UoPC design
+            # and is intentional, not train/test leakage.
             if len(context) < cfg.k:
                 rows_skipped += 1
                 history_by_user.setdefault(user, []).append(test_row)
@@ -232,6 +249,10 @@ class JobPowerUopcModel:
         if capture_artifacts:
             result["_y_true"] = y_true
             result["_y_pred"] = y_pred
+            # UoPC has no single persistent estimator -- each prediction fits a
+            # fresh per-user kNN on its own context window. The captured artifact
+            # is therefore the configuration needed to reproduce the run, not a
+            # fitted model (so save_model pickles this config rather than an estimator).
             result["_last_model"] = {"kind": "job_power_uopc", "config": cfg}
         return result
 
@@ -240,6 +261,13 @@ class JobPowerUopcModel:
         history: list[dict[str, Any]],
         query: dict[str, Any],
     ) -> float:
+        """Fit a fresh per-user kNN on this query's context window and predict.
+
+        Note: a LabelEncoder and KNeighborsRegressor are refit for every test
+        row. This is inherent to the per-user sliding-context design (each query
+        sees a different history window) and is acceptable for v0.1 power
+        datasets; it is a known scaling limitation for very large test sets.
+        """
         cfg = self.config
         encoder = _LabelFeatureEncoder(cfg.categorical_fields)
         x_train, x_query = encoder.fit_transform_row_matrix(

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from hpc_oda_commons.models.job_runtime_mlp.model import (
@@ -56,7 +58,7 @@ def test_mlp_evaluate_returns_requested_metrics() -> None:
 
     payload = model.evaluate(rows, metric_defs=metric_defs)
 
-    assert payload["mae"] >= 0.0
-    assert payload["rmse"] >= 0.0
+    assert math.isfinite(payload["mae"]) and payload["mae"] >= 0.0
+    assert math.isfinite(payload["rmse"]) and payload["rmse"] >= 0.0
     assert 0.0 <= payload["underprediction_ratio"] <= 100.0
     assert payload["summary"]["windows_scored"] >= 1
