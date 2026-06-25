@@ -95,7 +95,7 @@ def _regression_rows() -> list[dict[str, object]]:
 
 def test_baseline_rolling_regression() -> None:
     rows = _regression_rows()
-    metrics, payload = run_rolling_baseline(
+    metrics, payload, _artifacts = run_rolling_baseline(
         rows, split=SPLIT_PARAMS, metric_defs=METRIC_DEFS
     )
     summary = payload["summary"]
@@ -148,7 +148,7 @@ def test_all_models_same_splits() -> None:
     """All three models should score the same windows and rows."""
     rows = _regression_rows()
 
-    _, baseline_payload = run_rolling_baseline(
+    _, baseline_payload, _artifacts = run_rolling_baseline(
         rows, split=SPLIT_PARAMS, metric_defs=METRIC_DEFS
     )
 

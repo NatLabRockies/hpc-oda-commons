@@ -9,7 +9,9 @@ from typing import Any
 
 from tqdm import tqdm
 
+from hpc_oda_commons.benchmark.run_extras import BenchmarkArtifacts, pop_eval_artifact_keys
 from hpc_oda_commons.kernel.metrics import (
+    SUPPORTED_ROLLING_METRIC_NAMES,
     compute_regression_metrics,
     compute_regression_metrics_from_defs,
 )
@@ -28,12 +30,31 @@ from hpc_oda_commons.models.job_runtime_xgboost.split import (
 )
 
 
+def _validate_rolling_metric_defs(metric_defs: list[dict[str, Any]]) -> set[str]:
+    requested = {str(m.get("name", "")) for m in metric_defs}
+    unsupported = sorted(requested - SUPPORTED_ROLLING_METRIC_NAMES)
+    if unsupported:
+        raise ValueError(
+            "rolling benchmark currently supports only "
+            f"{', '.join(sorted(SUPPORTED_ROLLING_METRIC_NAMES))} metrics; "
+            f"unsupported: {', '.join(unsupported)}"
+        )
+    return requested
+
+
+def _metrics_from_eval_payload(
+    eval_payload: dict[str, Any], requested: set[str]
+) -> dict[str, float]:
+    return {name: float(eval_payload[name]) for name in requested if name in eval_payload}
+
+
 def run_fixed_baseline(
     rows: list[dict[str, Any]],
     *,
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
-) -> tuple[dict[str, float], dict[str, Any]]:
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed train/test split benchmark with the baseline model."""
     train_fraction = float(split.get("train_fraction", 0.8))
     n_train = max(1, int(len(rows) * train_fraction))
@@ -47,7 +68,14 @@ def run_fixed_baseline(
 
     metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
     metrics_payload: dict[str, Any] = {**metrics, "definitions": metric_defs}
-    return metrics, metrics_payload
+    artifacts = BenchmarkArtifacts()
+    if capture_artifacts:
+        artifacts = BenchmarkArtifacts(
+            y_true=y_true,
+            y_pred=y_pred,
+            last_model={"kind": "job_runtime_baseline", "model": model},
+        )
+    return metrics, metrics_payload, artifacts
 
 
 def _filter_runtime_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -73,15 +101,10 @@ def run_rolling_baseline(
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
     verbose: bool = False,
-) -> tuple[dict[str, float], dict[str, Any]]:
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the baseline model."""
-    requested = {str(m.get("name", "")) for m in metric_defs}
-    unsupported = sorted(requested - {"mae", "rmse"})
-    if unsupported:
-        raise ValueError(
-            "rolling benchmark currently supports only mae/rmse metrics; "
-            f"unsupported: {', '.join(unsupported)}"
-        )
+    requested = _validate_rolling_metric_defs(metric_defs)
 
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
@@ -98,6 +121,7 @@ def run_rolling_baseline(
     window_entries: list[dict[str, Any]] = []
     all_y_true: list[float] = []
     all_y_pred: list[float] = []
+    last_model: JobRuntimeBaselineModel | None = None
 
     if verbose:
         print(
@@ -160,15 +184,18 @@ def run_rolling_baseline(
         y_pred = model.predict(test_supervised)
         y_true = [float(r["runtime_seconds"]) for r in test_supervised]
 
-        window_metrics = compute_regression_metrics(y_true, y_pred)
+        window_metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
         all_y_true.extend(y_true)
         all_y_pred.extend(y_pred)
+        if capture_artifacts:
+            last_model = model
 
         if verbose:
+            metric_bits = " ".join(f"{k}={window_metrics[k]:.6f}" for k in sorted(window_metrics))
             print(
                 f"[baseline][verbose] split={s.split_time_iso} status=ok "
                 f"train={len(train_supervised)} test={len(test_supervised)} "
-                f"mae={window_metrics['mae']:.6f} rmse={window_metrics['rmse']:.6f}"
+                f"{metric_bits}"
             )
 
         window_entries.append(
@@ -185,7 +212,7 @@ def run_rolling_baseline(
     if not all_y_true:
         raise ValueError("No rolling splits produced scored predictions.")
 
-    global_metrics = compute_regression_metrics(all_y_true, all_y_pred)
+    global_metrics = compute_regression_metrics_from_defs(all_y_true, all_y_pred, metric_defs)
     windows_scored = sum(1 for e in window_entries if e["status"] == "ok")
 
     summary = {
@@ -199,23 +226,57 @@ def run_rolling_baseline(
     }
 
     if verbose:
+        metric_bits = " ".join(f"{k}={global_metrics[k]:.6f}" for k in sorted(global_metrics))
         print(
             "[baseline][verbose] summary "
             f"windows_total={summary['windows_total']} "
             f"windows_scored={summary['windows_scored']} "
             f"windows_skipped={summary['windows_skipped']} "
             f"rows_scored={summary['rows_scored']} "
-            f"mae={global_metrics['mae']:.6f} rmse={global_metrics['rmse']:.6f}"
+            f"{metric_bits}"
         )
 
-    metrics = {"mae": float(global_metrics["mae"]), "rmse": float(global_metrics["rmse"])}
+    metrics = _metrics_from_eval_payload(global_metrics, requested)
     eval_payload: dict[str, Any] = {
         **global_metrics,
         "definitions": metric_defs,
         "windows": window_entries,
         "summary": summary,
     }
-    return metrics, eval_payload
+    artifacts = BenchmarkArtifacts()
+    if capture_artifacts:
+        artifacts = BenchmarkArtifacts(
+            y_true=all_y_true,
+            y_pred=all_y_pred,
+            last_model=(
+                {"kind": "job_runtime_baseline", "model": last_model}
+                if last_model is not None
+                else None
+            ),
+        )
+    return metrics, eval_payload, artifacts
+
+
+def _run_rolling_model_evaluate(
+    model: Any,
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool,
+    capture_artifacts: bool,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    requested = _validate_rolling_metric_defs(metric_defs)
+    eval_payload = model.evaluate(
+        rows,
+        verbose=verbose,
+        metric_defs=metric_defs,
+        capture_artifacts=capture_artifacts,
+    )
+    artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
+    metrics = _metrics_from_eval_payload(eval_payload, requested)
+    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
+    return metrics, metrics_payload, artifacts
 
 
 def run_rolling_xgboost(
@@ -224,16 +285,9 @@ def run_rolling_xgboost(
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
     verbose: bool = False,
-) -> tuple[dict[str, float], dict[str, Any]]:
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the XGBoost model."""
-    requested = {str(m.get("name", "")) for m in metric_defs}
-    unsupported = sorted(requested - {"mae", "rmse"})
-    if unsupported:
-        raise ValueError(
-            "rolling benchmark currently supports only mae/rmse metrics; "
-            f"unsupported: {', '.join(unsupported)}"
-        )
-
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
     training_lookback_days = int(split.get("training_lookback_days", 100))
@@ -244,14 +298,14 @@ def run_rolling_xgboost(
             training_lookback_days=training_lookback_days,
         )
     )
-    eval_payload = model.evaluate(rows, verbose=verbose)
-
-    metrics = {
-        "mae": float(eval_payload["mae"]),
-        "rmse": float(eval_payload["rmse"]),
-    }
-    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
-    return metrics, metrics_payload
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
 
 
 def run_rolling_tfidf_knn(
@@ -260,16 +314,9 @@ def run_rolling_tfidf_knn(
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
     verbose: bool = False,
-) -> tuple[dict[str, float], dict[str, Any]]:
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the TF-IDF + kNN model."""
-    requested = {str(m.get("name", "")) for m in metric_defs}
-    unsupported = sorted(requested - {"mae", "rmse"})
-    if unsupported:
-        raise ValueError(
-            "rolling benchmark currently supports only mae/rmse metrics; "
-            f"unsupported: {', '.join(unsupported)}"
-        )
-
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
     training_lookback_days = int(split.get("training_lookback_days", 100))
@@ -280,11 +327,11 @@ def run_rolling_tfidf_knn(
             training_lookback_days=training_lookback_days,
         )
     )
-    eval_payload = model.evaluate(rows, verbose=verbose)
-
-    metrics = {
-        "mae": float(eval_payload["mae"]),
-        "rmse": float(eval_payload["rmse"]),
-    }
-    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
-    return metrics, metrics_payload
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )

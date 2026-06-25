@@ -78,7 +78,25 @@
       "additionalProperties": false,
       "properties": {
         "output_dir": { "type": "string", "minLength": 1 },
-        "overwrite": { "type": "boolean" }
+        "overwrite": { "type": "boolean" },
+        "extras": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "save_predictions": {
+              "type": "boolean",
+              "description": "Write predictions.parquet (y_true, y_pred) into the result bundle."
+            },
+            "save_plot": {
+              "type": "boolean",
+              "description": "Write pred_vs_actual.png scatter plot into the result bundle."
+            },
+            "save_model": {
+              "type": "boolean",
+              "description": "Pickle the last window's trained model to model/last_model.pkl."
+            }
+          }
+        }
       }
     }
   }

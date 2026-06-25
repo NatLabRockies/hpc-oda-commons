@@ -96,9 +96,13 @@ def test_benchmark_rolling_uses_xgboost_path(
             rows: list[dict[str, object]],
             *,
             verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
         ) -> dict[str, object]:
             assert rows
             _ = verbose
+            _ = metric_defs
+            _ = capture_artifacts
             return {
                 "mae": 1.25,
                 "rmse": 2.5,
@@ -194,9 +198,13 @@ def test_benchmark_tfidf_knn_rolling_path(tmp_path: Path, monkeypatch: pytest.Mo
             rows: list[dict[str, object]],
             *,
             verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
         ) -> dict[str, object]:
             assert rows
             _ = verbose
+            _ = metric_defs
+            _ = capture_artifacts
             return {
                 "mae": 2.0,
                 "rmse": 3.0,
@@ -283,9 +291,13 @@ def test_benchmark_rolling_uses_default_training_lookback_days(
             rows: list[dict[str, object]],
             *,
             verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
         ) -> dict[str, object]:
             assert rows
             _ = verbose
+            _ = metric_defs
+            _ = capture_artifacts
             return {
                 "mae": 1.0,
                 "rmse": 1.5,
@@ -335,9 +347,13 @@ def test_benchmark_verbose_prints_progress(
             rows: list[dict[str, object]],
             *,
             verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
         ) -> dict[str, object]:
             assert rows
             FakeXGBModel.seen_verbose = verbose
+            _ = metric_defs
+            _ = capture_artifacts
             return {
                 "mae": 1.25,
                 "rmse": 2.5,
