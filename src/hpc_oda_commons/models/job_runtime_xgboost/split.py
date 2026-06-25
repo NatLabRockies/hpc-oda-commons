@@ -87,22 +87,19 @@ def build_rolling_splits(
         )
 
     parsed: list[tuple[int, datetime | None, datetime | None]] = []
-    max_ts: datetime | None = None
+    max_submit_ts: datetime | None = None
     for idx, row in enumerate(rows):
         submit_ts = _to_utc(row.get(submit_time_field))
         end_ts = _to_utc(row.get(end_time_field))
         parsed.append((idx, submit_ts, end_ts))
 
-        for ts in (submit_ts, end_ts):
-            if ts is None:
-                continue
-            if max_ts is None or ts > max_ts:
-                max_ts = ts
+        if submit_ts is not None and (max_submit_ts is None or submit_ts > max_submit_ts):
+            max_submit_ts = submit_ts
 
-    if max_ts is None:
-        raise ValueError("No valid submit/end timestamps found; cannot build rolling splits.")
+    if max_submit_ts is None:
+        raise ValueError("No valid submit timestamps found; cannot build rolling splits.")
 
-    latest_hour = _floor_hour(max_ts)
+    latest_hour = _floor_hour(max_submit_ts)
     start_hour = latest_hour - timedelta(hours=(n_windows - 1) * test_window_hours)
     split_hours = [start_hour + timedelta(hours=i * test_window_hours) for i in range(n_windows)]
     if verbose:
