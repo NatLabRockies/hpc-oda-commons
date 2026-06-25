@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,8 +16,6 @@ def _parse_timestamp(value: Any, fmt: str) -> str | None:
     if value is None:
         return None
     if fmt == "iso8601":
-        import re
-
         text = str(value).strip()
         if not text:
             return None
@@ -115,8 +114,6 @@ def _memory_slurm_to_mb(value: Any) -> float | None:
     raw = str(value).strip()
     if not raw:
         return None
-    import re
-
     m = re.match(r"^([\d.]+)([KMGTPkmgtp]?)$", raw)
     if not m:
         return None
@@ -213,8 +210,13 @@ def apply_mapping_spec(
                 skipped += 1
                 continue
 
-            # Optional fields must be omitted when missing; emitting explicit nulls
-            # violates the canonical schema (which expects absence rather than null).
+            # Drop empty optional fields. Because the table is written via
+            # from_pylist (which unions keys across rows), this only fully removes
+            # an optional column when it is empty in *every* row -- which is the
+            # case that matters: an all-null optional column is typed without
+            # "null" in the job schema, so emitting it would fail strict validation.
+            # Optional columns populated in some rows still emit null for the empty
+            # rows (see follow-up F-1).
             for key in list(out_row.keys()):
                 if key in required:
                     continue
