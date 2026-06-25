@@ -4,7 +4,6 @@ import pickle
 from pathlib import Path
 
 import pyarrow.parquet as pq
-import pytest
 
 from hpc_oda_commons.benchmark.run_extras import (
     BenchmarkArtifacts,
@@ -26,14 +25,12 @@ def test_parse_run_extras_enabled() -> None:
             "run": {
                 "extras": {
                     "save_predictions": True,
-                    "save_plot": True,
                     "save_model": False,
                 }
             }
         }
     )
     assert extras.save_predictions is True
-    assert extras.save_plot is True
     assert extras.save_model is False
 
 
@@ -51,22 +48,6 @@ def test_write_predictions_parquet(tmp_path: Path) -> None:
     table = pq.read_table(tmp_path / "predictions.parquet")
     assert table.column_names == ["y_true", "y_pred"]
     assert table.num_rows == 2
-
-
-def test_write_plot_requires_matplotlib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    artifacts = BenchmarkArtifacts(y_true=[1.0, 2.0], y_pred=[1.1, 1.9])
-    import builtins
-
-    real_import = builtins.__import__
-
-    def fake_import(name: str, *args: object, **kwargs: object) -> object:
-        if name == "matplotlib" or name.startswith("matplotlib."):
-            raise ImportError("no matplotlib")
-        return real_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "__import__", fake_import)
-    with pytest.raises(RuntimeError, match="matplotlib"):
-        write_run_extras(tmp_path, RunExtras(save_plot=True), artifacts)
 
 
 def test_write_model_pickle(tmp_path: Path) -> None:
