@@ -152,10 +152,12 @@ def test_benchmark_xgboost_recipe_small_window(
             *,
             verbose: bool = False,
             metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
         ) -> dict[str, object]:
             assert rows
             _ = verbose
             _ = metric_defs
+            _ = capture_artifacts
             return {
                 "mae": 10.0,
                 "rmse": 12.0,

@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostConfig,
     JobRuntimeXGBoostModel,
+    base_xgboost_config,
 )
 
 
@@ -40,23 +40,6 @@ class JobRuntimeRandomForestConfig:
     n_jobs: int = -1
 
 
-def _to_xgboost_config(config: JobRuntimeRandomForestConfig) -> JobRuntimeXGBoostConfig:
-    return JobRuntimeXGBoostConfig(
-        n_windows=config.n_windows,
-        test_window_hours=config.test_window_hours,
-        training_lookback_days=config.training_lookback_days,
-        submit_time_field=config.submit_time_field,
-        end_time_field=config.end_time_field,
-        explained_variance_target=config.explained_variance_target,
-        infrequent_category_fraction=config.infrequent_category_fraction,
-        min_frequency_floor=config.min_frequency_floor,
-        target_max_one_hot_width=config.target_max_one_hot_width,
-        max_svd_components=config.max_svd_components,
-        categorical_top_k=config.categorical_top_k,
-        random_state=config.random_state,
-    )
-
-
 class JobRuntimeRandomForestModel(JobRuntimeXGBoostModel):
     """Random Forest regressor with rolling evaluation and daily preprocessing cache.
 
@@ -69,7 +52,7 @@ class JobRuntimeRandomForestModel(JobRuntimeXGBoostModel):
 
     def __init__(self, config: JobRuntimeRandomForestConfig | None = None) -> None:
         self._rf_config = config or JobRuntimeRandomForestConfig()
-        super().__init__(_to_xgboost_config(self._rf_config))
+        super().__init__(base_xgboost_config(self._rf_config))
 
     @staticmethod
     def _check_dependencies() -> None:
@@ -78,9 +61,10 @@ class JobRuntimeRandomForestModel(JobRuntimeXGBoostModel):
                 'Missing optional model dependencies: sklearn. Install with `pip install -e ".[dev]"`.'
             )
 
-    def _new_xgb_regressor(self) -> Any:
+    def _new_regressor(self, n_train: int) -> Any:
         from sklearn.ensemble import RandomForestRegressor
 
+        _ = n_train  # RandomForest does not size-adapt
         cfg = self._rf_config
         return RandomForestRegressor(
             n_estimators=cfg.n_estimators,

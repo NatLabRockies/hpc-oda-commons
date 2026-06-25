@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
@@ -38,8 +40,8 @@ def test_uopc_fixed_predicts_with_user_history(tmp_path) -> None:
         ],
     )
 
-    assert result["mae"] >= 0.0
-    assert result["rmse"] >= 0.0
+    assert math.isfinite(result["mae"]) and result["mae"] >= 0.0
+    assert math.isfinite(result["rmse"]) and result["rmse"] >= 0.0
     assert result["summary"]["rows_scored"] > 0
     assert result["summary"]["theta"] == 50
     assert result["summary"]["k"] == 5

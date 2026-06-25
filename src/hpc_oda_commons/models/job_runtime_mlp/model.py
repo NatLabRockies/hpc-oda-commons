@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostConfig,
     JobRuntimeXGBoostModel,
+    base_xgboost_config,
 )
 
 
@@ -38,26 +38,11 @@ class JobRuntimeMlpConfig:
     alpha: float = 0.0001
     learning_rate_init: float = 0.001
     max_iter: int = 200
-    early_stopping: bool = False
+    # early_stopping=True activates the validation_fraction / n_iter_no_change
+    # group below; without it sklearn ignores validation_fraction entirely.
+    early_stopping: bool = True
     validation_fraction: float = 0.1
     n_iter_no_change: int = 10
-
-
-def _to_xgboost_config(config: JobRuntimeMlpConfig) -> JobRuntimeXGBoostConfig:
-    return JobRuntimeXGBoostConfig(
-        n_windows=config.n_windows,
-        test_window_hours=config.test_window_hours,
-        training_lookback_days=config.training_lookback_days,
-        submit_time_field=config.submit_time_field,
-        end_time_field=config.end_time_field,
-        explained_variance_target=config.explained_variance_target,
-        infrequent_category_fraction=config.infrequent_category_fraction,
-        min_frequency_floor=config.min_frequency_floor,
-        target_max_one_hot_width=config.target_max_one_hot_width,
-        max_svd_components=config.max_svd_components,
-        categorical_top_k=config.categorical_top_k,
-        random_state=config.random_state,
-    )
 
 
 class JobRuntimeMlpModel(JobRuntimeXGBoostModel):
@@ -72,7 +57,7 @@ class JobRuntimeMlpModel(JobRuntimeXGBoostModel):
 
     def __init__(self, config: JobRuntimeMlpConfig | None = None) -> None:
         self._mlp_config = config or JobRuntimeMlpConfig()
-        super().__init__(_to_xgboost_config(self._mlp_config))
+        super().__init__(base_xgboost_config(self._mlp_config))
 
     @staticmethod
     def _check_dependencies() -> None:
@@ -81,17 +66,23 @@ class JobRuntimeMlpModel(JobRuntimeXGBoostModel):
                 'Missing optional model dependencies: sklearn. Install with `pip install -e ".[dev]"`.'
             )
 
-    def _new_xgb_regressor(self) -> Any:
+    def _new_regressor(self, n_train: int) -> Any:
         from sklearn.neural_network import MLPRegressor
 
         cfg = self._mlp_config
+        # Early stopping carves off a validation split, which sklearn rejects when
+        # it would hold fewer than 2 samples. Rolling windows can be small, so fall
+        # back to no early stopping when this window's training set is too small.
+        use_early_stopping = (
+            cfg.early_stopping and int(n_train * cfg.validation_fraction) >= 2
+        )
         return MLPRegressor(
             hidden_layer_sizes=cfg.hidden_layer_sizes,
             activation=cfg.activation,
             alpha=cfg.alpha,
             learning_rate_init=cfg.learning_rate_init,
             max_iter=cfg.max_iter,
-            early_stopping=cfg.early_stopping,
+            early_stopping=use_early_stopping,
             validation_fraction=cfg.validation_fraction,
             n_iter_no_change=cfg.n_iter_no_change,
             random_state=cfg.random_state,
