@@ -6,10 +6,10 @@ from typing import Any, TypeVar
 
 import typer
 
-T = TypeVar("T")
-
 from hpc_oda_commons.ingest.jobs_parquet.profile import ColumnProfile
 from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec
+
+T = TypeVar("T")
 
 REQUIRED_FIELDS = ("job_id", "start_time", "end_time", "runtime_seconds")
 OPTIONAL_FIELDS = (
