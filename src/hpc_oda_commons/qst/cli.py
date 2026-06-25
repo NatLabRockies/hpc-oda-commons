@@ -14,6 +14,11 @@ from rich.console import Console
 from hpc_oda_commons.adapters.slurmctld.adapter import SlurmctldAdapter
 from hpc_oda_commons.benchmark.recipes import load_recipe
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
+from hpc_oda_commons.benchmark.run_extras import (
+    needs_artifact_capture,
+    parse_run_extras,
+    write_run_extras,
+)
 from hpc_oda_commons.benchmark.runner import (
     run_fixed_baseline,
     run_rolling_baseline,
@@ -691,6 +696,8 @@ def benchmark(
     model_version = str(model_ref.get("version", "0.1.0"))
     split_method = split.get("method", "fixed")
     metric_defs = recipe_payload.get("metrics", []) or []
+    run_extras = parse_run_extras(recipe_payload)
+    capture_artifacts = needs_artifact_capture(run_extras)
     if verbose:
         console.print(
             "[blue][verbose][/blue] benchmark resolved: "
@@ -706,18 +713,23 @@ def benchmark(
         )
 
     if model_id == "model.job_runtime_baseline" and split_method == "fixed":
-        metrics, metrics_payload = run_fixed_baseline(rows, split=split, metric_defs=metric_defs)
+        metrics, metrics_payload, artifacts = run_fixed_baseline(
+            rows, split=split, metric_defs=metric_defs, capture_artifacts=capture_artifacts
+        )
     elif model_id == "model.job_runtime_baseline" and split_method == "rolling":
-        metrics, metrics_payload = run_rolling_baseline(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose
+        metrics, metrics_payload, artifacts = run_rolling_baseline(
+            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            capture_artifacts=capture_artifacts,
         )
     elif model_id == "model.job_runtime_tfidf_knn" and split_method == "rolling":
-        metrics, metrics_payload = run_rolling_tfidf_knn(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose
+        metrics, metrics_payload, artifacts = run_rolling_tfidf_knn(
+            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            capture_artifacts=capture_artifacts,
         )
     elif model_id == "model.job_runtime_xgboost" and split_method == "rolling":
-        metrics, metrics_payload = run_rolling_xgboost(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose
+        metrics, metrics_payload, artifacts = run_rolling_xgboost(
+            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            capture_artifacts=capture_artifacts,
         )
     else:
         raise typer.BadParameter(
@@ -762,6 +774,10 @@ def benchmark(
         bundle_dir, result=result_payload, metrics=metrics_payload, provenance=prov, validate=True
     )
 
+    extras_written: list[str] = []
+    if capture_artifacts:
+        extras_written = write_run_extras(bundle_dir, run_extras, artifacts)
+
     if verbose:
         validated_str = "yes" if integrity["validated"] else "NO"
         console.print(
@@ -773,6 +789,10 @@ def benchmark(
             + ", ".join(f"{k}={v:.6f}" for k, v in sorted(metrics.items()))
         )
         console.print(f"[blue][verbose][/blue] result bundle written: {bundle_dir}")
+        if extras_written:
+            console.print(
+                "[blue][verbose][/blue] run extras written: " + ", ".join(extras_written)
+            )
 
     console.print(f"[green]Benchmark complete[/green] → runs/{run_id}/")
 

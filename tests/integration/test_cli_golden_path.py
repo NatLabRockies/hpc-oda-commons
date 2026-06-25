@@ -151,9 +151,11 @@ def test_benchmark_xgboost_recipe_small_window(
             rows: list[dict[str, object]],
             *,
             verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
         ) -> dict[str, object]:
             assert rows
             _ = verbose
+            _ = metric_defs
             return {
                 "mae": 10.0,
                 "rmse": 12.0,

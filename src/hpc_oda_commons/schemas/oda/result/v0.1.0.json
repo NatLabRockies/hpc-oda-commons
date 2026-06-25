@@ -58,7 +58,13 @@
         "mae": { "type": "number", "minimum": 0 },
         "rmse": { "type": "number", "minimum": 0 },
         "mape": { "type": "number", "minimum": 0 },
-        "r2": { "type": "number" }
+        "r2": { "type": "number" },
+        "underprediction_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percent of scored points where prediction is strictly less than actual."
+        }
       },
       "description": "Regression metrics for runtime prediction."
     },
