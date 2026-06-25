@@ -12,7 +12,6 @@ from tqdm import tqdm
 from hpc_oda_commons.benchmark.run_extras import BenchmarkArtifacts, pop_eval_artifact_keys
 from hpc_oda_commons.kernel.metrics import (
     SUPPORTED_ROLLING_METRIC_NAMES,
-    compute_regression_metrics,
     compute_regression_metrics_from_defs,
 )
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel

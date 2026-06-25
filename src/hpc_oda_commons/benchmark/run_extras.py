@@ -16,7 +16,6 @@ from hpc_oda_commons.kernel.paths import ensure_dir
 @dataclass(frozen=True)
 class RunExtras:
     save_predictions: bool = False
-    save_plot: bool = False
     save_model: bool = False
 
 
@@ -34,13 +33,12 @@ def parse_run_extras(recipe_payload: dict[str, Any]) -> RunExtras:
         raise ValueError("recipe.run.extras must be an object")
     return RunExtras(
         save_predictions=bool(extras.get("save_predictions", False)),
-        save_plot=bool(extras.get("save_plot", False)),
         save_model=bool(extras.get("save_model", False)),
     )
 
 
 def needs_artifact_capture(extras: RunExtras) -> bool:
-    return extras.save_predictions or extras.save_plot or extras.save_model
+    return extras.save_predictions or extras.save_model
 
 
 def pop_eval_artifact_keys(payload: dict[str, Any]) -> BenchmarkArtifacts:
@@ -76,13 +74,6 @@ def write_run_extras(
         pq.write_table(table, path)
         written.append("predictions.parquet")
 
-    if extras.save_plot:
-        if not has_predictions:
-            raise ValueError("save_plot requested but benchmark produced no predictions")
-        plot_path = bundle_dir / "pred_vs_actual.png"
-        _write_scatter_plot(plot_path, artifacts.y_true, artifacts.y_pred)
-        written.append("pred_vs_actual.png")
-
     if extras.save_model:
         if artifacts.last_model is None:
             raise ValueError("save_model requested but benchmark produced no trained model")
@@ -94,29 +85,3 @@ def write_run_extras(
         written.append("model/last_model.pkl")
 
     return written
-
-
-def _write_scatter_plot(path: Path, y_true: list[float], y_pred: list[float]) -> None:
-    try:
-        import matplotlib
-
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError as exc:
-        raise RuntimeError(
-            "save_plot requires matplotlib. Install with `pip install matplotlib`."
-        ) from exc
-
-    plt.rcParams["font.family"] = "serif"
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.scatter(y_true, y_pred, s=4, alpha=0.25, edgecolors="none")
-    upper = max(max(y_true), max(y_pred))
-    lower = min(min(y_true), min(y_pred))
-    ax.plot([lower, upper], [lower, upper], "r--", linewidth=1, label="y = x")
-    ax.set_xlabel("y_true (runtime_seconds)")
-    ax.set_ylabel("y_pred (runtime_seconds)")
-    ax.set_title("Predicted vs actual runtime")
-    ax.legend(loc="upper left")
-    fig.tight_layout()
-    fig.savefig(path, dpi=150)
-    plt.close(fig)
