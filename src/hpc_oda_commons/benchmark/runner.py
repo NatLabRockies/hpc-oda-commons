@@ -14,7 +14,16 @@ from hpc_oda_commons.kernel.metrics import (
     SUPPORTED_ROLLING_METRIC_NAMES,
     compute_regression_metrics_from_defs,
 )
+from hpc_oda_commons.models.job_power_uopc.model import JobPowerUopcModel
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
+from hpc_oda_commons.models.job_runtime_mlp.model import (
+    JobRuntimeMlpConfig,
+    JobRuntimeMlpModel,
+)
+from hpc_oda_commons.models.job_runtime_random_forest.model import (
+    JobRuntimeRandomForestConfig,
+    JobRuntimeRandomForestModel,
+)
 from hpc_oda_commons.models.job_runtime_tfidf_knn.model import (
     JobRuntimeTfidfKnnConfig,
     JobRuntimeTfidfKnnModel,
@@ -74,6 +83,30 @@ def run_fixed_baseline(
             y_pred=y_pred,
             last_model={"kind": "job_runtime_baseline", "model": model},
         )
+    return metrics, metrics_payload, artifacts
+
+
+def run_fixed_uopc(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run a fixed chronological split benchmark with the UoPC kNN model."""
+    model = JobPowerUopcModel()
+    eval_payload = model.evaluate_fixed(
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
+    requested = {str(m.get("name", "")) for m in metric_defs}
+    artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
+    metrics = _metrics_from_eval_payload(eval_payload, requested)
+    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
     return metrics, metrics_payload, artifacts
 
 
@@ -292,6 +325,64 @@ def run_rolling_xgboost(
     training_lookback_days = int(split.get("training_lookback_days", 100))
     model = JobRuntimeXGBoostModel(
         config=JobRuntimeXGBoostConfig(
+            n_windows=n_windows,
+            test_window_hours=test_window_hours,
+            training_lookback_days=training_lookback_days,
+        )
+    )
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
+
+
+def run_rolling_random_forest(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run a rolling benchmark with the Random Forest model."""
+    n_windows = int(split.get("n_windows", 1000))
+    test_window_hours = int(split.get("test_window_hours", 6))
+    training_lookback_days = int(split.get("training_lookback_days", 100))
+    model = JobRuntimeRandomForestModel(
+        config=JobRuntimeRandomForestConfig(
+            n_windows=n_windows,
+            test_window_hours=test_window_hours,
+            training_lookback_days=training_lookback_days,
+        )
+    )
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
+
+
+def run_rolling_mlp(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run a rolling benchmark with the feed-forward MLP model."""
+    n_windows = int(split.get("n_windows", 1000))
+    test_window_hours = int(split.get("test_window_hours", 6))
+    training_lookback_days = int(split.get("training_lookback_days", 100))
+    model = JobRuntimeMlpModel(
+        config=JobRuntimeMlpConfig(
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,

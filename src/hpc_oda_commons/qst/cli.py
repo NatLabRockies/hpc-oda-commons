@@ -21,7 +21,10 @@ from hpc_oda_commons.benchmark.run_extras import (
 )
 from hpc_oda_commons.benchmark.runner import (
     run_fixed_baseline,
+    run_fixed_uopc,
     run_rolling_baseline,
+    run_rolling_mlp,
+    run_rolling_random_forest,
     run_rolling_tfidf_knn,
     run_rolling_xgboost,
 )
@@ -716,6 +719,11 @@ def benchmark(
         metrics, metrics_payload, artifacts = run_fixed_baseline(
             rows, split=split, metric_defs=metric_defs, capture_artifacts=capture_artifacts
         )
+    elif model_id == "model.job_power_uopc" and split_method == "fixed":
+        metrics, metrics_payload, artifacts = run_fixed_uopc(
+            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
     elif model_id == "model.job_runtime_baseline" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_baseline(
             rows, split=split, metric_defs=metric_defs, verbose=verbose,
@@ -728,6 +736,16 @@ def benchmark(
         )
     elif model_id == "model.job_runtime_xgboost" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_xgboost(
+            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
+    elif model_id == "model.job_runtime_random_forest" and split_method == "rolling":
+        metrics, metrics_payload, artifacts = run_rolling_random_forest(
+            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
+    elif model_id == "model.job_runtime_mlp" and split_method == "rolling":
+        metrics, metrics_payload, artifacts = run_rolling_mlp(
             rows, split=split, metric_defs=metric_defs, verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
