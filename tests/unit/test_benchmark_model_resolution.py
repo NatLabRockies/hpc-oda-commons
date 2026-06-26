@@ -149,7 +149,7 @@ def test_benchmark_rolling_uses_xgboost_path(
     assert result["model"]["id"] == "model.job_runtime_xgboost"
     assert result["metrics"]["mae"] == 1.25
     assert result["metrics"]["rmse"] == 2.5
-    assert result["timing"]["total_training_seconds"] >= 0.0
+    assert result["timing"]["total_train_eval_seconds"] >= 0.0
     assert "windows" in metrics_payload
     assert metrics_payload["summary"]["windows_total"] == 4
 
