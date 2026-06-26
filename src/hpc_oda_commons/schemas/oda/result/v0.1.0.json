@@ -153,6 +153,19 @@
     "notes": {
       "type": "string",
       "description": "Optional human-readable notes about the run."
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_training_seconds"],
+      "properties": {
+        "total_training_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Wall-clock seconds spent training/fitting models during this benchmark run."
+        }
+      },
+      "description": "Execution timing for benchmark training."
     }
   }
 }
