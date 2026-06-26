@@ -3,6 +3,7 @@ from __future__ import annotations
 import difflib
 import json
 import sys
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -429,7 +430,9 @@ def run_baseline() -> None:
     y_true = [float(r["runtime_seconds"]) for r in rows]
 
     model = JobRuntimeBaselineModel()
+    training_started = time.perf_counter()
     model.fit(rows)
+    total_training_seconds = round(time.perf_counter() - training_started, 3)
     y_pred = model.predict(rows)
 
     metric_defs = [
@@ -470,6 +473,7 @@ def run_baseline() -> None:
             "hash": ds_hash,
         },
         "notes": "Offline baseline demo run (v0.1).",
+        "timing": {"total_training_seconds": total_training_seconds},
     }
 
     validate_json(result_payload, "oda.result.v0.1.0")
@@ -715,6 +719,7 @@ def benchmark(
             + ", ".join(str(m.get("name", "")) for m in metric_defs)
         )
 
+    training_started = time.perf_counter()
     if model_id == "model.job_runtime_baseline" and split_method == "fixed":
         metrics, metrics_payload, artifacts = run_fixed_baseline(
             rows, split=split, metric_defs=metric_defs, capture_artifacts=capture_artifacts
@@ -753,6 +758,7 @@ def benchmark(
         raise typer.BadParameter(
             f"Unsupported model/split combination: model={model_id}, split.method={split_method}"
         )
+    total_training_seconds = round(time.perf_counter() - training_started, 3)
 
     from hpc_oda_commons.kernel.integrity import check_integrity
 
@@ -785,6 +791,7 @@ def benchmark(
             "hash": ds_hash,
         },
         "notes": f"Benchmark run for {recipe_id}.",
+        "timing": {"total_training_seconds": total_training_seconds},
     }
 
     validate_json(result_payload, "oda.result.v0.1.0")
