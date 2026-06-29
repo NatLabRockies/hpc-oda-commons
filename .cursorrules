@@ -1,0 +1,7 @@
+This repository's agent guidance lives in CLAUDE.md (also available as AGENTS.md).
+Start there: it establishes whether you are USING or DEVELOPING hpc-oda-commons
+and routes accordingly.
+
+If you are DEVELOPING the project, you must follow CONTRIBUTING.md — the workflow,
+quality gate, and coding standards. `main` is a protected branch (required CI +
+review, no direct pushes).
