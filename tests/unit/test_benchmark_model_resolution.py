@@ -46,7 +46,15 @@ def _write_dataset(path: Path) -> None:
     pq.write_table(table, path)
 
 
-def _write_recipe(path: Path, *, model_id: str, split_block: str, table_path: Path) -> None:
+def _write_recipe(
+    path: Path,
+    *,
+    model_id: str,
+    split_block: str,
+    table_path: Path,
+    output_dir: str = "runs",
+    overwrite: bool = False,
+) -> None:
     text = "\n".join(
         [
             "recipe_id: recipe.test.benchmark_path",
@@ -67,8 +75,8 @@ def _write_recipe(path: Path, *, model_id: str, split_block: str, table_path: Pa
             "split:",
             split_block,
             "run:",
-            "  output_dir: runs",
-            "  overwrite: false",
+            f"  output_dir: {output_dir}",
+            f"  overwrite: {'true' if overwrite else 'false'}",
         ]
     )
     path.write_text(text + "\n", encoding="utf-8")
@@ -548,3 +556,68 @@ def test_benchmark_verbose_prints_progress(
     captured = capsys.readouterr()
     assert "benchmark resolved:" in captured.out
     assert "benchmark metrics:" in captured.out
+
+
+_FIXED_SPLIT = "\n".join(["  method: fixed", "  train_fraction: 0.8", "  seed: 42"])
+
+
+def test_benchmark_honors_output_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """recipe.run.output_dir places the result bundle under that directory."""
+    monkeypatch.chdir(tmp_path)
+    table_path = tmp_path / "jobs.parquet"
+    recipe_path = tmp_path / "recipe.yml"
+    _write_dataset(table_path)
+    _write_recipe(
+        recipe_path,
+        model_id="model.job_runtime_baseline",
+        split_block=_FIXED_SPLIT,
+        table_path=table_path,
+        output_dir="custom_runs",
+    )
+
+    cli.benchmark(recipe_path)
+
+    bundle = _first_result_bundle(tmp_path / "custom_runs")
+    assert (bundle / "result.json").exists()
+    # nothing was written to the default runs/ directory
+    assert not list((tmp_path / "runs").glob("benchmark-*"))
+
+
+def test_benchmark_overwrite_guard(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """An existing bundle is rejected unless run.overwrite is true."""
+    from datetime import datetime as _dt
+
+    fixed = _dt(2026, 1, 1, 12, 0, 0)
+
+    class _Frozen(_dt):
+        @classmethod
+        def now(cls, tz: object = None) -> _dt:
+            return fixed if tz is None else fixed.replace(tzinfo=tz)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(cli, "datetime", _Frozen)
+    monkeypatch.chdir(tmp_path)
+
+    table_path = tmp_path / "jobs.parquet"
+    recipe_path = tmp_path / "recipe.yml"
+    _write_dataset(table_path)
+    _write_recipe(
+        recipe_path,
+        model_id="model.job_runtime_baseline",
+        split_block=_FIXED_SPLIT,
+        table_path=table_path,
+        overwrite=False,
+    )
+
+    cli.benchmark(recipe_path)  # first run creates the (now deterministic) bundle
+
+    with pytest.raises(typer.BadParameter, match="already exists"):
+        cli.benchmark(recipe_path)  # same run_id, overwrite false -> rejected
+
+    _write_recipe(
+        recipe_path,
+        model_id="model.job_runtime_baseline",
+        split_block=_FIXED_SPLIT,
+        table_path=table_path,
+        overwrite=True,
+    )
+    cli.benchmark(recipe_path)  # overwrite true -> proceeds without raising

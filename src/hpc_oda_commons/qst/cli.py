@@ -797,7 +797,16 @@ def benchmark(
     )
 
     run_id = f"benchmark-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    bundle_dir = _result_bundle_dir(root, run_id)
+    run_cfg = recipe_payload.get("run") or {}
+    runs_rel = str(run_cfg.get("output_dir") or "runs")
+    runs_dir = root / runs_rel
+    bundle_dir = runs_dir / run_id
+    if bundle_dir.exists() and not bool(run_cfg.get("overwrite", False)):
+        raise typer.BadParameter(
+            f"Result bundle already exists: {bundle_dir}. "
+            "Set run.overwrite: true in the recipe to replace it."
+        )
+    runs_dir.mkdir(parents=True, exist_ok=True)
 
     result_payload: dict[str, Any] = {
         "schema_version": "oda.result.v0.1.0",
@@ -844,7 +853,7 @@ def benchmark(
         if extras_written:
             console.print("[blue][verbose][/blue] run extras written: " + ", ".join(extras_written))
 
-    console.print(f"[green]Benchmark complete[/green] → runs/{run_id}/")
+    console.print(f"[green]Benchmark complete[/green] → {runs_rel}/{run_id}/")
 
 
 @app.command("analyze")
