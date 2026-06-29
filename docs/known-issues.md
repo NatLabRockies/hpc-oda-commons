@@ -2,7 +2,7 @@
 
 ## MAJOR — Cross-environment numeric reproducibility of fitted models
 
-**Status:** open · **Severity:** major · **Affects:** XGBoost and TF-IDF kNN model outputs
+**Status:** open · **Severity:** major · **Affects:** XGBoost and TF-IDF kNN model outputs · **Tracking:** [#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)
 
 ### Summary
 
