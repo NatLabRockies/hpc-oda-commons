@@ -58,7 +58,13 @@
         "mae": { "type": "number", "minimum": 0 },
         "rmse": { "type": "number", "minimum": 0 },
         "mape": { "type": "number", "minimum": 0 },
-        "r2": { "type": "number" }
+        "r2": { "type": "number" },
+        "underprediction_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percent of scored points where prediction is strictly less than actual."
+        }
       },
       "description": "Regression metrics for runtime prediction."
     },
@@ -147,6 +153,19 @@
     "notes": {
       "type": "string",
       "description": "Optional human-readable notes about the run."
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_train_eval_seconds"],
+      "properties": {
+        "total_train_eval_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Wall-clock seconds spent training and evaluating the model (fit, predict, and metric computation) for this run."
+        }
+      },
+      "description": "Execution timing for the model training and evaluation phase."
     }
   }
 }

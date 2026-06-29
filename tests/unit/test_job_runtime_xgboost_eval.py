@@ -76,7 +76,7 @@ def test_evaluate_returns_metrics_and_window_details(
         random_state=7,
     )
     model = JobRuntimeXGBoostModel(config)
-    monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
+    monkeypatch.setattr(model, "_new_regressor", lambda n_train: _FakeRegressor())
     payload = model.evaluate(_sample_rows())
 
     assert payload["mae"] >= 0.0
@@ -120,7 +120,7 @@ def test_evaluate_raises_when_no_scored_predictions(
     ]
     config = JobRuntimeXGBoostConfig(n_windows=2, test_window_hours=1, n_estimators=8, max_depth=3)
     model = JobRuntimeXGBoostModel(config)
-    monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
+    monkeypatch.setattr(model, "_new_regressor", lambda n_train: _FakeRegressor())
 
     with pytest.raises(ValueError, match="No rolling splits produced scored predictions"):
         model.evaluate(rows)
@@ -133,7 +133,7 @@ def test_evaluate_verbose_uses_tqdm(
         n_windows=4, test_window_hours=1, max_svd_components=8, target_max_one_hot_width=64
     )
     model = JobRuntimeXGBoostModel(config)
-    monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
+    monkeypatch.setattr(model, "_new_regressor", lambda n_train: _FakeRegressor())
 
     seen: dict[str, object] = {}
 
@@ -205,7 +205,7 @@ def test_evaluate_verbose_prints_summary(
         target_max_one_hot_width=64,
     )
     model = JobRuntimeXGBoostModel(config)
-    monkeypatch.setattr(model, "_new_xgb_regressor", lambda: _FakeRegressor())
+    monkeypatch.setattr(model, "_new_regressor", lambda n_train: _FakeRegressor())
 
     _ = model.evaluate(_sample_rows(), verbose=True)
     captured = capsys.readouterr()

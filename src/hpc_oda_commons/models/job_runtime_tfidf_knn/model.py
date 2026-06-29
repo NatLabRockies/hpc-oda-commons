@@ -17,7 +17,7 @@ from sklearn.feature_extraction.text import HashingVectorizer, TfidfTransformer
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 
-from hpc_oda_commons.kernel.metrics import compute_regression_metrics
+from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
 from hpc_oda_commons.models.job_runtime_tfidf_knn.vectorization import (
     build_text_column,
     detect_text_columns,
@@ -64,9 +64,16 @@ class JobRuntimeTfidfKnnModel:
         rows: list[dict[str, Any]],
         *,
         verbose: bool = False,
+        metric_defs: list[dict[str, Any]] | None = None,
+        capture_artifacts: bool = False,
     ) -> dict[str, Any]:
         if not rows:
             raise ValueError("rows must be non-empty")
+
+        resolved_metric_defs = metric_defs or [
+            {"name": "mae", "target": self.target_field},
+            {"name": "rmse", "target": self.target_field},
+        ]
 
         splits = build_rolling_splits(
             rows,
@@ -81,6 +88,7 @@ class JobRuntimeTfidfKnnModel:
         window_entries: list[dict[str, Any]] = []
         all_y_true: list[float] = []
         all_y_pred: list[float] = []
+        last_model_state: dict[str, Any] | None = None
 
         if verbose:
             print(
@@ -122,16 +130,22 @@ class JobRuntimeTfidfKnnModel:
                     )
                 continue
 
-            y_true, y_pred = self._fit_predict(train_rows, test_rows)
-            metrics = compute_regression_metrics(y_true, y_pred)
+            y_true, y_pred, fit_state = self._fit_predict(
+                train_rows, test_rows, capture_state=capture_artifacts
+            )
+            metrics = compute_regression_metrics_from_defs(y_true, y_pred, resolved_metric_defs)
             all_y_true.extend(y_true)
             all_y_pred.extend(y_pred)
+            if capture_artifacts and fit_state is not None:
+                fit_state["split_time"] = split.split_time_iso
+                last_model_state = fit_state
 
             if verbose:
+                metric_bits = " ".join(f"{k}={metrics[k]:.6f}" for k in sorted(metrics))
                 print(
                     f"[tfidf_knn][verbose] split={split.split_time_iso} status=ok "
                     f"train={len(train_rows)} test={len(test_rows)} "
-                    f"mae={metrics['mae']:.6f} rmse={metrics['rmse']:.6f}"
+                    f"{metric_bits}"
                 )
 
             window_entries.append(
@@ -148,7 +162,9 @@ class JobRuntimeTfidfKnnModel:
         if not all_y_true:
             raise ValueError("No rolling splits produced scored predictions.")
 
-        global_metrics = compute_regression_metrics(all_y_true, all_y_pred)
+        global_metrics = compute_regression_metrics_from_defs(
+            all_y_true, all_y_pred, resolved_metric_defs
+        )
         windows_scored = sum(1 for e in window_entries if e["status"] == "ok")
 
         summary = {
@@ -162,30 +178,35 @@ class JobRuntimeTfidfKnnModel:
         }
 
         if verbose:
+            metric_bits = " ".join(f"{k}={global_metrics[k]:.6f}" for k in sorted(global_metrics))
             print(
                 "[tfidf_knn][verbose] summary "
                 f"windows_total={summary['windows_total']} "
                 f"windows_scored={summary['windows_scored']} "
                 f"windows_skipped={summary['windows_skipped']} "
                 f"rows_scored={summary['rows_scored']} "
-                f"mae={global_metrics['mae']:.6f} rmse={global_metrics['rmse']:.6f}"
+                f"{metric_bits}"
             )
 
-        return {
+        result: dict[str, Any] = {
             **global_metrics,
-            "definitions": [
-                {"name": "mae", "target": self.target_field},
-                {"name": "rmse", "target": self.target_field},
-            ],
+            "definitions": resolved_metric_defs,
             "windows": window_entries,
             "summary": summary,
         }
+        if capture_artifacts:
+            result["_y_true"] = all_y_true
+            result["_y_pred"] = all_y_pred
+            result["_last_model"] = last_model_state
+        return result
 
     def _fit_predict(
         self,
         train_rows: list[dict[str, Any]],
         test_rows: list[dict[str, Any]],
-    ) -> tuple[list[float], list[float]]:
+        *,
+        capture_state: bool = False,
+    ) -> tuple[list[float], list[float], dict[str, Any] | None]:
         """Vectorize text, find k nearest neighbors, predict by weighted average."""
         if self._text_columns is None:
             self._text_columns = detect_text_columns(train_rows)
@@ -275,7 +296,21 @@ class JobRuntimeTfidfKnnModel:
 
         y_true = [float(r[self.target_field]) for r in test_rows]
         y_pred = [float(v) for v in preds]
-        return y_true, y_pred
+        fit_state: dict[str, Any] | None = None
+        if capture_state:
+            fit_state = {
+                "kind": "job_runtime_tfidf_knn",
+                "config": cfg,
+                "text_columns": list(self._text_columns or []),
+                "hasher": hasher,
+                "tfidf": tfidf,
+                "nn": nn,
+                "y_train": y_train,
+                "x_train": x_train,
+                "k_effective": k_eff,
+                "log_target": cfg.log_target,
+            }
+        return y_true, y_pred, fit_state
 
     def _filter_supervised(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Keep rows with a finite runtime_seconds value."""

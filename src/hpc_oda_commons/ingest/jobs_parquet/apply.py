@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,11 +16,31 @@ def _parse_timestamp(value: Any, fmt: str) -> str | None:
     if value is None:
         return None
     if fmt == "iso8601":
-        text = str(value)
+        text = str(value).strip()
+        if not text:
+            return None
+
+        # Accept strict ISO-8601 (including trailing Z) as-is.
         if text.endswith("Z"):
             return text
-        dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
-        return dt.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+
+        # Be permissive for common upstream exports:
+        # - "YYYY-MM-DD HH:MM:SS+09"  (space separator, short offset)
+        # - "YYYY-MM-DD HH:MM:SS+09:00"
+        # - "YYYY-MM-DDTHH:MM:SS+09"  (short offset)
+        #
+        # Normalize to something datetime.fromisoformat can parse.
+        normalized = text.replace(" ", "T")
+        m = re.match(r"^(.*)([+-]\d{2})$", normalized)
+        if m:
+            normalized = f"{m.group(1)}{m.group(2)}:00"
+
+        dt = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        return dt.isoformat().replace("+00:00", "Z")
     if fmt == "epoch_s":
         dt = datetime.fromtimestamp(float(value), tz=timezone.utc)
         return dt.isoformat().replace("+00:00", "Z")
@@ -93,8 +114,6 @@ def _memory_slurm_to_mb(value: Any) -> float | None:
     raw = str(value).strip()
     if not raw:
         return None
-    import re
-
     m = re.match(r"^([\d.]+)([KMGTPkmgtp]?)$", raw)
     if not m:
         return None
@@ -190,6 +209,19 @@ def apply_mapping_spec(
             if skip_incomplete and any(out_row.get(field) in (None, "") for field in required):
                 skipped += 1
                 continue
+
+            # Drop empty optional fields. Because the table is written via
+            # from_pylist (which unions keys across rows), this only fully removes
+            # an optional column when it is empty in *every* row -- which is the
+            # case that matters: an all-null optional column is typed without
+            # "null" in the job schema, so emitting it would fail strict validation.
+            # Optional columns populated in some rows still emit null for the empty
+            # rows (see follow-up F-1).
+            for key in list(out_row.keys()):
+                if key in required:
+                    continue
+                if out_row.get(key) in (None, ""):
+                    out_row.pop(key, None)
 
             kept += 1
             out_rows.append(out_row)

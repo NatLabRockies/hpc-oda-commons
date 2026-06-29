@@ -10,6 +10,14 @@ from tests.conftest import load_json
 
 
 def _make_bundle(bundle_dir: Path) -> None:
+    metrics = {
+        "mae": 1.0,
+        "rmse": 2.0,
+        "definitions": [
+            {"name": "mae", "target": "runtime_seconds"},
+            {"name": "rmse", "target": "runtime_seconds"},
+        ],
+    }
     result = {
         "schema_version": "oda.result.v0.1.0",
         "recipe_id": "recipe.job_runtime.baseline_tiny",
@@ -28,9 +36,7 @@ def _make_bundle(bundle_dir: Path) -> None:
             "hash": "abc12345",
         },
     }
-    write_result_bundle(
-        bundle_dir, result=result, metrics=result["metrics"], provenance=result["provenance"]
-    )
+    write_result_bundle(bundle_dir, result=result, metrics=metrics, provenance=result["provenance"])
 
 
 def _make_invalid_bundle(bundle_dir: Path) -> None:
@@ -49,6 +55,7 @@ def test_build_leaderboard(tmp_path: Path) -> None:
     entry = leaderboard["entries"][0]
     assert entry["model"]["id"] == "model.job_runtime_baseline"
     assert entry["dataset"]["hash"] == "abc12345"
+    assert entry["prediction_target"] == "runtime_seconds"
 
 
 def test_write_leaderboard_and_html(tmp_path: Path) -> None:
@@ -62,6 +69,8 @@ def test_write_leaderboard_and_html(tmp_path: Path) -> None:
     assert json_path.exists()
     html = render_leaderboard_html(leaderboard)
     assert "hpc-oda leaderboard" in html
+    assert "Target" in html
+    assert "Code Hash" not in html
 
 
 def test_build_leaderboard_skips_invalid_bundle(tmp_path: Path) -> None:

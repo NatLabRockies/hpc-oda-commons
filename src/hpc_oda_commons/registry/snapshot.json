@@ -85,6 +85,69 @@
       }
     },
     {
+      "id": "model.job_runtime_random_forest",
+      "entry_type": "model",
+      "name": "Job Runtime Random Forest (Rolling)",
+      "version": "0.1.0",
+      "description": "Alternate runtime prediction model using Random Forest regression with automatic categorical one-hot/SVD preprocessing and rolling evaluation.",
+      "problem_domain": ["job-runtime-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.1.0",
+      "output_schema_version": "oda.prediction.v0.1.0",
+      "license": "Apache-2.0",
+      "dependencies": ["scikit-learn>=1.3.0"],
+      "tags": ["alternate", "random-forest", "regression", "runtime", "rolling"],
+      "reference": {
+        "kind": "python",
+        "python": {
+          "module": "hpc_oda_commons.models.job_runtime_random_forest.model",
+          "object": "JobRuntimeRandomForestModel"
+        }
+      }
+    },
+    {
+      "id": "model.job_runtime_mlp",
+      "entry_type": "model",
+      "name": "Job Runtime Feed-Forward MLP (Rolling)",
+      "version": "0.1.0",
+      "description": "Alternate runtime prediction model using a feed-forward neural network (sklearn MLPRegressor) with automatic categorical one-hot/SVD preprocessing and rolling evaluation.",
+      "problem_domain": ["job-runtime-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.1.0",
+      "output_schema_version": "oda.prediction.v0.1.0",
+      "license": "Apache-2.0",
+      "dependencies": ["scikit-learn>=1.3.0"],
+      "tags": ["alternate", "mlp", "neural-network", "regression", "runtime", "rolling"],
+      "reference": {
+        "kind": "python",
+        "python": {
+          "module": "hpc_oda_commons.models.job_runtime_mlp.model",
+          "object": "JobRuntimeMlpModel"
+        }
+      }
+    },
+    {
+      "id": "model.job_power_uopc",
+      "entry_type": "model",
+      "name": "Job Power UoPC (User kNN, Fixed)",
+      "version": "0.1.0",
+      "description": "User-based online power prediction using per-user kNN regression on label-encoded job features (UoPC-style).",
+      "problem_domain": ["job-power-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.1.0",
+      "output_schema_version": "oda.prediction.v0.1.0",
+      "license": "Apache-2.0",
+      "dependencies": ["scikit-learn>=1.3.0"],
+      "tags": ["uopc", "knn", "regression", "power", "fixed", "user-based"],
+      "reference": {
+        "kind": "python",
+        "python": {
+          "module": "hpc_oda_commons.models.job_power_uopc.model",
+          "object": "JobPowerUopcModel"
+        }
+      }
+    },
+    {
       "id": "recipe.job_runtime.baseline_tiny",
       "entry_type": "recipe",
       "name": "Baseline Tiny (Job Runtime Prediction)",
