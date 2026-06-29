@@ -55,7 +55,7 @@ def test_analyze_preprocessing_writes_diagnostics(tmp_path: Path) -> None:
     payload = model.analyze_preprocessing(rows, diagnostics_path=out_path)
 
     assert out_path.exists()
-    assert payload["analysis_version"] == "job_runtime_xgboost.preprocessing.v0.1.0"
+    assert payload["analysis_version"] == "rolling_tabular.preprocessing.v0.1.0"
     assert payload["row_count"] == 4
     assert payload["one_hot_analysis"]["encoded_feature_count"] > 0
 

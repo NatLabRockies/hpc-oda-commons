@@ -10,7 +10,7 @@ import numpy as np
 from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
-from hpc_oda_commons.models.job_runtime_xgboost.preprocessing import (
+from hpc_oda_commons.models.rolling_tabular.preprocessing import (
     _build_one_hot_encoder,
     _normalize_category,
     build_preprocessing_diagnostics,
@@ -20,7 +20,7 @@ from hpc_oda_commons.models.job_runtime_xgboost.preprocessing import (
     select_svd_components,
     write_preprocessing_diagnostics,
 )
-from hpc_oda_commons.models.job_runtime_xgboost.split import (
+from hpc_oda_commons.models.rolling_tabular.split import (
     DailyPreprocessingCache,
     build_rolling_splits,
     materialize_split_rows,
