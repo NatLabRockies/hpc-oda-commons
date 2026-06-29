@@ -96,9 +96,13 @@ def test_benchmark_rolling_uses_xgboost_path(
             rows: list[dict[str, object]],
             *,
             verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
         ) -> dict[str, object]:
             assert rows
             _ = verbose
+            _ = metric_defs
+            _ = capture_artifacts
             return {
                 "mae": 1.25,
                 "rmse": 2.5,
@@ -145,6 +149,7 @@ def test_benchmark_rolling_uses_xgboost_path(
     assert result["model"]["id"] == "model.job_runtime_xgboost"
     assert result["metrics"]["mae"] == 1.25
     assert result["metrics"]["rmse"] == 2.5
+    assert result["timing"]["total_train_eval_seconds"] >= 0.0
     assert "windows" in metrics_payload
     assert metrics_payload["summary"]["windows_total"] == 4
 
@@ -194,9 +199,13 @@ def test_benchmark_tfidf_knn_rolling_path(tmp_path: Path, monkeypatch: pytest.Mo
             rows: list[dict[str, object]],
             *,
             verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
         ) -> dict[str, object]:
             assert rows
             _ = verbose
+            _ = metric_defs
+            _ = capture_artifacts
             return {
                 "mae": 2.0,
                 "rmse": 3.0,
@@ -244,6 +253,159 @@ def test_benchmark_tfidf_knn_rolling_path(tmp_path: Path, monkeypatch: pytest.Mo
     assert metrics_payload["summary"]["windows_total"] == 2
 
 
+def test_benchmark_mlp_rolling_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """mlp + rolling dispatches to run_rolling_mlp."""
+
+    class FakeMlpModel:
+        def __init__(self, config: object) -> None:
+            pass
+
+        def evaluate(
+            self,
+            rows: list[dict[str, object]],
+            *,
+            verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
+        ) -> dict[str, object]:
+            assert rows
+            _ = verbose
+            _ = metric_defs
+            _ = capture_artifacts
+            return {
+                "mae": 3.0,
+                "rmse": 4.0,
+                "windows": [{"status": "ok", "metrics": {"mae": 3.0, "rmse": 4.0}}],
+                "summary": {
+                    "windows_total": 2,
+                    "windows_scored": 1,
+                    "windows_skipped": 1,
+                    "rows_scored": 3,
+                    "n_windows": 2,
+                    "test_window_hours": 1,
+                    "training_lookback_days": 100,
+                },
+            }
+
+    monkeypatch.setattr(runner, "JobRuntimeMlpModel", FakeMlpModel)
+    monkeypatch.chdir(tmp_path)
+
+    table_path = tmp_path / "jobs.parquet"
+    recipe_path = tmp_path / "mlp_rolling.yml"
+    _write_dataset(table_path)
+    _write_recipe(
+        recipe_path,
+        model_id="model.job_runtime_mlp",
+        split_block="\n".join(
+            [
+                "  method: rolling",
+                "  n_windows: 2",
+                "  test_window_hours: 1",
+            ]
+        ),
+        table_path=table_path,
+    )
+
+    cli.benchmark(recipe_path)
+
+    bundle = _first_result_bundle(tmp_path / "runs")
+    result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
+    metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
+
+    assert result["model"]["id"] == "model.job_runtime_mlp"
+    assert result["metrics"]["mae"] == 3.0
+    assert result["metrics"]["rmse"] == 4.0
+    assert "windows" in metrics_payload
+    assert metrics_payload["summary"]["windows_total"] == 2
+
+
+def test_benchmark_uopc_fixed_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeUopcModel:
+        def evaluate_fixed(
+            self,
+            rows: list[dict[str, object]],
+            *,
+            split: dict[str, object],
+            metric_defs: list[dict[str, object]] | None = None,
+            verbose: bool = False,
+            capture_artifacts: bool = False,
+        ) -> dict[str, object]:
+            assert rows
+            _ = split
+            _ = metric_defs
+            _ = verbose
+            _ = capture_artifacts
+            return {
+                "mae": 12.5,
+                "rmse": 20.0,
+                "summary": {"rows_scored": 10, "rows_skipped": 2},
+            }
+
+    monkeypatch.setattr(runner, "JobPowerUopcModel", FakeUopcModel)
+    monkeypatch.chdir(tmp_path)
+
+    rows = [
+        {
+            "usr": "alice",
+            "jnam": "job_a",
+            "cnumr": 64,
+            "nnumr": 2,
+            "edt": "2024-04-01T00:00:00+09:00",
+            "maxpcon": 1500.0,
+        },
+        {
+            "usr": "alice",
+            "jnam": "job_b",
+            "cnumr": 128,
+            "nnumr": 4,
+            "edt": "2024-04-01T01:00:00+09:00",
+            "maxpcon": 1600.0,
+        },
+    ]
+    table_path = tmp_path / "power.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), table_path)
+
+    recipe_path = tmp_path / "uopc_fixed.yml"
+    text = "\n".join(
+        [
+            "recipe_id: recipe.test.uopc_fixed",
+            "problem_domain:",
+            "  - job-power-prediction",
+            "schema_version: oda.job.v0.1.0",
+            "dataset:",
+            "  id: test_power",
+            f"  table_path: {table_path.as_posix()}",
+            "model:",
+            "  id: model.job_power_uopc",
+            '  version: "0.1.0"',
+            "metrics:",
+            "  - name: mae",
+            "    target: maxpcon",
+            "  - name: rmse",
+            "    target: maxpcon",
+            "split:",
+            "  method: fixed",
+            "  train_fraction: 0.5",
+            "  seed: 42",
+            "run:",
+            "  output_dir: runs",
+            "  overwrite: false",
+        ]
+    )
+    recipe_path.write_text(text + "\n", encoding="utf-8")
+
+    cli.benchmark(recipe_path)
+
+    bundle = _first_result_bundle(tmp_path / "runs")
+    result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
+    metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
+
+    assert result["model"]["id"] == "model.job_power_uopc"
+    assert result["metrics"]["mae"] == 12.5
+    assert result["metrics"]["rmse"] == 20.0
+    assert metrics_payload["summary"]["rows_scored"] == 10
+
+
 def test_benchmark_rejects_unsupported_model_split_combo(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -283,9 +445,13 @@ def test_benchmark_rolling_uses_default_training_lookback_days(
             rows: list[dict[str, object]],
             *,
             verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
         ) -> dict[str, object]:
             assert rows
             _ = verbose
+            _ = metric_defs
+            _ = capture_artifacts
             return {
                 "mae": 1.0,
                 "rmse": 1.5,
@@ -335,9 +501,13 @@ def test_benchmark_verbose_prints_progress(
             rows: list[dict[str, object]],
             *,
             verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
         ) -> dict[str, object]:
             assert rows
             FakeXGBModel.seen_verbose = verbose
+            _ = metric_defs
+            _ = capture_artifacts
             return {
                 "mae": 1.25,
                 "rmse": 2.5,

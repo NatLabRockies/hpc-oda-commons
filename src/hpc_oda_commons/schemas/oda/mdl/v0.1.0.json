@@ -8,7 +8,7 @@
   "properties": {
     "name": {
       "type": "string",
-      "enum": ["mae", "rmse", "mape", "r2"],
+      "enum": ["mae", "rmse", "mape", "r2", "underprediction_ratio"],
       "description": "Metric identifier (v0.1 regression)."
     },
     "target": {

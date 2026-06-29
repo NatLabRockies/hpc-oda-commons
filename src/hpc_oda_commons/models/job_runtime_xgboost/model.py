@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 from tqdm import tqdm
 
-from hpc_oda_commons.kernel.metrics import compute_regression_metrics
+from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
 from hpc_oda_commons.models.job_runtime_xgboost.preprocessing import (
     _build_one_hot_encoder,
     _normalize_category,
@@ -68,6 +68,26 @@ class JobRuntimeXGBoostConfig:
     colsample_bytree: float = 0.8
 
 
+def base_xgboost_config(config: Any) -> JobRuntimeXGBoostConfig:
+    """Build an XGBoost config from the window/preprocessing fields shared by
+    any model config (used by the RandomForest and MLP subclasses, which reuse
+    XGBoost preprocessing but supply their own regressor hyperparameters)."""
+    return JobRuntimeXGBoostConfig(
+        n_windows=config.n_windows,
+        test_window_hours=config.test_window_hours,
+        training_lookback_days=config.training_lookback_days,
+        submit_time_field=config.submit_time_field,
+        end_time_field=config.end_time_field,
+        explained_variance_target=config.explained_variance_target,
+        infrequent_category_fraction=config.infrequent_category_fraction,
+        min_frequency_floor=config.min_frequency_floor,
+        target_max_one_hot_width=config.target_max_one_hot_width,
+        max_svd_components=config.max_svd_components,
+        categorical_top_k=config.categorical_top_k,
+        random_state=config.random_state,
+    )
+
+
 class JobRuntimeXGBoostModel:
     """
     XGBoost model for job runtime prediction with rolling evaluation.
@@ -77,6 +97,9 @@ class JobRuntimeXGBoostModel:
     - build_split_plan(): preview split windows without running evaluation
     - analyze_preprocessing(): profile categorical features and preview OHE/SVD config
     """
+
+    _evaluate_desc = "rolling/xgboost"
+    _log_prefix = "xgboost"
 
     def __init__(self, config: JobRuntimeXGBoostConfig | None = None) -> None:
         self.config = config or JobRuntimeXGBoostConfig()
@@ -100,10 +123,17 @@ class JobRuntimeXGBoostModel:
         rows: list[dict[str, Any]],
         *,
         verbose: bool = False,
+        metric_defs: list[dict[str, Any]] | None = None,
+        capture_artifacts: bool = False,
     ) -> dict[str, Any]:
         self._check_dependencies()
         if not rows:
             raise ValueError("rows must be non-empty")
+
+        resolved_metric_defs = metric_defs or [
+            {"name": "mae", "target": self.target_field},
+            {"name": "rmse", "target": self.target_field},
+        ]
 
         splits = build_rolling_splits(
             rows,
@@ -120,16 +150,17 @@ class JobRuntimeXGBoostModel:
         all_y_true: list[float] = []
         all_y_pred: list[float] = []
         preprocessing_refits = 0
+        last_model_state: dict[str, Any] | None = None
         if verbose:
             print(
-                "[xgboost][verbose] starting rolling evaluation "
+                f"[{self._log_prefix}][verbose] starting rolling evaluation "
                 f"splits={len(splits)} "
                 f"n_windows={self.config.n_windows} "
                 f"training_lookback_days={self.config.training_lookback_days}"
             )
         split_iter = tqdm(
             splits,
-            desc="rolling/xgboost",
+            desc=self._evaluate_desc,
             unit="window",
             disable=not verbose,
         )
@@ -149,7 +180,7 @@ class JobRuntimeXGBoostModel:
                 )
                 if verbose:
                     print(
-                        "[xgboost][verbose] split="
+                        f"[{self._log_prefix}][verbose] split="
                         f"{split.split_time_iso} status=skipped "
                         "reason=insufficient_training_rows "
                         f"train={len(train_rows)} test={len(test_rows)}"
@@ -164,7 +195,7 @@ class JobRuntimeXGBoostModel:
                 preprocessing_refits += 1
                 if verbose:
                     print(
-                        "[xgboost][verbose] split="
+                        f"[{self._log_prefix}][verbose] split="
                         f"{split.split_time_iso} preprocessing_refit=True day={split.day_key}"
                     )
 
@@ -178,7 +209,7 @@ class JobRuntimeXGBoostModel:
                 )
                 if verbose:
                     print(
-                        "[xgboost][verbose] split="
+                        f"[{self._log_prefix}][verbose] split="
                         f"{split.split_time_iso} status=skipped "
                         "reason=insufficient_test_rows "
                         f"train={len(train_rows)} test={len(test_rows)} "
@@ -198,7 +229,7 @@ class JobRuntimeXGBoostModel:
                 )
                 if verbose:
                     print(
-                        "[xgboost][verbose] split="
+                        f"[{self._log_prefix}][verbose] split="
                         f"{split.split_time_iso} status=skipped "
                         "reason=no_features_after_preprocessing "
                         f"train={len(train_rows)} test={len(test_rows)} "
@@ -206,24 +237,33 @@ class JobRuntimeXGBoostModel:
                     )
                 continue
 
-            model = self._new_xgb_regressor()
+            model = self._new_regressor(x_train.shape[0])
             model.fit(x_train, y_train)
             pred = model.predict(x_test)
             y_pred = [float(v) for v in pred]
             y_true = [float(v) for v in y_test]
-            metrics = self._compute_regression_metrics(y_true, y_pred)
+            metrics = self._compute_regression_metrics(y_true, y_pred, resolved_metric_defs)
             if verbose:
+                metric_bits = " ".join(f"{k}={metrics[k]:.6f}" for k in sorted(metrics))
                 print(
-                    "[xgboost][verbose] split="
+                    f"[{self._log_prefix}][verbose] split="
                     f"{split.split_time_iso} status=ok "
                     f"train={len(train_rows)} test={len(test_rows)} "
                     f"preprocessing_refit={was_refit} "
                     f"features={int(x_train.shape[1])} "
-                    f"mae={metrics['mae']:.6f} rmse={metrics['rmse']:.6f}"
+                    f"{metric_bits}"
                 )
 
             all_y_true.extend(y_true)
             all_y_pred.extend(y_pred)
+            if capture_artifacts:
+                last_model_state = {
+                    "kind": self._log_prefix,
+                    "split_time": split.split_time_iso,
+                    "config": self.config,
+                    "preprocessing_artifacts": artifacts,
+                    "estimator": model,
+                }
 
             window_entries.append(
                 {
@@ -249,7 +289,9 @@ class JobRuntimeXGBoostModel:
         if not all_y_true:
             raise ValueError("No rolling splits produced scored predictions.")
 
-        global_metrics = self._compute_regression_metrics(all_y_true, all_y_pred)
+        global_metrics = self._compute_regression_metrics(
+            all_y_true, all_y_pred, resolved_metric_defs
+        )
         windows_scored = sum(1 for entry in window_entries if entry["status"] == "ok")
         summary = {
             "windows_total": len(splits),
@@ -263,25 +305,28 @@ class JobRuntimeXGBoostModel:
             "training_lookback_days": self.config.training_lookback_days,
         }
         if verbose:
+            metric_bits = " ".join(f"{k}={global_metrics[k]:.6f}" for k in sorted(global_metrics))
             print(
-                "[xgboost][verbose] summary "
+                f"[{self._log_prefix}][verbose] summary "
                 f"windows_total={summary['windows_total']} "
                 f"windows_scored={summary['windows_scored']} "
                 f"windows_skipped={summary['windows_skipped']} "
                 f"preprocessing_refits={summary['preprocessing_refits']} "
                 f"rows_scored={summary['rows_scored']} "
-                f"mae={global_metrics['mae']:.6f} rmse={global_metrics['rmse']:.6f}"
+                f"{metric_bits}"
             )
 
-        return {
+        result: dict[str, Any] = {
             **global_metrics,
-            "definitions": [
-                {"name": "mae", "target": self.target_field},
-                {"name": "rmse", "target": self.target_field},
-            ],
+            "definitions": resolved_metric_defs,
             "windows": window_entries,
             "summary": summary,
         }
+        if capture_artifacts:
+            result["_y_true"] = all_y_true
+            result["_y_pred"] = all_y_pred
+            result["_last_model"] = last_model_state
+        return result
 
     def build_split_plan(
         self,
@@ -338,8 +383,10 @@ class JobRuntimeXGBoostModel:
     def new_daily_preprocessing_cache() -> DailyPreprocessingCache:
         return DailyPreprocessingCache()
 
-    def _new_xgb_regressor(self) -> Any:
+    def _new_regressor(self, n_train: int) -> Any:
         from xgboost import XGBRegressor
+
+        _ = n_train  # XGBoost does not size-adapt; the seam is shared with subclasses
 
         return XGBRegressor(
             n_estimators=self.config.n_estimators,
@@ -353,8 +400,12 @@ class JobRuntimeXGBoostModel:
         )
 
     @staticmethod
-    def _compute_regression_metrics(y_true: list[float], y_pred: list[float]) -> dict[str, float]:
-        return compute_regression_metrics(y_true, y_pred)
+    def _compute_regression_metrics(
+        y_true: list[float],
+        y_pred: list[float],
+        metric_defs: list[dict[str, Any]],
+    ) -> dict[str, float]:
+        return compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
 
     def _rows_with_target(
         self, rows: list[dict[str, Any]]

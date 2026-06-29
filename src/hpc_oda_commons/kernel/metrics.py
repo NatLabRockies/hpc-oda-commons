@@ -17,13 +17,20 @@ def compute_regression_metrics(y_true: list[float], y_pred: list[float]) -> dict
     return {"mae": float(mae), "rmse": float(rmse)}
 
 
+SUPPORTED_ROLLING_METRIC_NAMES = frozenset({"mae", "rmse", "underprediction_ratio"})
+
+
 def compute_regression_metrics_from_defs(
     y_true: list[float], y_pred: list[float], metric_defs: list[dict[str, Any]]
 ) -> dict[str, float]:
-    """Compute metrics specified by metric definition objects (mae, rmse, mape, r2)."""
+    """Compute metrics specified by metric definition objects (mae, rmse, mape, r2, underprediction_ratio)."""
     base = compute_regression_metrics(y_true, y_pred)
     requested = {str(m.get("name", "")) for m in metric_defs}
     metrics: dict[str, float] = {k: v for k, v in base.items() if k in requested}
+
+    if "underprediction_ratio" in requested:
+        underpredicted = sum(1 for actual, predicted in zip(y_true, y_pred) if predicted < actual)
+        metrics["underprediction_ratio"] = float(100.0 * underpredicted / float(len(y_true)))
 
     if "mape" in requested:
         denom = [abs(v) for v in y_true if v != 0]

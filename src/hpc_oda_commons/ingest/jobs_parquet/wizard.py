@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import typer
 
 from hpc_oda_commons.ingest.jobs_parquet.profile import ColumnProfile
 from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec
+
+T = TypeVar("T")
 
 REQUIRED_FIELDS = ("job_id", "start_time", "end_time", "runtime_seconds")
 OPTIONAL_FIELDS = (
@@ -91,6 +93,25 @@ def normalize_memory_unit(value: str) -> str:
     raise ValueError(f"Unsupported memory unit: {value}")
 
 
+def _echo_prompt_error(message: str) -> None:
+    typer.echo(f"Invalid input: {message}", err=True)
+
+
+def _prompt_validated(
+    prompt: str,
+    *,
+    default: str = "",
+    show_default: bool = True,
+    parse: Callable[[str], T],
+) -> T:
+    while True:
+        raw = typer.prompt(prompt, default=default, show_default=show_default)
+        try:
+            return parse(raw)
+        except (ValueError, typer.BadParameter) as exc:
+            _echo_prompt_error(str(exc))
+
+
 def _prompt_column(
     field: str,
     candidates: Iterable[dict[str, Any]],
@@ -100,13 +121,21 @@ def _prompt_column(
     default = candidate_list[0]["column"] if candidate_list else ""
     hint = ", ".join(c["column"] for c in candidate_list[:3]) or "none"
     prompt = f"Map field '{field}' to column (suggestions: {hint})"
-    value = typer.prompt(prompt, default=default, show_default=bool(default))
-    value = value.strip()
-    if not value:
-        return None
-    if value not in available:
-        raise typer.BadParameter(f"Unknown column '{value}'. Available: {', '.join(available)}")
-    return value
+
+    def parse(raw: str) -> str | None:
+        value = raw.strip()
+        if not value:
+            return None
+        if value not in available:
+            raise ValueError(f"Unknown column '{value}'. Available: {', '.join(available)}")
+        return value
+
+    return _prompt_validated(
+        prompt,
+        default=default,
+        show_default=bool(default),
+        parse=parse,
+    )
 
 
 def _prompt_yes_no(prompt: str, default: bool) -> bool:
@@ -116,18 +145,18 @@ def _prompt_yes_no(prompt: str, default: bool) -> bool:
 
 
 def _prompt_duration_unit(field: str) -> str:
-    value = typer.prompt(
+    return _prompt_validated(
         (
             f"Unit for '{field}' "
             "(seconds e.g. 3600, minutes e.g. 60, hours e.g. 1.0, HH:MM:SS e.g. 01:00:00)"
         ),
         default="seconds",
+        parse=normalize_duration_unit,
     )
-    return normalize_duration_unit(value)
 
 
 def _prompt_timestamp_format(field: str) -> str:
-    value = typer.prompt(
+    return _prompt_validated(
         (
             f"Timestamp format for '{field}' "
             "(iso8601 e.g. 2026-01-01T00:00:00Z, "
@@ -135,18 +164,24 @@ def _prompt_timestamp_format(field: str) -> str:
             "epoch_us e.g. 1735689600000000)"
         ),
         default="iso8601",
+        parse=normalize_timestamp_format,
     )
-    return normalize_timestamp_format(value)
 
 
 def _prompt_memory_unit(field: str) -> str | dict[str, str]:
-    value = typer.prompt(
-        f"Unit for '{field}' (bytes/KB/MB/GB/KiB/MiB/GiB, or 'slurm' for strings like 160G/2366M)",
+    def parse(raw: str) -> str | dict[str, str]:
+        if raw.strip().lower() == "slurm":
+            return {"type": "memory_slurm"}
+        return normalize_memory_unit(raw)
+
+    return _prompt_validated(
+        (
+            f"Unit for '{field}' "
+            "(bytes/KB/MB/GB/KiB/MiB/GiB, or 'slurm' for strings like 160G/2366M)"
+        ),
         default="MB",
+        parse=parse,
     )
-    if value.strip().lower() == "slurm":
-        return {"type": "memory_slurm"}
-    return normalize_memory_unit(value)
 
 
 def _prompt_fields_to_hash(
@@ -168,21 +203,29 @@ def _prompt_fields_to_hash(
     default_display = ", ".join(default_selection) if default_selection else "none"
 
     typer.echo(f"Fields eligible for identifier hashing: {', '.join(hashable)}")
-    raw = typer.prompt(
-        "Enter comma-separated field names to hash (or 'none')",
-        default=default_display,
-    ).strip()
+    while True:
+        raw = typer.prompt(
+            "Enter comma-separated field names to hash (or 'none')",
+            default=default_display,
+        ).strip()
 
-    if raw.lower() == "none":
-        return
+        if raw.lower() == "none":
+            return
 
-    selected = {name.strip() for name in raw.split(",") if name.strip()}
-    for name in selected:
-        if name in fields and name in hashable:
+        selected = {name.strip() for name in raw.split(",") if name.strip()}
+        unknown = selected - set(hashable)
+        if unknown:
+            _echo_prompt_error(
+                f"Unknown fields: {', '.join(sorted(unknown))}. Eligible: {', '.join(hashable)}"
+            )
+            continue
+
+        for name in selected:
             fields[name]["transform"] = {
                 "type": "hash_identifier",
                 "salt_env": "HPC_ODA_HASH_SALT",
             }
+        return
 
 
 def build_mapping_spec_interactive(

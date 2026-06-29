@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from hpc_oda_commons.benchmark.leaderboard_display import infer_prediction_target
 from hpc_oda_commons.kernel.artifacts.result_bundle import (
     read_result_bundle,
     validate_result_bundle,
@@ -31,6 +32,7 @@ def _collect_bundle_dirs(runs_dir: Path) -> list[Path]:
 def build_leaderboard_entry(bundle_dir: Path) -> dict[str, Any]:
     validate_result_bundle(bundle_dir)
     result, metrics, _prov = read_result_bundle(bundle_dir, validate=True)
+    prediction_target = infer_prediction_target(metrics)
 
     entry = {
         "bundle_dir": str(bundle_dir),
@@ -38,9 +40,11 @@ def build_leaderboard_entry(bundle_dir: Path) -> dict[str, Any]:
         "recipe_id": result.get("recipe_id"),
         "problem_domain": result.get("problem_domain", []),
         "metrics": result.get("metrics", metrics),
+        "prediction_target": prediction_target,
         "model": result.get("model", {}),
         "dataset": result.get("dataset", {}),
         "integrity": result.get("integrity"),
+        "timing": result.get("timing"),
     }
     return entry
 
