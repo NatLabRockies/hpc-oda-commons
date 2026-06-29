@@ -27,7 +27,7 @@ hpc-oda-commons is designed to work well with AI coding agents. The CLI is struc
 
 ### Getting an agent started
 
-Point your agent at `CLAUDE.md` (or `AGENTS.md`, which links to the same file) for complete project context: architecture, CLI reference, available models, recipe format, and development standards. The typical agent workflow is:
+Point your agent at `CLAUDE.md` (or `AGENTS.md`, which links to the same file). It establishes whether the agent is *using* or *developing* the tool and routes to the right docs: [`docs/agent-usage.md`](docs/agent-usage.md) for the CLI workflow, model list, recipe format, and reading results; [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/architecture.md`](docs/architecture.md) for development. The typical agent usage workflow is:
 
 ```bash
 pip install -e ".[dev]"
