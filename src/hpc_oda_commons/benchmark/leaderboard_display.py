@@ -184,7 +184,7 @@ def is_best_metric(name: str, value: float, bests: dict[str, float]) -> bool:
 def format_training_time(timing: dict[str, Any] | None) -> str:
     if not timing:
         return "-"
-    seconds = timing.get("total_training_seconds")
+    seconds = timing.get("total_train_eval_seconds")
     if seconds is None:
         return "-"
     return format_duration(float(seconds))

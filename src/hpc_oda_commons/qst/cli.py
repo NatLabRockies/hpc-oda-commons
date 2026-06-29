@@ -63,7 +63,11 @@ from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.info import info
 from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
 from hpc_oda_commons.schema.validator import validate_parquet_with_quality
-from hpc_oda_commons.tools.report import render_analysis_html, render_leaderboard_console, render_leaderboard_html
+from hpc_oda_commons.tools.report import (
+    render_analysis_html,
+    render_leaderboard_console,
+    render_leaderboard_html,
+)
 
 app = typer.Typer(add_completion=False, help="hpc-oda-commons Quickstart Toolkit (v0.1)")
 ingest_app = typer.Typer(

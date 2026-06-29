@@ -29,7 +29,7 @@ def test_format_created_at_compact() -> None:
 def test_resolve_dataset_folder_name_from_parquet_path() -> None:
     from hpc_oda_commons.benchmark.leaderboard_display import resolve_dataset_folder_name
 
-    path = "/global/homes/b/boztop/hpc-oda-commons/data/ingested/jobs_parquet/fugaku_24_04/data.parquet"
+    path = "/data/ingested/jobs_parquet/fugaku_24_04/data.parquet"
     assert resolve_dataset_folder_name(path) == "fugaku_24_04"
     assert resolve_dataset_folder_name("jobs-parquet-20260601") == "jobs-parquet-20260601"
 
@@ -88,3 +88,38 @@ def test_render_leaderboard_html_uses_target_and_hides_hash_columns() -> None:
     assert "Code Hash" not in html
     assert "Dataset Hash" not in html
     assert format_duration(120.0) in html
+
+
+def test_render_leaderboard_html_aligns_columns_when_metric_missing() -> None:
+    # Regression test for column misalignment: an entry missing an early metric
+    # (mae) must render a dash under the MAE column and keep its rmse value under
+    # the RMSE column, not shifted left.
+    leaderboard = {
+        "generated_at": "2026-06-01T00:00:00Z",
+        "runs_dir": "/tmp/runs",
+        "entries": [
+            {
+                "created_at": "2026-06-01T00:00:00Z",
+                "recipe_id": "recipe.x.full",
+                "model": {"id": "model.x.full", "version": "0.1.0"},
+                "dataset": {"id": "ds"},
+                "prediction_target": "maxpcon",
+                "metrics": {"mae": 10.0, "rmse": 20.0},
+            },
+            {
+                "created_at": "2026-06-02T00:00:00Z",
+                "recipe_id": "recipe.x.partial",
+                "model": {"id": "model.x.partial", "version": "0.1.0"},
+                "dataset": {"id": "ds"},
+                "prediction_target": "maxpcon",
+                "metrics": {"rmse": 999.0},
+            },
+        ],
+    }
+
+    html = render_leaderboard_html(leaderboard)
+    partial_row = next(seg for seg in html.split("<tr>") if "partial" in seg)
+    dash_idx = partial_row.index('class="metric muted">-')
+    value_idx = partial_row.index(">999<")
+    # The MAE dash must come before the RMSE value (columns stay aligned).
+    assert dash_idx < value_idx
