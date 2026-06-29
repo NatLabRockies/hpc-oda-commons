@@ -13,6 +13,7 @@ import typer
 from rich.console import Console
 
 from hpc_oda_commons.adapters.slurmctld.adapter import SlurmctldAdapter
+from hpc_oda_commons.benchmark.leaderboard_display import resolve_dataset_folder_name
 from hpc_oda_commons.benchmark.recipes import load_recipe
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
 from hpc_oda_commons.benchmark.run_extras import (
@@ -62,7 +63,7 @@ from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.info import info
 from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
 from hpc_oda_commons.schema.validator import validate_parquet_with_quality
-from hpc_oda_commons.tools.report import render_analysis_html, render_leaderboard_html
+from hpc_oda_commons.tools.report import render_analysis_html, render_leaderboard_console, render_leaderboard_html
 
 app = typer.Typer(add_completion=False, help="hpc-oda-commons Quickstart Toolkit (v0.1)")
 ingest_app = typer.Typer(
@@ -786,7 +787,11 @@ def benchmark(
         "provenance": prov,
         "model": {"id": model_id, "version": model_version},
         "dataset": {
-            "id": str(dataset.get("id", "synthetic_job_runtime_tiny")),
+            "id": resolve_dataset_folder_name(
+                str(dataset.get("id", "")),
+                table_path=str(table_path) if table_path is not None else None,
+            )
+            or "synthetic_job_runtime_tiny",
             "schema_version": input_schema,
             "hash": ds_hash,
         },
@@ -963,6 +968,8 @@ def leaderboard(
     html = render_leaderboard_html(leaderboard_data)
     html_path = out_dir / "index.html"
     html_path.write_text(html, encoding="utf-8")
+
+    render_leaderboard_console(leaderboard_data, console=console)
 
     console.print(f"[green]Leaderboard JSON[/green]: {json_path}")
     console.print(f"[green]Leaderboard HTML[/green]: {html_path}")
