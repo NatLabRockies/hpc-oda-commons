@@ -137,6 +137,39 @@ def test_validate_parquet_with_quality_non_strict_collects_issues(tmp_path: Path
     assert first_semantic["examples"]
 
 
+def test_validate_parquet_with_quality_allows_null_optional_fields(tmp_path: Path) -> None:
+    # Regression for #8: an optional column populated in only some rows is stored
+    # as null for the unpopulated rows (columnar Parquet). Strict validation must
+    # accept that null rather than rejecting "None is not of type 'integer'".
+    parquet_path = tmp_path / "data.parquet"
+    rows = [
+        {
+            "job_id": 1,
+            "start_time": "2026-01-01T00:00:00Z",
+            "end_time": "2026-01-01T00:01:00Z",
+            "runtime_seconds": 60.0,
+            "allocated_cpus": 4,
+            "partition": "debug",
+            "node_list": "node[01-02]",
+        },
+        {
+            "job_id": 2,
+            "start_time": "2026-01-01T00:02:00Z",
+            "end_time": "2026-01-01T00:03:00Z",
+            "runtime_seconds": 60.0,
+            "allocated_cpus": None,
+            "partition": None,
+            "node_list": None,
+        },
+    ]
+    write_table_parquet(rows, parquet_path)
+
+    # strict=True (the default) must not raise on the null optional cells.
+    report = validate_parquet_with_quality(parquet_path)
+    assert report["row_count"] == 2
+    assert report["validation"]["schema_error_count"] == 0
+
+
 def test_validate_parquet_with_quality_non_strict_serializes_datetime_examples(
     tmp_path: Path,
 ) -> None:

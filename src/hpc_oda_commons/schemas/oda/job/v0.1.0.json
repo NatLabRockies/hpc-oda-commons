@@ -26,14 +26,14 @@
       "minimum": 0
     },
     "allocated_cpus": {
-      "type": "integer",
+      "type": ["integer", "null"],
       "minimum": 1
     },
     "partition": {
-      "type": "string"
+      "type": ["string", "null"]
     },
     "node_list": {
-      "type": "string"
+      "type": ["string", "null"]
     }
   }
 }
