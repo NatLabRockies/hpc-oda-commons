@@ -218,7 +218,9 @@ def prepare_leaderboard_rows(
                 "created_at": format_created_at_compact(entry.get("created_at")),
                 "created_at_full": format_created_at(entry.get("created_at")),
                 "recipe_id": str(entry.get("recipe_id", "")),
-                "recipe_short": short_registry_id(str(entry.get("recipe_id", "")), prefix="recipe."),
+                "recipe_short": short_registry_id(
+                    str(entry.get("recipe_id", "")), prefix="recipe."
+                ),
                 "model_id": str(model.get("id", "")),
                 "model_short": short_registry_id(str(model.get("id", "")), prefix="model."),
                 "model_version": str(model.get("version", "")),

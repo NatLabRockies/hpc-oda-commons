@@ -36,9 +36,7 @@ def _make_bundle(bundle_dir: Path) -> None:
             "hash": "abc12345",
         },
     }
-    write_result_bundle(
-        bundle_dir, result=result, metrics=metrics, provenance=result["provenance"]
-    )
+    write_result_bundle(bundle_dir, result=result, metrics=metrics, provenance=result["provenance"])
 
 
 def _make_invalid_bundle(bundle_dir: Path) -> None:
