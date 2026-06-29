@@ -142,7 +142,7 @@ def test_evaluate_verbose_uses_tqdm(
         return iterable
 
     monkeypatch.setattr(
-        "hpc_oda_commons.models.job_runtime_xgboost.model.tqdm",
+        "hpc_oda_commons.models.rolling_tabular.base.tqdm",
         fake_tqdm,
     )
     payload = model.evaluate(_sample_rows(), verbose=True)
@@ -184,7 +184,7 @@ def test_evaluate_passes_verbose_to_split_builder(
         return []
 
     monkeypatch.setattr(
-        "hpc_oda_commons.models.job_runtime_xgboost.model.build_rolling_splits",
+        "hpc_oda_commons.models.rolling_tabular.base.build_rolling_splits",
         fake_build_rolling_splits,
     )
 

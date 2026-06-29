@@ -1,37 +1,23 @@
 """Random Forest model for job runtime prediction with rolling evaluation.
 
-Reuses the XGBoost package's categorical preprocessing (OHE + SVD) and rolling
-split utilities; only the tabular regressor differs.
+Subclasses the neutral RollingTabularModel base (shared rolling evaluation +
+OHE/SVD preprocessing); only the tabular regressor differs.
 """
 
 from __future__ import annotations
 
-import importlib.util
 from dataclasses import dataclass
 from typing import Any
 
-from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostModel,
-    base_xgboost_config,
+from hpc_oda_commons.models.rolling_tabular.base import (
+    RollingTabularConfig,
+    RollingTabularModel,
 )
 
 
 @dataclass(frozen=True)
-class JobRuntimeRandomForestConfig:
-    """Configuration for the Random Forest runtime prediction model."""
-
-    n_windows: int = 1000
-    test_window_hours: int = 6
-    training_lookback_days: int = 100
-    submit_time_field: str = "submit_time"
-    end_time_field: str = "end_time"
-    explained_variance_target: float = 0.95
-    infrequent_category_fraction: float = 0.001
-    min_frequency_floor: int = 2
-    target_max_one_hot_width: int = 2048
-    max_svd_components: int = 256
-    categorical_top_k: int = 10
-    random_state: int = 42
+class JobRuntimeRandomForestConfig(RollingTabularConfig):
+    """Rolling/preprocessing config plus Random Forest hyperparameters."""
 
     n_estimators: int = 100
     max_depth: int | None = 16
@@ -40,7 +26,7 @@ class JobRuntimeRandomForestConfig:
     n_jobs: int = -1
 
 
-class JobRuntimeRandomForestModel(JobRuntimeXGBoostModel):
+class JobRuntimeRandomForestModel(RollingTabularModel):
     """Random Forest regressor with rolling evaluation and daily preprocessing cache.
 
     Public API:
@@ -51,21 +37,13 @@ class JobRuntimeRandomForestModel(JobRuntimeXGBoostModel):
     _log_prefix = "random_forest"
 
     def __init__(self, config: JobRuntimeRandomForestConfig | None = None) -> None:
-        self._rf_config = config or JobRuntimeRandomForestConfig()
-        super().__init__(base_xgboost_config(self._rf_config))
-
-    @staticmethod
-    def _check_dependencies() -> None:
-        if importlib.util.find_spec("sklearn") is None:
-            raise RuntimeError(
-                'Missing optional model dependencies: sklearn. Install with `pip install -e ".[dev]"`.'
-            )
+        super().__init__(config or JobRuntimeRandomForestConfig())
 
     def _new_regressor(self, n_train: int) -> Any:
         from sklearn.ensemble import RandomForestRegressor
 
         _ = n_train  # RandomForest does not size-adapt
-        cfg = self._rf_config
+        cfg = self.config
         return RandomForestRegressor(
             n_estimators=cfg.n_estimators,
             max_depth=cfg.max_depth,
