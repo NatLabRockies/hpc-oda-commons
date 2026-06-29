@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from hpc_oda_commons.models.job_runtime_xgboost.preprocessing import (
+from hpc_oda_commons.models.rolling_tabular.preprocessing import (
     analyze_one_hot_encoding,
     build_preprocessing_diagnostics,
     profile_categorical_features,
@@ -95,7 +95,7 @@ def test_build_and_write_preprocessing_diagnostics(tmp_path: Path) -> None:
         random_state=9,
     )
 
-    assert payload["analysis_version"] == "job_runtime_xgboost.preprocessing.v0.1.0"
+    assert payload["analysis_version"] == "rolling_tabular.preprocessing.v0.1.0"
     assert payload["row_count"] == len(rows)
     assert payload["categorical_profiles"]
     assert payload["one_hot_config"]["min_frequency_count"] >= 2

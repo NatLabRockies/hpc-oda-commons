@@ -22,7 +22,7 @@ from hpc_oda_commons.models.job_runtime_tfidf_knn.vectorization import (
     build_text_column,
     detect_text_columns,
 )
-from hpc_oda_commons.models.job_runtime_xgboost.split import (
+from hpc_oda_commons.models.rolling_tabular.split import (
     build_rolling_splits,
     materialize_split_rows,
 )
