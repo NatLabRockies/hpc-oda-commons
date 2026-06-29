@@ -11,6 +11,15 @@ PR → review → merge. One issue per unit of work; everything references the i
 
 ---
 
+## Where to contribute
+
+1. **Improve ingestion** -- enhance slurmctld parsing, add new adapters
+2. **Add models** -- implement new prediction models ([guide](docs/how-to/add-model.md))
+3. **Add recipes** -- create benchmark recipes ([recipe format](docs/reference/recipes.md))
+4. **Improve docs** -- expand guides, add examples
+
+---
+
 ## 1. Development environment
 
 ```bash
@@ -171,3 +180,26 @@ Branch protection enforces this rather than relying on the honor system — see 
   also bypasses the required checks, so admins are expected to keep CI green (§4).
 
 To change these rules, update the branch protection settings on `main`.
+
+---
+
+## 8. Code integrity (record-hash)
+
+After tests pass on a clean commit, register the source hash so future benchmark
+results can verify they ran validated code:
+
+```bash
+hpc-oda record-hash
+git add src/hpc_oda_commons/integrity/known_hashes.json
+git commit -m "Record source hash"
+```
+
+This certifies *code identity*, not numeric reproducibility of fitted-model
+metric values across machines — see [`docs/known-issues.md`](docs/known-issues.md).
+
+---
+
+## 9. Schema changes
+
+Schema changes require a Schema Evolution Request (SER): open an issue describing
+the compatibility impact and migration plan before changing a versioned schema.
