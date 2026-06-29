@@ -24,10 +24,11 @@ def _metric_cell(row: dict[str, Any], name: str) -> str:
     if metric is None:
         return '<td class="metric muted">-</td>'
     css = "metric best" if metric.get("is_best") else "metric"
-    title = f'{metric_column_label(name, target=row.get("prediction_target"))}: {metric.get("raw", "")}'
+    title = (
+        f"{metric_column_label(name, target=row.get('prediction_target'))}: {metric.get('raw', '')}"
+    )
     return (
-        f'<td class="{css}" title="{escape(title)}">'
-        f'{escape(str(metric.get("display", "")))}</td>'
+        f'<td class="{css}" title="{escape(title)}">{escape(str(metric.get("display", "")))}</td>'
     )
 
 
@@ -50,7 +51,7 @@ def render_leaderboard_html(leaderboard: dict[str, Any]) -> str:
             f'<td><span class="recipe" title="{escape(row["recipe_id"])}">{escape(row["recipe_short"])}</span></td>'
             f'<td><span class="model" title="{escape(row["model_id"])}">{escape(row["model_short"])}</span>'
             f'<span class="muted"> v{escape(row["model_version"])}</span></td>'
-            f'<td>{escape(row["target_label"])}</td>'
+            f"<td>{escape(row['target_label'])}</td>"
             f'<td title="{escape(row["dataset_label"])}">{escape(row["dataset_label"])}</td>'
             f"{metric_cells}"
             f'<td class="col-train nowrap">{escape(row["training_time"])}</td>'

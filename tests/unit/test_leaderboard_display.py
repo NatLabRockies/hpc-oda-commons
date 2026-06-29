@@ -63,7 +63,9 @@ def test_prepare_leaderboard_rows_marks_best_metric() -> None:
     assert metric_names == ["mae", "rmse"]
     assert bests["mae"] == 5.0
     assert rows[1]["metrics"]["mae"]["is_best"] is True
-    assert short_registry_id("recipe.job_runtime.baseline_tiny", prefix="recipe.") == "baseline_tiny"
+    assert (
+        short_registry_id("recipe.job_runtime.baseline_tiny", prefix="recipe.") == "baseline_tiny"
+    )
 
 
 def test_render_leaderboard_html_uses_target_and_hides_hash_columns() -> None:

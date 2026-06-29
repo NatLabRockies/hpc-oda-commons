@@ -58,7 +58,7 @@ def render_leaderboard_console(
         table.add_row(
             row["created_at"],
             row["recipe_short"],
-            f'{row["model_short"]} v{row["model_version"]}',
+            f"{row['model_short']} v{row['model_version']}",
             row["target_label"],
             row["dataset_label"],
             *metric_cells,

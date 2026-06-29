@@ -48,6 +48,8 @@ def test_uopc_fixed_predicts_with_user_history(tmp_path) -> None:
 
 
 def test_uopc_requires_finite_target() -> None:
-    rows = [{"usr": "alice", "jnam": "x", "cnumr": 1, "nnumr": 1, "edt": "2024-04-01T00:00:00+09:00"}]
+    rows = [
+        {"usr": "alice", "jnam": "x", "cnumr": 1, "nnumr": 1, "edt": "2024-04-01T00:00:00+09:00"}
+    ]
     with pytest.raises(ValueError, match="No rows with a finite target"):
         JobPowerUopcModel().evaluate_fixed(rows, split={"train_fraction": 0.8, "seed": 1})

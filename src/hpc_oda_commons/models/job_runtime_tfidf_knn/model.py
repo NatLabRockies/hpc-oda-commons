@@ -133,9 +133,7 @@ class JobRuntimeTfidfKnnModel:
             y_true, y_pred, fit_state = self._fit_predict(
                 train_rows, test_rows, capture_state=capture_artifacts
             )
-            metrics = compute_regression_metrics_from_defs(
-                y_true, y_pred, resolved_metric_defs
-            )
+            metrics = compute_regression_metrics_from_defs(y_true, y_pred, resolved_metric_defs)
             all_y_true.extend(y_true)
             all_y_pred.extend(y_pred)
             if capture_artifacts and fit_state is not None:

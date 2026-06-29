@@ -138,9 +138,7 @@ class _LabelFeatureEncoder:
                 else:
                     x_query[0, col_idx] = -1.0
             else:
-                train_numeric = [
-                    _feature_float(_feature_value(row, field)) for row in history
-                ]
+                train_numeric = [_feature_float(_feature_value(row, field)) for row in history]
                 x_train[:, col_idx] = np.asarray(train_numeric, dtype=np.float64)
                 x_query[0, col_idx] = _feature_float(_feature_value(query, field))
 
@@ -169,16 +167,12 @@ class JobPowerUopcModel:
         ]
 
         supervised = [
-            _normalize_row(row)
-            for row in rows
-            if _finite_target(row, cfg.target_field) is not None
+            _normalize_row(row) for row in rows if _finite_target(row, cfg.target_field) is not None
         ]
         if not supervised:
             raise ValueError("No rows with a finite target value.")
 
-        supervised.sort(
-            key=lambda row: _end_time_sort_key(row, field=cfg.order_by_field)
-        )
+        supervised.sort(key=lambda row: _end_time_sort_key(row, field=cfg.order_by_field))
 
         train_fraction = float(split.get("train_fraction", 0.8))
         n_train = max(1, int(len(supervised) * train_fraction))
@@ -227,9 +221,7 @@ class JobPowerUopcModel:
         if not y_true:
             raise ValueError("No test rows produced scored predictions.")
 
-        metrics = compute_regression_metrics_from_defs(
-            y_true, y_pred, resolved_metric_defs
-        )
+        metrics = compute_regression_metrics_from_defs(y_true, y_pred, resolved_metric_defs)
         summary = {
             "rows_total": len(supervised),
             "rows_train": len(train_rows),
@@ -270,9 +262,7 @@ class JobPowerUopcModel:
         """
         cfg = self.config
         encoder = _LabelFeatureEncoder(cfg.categorical_fields)
-        x_train, x_query = encoder.fit_transform_row_matrix(
-            history, query, cfg.feature_fields
-        )
+        x_train, x_query = encoder.fit_transform_row_matrix(history, query, cfg.feature_fields)
         y_train = np.asarray(
             [float(_finite_target(row, cfg.target_field)) for row in history],
             dtype=np.float64,

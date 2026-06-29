@@ -731,32 +731,50 @@ def benchmark(
         )
     elif model_id == "model.job_power_uopc" and split_method == "fixed":
         metrics, metrics_payload, artifacts = run_fixed_uopc(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
     elif model_id == "model.job_runtime_baseline" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_baseline(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
     elif model_id == "model.job_runtime_tfidf_knn" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_tfidf_knn(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
     elif model_id == "model.job_runtime_xgboost" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_xgboost(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
     elif model_id == "model.job_runtime_random_forest" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_random_forest(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
     elif model_id == "model.job_runtime_mlp" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_mlp(
-            rows, split=split, metric_defs=metric_defs, verbose=verbose,
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
     else:
@@ -824,9 +842,7 @@ def benchmark(
         )
         console.print(f"[blue][verbose][/blue] result bundle written: {bundle_dir}")
         if extras_written:
-            console.print(
-                "[blue][verbose][/blue] run extras written: " + ", ".join(extras_written)
-            )
+            console.print("[blue][verbose][/blue] run extras written: " + ", ".join(extras_written))
 
     console.print(f"[green]Benchmark complete[/green] → runs/{run_id}/")
 

@@ -68,9 +68,7 @@ def write_run_extras(
         if not has_predictions:
             raise ValueError("save_predictions requested but benchmark produced no predictions")
         path = bundle_dir / "predictions.parquet"
-        table = pa.Table.from_pydict(
-            {"y_true": artifacts.y_true, "y_pred": artifacts.y_pred}
-        )
+        table = pa.Table.from_pydict({"y_true": artifacts.y_true, "y_pred": artifacts.y_pred})
         pq.write_table(table, path)
         written.append("predictions.parquet")
 

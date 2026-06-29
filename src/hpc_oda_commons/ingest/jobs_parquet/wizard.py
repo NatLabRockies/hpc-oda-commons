@@ -216,8 +216,7 @@ def _prompt_fields_to_hash(
         unknown = selected - set(hashable)
         if unknown:
             _echo_prompt_error(
-                f"Unknown fields: {', '.join(sorted(unknown))}. "
-                f"Eligible: {', '.join(hashable)}"
+                f"Unknown fields: {', '.join(sorted(unknown))}. Eligible: {', '.join(hashable)}"
             )
             continue
 

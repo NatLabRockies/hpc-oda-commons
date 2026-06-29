@@ -73,9 +73,7 @@ class JobRuntimeMlpModel(JobRuntimeXGBoostModel):
         # Early stopping carves off a validation split, which sklearn rejects when
         # it would hold fewer than 2 samples. Rolling windows can be small, so fall
         # back to no early stopping when this window's training set is too small.
-        use_early_stopping = (
-            cfg.early_stopping and int(n_train * cfg.validation_fraction) >= 2
-        )
+        use_early_stopping = cfg.early_stopping and int(n_train * cfg.validation_fraction) >= 2
         return MLPRegressor(
             hidden_layer_sizes=cfg.hidden_layer_sizes,
             activation=cfg.activation,
