@@ -126,12 +126,15 @@ formatter check that CI enforces.
 
 ## 5. Code review and merge
 
-- Every PR gets a code review before merging to `main`.
-- Merge only when CI is green and the review is approved.
+- Changes merge via the protected `main` branch, and only with CI green (§4).
+- **Contributors:** a PR needs one approving review before it can merge. You
+  can't approve your own PR, so request a review — the maintainer is the default
+  reviewer.
+- **Maintainer:** as repository admin you may override the review requirement and
+  merge your own PRs so solo/primary development isn't blocked. The override also
+  bypasses the required-checks gate, so keep CI green when you use it.
 
-These should be **enforced**, not honor-system: enable branch protection on
-`main` requiring (a) passing status checks and (b) at least one approving
-review. See §7.
+Branch protection enforces this rather than relying on the honor system — see §7.
 
 ---
 
@@ -155,11 +158,16 @@ review. See §7.
 
 ---
 
-## 7. Maintainer setup (one-time)
+## 7. Branch protection (enforced on `main`)
 
-To make §5 real, configure branch protection on `main`:
+`main` is a protected branch with these rules in effect:
 
-- Require status checks to pass before merging (Lint, Unit tests, Golden-path
-  integration).
-- Require at least one approving review.
-- Disallow direct pushes to `main` (changes land via PR).
+- **Required status checks** must pass before merge: Lint (ruff), Unit tests
+  (3.9 and 3.11), Golden-path integration.
+- **Required review:** one approving review for contributors (non-admins).
+- **No direct pushes:** changes land via PR.
+- **Admin override:** repository admins (the maintainer) are exempt and may merge
+  without a separate review, so primary development isn't blocked. The override
+  also bypasses the required checks, so admins are expected to keep CI green (§4).
+
+To change these rules, update the branch protection settings on `main`.
