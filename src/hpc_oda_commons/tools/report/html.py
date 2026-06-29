@@ -14,6 +14,23 @@ from hpc_oda_commons.benchmark.leaderboard_display import (
 )
 
 
+def _metric_cell(row: dict[str, Any], name: str) -> str:
+    """Render one metric cell, or a muted dash when this row lacks the metric.
+
+    Emitting a cell per column in order keeps values aligned under their headers
+    even when different runs report different metric subsets.
+    """
+    metric = row["metrics"].get(name)
+    if metric is None:
+        return '<td class="metric muted">-</td>'
+    css = "metric best" if metric.get("is_best") else "metric"
+    title = f'{metric_column_label(name, target=row.get("prediction_target"))}: {metric.get("raw", "")}'
+    return (
+        f'<td class="{css}" title="{escape(title)}">'
+        f'{escape(str(metric.get("display", "")))}</td>'
+    )
+
+
 def render_leaderboard_html(leaderboard: dict[str, Any]) -> str:
     entries = leaderboard.get("entries", [])
     rows, metric_names, _bests = prepare_leaderboard_rows(entries)
@@ -26,17 +43,7 @@ def render_leaderboard_html(leaderboard: dict[str, Any]) -> str:
 
     body_rows: list[str] = []
     for row in rows:
-        metric_cells = "".join(
-            f'<td class="{"metric best" if row["metrics"][name].get("is_best") else "metric"}" '
-            f'title="{escape(metric_column_label(name, target=row.get("prediction_target")))}: '
-            f'{escape(str(row["metrics"][name].get("raw", "")))}">'
-            f'{escape(str(row["metrics"][name].get("display", "")))}</td>'
-            for name in metric_names
-            if name in row["metrics"]
-        )
-        missing_cells = "".join(
-            '<td class="metric muted">-</td>' for name in metric_names if name not in row["metrics"]
-        )
+        metric_cells = "".join(_metric_cell(row, name) for name in metric_names)
         body_rows.append(
             "<tr>"
             f'<td class="col-run" title="{escape(row["created_at_full"])}">{escape(row["created_at"])}</td>'
@@ -45,7 +52,7 @@ def render_leaderboard_html(leaderboard: dict[str, Any]) -> str:
             f'<span class="muted"> v{escape(row["model_version"])}</span></td>'
             f'<td>{escape(row["target_label"])}</td>'
             f'<td title="{escape(row["dataset_label"])}">{escape(row["dataset_label"])}</td>'
-            f"{metric_cells}{missing_cells}"
+            f"{metric_cells}"
             f'<td class="col-train nowrap">{escape(row["training_time"])}</td>'
             "</tr>"
         )

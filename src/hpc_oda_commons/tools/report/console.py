@@ -18,7 +18,7 @@ def render_leaderboard_console(
     *,
     console: Console | None = None,
 ) -> None:
-    console = console or Console(width=120)
+    console = console or Console()
     entries = leaderboard.get("entries", [])
     rows, metric_names, _bests = prepare_leaderboard_rows(entries)
 
