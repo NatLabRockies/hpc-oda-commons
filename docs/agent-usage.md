@@ -60,6 +60,9 @@ v0.1 models:
 - `model.job_runtime_baseline` -- mean predictor (supports fixed and rolling splits)
 - `model.job_runtime_xgboost` -- XGBoost with OHE+SVD preprocessing (rolling splits)
 - `model.job_runtime_tfidf_knn` -- TF-IDF text vectorization + kNN regression (rolling splits)
+- `model.job_runtime_random_forest` -- Random Forest, reuses the XGBoost OHE+SVD preprocessing (rolling splits)
+- `model.job_runtime_mlp` -- feed-forward neural network, reuses the XGBoost preprocessing (rolling splits)
+- `model.job_power_uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split)
 
 To create a custom recipe, copy a bundled one and modify the dataset path, split parameters, or model selection:
 ```bash
