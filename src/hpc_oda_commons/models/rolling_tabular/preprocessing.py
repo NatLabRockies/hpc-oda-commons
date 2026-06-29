@@ -443,7 +443,7 @@ def build_preprocessing_diagnostics(
     )
 
     return {
-        "analysis_version": "job_runtime_xgboost.preprocessing.v0.1.0",
+        "analysis_version": "rolling_tabular.preprocessing.v0.1.0",
         "row_count": len(rows),
         "library_versions": _library_versions(),
         "categorical_profiles": {

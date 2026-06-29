@@ -32,7 +32,7 @@ from hpc_oda_commons.models.job_runtime_xgboost.model import (
     JobRuntimeXGBoostConfig,
     JobRuntimeXGBoostModel,
 )
-from hpc_oda_commons.models.job_runtime_xgboost.split import (
+from hpc_oda_commons.models.rolling_tabular.split import (
     build_rolling_splits,
     materialize_split_rows,
 )
