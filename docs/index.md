@@ -10,11 +10,13 @@
 
 **I want to understand results** -- [Interpreting Results](how-to/interpret-results.md)
 
-**I want to contribute** -- [Contributing](how-to/contribute.md) | [Add a Model](how-to/add-model.md)
+**I want to contribute** -- [Contributing](../CONTRIBUTING.md) | [Add a Model](how-to/add-model.md)
+
+**I'm an AI agent** -- [Agent Guide](../CLAUDE.md) (routes to [usage](agent-usage.md) or development)
 
 **I need a reference** -- [CLI Reference](reference/cli.md) | [Recipes](reference/recipes.md) | [Schema Versions](reference/schema-versions.md)
 
-**I want to understand the design** -- [Benchmarks](concepts/benchmarks.md)
+**I want to understand the design** -- [Architecture](architecture.md) | [Benchmarks](concepts/benchmarks.md)
 
 ## 10-Minute Workflow
 
