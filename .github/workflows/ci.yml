@@ -2,8 +2,14 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
+
+# Avoid running CI twice for the same commit (once for the branch push and
+# once for the PR), and cancel superseded runs when a PR branch is updated.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
