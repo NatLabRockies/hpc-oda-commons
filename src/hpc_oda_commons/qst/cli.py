@@ -686,6 +686,18 @@ def benchmark(
     table_path = Path(table_path_str) if table_path_str else None
 
     if table_path is None or not table_path.exists():
+        # The synthetic fallback only provides job-runtime data (runtime_seconds).
+        # For any other problem domain it would silently substitute a dataset that
+        # lacks the recipe's target column, surfacing later as a confusing
+        # "No rows with a finite target value" error. Fail clearly instead.
+        problem_domain = recipe_payload.get("problem_domain", []) or []
+        if "job-runtime-prediction" not in problem_domain:
+            raise typer.BadParameter(
+                f"dataset table not found at {table_path_str!r}; the synthetic "
+                "fallback only provides job-runtime data (runtime_seconds), which "
+                f"does not satisfy problem_domain={problem_domain}. Provide the "
+                "dataset before running this recipe."
+            )
         ds_dir = root / ".hpc_oda" / "cache" / "datasets" / "synthetic_job_runtime_tiny"
         table_path, _meta = generate_tiny_runtime_dataset(ds_dir)
         if verbose:

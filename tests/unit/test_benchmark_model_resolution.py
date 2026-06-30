@@ -621,3 +621,46 @@ def test_benchmark_overwrite_guard(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         overwrite=True,
     )
     cli.benchmark(recipe_path)  # overwrite true -> proceeds without raising
+
+
+def test_benchmark_missing_dataset_no_synthetic_fallback_for_non_runtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A non-runtime recipe with a missing dataset must error, not silently fall
+    back to the synthetic job-runtime dataset (which lacks the recipe's target)."""
+    monkeypatch.chdir(tmp_path)
+
+    recipe_path = tmp_path / "power.yml"
+    recipe_path.write_text(
+        "\n".join(
+            [
+                "recipe_id: recipe.test.power_missing",
+                "problem_domain:",
+                "  - job-power-prediction",
+                "schema_version: oda.job.v0.1.0",
+                "dataset:",
+                "  id: test_dataset",
+                "  table_path: data/does_not_exist.parquet",
+                "model:",
+                "  id: model.job_power_uopc",
+                '  version: "0.1.0"',
+                "metrics:",
+                "  - name: mae",
+                "    target: maxpcon",
+                "  - name: rmse",
+                "    target: maxpcon",
+                "split:",
+                "  method: fixed",
+                "  train_fraction: 0.8",
+                "  seed: 42",
+                "run:",
+                "  output_dir: runs",
+                "  overwrite: false",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(typer.BadParameter, match="synthetic fallback"):
+        cli.benchmark(recipe_path)
