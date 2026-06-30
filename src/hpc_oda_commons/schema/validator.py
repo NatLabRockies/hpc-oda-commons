@@ -30,14 +30,19 @@ _EXPECTED_TIMESTAMP_TYPE = pa.timestamp("us", tz="UTC")
 
 
 def collect_job_table_type_issues(table: pa.Table) -> list[str]:
-    """Structural type check for the canonical job table's timestamp columns."""
+    """Structural type check for the canonical job table's timestamp columns.
+
+    The canonical type is timestamp(us, tz=UTC); the unit is pinned so accidental
+    drift (e.g. a producer emitting seconds or nanoseconds) is caught, not just
+    the string-vs-timestamp case.
+    """
     issues: list[str] = []
     for column in _JOB_TIMESTAMP_COLUMNS:
         if column not in table.column_names:
             continue
         actual = table.schema.field(column).type
-        if not (pa.types.is_timestamp(actual) and actual.tz is not None):
-            issues.append(f"column '{column}': expected timestamp(tz=UTC), got {actual}")
+        if not (pa.types.is_timestamp(actual) and actual.tz is not None and actual.unit == "us"):
+            issues.append(f"column '{column}': expected timestamp(us, tz=UTC), got {actual}")
     return issues
 
 
