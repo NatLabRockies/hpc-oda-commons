@@ -172,8 +172,46 @@ _MEMORY_FACTORS: dict[str, float] = {
 }
 
 
+# Upper-cased SLURM memory unit factors (MiB), mirroring _SLURM_MEM_UNIT_TO_MIB.
+_SLURM_VEC_FACTORS: dict[str, float] = {
+    "K": 1.0 / 1024.0,
+    "M": 1.0,
+    "G": 1024.0,
+    "T": 1024.0**2,
+    "P": 1024.0**3,
+    "": 1.0,
+}
+
+
 def _is_numeric(arrow_type: pa.DataType) -> bool:
     return pa.types.is_integer(arrow_type) or pa.types.is_floating(arrow_type)
+
+
+def _memory_slurm_column(col: pa.Array) -> pa.Array:
+    """Vectorized equivalent of ``_memory_slurm_to_mb`` over a whole string column.
+
+    Matches the element-wise helper on every well-formed input (incl. leading/
+    trailing dots, lowercase units, surrounding whitespace, and empty/non-matching
+    values → null). The one intentional difference: a malformed multi-dot value
+    like ``"1.2.3G"`` becomes null here, whereas the element-wise helper crashes
+    with ValueError on it (a latent bug this path also fixes).
+    """
+    text = pc.utf8_trim_whitespace(pc.cast(col, pa.string()))
+    parts = pc.extract_regex(text, pattern=r"^(?P<num>[\d.]+)(?P<unit>[KMGTPkmgtp]?)$")
+    num = pc.struct_field(parts, "num")
+    unit = pc.utf8_upper(pc.fill_null(pc.struct_field(parts, "unit"), ""))
+    # float() accepts only values with <=1 dot and >=1 digit; null the rest so the
+    # subsequent cast cannot raise (these are exactly the inputs the helper crashes on).
+    parseable = pc.and_(
+        pc.less_equal(pc.count_substring(num, "."), 1),
+        pc.match_substring_regex(num, "[0-9]"),
+    )
+    num_f = pc.cast(pc.if_else(parseable, num, pa.scalar(None, pa.string())), pa.float64())
+    factor: Any = None
+    for key, val in _SLURM_VEC_FACTORS.items():
+        cond = pc.equal(unit, key)
+        factor = pc.if_else(cond, val, factor) if factor is not None else pc.if_else(cond, val, 1.0)
+    return pc.multiply(num_f, factor)
 
 
 def _transform_out_type(transform: dict[str, Any] | None) -> pa.DataType | None:
@@ -217,8 +255,10 @@ def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Arr
         if pa.types.is_integer(col.type):
             ts = pc.cast(col, pa.timestamp("s", tz="UTC"))
             return pc.strftime(ts, format="%Y-%m-%dT%H:%M:%SZ")
+    elif ttype == "memory_slurm" and pa.types.is_string(col.type):
+        return _memory_slurm_column(col)
 
-    # Element-wise fallback: iso8601, hh:mm:ss, epoch_ms/us, memory_slurm,
+    # Element-wise fallback: iso8601, hh:mm:ss, epoch_ms/us,
     # hash_identifier, non-numeric sources, or unrecognized transforms.
     values = [_apply_transform(v, transform) for v in col.to_pylist()]
     return pa.array(values, type=_transform_out_type(transform) or col.type)
