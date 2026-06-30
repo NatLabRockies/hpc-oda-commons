@@ -12,28 +12,35 @@ from hpc_oda_commons.models.job_runtime_mlp.model import (
 pytest.importorskip("sklearn")
 
 
+def _dt(_s: str):
+    """Parse an ISO-8601 Z timestamp to a tz-aware UTC datetime (v0.2 fixtures)."""
+    from datetime import datetime
+
+    return datetime.fromisoformat(_s.replace("Z", "+00:00"))
+
+
 def test_mlp_evaluate_returns_requested_metrics() -> None:
     rows = [
         {
             "job_id": 1,
-            "submit_time": "2026-01-01T00:05:00Z",
-            "end_time": "2026-01-01T00:20:00Z",
+            "submit_time": _dt("2026-01-01T00:05:00Z"),
+            "end_time": _dt("2026-01-01T00:20:00Z"),
             "runtime_seconds": 840.0,
             "partition": "debug",
             "allocated_cpus": 2,
         },
         {
             "job_id": 2,
-            "submit_time": "2026-01-01T01:10:00Z",
-            "end_time": "2026-01-01T01:30:00Z",
+            "submit_time": _dt("2026-01-01T01:10:00Z"),
+            "end_time": _dt("2026-01-01T01:30:00Z"),
             "runtime_seconds": 1080.0,
             "partition": "compute",
             "allocated_cpus": 4,
         },
         {
             "job_id": 3,
-            "submit_time": "2026-01-01T02:15:00Z",
-            "end_time": "2026-01-01T02:33:00Z",
+            "submit_time": _dt("2026-01-01T02:15:00Z"),
+            "end_time": _dt("2026-01-01T02:33:00Z"),
             "runtime_seconds": 1020.0,
             "partition": "debug",
             "allocated_cpus": 2,

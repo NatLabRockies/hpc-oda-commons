@@ -10,8 +10,15 @@ from hpc_oda_commons.models.job_runtime_tfidf_knn.model import (
 )
 
 
-def _iso(dt: datetime) -> str:
-    return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+def _dt(_s: str):
+    """Parse an ISO-8601 Z timestamp to a tz-aware UTC datetime (v0.2 fixtures)."""
+    from datetime import datetime
+
+    return datetime.fromisoformat(_s.replace("Z", "+00:00"))
+
+
+def _iso(dt: datetime) -> datetime:
+    return dt.astimezone(timezone.utc)
 
 
 def _sample_rows() -> list[dict[str, object]]:
@@ -73,15 +80,15 @@ def test_evaluate_raises_when_no_scored_predictions() -> None:
     rows = [
         {
             "job_id": 1,
-            "submit_time": "2026-01-01T00:00:00Z",
-            "end_time": "2026-01-01T00:10:00Z",
+            "submit_time": _dt("2026-01-01T00:00:00Z"),
+            "end_time": _dt("2026-01-01T00:10:00Z"),
             "partition": "debug",
             "runtime_seconds": None,
         },
         {
             "job_id": 2,
-            "submit_time": "2026-01-01T01:00:00Z",
-            "end_time": "2026-01-01T01:10:00Z",
+            "submit_time": _dt("2026-01-01T01:00:00Z"),
+            "end_time": _dt("2026-01-01T01:10:00Z"),
             "partition": "compute",
             "runtime_seconds": None,
         },

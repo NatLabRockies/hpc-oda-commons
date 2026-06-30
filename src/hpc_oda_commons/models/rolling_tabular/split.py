@@ -10,16 +10,14 @@ T = TypeVar("T")
 
 
 def _to_utc(value: Any) -> datetime | None:
-    if value is None or value == "":
+    # v0.2 canonical job tables store timestamps as Arrow timestamp(tz=UTC), so
+    # rows materialize as tz-aware datetimes. Non-datetimes (incl. legacy ISO
+    # strings) are not supported and are treated as missing.
+    if not isinstance(value, datetime):
         return None
-    text = str(value)
-    try:
-        dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 def _to_iso_z(dt: datetime) -> str:

@@ -117,7 +117,7 @@ def test_dod_3_ingest_slurmctld_creates_schema_valid_artifacts(
     missing = required_cols - cols
     assert not missing, f"Missing required columns in {parquet_path}: {sorted(missing)}"
 
-    job_schema = load_schema("oda.job.v0.1.0")
+    job_schema = load_schema("oda.job.v0.2.0")
     first_row = table.slice(0, 1).to_pylist()[0]
     _validate_json_against_schema(first_row, job_schema)
 

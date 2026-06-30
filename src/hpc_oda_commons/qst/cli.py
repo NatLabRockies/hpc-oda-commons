@@ -452,7 +452,7 @@ def run_baseline() -> None:
     integrity = check_integrity(project_root=root)
 
     prov = build_provenance(
-        input_schema="oda.job.v0.1.0",
+        input_schema="oda.job.v0.2.0",
         result_schema="oda.result.v0.1.0",
         inputs=[table_path],
         project_root=root,
@@ -474,7 +474,7 @@ def run_baseline() -> None:
         "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
         "dataset": {
             "id": "synthetic_job_runtime_tiny",
-            "schema_version": "oda.job.v0.1.0",
+            "schema_version": "oda.job.v0.2.0",
             "hash": ds_hash,
         },
         "notes": "Offline baseline demo run (v0.1).",
@@ -492,7 +492,7 @@ def run_baseline() -> None:
 @ingest_app.command("slurmctld")
 def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
     """
-    Ingest slurmctld log into canonical oda.job.v0.1.0 Parquet + manifest.
+    Ingest slurmctld log into canonical oda.job.v0.2.0 Parquet + manifest.
     """
     root = Path.cwd()
     _ensure_dirs(root)
@@ -510,7 +510,7 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
     report_path = parquet_path.with_suffix(".parquet.quality.json")
     report = validate_parquet_with_quality(
         parquet_path,
-        schema_id="oda.job.v0.1.0",
+        schema_id="oda.job.v0.2.0",
         sample=10,
         strict=False,
         report_path=report_path,
@@ -518,7 +518,7 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
     _print_validation_issues(report)
 
     prov = build_provenance(
-        input_schema="oda.job.v0.1.0",
+        input_schema="oda.job.v0.2.0",
         result_schema="oda.result.v0.1.0",
         inputs=[path, parquet_path],
         project_root=root,
@@ -526,7 +526,7 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
     )
 
     manifest = new_manifest(
-        input_schema_version="oda.job.v0.1.0",
+        input_schema_version="oda.job.v0.2.0",
         adapter={"id": adapter.metadata.id, "version": adapter.metadata.version},
         inputs=[{"path": str(path)}],
         artifact={
@@ -564,7 +564,7 @@ def ingest_jobs_parquet(
     ] = True,
 ) -> None:
     """
-    Ingest a jobs Parquet export into canonical oda.job.v0.1.0 artifacts.
+    Ingest a jobs Parquet export into canonical oda.job.v0.2.0 artifacts.
     """
     root = Path.cwd()
     _ensure_dirs(root)
@@ -621,7 +621,7 @@ def ingest_jobs_parquet(
     report_path = parquet_path.with_suffix(".parquet.quality.json")
     report = validate_parquet_with_quality(
         parquet_path,
-        schema_id="oda.job.v0.1.0",
+        schema_id="oda.job.v0.2.0",
         sample=10,
         strict=False,
         report_path=report_path,
@@ -629,7 +629,7 @@ def ingest_jobs_parquet(
     _print_validation_issues(report)
 
     prov = build_provenance(
-        input_schema="oda.job.v0.1.0",
+        input_schema="oda.job.v0.2.0",
         result_schema="oda.result.v0.1.0",
         inputs=[path, parquet_path, mapping],
         project_root=root,
@@ -637,7 +637,7 @@ def ingest_jobs_parquet(
     )
 
     manifest = new_manifest(
-        input_schema_version="oda.job.v0.1.0",
+        input_schema_version="oda.job.v0.2.0",
         adapter={"id": "adapter.jobs_parquet", "version": "0.1.0"},
         inputs=[{"path": str(path)}],
         artifact={
@@ -679,7 +679,7 @@ def benchmark(
 
     recipe_payload = _load_recipe(recipe)
     recipe_id = str(recipe_payload.get("recipe_id", "recipe.unknown"))
-    input_schema = str(recipe_payload.get("schema_version", "oda.job.v0.1.0"))
+    input_schema = str(recipe_payload.get("schema_version", "oda.job.v0.2.0"))
 
     dataset = recipe_payload.get("dataset", {}) or {}
     table_path_str = dataset.get("table_path")
@@ -910,7 +910,7 @@ def analyze_my_data(
     metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
 
     prov = build_provenance(
-        input_schema="oda.job.v0.1.0",
+        input_schema="oda.job.v0.2.0",
         result_schema="oda.result.v0.1.0",
         inputs=[data_path],
         project_root=root,
@@ -927,7 +927,7 @@ def analyze_my_data(
         "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
         "dataset": {
             "id": str(manifest_path) if manifest_path.exists() else str(data_path),
-            "schema_version": "oda.job.v0.1.0",
+            "schema_version": "oda.job.v0.2.0",
             "hash": ds_hash,
         },
         "metrics": metrics,
@@ -954,7 +954,7 @@ def validate(path: Path) -> None:
     Validate artifacts (v0.1):
     - If path is a result bundle dir, validate result.json against schema.
     - If path is a manifest.json, validate it against manifest schema.
-    - If path is a parquet file, validate first rows as oda.job.v0.1.0.
+    - If path is a parquet file, validate first rows as oda.job.v0.2.0.
     """
     if not path.exists():
         raise typer.BadParameter(f"Path not found: {path}")
@@ -976,7 +976,7 @@ def validate(path: Path) -> None:
     if path.is_file() and path.suffix == ".parquet":
         report_path = path.with_suffix(path.suffix + ".quality.json")
         report = validate_parquet_with_quality(
-            path, schema_id="oda.job.v0.1.0", report_path=report_path
+            path, schema_id="oda.job.v0.2.0", report_path=report_path
         )
         console.print(f"[green]Valid parquet rows[/green]: {path}")
         console.print(

@@ -10,7 +10,7 @@ recipe_id: recipe.job_power.uopc_fugaku_maxpcon
 problem_domain:
   - job-power-prediction
 
-schema_version: oda.job.v0.1.0
+schema_version: oda.job.v0.2.0
 
 dataset:
   id: fugaku_24_04
