@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pyarrow as pa
@@ -72,7 +73,7 @@ def test_apply_mapping_spec_derives_runtime(tmp_path: Path) -> None:
     rows = table.to_pylist()
     assert rows[0]["job_id"] == 1
     assert rows[0]["runtime_seconds"] == 300.0
-    assert rows[0]["submit_time"].endswith("Z")
+    assert rows[0]["submit_time"] == datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
     assert rows[0]["user"] != "alice"
 
 
@@ -197,8 +198,8 @@ def test_apply_mapping_spec_accepts_space_separated_timestamp_with_short_tz(tmp_
 
     table = pq.read_table(out_path)
     out_rows = table.to_pylist()
-    assert out_rows[0]["start_time"].endswith("Z")
-    assert out_rows[0]["end_time"].endswith("Z")
+    assert out_rows[0]["start_time"] == datetime(2024, 4, 6, 17, 28, 25, tzinfo=timezone.utc)
+    assert out_rows[0]["end_time"] == datetime(2024, 4, 6, 17, 33, 25, tzinfo=timezone.utc)
 
 
 def test_apply_mapping_spec_omits_optional_null_fields(tmp_path: Path) -> None:

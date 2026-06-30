@@ -11,6 +11,7 @@ from hpc_oda_commons.registry.snapshot import snapshot_resource_path
 def test_packaged_schemas_load() -> None:
     for schema_id in (
         "oda.job.v0.1.0",
+        "oda.job.v0.2.0",
         "oda.result.v0.1.0",
         "oda.registry.v0.1.0",
         "oda.recipe.v0.1.0",

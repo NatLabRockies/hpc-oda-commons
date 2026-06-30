@@ -57,8 +57,8 @@ METRIC_DEFS = [
 ]
 
 
-def _iso(dt: datetime) -> str:
-    return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+def _iso(dt: datetime) -> datetime:
+    return dt.astimezone(timezone.utc)
 
 
 def _regression_rows() -> list[dict[str, object]]:

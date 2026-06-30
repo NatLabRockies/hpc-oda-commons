@@ -9,7 +9,7 @@
 recipe_id: recipe.job_runtime.mlp_rolling
 problem_domain:
   - job-runtime-prediction
-schema_version: oda.job.v0.1.0
+schema_version: oda.job.v0.2.0
 
 dataset:
   id: fugaku_24_04

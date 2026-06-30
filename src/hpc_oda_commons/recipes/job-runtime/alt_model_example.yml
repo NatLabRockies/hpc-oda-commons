@@ -2,7 +2,7 @@
 recipe_id: recipe.job_runtime.alt_model_example
 problem_domain:
   - job-runtime-prediction
-schema_version: oda.job.v0.1.0
+schema_version: oda.job.v0.2.0
 dataset:
   id: hpc_oda_commons/datasets/synthetic/job-runtime/tiny
   table_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet

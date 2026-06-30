@@ -14,11 +14,10 @@ _ALLOC_RE = re.compile(
 _DONE_RE = re.compile(r"_job_complete:\s+JobId=(?P<job_id>\d+)\s+done")
 
 
-def _parse_ts(ts: str) -> str:
+def _parse_ts(ts: str) -> datetime:
     # Fixture uses e.g. 2026-01-01T00:00:00.000 (no timezone). Treat as UTC.
-    dt = datetime.fromisoformat(ts)
-    dt = dt.replace(tzinfo=timezone.utc)
-    return dt.isoformat().replace("+00:00", "Z")
+    # v0.2 canonical job tables store timestamps as native tz-aware datetimes.
+    return datetime.fromisoformat(ts).replace(tzinfo=timezone.utc)
 
 
 SLURMCTLD_METADATA = AdapterMetadata(
@@ -26,7 +25,7 @@ SLURMCTLD_METADATA = AdapterMetadata(
     name="slurmctld log parser",
     version="0.1.0",
     input_schema_version=None,
-    output_schema_version="oda.job.v0.1.0",
+    output_schema_version="oda.job.v0.2.0",
     supported_sources=("slurmctld",),
 )
 
@@ -85,9 +84,7 @@ def parse_slurmctld_log(path: Path) -> list[dict[str, Any]]:
         end = rec.get("end_time")
         runtime = None
         if start and end:
-            sdt = datetime.fromisoformat(start.replace("Z", "+00:00"))
-            edt = datetime.fromisoformat(end.replace("Z", "+00:00"))
-            runtime = max(0.0, (edt - sdt).total_seconds())
+            runtime = max(0.0, (end - start).total_seconds())
         else:
             continue
 

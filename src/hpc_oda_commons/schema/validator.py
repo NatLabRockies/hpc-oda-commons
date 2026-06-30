@@ -4,9 +4,11 @@ JSONSchema validation + additional semantic checks glue.
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 from jsonschema import Draft202012Validator
 
@@ -18,7 +20,25 @@ from hpc_oda_commons.kernel.validate import (
 )
 from hpc_oda_commons.schema.quality_rules import build_quality_report
 
-JOB_SCHEMA_ID = "oda.job.v0.1.0"
+JOB_SCHEMA_ID = "oda.job.v0.2.0"
+
+# v0.2 canonical job tables store timestamps as native Arrow timestamp(us, tz=UTC).
+# JSON Schema cannot express that, so the column types are validated structurally
+# here rather than as JSON strings.
+_JOB_TIMESTAMP_COLUMNS = ("start_time", "end_time", "submit_time")
+_EXPECTED_TIMESTAMP_TYPE = pa.timestamp("us", tz="UTC")
+
+
+def collect_job_table_type_issues(table: pa.Table) -> list[str]:
+    """Structural type check for the canonical job table's timestamp columns."""
+    issues: list[str] = []
+    for column in _JOB_TIMESTAMP_COLUMNS:
+        if column not in table.column_names:
+            continue
+        actual = table.schema.field(column).type
+        if not (pa.types.is_timestamp(actual) and actual.tz is not None):
+            issues.append(f"column '{column}': expected timestamp(tz=UTC), got {actual}")
+    return issues
 
 
 def validate_rows(rows: list[dict[str, Any]], schema_id: str) -> None:
@@ -39,15 +59,11 @@ def validate_job_semantics(rows: list[dict[str, Any]]) -> list[str]:
 
         start = row.get("start_time")
         end = row.get("end_time")
-        if start and end:
-            from datetime import datetime
-
-            try:
-                sdt = datetime.fromisoformat(str(start).replace("Z", "+00:00"))
-                edt = datetime.fromisoformat(str(end).replace("Z", "+00:00"))
-                if sdt > edt:
+        if start is not None and end is not None:
+            if isinstance(start, datetime) and isinstance(end, datetime):
+                if start > end:
                     errors.append(f"row {idx}: start_time is after end_time")
-            except ValueError:
+            else:
                 errors.append(f"row {idx}: invalid timestamp format")
     return errors
 
@@ -126,13 +142,9 @@ def collect_job_semantic_issues(
 
         start = row.get("start_time")
         end = row.get("end_time")
-        if start and end:
-            from datetime import datetime
-
-            try:
-                sdt = datetime.fromisoformat(str(start).replace("Z", "+00:00"))
-                edt = datetime.fromisoformat(str(end).replace("Z", "+00:00"))
-                if sdt > edt:
+        if start is not None and end is not None:
+            if isinstance(start, datetime) and isinstance(end, datetime):
+                if start > end:
                     _append_issue_example(
                         issues,
                         issue="start_time is after end_time",
@@ -140,7 +152,7 @@ def collect_job_semantic_issues(
                         row=row,
                         example_limit=example_limit,
                     )
-            except ValueError:
+            else:
                 _append_issue_example(
                     issues,
                     issue="invalid timestamp format",
@@ -195,11 +207,18 @@ def validate_parquet_with_quality(
         example_limit=error_example_limit,
     )
     semantic_issue_map: dict[str, dict[str, Any]] = {}
+    type_issues: list[str] = []
     if schema_id == JOB_SCHEMA_ID:
         semantic_issue_map = collect_job_semantic_issues(
             rows,
             example_limit=error_example_limit,
         )
+        type_issues = collect_job_table_type_issues(table)
+
+    for issue in type_issues:
+        schema_issue_map.setdefault(issue, {"issue": issue, "count": 0, "examples": []})[
+            "count"
+        ] += 1
 
     schema_issues = _summarize_issues(schema_issue_map)
     semantic_issues = _summarize_issues(semantic_issue_map)
