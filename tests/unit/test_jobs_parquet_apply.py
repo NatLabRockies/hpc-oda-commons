@@ -644,3 +644,68 @@ def test_apply_epoch_s_yields_correct_utc_instant(tmp_path: Path) -> None:
     out = table.to_pylist()
     assert out[0]["submit_time"] == datetime.fromtimestamp(epoch, tz=timezone.utc)
     assert out[0]["runtime_seconds"] == 300.0
+
+
+def _timestamp_mapping():
+    return new_mapping_spec(
+        kind="jobs_parquet",
+        output_schema_version="oda.job.v0.2.0",
+        fields={
+            "job_id": {"source": "JobID"},
+            "submit_time": {
+                "source": "Sub",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "start_time": {"source": "St", "transform": {"type": "timestamp", "format": "iso8601"}},
+            "end_time": {"source": "En", "transform": {"type": "timestamp", "format": "iso8601"}},
+            "runtime_seconds": {"derive": "end_time - start_time"},
+        },
+    )
+
+
+def _ts_rows(sub_null_idx: set[int]) -> list[dict]:
+    return [
+        {
+            "JobID": i,
+            "Sub": None if i in sub_null_idx else f"2026-01-01T{i:02d}:00:00Z",
+            "St": f"2026-01-01T{i:02d}:01:00Z",
+            "En": f"2026-01-01T{i:02d}:30:00Z",
+        }
+        for i in range(6)
+    ]
+
+
+def test_apply_multibatch_null_timestamp_column_concats_cleanly(tmp_path: Path) -> None:
+    """An optional timestamp column that is null across a whole batch must concat
+    as a typed timestamp column (not a null-type column), preserving values+nulls."""
+    inp = tmp_path / "in.parquet"
+    pq.write_table(pa.Table.from_pylist(_ts_rows({2, 3})), inp)  # rows 2,3 = whole middle batch
+    mp = tmp_path / "map.yml"
+    write_mapping_spec(mp, _timestamp_mapping(), validate=True)
+
+    summary = apply_mapping_spec(inp, mp, tmp_path / "out.parquet", batch_size=2)  # 3 batches
+    assert summary["rows_kept"] == 6
+
+    table = pq.read_table(tmp_path / "out.parquet")
+    field = table.schema.field("submit_time").type
+    assert pa.types.is_timestamp(field) and field.unit == "us" and field.tz is not None
+    vals = table.column("submit_time").to_pylist()
+    assert vals[0] == datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
+    assert vals[2] is None and vals[3] is None  # the all-null middle batch
+    assert vals[4] == datetime(2026, 1, 1, 4, 0, tzinfo=timezone.utc)
+
+
+def test_apply_all_null_optional_timestamp_column_dropped(tmp_path: Path) -> None:
+    """An optional timestamp column empty in every kept row is dropped, like any
+    other optional column (a typed-null column would fail strict validation)."""
+    inp = tmp_path / "in.parquet"
+    pq.write_table(
+        pa.Table.from_pylist(_ts_rows(set(range(6)))), inp
+    )  # submit_time null everywhere
+    mp = tmp_path / "map.yml"
+    write_mapping_spec(mp, _timestamp_mapping(), validate=True)
+
+    apply_mapping_spec(inp, mp, tmp_path / "out.parquet", batch_size=2)
+    table = pq.read_table(tmp_path / "out.parquet")
+    assert "submit_time" not in table.column_names
+    assert pa.types.is_timestamp(table.schema.field("start_time").type)
