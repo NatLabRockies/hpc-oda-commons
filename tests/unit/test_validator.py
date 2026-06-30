@@ -213,3 +213,27 @@ def test_validate_parquet_with_quality_non_strict_serializes_datetime_examples(
     first_schema = payload["validation"]["schema_errors"][0]
     assert first_schema["examples"]
     assert isinstance(first_schema["examples"][0]["row"]["start_time"], str)
+
+
+def test_collect_job_table_type_issues_pins_unit_and_type() -> None:
+    import pyarrow as pa
+
+    from hpc_oda_commons.schema.validator import collect_job_table_type_issues
+
+    us = pa.timestamp("us", tz="UTC")
+    # canonical timestamp(us, tz=UTC) -> no issues
+    good = pa.table({"start_time": pa.array([0], type=us), "end_time": pa.array([1], type=us)})
+    assert collect_job_table_type_issues(good) == []
+
+    # wrong unit (seconds) is drift and must be flagged
+    bad_unit = pa.table(
+        {
+            "start_time": pa.array([0], type=pa.timestamp("s", tz="UTC")),
+            "end_time": pa.array([1], type=us),
+        }
+    )
+    assert any("start_time" in issue for issue in collect_job_table_type_issues(bad_unit))
+
+    # legacy v0.1 string timestamps must be flagged
+    v1 = pa.table({"start_time": pa.array(["2026-01-01T00:00:00Z"])})
+    assert collect_job_table_type_issues(v1)
