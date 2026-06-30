@@ -599,3 +599,48 @@ def test_apply_memory_slurm_malformed_becomes_null_not_crash(tmp_path: Path) -> 
     out = pq.read_table(tmp_path / "out.parquet").to_pylist()
     assert out[0]["memory_mb"] is None
     assert out[1]["memory_mb"] == 8192.0
+
+
+def test_apply_epoch_s_yields_correct_utc_instant(tmp_path: Path) -> None:
+    """The epoch_s transform must produce the correct tz-aware datetime instant,
+    stored as an Arrow timestamp column (not an ISO string)."""
+    epoch = 1_700_000_000
+    rows = [
+        {
+            "JobID": 1,
+            "Sub": epoch,
+            "StartTime": "2026-01-01T00:00:00Z",
+            "EndTime": "2026-01-01T00:05:00Z",
+        }
+    ]
+    inp = tmp_path / "in.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), inp)
+    mapping = new_mapping_spec(
+        kind="jobs_parquet",
+        output_schema_version="oda.job.v0.2.0",
+        fields={
+            "job_id": {"source": "JobID"},
+            "submit_time": {
+                "source": "Sub",
+                "transform": {"type": "timestamp", "format": "epoch_s"},
+            },
+            "start_time": {
+                "source": "StartTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "end_time": {
+                "source": "EndTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "runtime_seconds": {"derive": "end_time - start_time"},
+        },
+    )
+    mp = tmp_path / "map.yml"
+    write_mapping_spec(mp, mapping, validate=True)
+
+    apply_mapping_spec(inp, mp, tmp_path / "out.parquet")
+    table = pq.read_table(tmp_path / "out.parquet")
+    assert pa.types.is_timestamp(table.schema.field("submit_time").type)
+    out = table.to_pylist()
+    assert out[0]["submit_time"] == datetime.fromtimestamp(epoch, tz=timezone.utc)
+    assert out[0]["runtime_seconds"] == 300.0
