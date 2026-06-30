@@ -62,7 +62,10 @@ from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaseline
 from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.info import info
 from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
-from hpc_oda_commons.schema.validator import validate_parquet_with_quality
+from hpc_oda_commons.schema.validator import (
+    collect_job_table_type_issues,
+    validate_parquet_with_quality,
+)
 from hpc_oda_commons.tools.report import (
     render_analysis_html,
     render_leaderboard_console,
@@ -711,6 +714,16 @@ def benchmark(
     import pyarrow.parquet as pq
 
     table = pq.read_table(table_path)
+    # Fail loudly on stale v0.1 (ISO-string) job tables instead of letting the
+    # missing native timestamps surface as a misleading downstream symptom.
+    timestamp_type_issues = collect_job_table_type_issues(table)
+    if timestamp_type_issues:
+        raise typer.BadParameter(
+            f"dataset at {table_path} has non-timestamp job-timestamp columns "
+            f"({'; '.join(timestamp_type_issues)}). This looks like oda.job v0.1 "
+            "(ISO-string timestamps); v0.2 requires native Arrow timestamp columns. "
+            "Re-ingest the data with the current version."
+        )
     rows = table.to_pylist()
 
     split = _normalize_split(recipe_payload)
