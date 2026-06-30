@@ -671,3 +671,36 @@ def test_benchmark_missing_dataset_no_synthetic_fallback_for_non_runtime(
 
     with pytest.raises(typer.BadParameter, match="synthetic fallback"):
         cli.benchmark(recipe_path)
+
+
+def test_benchmark_rejects_v0_1_string_timestamp_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stale v0.1 job table (ISO-string timestamps) must fail with a clear
+    version-mismatch error, not a misleading downstream 'no valid timestamps'."""
+    monkeypatch.chdir(tmp_path)
+
+    table_path = tmp_path / "jobs.parquet"
+    # v0.1-style rows: timestamps as ISO-8601 strings, not native Arrow timestamps.
+    rows = [
+        {
+            "job_id": i,
+            "submit_time": f"2026-01-01T{i:02d}:00:00Z",
+            "start_time": f"2026-01-01T{i:02d}:01:00Z",
+            "end_time": f"2026-01-01T{i:02d}:30:00Z",
+            "runtime_seconds": 1740.0,
+        }
+        for i in range(4)
+    ]
+    pq.write_table(pa.Table.from_pylist(rows), table_path)
+
+    recipe_path = tmp_path / "rolling.yml"
+    _write_recipe(
+        recipe_path,
+        model_id="model.job_runtime_baseline",
+        split_block="\n".join(["  method: rolling", "  n_windows: 2", "  test_window_hours: 6"]),
+        table_path=table_path,
+    )
+
+    with pytest.raises(typer.BadParameter, match="oda.job v0.1"):
+        cli.benchmark(recipe_path)
