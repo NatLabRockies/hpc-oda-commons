@@ -542,3 +542,59 @@ def test_apply_keeps_optional_populated_in_later_rows(tmp_path: Path) -> None:
     assert "partition" in out[0]
     assert out[0]["partition"] is None  # empty "" emitted as null
     assert out[1]["partition"] == "compute"
+
+
+def _memory_slurm_mapping():
+    return new_mapping_spec(
+        kind="jobs_parquet",
+        output_schema_version="oda.job.v0.1.0",
+        fields={
+            "job_id": {"source": "JobID"},
+            "start_time": {
+                "source": "StartTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "end_time": {
+                "source": "EndTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "runtime_seconds": {"derive": "end_time - start_time"},
+            "memory_mb": {"source": "ReqMem", "transform": {"type": "memory_slurm"}},
+        },
+    )
+
+
+def _row(job_id: int, hour: int, reqmem) -> dict:
+    return {
+        "JobID": job_id,
+        "StartTime": f"2026-01-01T{hour:02d}:00:00Z",
+        "EndTime": f"2026-01-01T{hour:02d}:05:00Z",
+        "ReqMem": reqmem,
+    }
+
+
+def test_apply_memory_slurm_vectorized_values(tmp_path: Path) -> None:
+    rows = [_row(1, 0, "160G"), _row(2, 1, "  2g  "), _row(3, 2, "512K"), _row(4, 3, "4096")]
+    inp = tmp_path / "in.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), inp)
+    mp = tmp_path / "map.yml"
+    write_mapping_spec(mp, _memory_slurm_mapping(), validate=True)
+
+    apply_mapping_spec(inp, mp, tmp_path / "out.parquet")
+    out = pq.read_table(tmp_path / "out.parquet").to_pylist()
+    assert [r["memory_mb"] for r in out] == [163840.0, 2048.0, 0.5, 4096.0]
+
+
+def test_apply_memory_slurm_malformed_becomes_null_not_crash(tmp_path: Path) -> None:
+    """Behavior change vs prior code: a malformed multi-dot SLURM memory value
+    becomes null instead of crashing the whole ingest with ValueError."""
+    rows = [_row(1, 0, "1.2.3G"), _row(2, 1, "8G")]
+    inp = tmp_path / "in.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), inp)
+    mp = tmp_path / "map.yml"
+    write_mapping_spec(mp, _memory_slurm_mapping(), validate=True)
+
+    apply_mapping_spec(inp, mp, tmp_path / "out.parquet")  # must not raise
+    out = pq.read_table(tmp_path / "out.parquet").to_pylist()
+    assert out[0]["memory_mb"] is None
+    assert out[1]["memory_mb"] == 8192.0
