@@ -12,6 +12,13 @@ from hpc_oda_commons.models.job_runtime_xgboost.model import (
 )
 
 
+def _dt(_s: str):
+    """Parse an ISO-8601 Z timestamp to a tz-aware UTC datetime (v0.2 fixtures)."""
+    from datetime import datetime
+
+    return datetime.fromisoformat(_s.replace("Z", "+00:00"))
+
+
 def test_config_defaults() -> None:
     config = JobRuntimeXGBoostConfig()
     assert config.n_windows == 1000
@@ -63,12 +70,12 @@ def test_analyze_preprocessing_writes_diagnostics(tmp_path: Path) -> None:
 def test_build_split_plan() -> None:
     rows = [
         {
-            "submit_time": "2026-01-01T22:05:00Z",
-            "end_time": "2026-01-01T22:55:00Z",
+            "submit_time": _dt("2026-01-01T22:05:00Z"),
+            "end_time": _dt("2026-01-01T22:55:00Z"),
         },
         {
-            "submit_time": "2026-01-01T23:15:00Z",
-            "end_time": "2026-01-01T23:50:00Z",
+            "submit_time": _dt("2026-01-01T23:15:00Z"),
+            "end_time": _dt("2026-01-01T23:50:00Z"),
         },
     ]
     model = JobRuntimeXGBoostModel()
@@ -86,16 +93,16 @@ def test_build_split_plan() -> None:
 def test_build_split_plan_respects_training_lookback_override() -> None:
     rows = [
         {
-            "submit_time": "2025-10-15T10:00:00Z",
-            "end_time": "2025-10-15T11:00:00Z",
+            "submit_time": _dt("2025-10-15T10:00:00Z"),
+            "end_time": _dt("2025-10-15T11:00:00Z"),
         },
         {
-            "submit_time": "2025-12-31T22:05:00Z",
-            "end_time": "2025-12-31T22:30:00Z",
+            "submit_time": _dt("2025-12-31T22:05:00Z"),
+            "end_time": _dt("2025-12-31T22:30:00Z"),
         },
         {
-            "submit_time": "2026-01-01T00:05:00Z",
-            "end_time": "2026-01-01T00:10:00Z",
+            "submit_time": _dt("2026-01-01T00:05:00Z"),
+            "end_time": _dt("2026-01-01T00:10:00Z"),
         },
     ]
     model = JobRuntimeXGBoostModel()

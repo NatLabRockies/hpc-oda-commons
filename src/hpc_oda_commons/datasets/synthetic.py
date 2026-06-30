@@ -29,15 +29,9 @@ def tiny_dataset_is_rolling_compatible(table_path: Path) -> bool:
     submit_values = table.column("submit_time").to_pylist()
     hour_bins: set[str] = set()
     for value in submit_values:
-        if value in (None, ""):
+        if not isinstance(value, datetime):
             continue
-        text = str(value)
-        try:
-            dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
-        except ValueError:
-            continue
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+        dt = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
         hour_bins.add(
             dt.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
         )
@@ -73,9 +67,9 @@ def generate_tiny_runtime_dataset(out_dir: Path) -> tuple[Path, Path]:
         rows.append(
             {
                 "job_id": 1001 + i,
-                "submit_time": submit.isoformat().replace("+00:00", "Z"),
-                "start_time": start.isoformat().replace("+00:00", "Z"),
-                "end_time": end.isoformat().replace("+00:00", "Z"),
+                "submit_time": submit,
+                "start_time": start,
+                "end_time": end,
                 "runtime_seconds": runtime,
                 "allocated_cpus": int((i % 8) + 1),
                 "partition": "debug" if i % 2 == 0 else "compute",
@@ -85,7 +79,7 @@ def generate_tiny_runtime_dataset(out_dir: Path) -> tuple[Path, Path]:
     write_table_parquet(rows, table_path)
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     meta = {
-        "schema_version": "oda.job.v0.1.0",
+        "schema_version": "oda.job.v0.2.0",
         "generated_at": now_iso,
         "description": (
             "Deterministic tiny synthetic dataset for v0.1 job runtime prediction "

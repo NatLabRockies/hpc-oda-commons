@@ -34,8 +34,6 @@ def test_rolling_split_assignments_are_stable(tmp_path: Path) -> None:
     table_path, _ = generate_tiny_runtime_dataset(tmp_path / "ds")
     rows = pq.read_table(table_path).to_pylist()
 
-    splits = build_rolling_splits(
-        rows, n_windows=8, test_window_hours=6, training_lookback_days=2
-    )
+    splits = build_rolling_splits(rows, n_windows=8, test_window_hours=6, training_lookback_days=2)
     got = [(s.train_row_count, s.test_row_count, list(s.test_row_indices)) for s in splits]
     assert got == _EXPECTED

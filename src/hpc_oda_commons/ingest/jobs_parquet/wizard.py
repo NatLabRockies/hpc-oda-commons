@@ -279,7 +279,7 @@ def build_mapping_spec_interactive(
 
     return new_mapping_spec(
         kind="jobs_parquet",
-        output_schema_version="oda.job.v0.1.0",
+        output_schema_version="oda.job.v0.2.0",
         fields=fields,
         input=input_payload,
     )

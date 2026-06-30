@@ -12,7 +12,7 @@ def test_slurmctld_adapter_metadata() -> None:
     assert isinstance(adapter, SourceAdapter)
     assert isinstance(adapter.metadata, AdapterMetadata)
     assert adapter.metadata.id == "adapter.slurmctld"
-    assert adapter.metadata.output_schema_version == "oda.job.v0.1.0"
+    assert adapter.metadata.output_schema_version == "oda.job.v0.2.0"
     assert "slurmctld" in adapter.metadata.supported_sources
 
 

@@ -13,17 +13,15 @@ from hpc_oda_commons.kernel.artifacts.mapping_spec import read_mapping_spec
 from hpc_oda_commons.kernel.transformations import hash_identifier
 
 
-def _parse_timestamp(value: Any, fmt: str) -> str | None:
+def _parse_timestamp(value: Any, fmt: str) -> datetime | None:
+    """Parse a raw timestamp value into a tz-aware UTC datetime (v0.2 canonical
+    job tables store timestamps as Arrow timestamp(us, tz=UTC), not ISO strings)."""
     if value is None:
         return None
     if fmt == "iso8601":
         text = str(value).strip()
         if not text:
             return None
-
-        # Accept strict ISO-8601 (including trailing Z) as-is.
-        if text.endswith("Z"):
-            return text
 
         # Be permissive for common upstream exports:
         # - "YYYY-MM-DD HH:MM:SS+09"  (space separator, short offset)
@@ -38,19 +36,14 @@ def _parse_timestamp(value: Any, fmt: str) -> str | None:
 
         dt = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        else:
-            dt = dt.astimezone(timezone.utc)
-        return dt.isoformat().replace("+00:00", "Z")
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
     if fmt == "epoch_s":
-        dt = datetime.fromtimestamp(float(value), tz=timezone.utc)
-        return dt.isoformat().replace("+00:00", "Z")
+        return datetime.fromtimestamp(float(value), tz=timezone.utc)
     if fmt == "epoch_ms":
-        dt = datetime.fromtimestamp(float(value) / 1000.0, tz=timezone.utc)
-        return dt.isoformat().replace("+00:00", "Z")
+        return datetime.fromtimestamp(float(value) / 1000.0, tz=timezone.utc)
     if fmt == "epoch_us":
-        dt = datetime.fromtimestamp(float(value) / 1_000_000.0, tz=timezone.utc)
-        return dt.isoformat().replace("+00:00", "Z")
+        return datetime.fromtimestamp(float(value) / 1_000_000.0, tz=timezone.utc)
     raise ValueError(f"Unsupported timestamp format: {fmt}")
 
 
@@ -151,11 +144,9 @@ def _apply_transform(value: Any, transform: dict[str, Any] | None) -> Any:
 def _derive_runtime(row: dict[str, Any]) -> float | None:
     start = row.get("start_time")
     end = row.get("end_time")
-    if not start or not end:
+    if not isinstance(start, datetime) or not isinstance(end, datetime):
         return None
-    sdt = datetime.fromisoformat(str(start).replace("Z", "+00:00"))
-    edt = datetime.fromisoformat(str(end).replace("Z", "+00:00"))
-    runtime = (edt - sdt).total_seconds()
+    runtime = (end - start).total_seconds()
     return max(0.0, float(runtime))
 
 
@@ -222,7 +213,9 @@ def _transform_out_type(transform: dict[str, Any] | None) -> pa.DataType | None:
     ttype = transform.get("type")
     if ttype in ("duration", "memory", "memory_slurm"):
         return pa.float64()
-    if ttype in ("timestamp", "hash_identifier"):
+    if ttype == "timestamp":
+        return pa.timestamp("us", tz="UTC")
+    if ttype == "hash_identifier":
         return pa.string()
     return None
 
@@ -249,12 +242,10 @@ def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Arr
         if factor is not None and _is_numeric(col.type):
             return pc.multiply(pc.cast(col, pa.float64()), factor)
     elif ttype == "timestamp" and str(transform.get("format", "iso8601")) == "epoch_s":
-        # Integer epoch seconds format identically under strftime and the
-        # datetime helper (no sub-second component to drop). Non-integer epoch
-        # (or ms/us, which may carry sub-seconds) falls through to element-wise.
+        # Integer epoch seconds cast directly to the canonical timestamp type.
+        # Non-integer epoch (or ms/us) falls through to the element-wise helper.
         if pa.types.is_integer(col.type):
-            ts = pc.cast(col, pa.timestamp("s", tz="UTC"))
-            return pc.strftime(ts, format="%Y-%m-%dT%H:%M:%SZ")
+            return pc.cast(pc.cast(col, pa.timestamp("s", tz="UTC")), pa.timestamp("us", tz="UTC"))
     elif ttype == "memory_slurm" and pa.types.is_string(col.type):
         return _memory_slurm_column(col)
 

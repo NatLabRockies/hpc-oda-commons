@@ -63,6 +63,8 @@ def _end_time_sort_key(row: dict[str, Any], *, field: str) -> float:
     raw = row.get(field)
     if raw is None:
         return float("-inf")
+    if isinstance(raw, datetime):
+        return raw.timestamp()
     if isinstance(raw, (int, float)):
         return float(raw)
     text = str(raw).strip()

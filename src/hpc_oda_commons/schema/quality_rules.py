@@ -13,11 +13,11 @@ def _now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _parse_dt(value: str) -> datetime | None:
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return None
+def _parse_dt(value: Any) -> datetime | None:
+    # v0.2 canonical job tables carry tz-aware datetimes; anything else is "missing".
+    if isinstance(value, datetime):
+        return value
+    return None
 
 
 def compute_missingness(rows: list[dict[str, Any]]) -> dict[str, float]:
@@ -43,8 +43,8 @@ def compute_timestamp_issues(rows: list[dict[str, Any]]) -> int:
         end = row.get("end_time")
         if not start or not end:
             continue
-        sdt = _parse_dt(str(start))
-        edt = _parse_dt(str(end))
+        sdt = _parse_dt(start)
+        edt = _parse_dt(end)
         if sdt is None or edt is None:
             issues += 1
             continue
