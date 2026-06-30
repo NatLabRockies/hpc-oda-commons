@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from hpc_oda_commons.kernel.artifacts.mapping_spec import read_mapping_spec
@@ -158,6 +159,88 @@ def _derive_runtime(row: dict[str, Any]) -> float | None:
     return max(0.0, float(runtime))
 
 
+REQUIRED_FIELDS = ("job_id", "start_time", "end_time", "runtime_seconds")
+
+_MEMORY_FACTORS: dict[str, float] = {
+    "bytes": 1.0 / (1024.0 * 1024.0),
+    "kb": 1.0 / 1024.0,
+    "mb": 1.0,
+    "gb": 1024.0,
+    "kib": 1.0 / 1024.0,
+    "mib": 1.0,
+    "gib": 1024.0,
+}
+
+
+def _is_numeric(arrow_type: pa.DataType) -> bool:
+    return pa.types.is_integer(arrow_type) or pa.types.is_floating(arrow_type)
+
+
+def _transform_out_type(transform: dict[str, Any] | None) -> pa.DataType | None:
+    """Explicit output type for the element-wise fallback, so columns built from
+    all-null batches still concat with their typed siblings."""
+    if transform is None:
+        return None
+    ttype = transform.get("type")
+    if ttype in ("duration", "memory", "memory_slurm"):
+        return pa.float64()
+    if ttype in ("timestamp", "hash_identifier"):
+        return pa.string()
+    return None
+
+
+def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Array:
+    """Apply a transform to a whole column.
+
+    Uses native pyarrow.compute where it is both cheap and bit-for-bit identical
+    to the per-element helper; otherwise falls back to the element-wise helper
+    (column-at-a-time, no per-row dicts) to preserve exact behavior.
+    """
+    if transform is None:
+        return col
+
+    ttype = transform.get("type")
+    if ttype == "duration":
+        factor = {"seconds": 1.0, "minutes": 60.0, "hours": 3600.0}.get(
+            str(transform.get("unit", "seconds"))
+        )
+        if factor is not None and _is_numeric(col.type):
+            return pc.multiply(pc.cast(col, pa.float64()), factor)
+    elif ttype == "memory":
+        factor = _MEMORY_FACTORS.get(str(transform.get("unit", "mb")))
+        if factor is not None and _is_numeric(col.type):
+            return pc.multiply(pc.cast(col, pa.float64()), factor)
+    elif ttype == "timestamp" and str(transform.get("format", "iso8601")) == "epoch_s":
+        # Integer epoch seconds format identically under strftime and the
+        # datetime helper (no sub-second component to drop). Non-integer epoch
+        # (or ms/us, which may carry sub-seconds) falls through to element-wise.
+        if pa.types.is_integer(col.type):
+            ts = pc.cast(col, pa.timestamp("s", tz="UTC"))
+            return pc.strftime(ts, format="%Y-%m-%dT%H:%M:%SZ")
+
+    # Element-wise fallback: iso8601, hh:mm:ss, epoch_ms/us, memory_slurm,
+    # hash_identifier, non-numeric sources, or unrecognized transforms.
+    values = [_apply_transform(v, transform) for v in col.to_pylist()]
+    return pa.array(values, type=_transform_out_type(transform) or col.type)
+
+
+def _completeness_mask(table: pa.Table) -> Any:
+    """Boolean mask: True where every required field is present and non-empty."""
+    masks: list[Any] = []
+    for field in REQUIRED_FIELDS:
+        if field not in table.column_names:
+            return pa.array([False] * table.num_rows)
+        col = table.column(field)
+        valid = pc.is_valid(col)
+        if pa.types.is_string(col.type):
+            valid = pc.and_(valid, pc.not_equal(col, ""))
+        masks.append(pc.fill_null(valid, False))
+    mask = masks[0]
+    for other in masks[1:]:
+        mask = pc.and_(mask, other)
+    return mask
+
+
 def apply_mapping_spec(
     input_path: Path,
     mapping_path: Path,
@@ -170,67 +253,102 @@ def apply_mapping_spec(
     """
     Apply a mapping spec to a jobs Parquet export and write canonical ODA job Parquet.
     Returns a summary dict with counts.
+
+    Transforms run column-wise (vectorized where possible, else element-wise on a
+    single column) rather than row-at-a-time; output is identical to the prior
+    row-based implementation.
     """
     mapping = read_mapping_spec(mapping_path, validate=True)
     fields: dict[str, Any] = mapping.get("fields", {})
-    required = {"job_id", "start_time", "end_time", "runtime_seconds"}
+    derives_runtime = fields.get("runtime_seconds", {}).get("derive") == "end_time - start_time"
 
-    out_rows: list[dict[str, Any]] = []
+    # Fixed output column order, identical across batches so filtered tables concat.
+    out_order = list(fields.keys()) + [f for f in REQUIRED_FIELDS if f not in fields]
+    optional_fields = [f for f in out_order if f not in REQUIRED_FIELDS]
+
     total = 0
     kept = 0
     skipped = 0
     skipped_state_filter = 0
+    kept_tables: list[pa.Table] = []
 
     parquet = pq.ParquetFile(input_path)
     for batch in parquet.iter_batches(batch_size=batch_size):
         table = pa.Table.from_batches([batch])
-        for row in table.to_pylist():
-            total += 1
-            out_row: dict[str, Any] = {}
-            for field, spec in fields.items():
-                source = spec.get("source")
-                if source:
-                    value = row.get(source)
-                else:
-                    value = None
-                value = _apply_transform(value, spec.get("transform"))
-                out_row[field] = value
+        n = table.num_rows
+        total += n
 
-            if out_row.get("runtime_seconds") in (None, ""):
-                if fields.get("runtime_seconds", {}).get("derive") == "end_time - start_time":
-                    out_row["runtime_seconds"] = _derive_runtime(out_row)
+        columns: dict[str, pa.Array] = {}
+        for field in out_order:
+            spec = fields.get(field, {})
+            source = spec.get("source")
+            if source and source in table.column_names:
+                columns[field] = _transform_column(
+                    table.column(source).combine_chunks(), spec.get("transform")
+                )
+            else:
+                columns[field] = pa.nulls(n)
 
-            if state_allowlist is not None:
-                state_value = out_row.get("state")
-                if state_value is None or str(state_value) not in state_allowlist:
-                    skipped_state_filter += 1
-                    continue
+        # Derive runtime where it is missing (null/empty) and a derive is configured.
+        if derives_runtime:
+            runtime = columns["runtime_seconds"]
+            need = pc.is_null(runtime)
+            if pa.types.is_string(runtime.type):
+                need = pc.or_(need, pc.equal(runtime, ""))
+            if pc.any(need).as_py():
+                starts = columns["start_time"].to_pylist()
+                ends = columns["end_time"].to_pylist()
+                filled = [
+                    _derive_runtime({"start_time": s, "end_time": e}) if nd else r
+                    for nd, s, e, r in zip(need.to_pylist(), starts, ends, runtime.to_pylist())
+                ]
+                columns["runtime_seconds"] = pa.array(filled, type=pa.float64())
 
-            if skip_incomplete and any(out_row.get(field) in (None, "") for field in required):
-                skipped += 1
-                continue
+        batch_table = pa.table({field: columns[field] for field in out_order})
 
-            # Drop empty optional fields. Because the table is written via
-            # from_pylist (which unions keys across rows), this only fully removes
-            # an optional column when it is empty in *every* row -- which is the
-            # case that matters: an all-null optional column is typed without
-            # "null" in the job schema, so emitting it would fail strict validation.
-            # Optional columns populated in some rows still emit null for the empty
-            # rows (see follow-up F-1).
-            for key in list(out_row.keys()):
-                if key in required:
-                    continue
-                if out_row.get(key) in (None, ""):
-                    out_row.pop(key, None)
+        # State-allowlist filter runs first; rows it drops are not also counted
+        # as "incomplete" (matches the prior continue-before-skip ordering).
+        if state_allowlist is not None:
+            if "state" in batch_table.column_names:
+                state_col = pc.cast(batch_table.column("state"), pa.string())
+                allowed = pa.array(sorted(state_allowlist), type=pa.string())
+                state_mask = pc.fill_null(pc.is_in(state_col, value_set=allowed), False)
+            else:
+                state_mask = pa.array([False] * batch_table.num_rows)
+            skipped_state_filter += (
+                batch_table.num_rows - pc.sum(pc.cast(state_mask, pa.int64())).as_py()
+            )
+            batch_table = batch_table.filter(state_mask)
 
-            kept += 1
-            out_rows.append(out_row)
+        if skip_incomplete:
+            complete = _completeness_mask(batch_table)
+            kept_count = pc.sum(pc.cast(complete, pa.int64())).as_py()
+            skipped += batch_table.num_rows - kept_count
+            batch_table = batch_table.filter(complete)
 
-    if not out_rows:
+        kept += batch_table.num_rows
+        if batch_table.num_rows:
+            kept_tables.append(batch_table)
+
+    if not kept_tables:
         raise ValueError("No rows produced after applying mapping spec.")
 
+    result = pa.concat_tables(kept_tables)
+
+    # Optional fields: convert "" to null, then drop columns that are empty in
+    # every kept row (an all-null optional column is typed without "null" in the
+    # job schema and would fail strict validation). Partially-populated columns
+    # stay, emitting null for the empty rows.
+    for field in optional_fields:
+        col = result.column(field)
+        if pa.types.is_string(col.type):
+            col = pc.if_else(pc.equal(col, ""), pa.scalar(None, pa.string()), col)
+            result = result.set_column(result.schema.get_field_index(field), field, col)
+        if result.column(field).null_count == result.num_rows:
+            result = result.drop([field])
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    pq.write_table(pa.Table.from_pylist(out_rows), out_path)
+    pq.write_table(result, out_path)
 
     return {
         "rows_total": total,
