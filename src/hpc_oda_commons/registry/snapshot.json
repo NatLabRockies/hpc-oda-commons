@@ -178,6 +178,38 @@
         "kind": "path",
         "path": "hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml"
       }
+    },
+    {
+      "id": "recipe.job_runtime.mlp_rolling",
+      "entry_type": "recipe",
+      "name": "MLP Rolling (Job Runtime Prediction)",
+      "version": "0.1.0",
+      "description": "Rolling benchmark recipe for the feed-forward MLP runtime model with automatic categorical preprocessing (OHE + SVD) and a daily preprocessing refresh. Expects ingested job data supplied by the user.",
+      "problem_domain": ["job-runtime-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.2.0",
+      "license": "Apache-2.0",
+      "tags": ["mlp", "neural-network", "rolling", "categorical-preprocessing"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/recipes/job-runtime/mlp_rolling.yml"
+      }
+    },
+    {
+      "id": "recipe.job_power.uopc_fugaku_maxpcon",
+      "entry_type": "recipe",
+      "name": "UoPC Fugaku Max Power (Job Power Prediction)",
+      "version": "0.1.0",
+      "description": "User-based kNN (UoPC) benchmark recipe for Fugaku maximum job power (maxpcon) prediction with a fixed train/test split. Expects raw Fugaku parquet supplied by the user.",
+      "problem_domain": ["job-power-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.2.0",
+      "license": "Apache-2.0",
+      "tags": ["uopc", "knn", "power", "fugaku", "user-based", "fixed"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml"
+      }
     }
   ]
 }
