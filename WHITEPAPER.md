@@ -4,7 +4,7 @@
 
 High Performance Computing (HPC) operational data analytics (ODA) is fragmented: each site and research group often develops bespoke log parsers, schemas, and evaluation pipelines that are difficult to reproduce or compare. **hpc-oda-commons** addresses this by establishing a small, testable set of contracts (schemas and artifacts) and a pragmatic end-to-end toolchain that makes ODA workflows **discoverable (Find)**, **reproducible/comparable (Compare)**, and **easy to adopt locally (Run)**.
 
-This document describes the system as it exists today: a **v0.1 vertical slice** focused on **SLURM job runtime prediction**, delivered as a Python package with a CLI, packaged schemas/recipes/datasets, deterministic benchmark execution, provenance capture, validation and data quality reports, and a static leaderboard generator.
+This document describes the system as it exists today: a **v0.1 vertical slice** focused primarily on **SLURM job runtime prediction** (with a second **job power prediction** slice), delivered as a Python package with a CLI, packaged schemas/recipes/datasets, deterministic benchmark execution, provenance capture, validation and data quality reports, and a static leaderboard generator. Runtime prediction ships several models (a deterministic baseline plus XGBoost, Random Forest, MLP, and TF-IDF + kNN), and power prediction ships a per-user UoPC-style kNN model.
 
 ## 1) The Problem This Solves
 
@@ -36,10 +36,10 @@ The net effect is that promising ODA ideas remain siloed, and the community lack
 
 In v0.1, the scope is intentionally narrow:
 
-- **Domain:** SLURM job runtime prediction
+- **Domains:** SLURM job runtime prediction (primary) and job power prediction (second slice)
 - **Source:** `slurmctld` logs (minimal patterns)
 - **Data:** tiny packaged synthetic dataset (offline) + manifest
-- **Models:** deterministic baseline (mean predictor) + XGBoost with rolling evaluation
+- **Models:** a deterministic baseline (mean predictor) plus XGBoost, Random Forest, and MLP (sharing a rolling-tabular base) and TF-IDF + kNN for runtime, all with rolling evaluation, and a per-user UoPC-style kNN model for power (fixed evaluation)
 - **Benchmark:** recipe-driven execution with regression metrics (MAE, RMSE)
 - **Outputs:** schema-valid artifacts and static leaderboard generation
 
@@ -82,7 +82,7 @@ The system is built around a simple premise: **artifacts are the interface**. Ev
 
 Schemas are packaged JSON Schemas, loaded by ID at runtime:
 
-- `oda.job.v0.1.0` (job table rows, runtime prediction slice)
+- `oda.job.v0.2.0` (job table rows; current canonical job schema — `oda.job.v0.1.0` is retained only for legacy reads)
 - `oda.manifest.v0.1.0` (manifests for ingested artifacts)
 - `oda.result.v0.1.0` (result bundles)
 - `oda.registry.v0.1.0` (registry snapshot)
@@ -99,7 +99,8 @@ Implementation:
 
 **ODA Table (Parquet)**
 
-- Stored as Parquet and validated row-wise against `oda.job.v0.1.0`.
+- Stored as Parquet and validated row-wise against `oda.job.v0.2.0`.
+- Job timestamps (`start_time`, `end_time`, `submit_time`) are native Arrow `timestamp(us, tz=UTC)`, not ISO-8601 strings. Their column type is validated **structurally** (`collect_job_table_type_issues`), not as JSON strings; legacy v0.1 string tables are rejected with a clear re-ingest error.
 - Written/read via `hpc_oda_commons.kernel.artifacts.oda_table`.
 
 **Manifest (JSON)**
@@ -189,8 +190,8 @@ Execution (`hpc_oda_commons.benchmark.runner`):
 
 - loads recipe and dataset parquet
 - resolves the model and split strategy:
-  - **fixed split** with the baseline model (deterministic train/test partition)
-  - **rolling split** with the XGBoost model (sliding window evaluation simulating production retraining)
+  - **fixed split** (deterministic train/test partition), used by the baseline and by the job-power UoPC model
+  - **rolling split** (sliding window evaluation simulating production retraining), used by the rolling baseline, XGBoost, Random Forest, MLP, and TF-IDF + kNN runtime models
 - computes metrics and writes a result bundle under `runs/`
 
 ### 4.7 Leaderboard Generation
@@ -223,16 +224,18 @@ These are library-level APIs available for programmatic use but not currently in
 Key packaging decisions (v0.1):
 
 - Schemas, registry snapshot, recipes, and tiny runtime dataset are packaged as data files.
-- Recipe and schema validation scripts exist for CI:
+- Recipe and schema validation scripts exist in-repo:
   - `python scripts/validate_recipes.py`
   - `python scripts/validate_schemas.py`
 
-CI runs:
+CI is triggered on `pull_request` and on push to `main`, with a concurrency group that cancels superseded runs (`cancel-in-progress`). It runs:
 
 - `ruff check .` and `ruff format . --check`
 - unit tests (`pytest -q -m "not integration"`)
 - offline integration tests (`pytest -q -m integration` with `HPC_ODA_OFFLINE=1`)
-- recipe validation script
+- recipe validation (`scripts/validate_recipes.py`)
+
+Note: only `validate_recipes.py` is wired into CI; `scripts/validate_schemas.py` exists in-repo but is not run by the CI workflow.
 
 ## 5) How This Moves Toward Solving the Problem
 
@@ -299,7 +302,7 @@ hpc-oda ingest slurmctld --path /path/to/slurmctld.log
 hpc-oda validate data/ingested/slurmctld/<run>/data.parquet
 hpc-oda analyze --data data/ingested/slurmctld/<run>
 
-HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
 

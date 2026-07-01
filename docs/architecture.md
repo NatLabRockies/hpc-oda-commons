@@ -24,13 +24,16 @@ Raw Input (slurmctld.log / jobs.parquet)
   provenance, hashing, metrics (`metrics.py`), serialization (`serialization.py`).
 - **`models/`** -- Prediction models:
   - `job_runtime_baseline/` -- deterministic mean-prediction model (fit/predict)
-  - `job_runtime_xgboost/` -- XGBoost with rolling evaluation (`evaluate()`), categorical
-    preprocessing (OHE + SVD via `preprocessing.py`), daily preprocessing cache (`split.py`).
-    Also hosts the shared `base_xgboost_config()` helper and the `_new_regressor()` seam used
-    by the subclasses below.
-  - `job_runtime_random_forest/`, `job_runtime_mlp/` -- rolling runtime regressors that
-    subclass the XGBoost model and reuse its preprocessing/splits, overriding only the
-    regressor. (Tracked refactor to a neutral base: issue #6.)
+  - `rolling_tabular/` -- neutral base package for the rolling tabular runtime models:
+    `RollingTabularModel` + `RollingTabularConfig` (`base.py`), categorical preprocessing
+    (OHE + SVD via `preprocessing.py`), and the daily preprocessing cache / split logic
+    (`split.py`). Concrete models supply a regressor via the `_new_regressor()` seam.
+    (This is the "neutral base" refactor from issue #6, now landed.)
+  - `job_runtime_xgboost/` -- XGBoost regressor; subclasses `RollingTabularModel` and supplies
+    an XGBoost regressor via `_new_regressor()`.
+  - `job_runtime_random_forest/`, `job_runtime_mlp/` -- Random Forest and MLP regressors that
+    also subclass `RollingTabularModel`, reusing the shared `rolling_tabular` preprocessing and
+    splits and overriding only the regressor.
   - `job_runtime_tfidf_knn/` -- TF-IDF + kNN with rolling evaluation (`evaluate()`),
     HashingVectorizer with incremental cache (`vectorization.py`)
   - `job_power_uopc/` -- user-based online power prediction (UoPC), fixed chronological split,

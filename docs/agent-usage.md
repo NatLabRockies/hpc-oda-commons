@@ -51,22 +51,24 @@ hpc-oda leaderboard --runs runs --out leaderboard
 
 ## Recipes
 
-Bundled recipes are at `hpc_oda_commons/recipes/job-runtime/`:
+Bundled recipes are at `src/hpc_oda_commons/recipes/job-runtime/`:
 - `baseline_tiny.yml` -- baseline model, fixed 80/20 split (fast, good for smoke tests)
 - `xgb_hourly_recent.yml` -- XGBoost, rolling evaluation (slower, production-realistic)
 - `alt_model_example.yml` -- XGBoost with smaller window (faster iteration)
+- `mlp_rolling.yml` -- feed-forward neural network, rolling evaluation
+- `uopc_maxpcon.yml` -- UoPC user-based power prediction, fixed chronological split
 
 v0.1 models:
 - `model.job_runtime_baseline` -- mean predictor (supports fixed and rolling splits)
 - `model.job_runtime_xgboost` -- XGBoost with OHE+SVD preprocessing (rolling splits)
 - `model.job_runtime_tfidf_knn` -- TF-IDF text vectorization + kNN regression (rolling splits)
-- `model.job_runtime_random_forest` -- Random Forest, reuses the XGBoost OHE+SVD preprocessing (rolling splits)
-- `model.job_runtime_mlp` -- feed-forward neural network, reuses the XGBoost preprocessing (rolling splits)
+- `model.job_runtime_random_forest` -- Random Forest, uses the shared `rolling_tabular` OHE+SVD preprocessing (rolling splits)
+- `model.job_runtime_mlp` -- feed-forward neural network, uses the shared `rolling_tabular` preprocessing (rolling splits)
 - `model.job_power_uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split)
 
 To create a custom recipe, copy a bundled one and modify the dataset path, split parameters, or model selection:
 ```bash
-cp hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml my_recipe.yml
+cp src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml my_recipe.yml
 # Edit my_recipe.yml
 hpc-oda benchmark my_recipe.yml
 ```

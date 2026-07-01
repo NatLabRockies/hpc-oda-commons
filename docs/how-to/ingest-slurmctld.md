@@ -22,18 +22,24 @@ hpc-oda ingest slurmctld --path /path/to/slurmctld.log
 
 ## Example Output
 
+The command validates the ingested table, prints any ingest-check warnings, and
+reports where the run was written. For a clean log with no schema, semantic, or
+ingest-check issues:
+
 ```
-Ingest check: Parsed 3 job(s) from slurmctld log.
-Ingest check: All 3 rows have required fields.
-Wrote 3 rows to data/ingested/slurmctld/slurmctld-20260301-120000/data.parquet
-Wrote manifest to data/ingested/slurmctld/slurmctld-20260301-120000/manifest.json
+Validation summary: no schema or semantic issues detected.
+Ingest complete → data/ingested/slurmctld/slurmctld-20260301-120000
 ```
+
+If validation finds problems, the summary line reports the counts and lists the
+offending rows, and any ingest checks are printed as `Ingest check: <message>`
+lines before the final `Ingest complete → ...` line.
 
 ## Output Directory
 
 ```
 data/ingested/slurmctld/<run>/
-  data.parquet      # Canonical ODA table (oda.job.v0.1.0)
+  data.parquet      # Canonical ODA table (oda.job.v0.2.0)
   manifest.json     # Transformation lineage (oda.manifest.v0.1.0)
 ```
 

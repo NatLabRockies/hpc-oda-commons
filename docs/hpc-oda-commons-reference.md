@@ -51,13 +51,16 @@ The codebase is organized into purpose-specific packages under `src/hpc_oda_comm
 |---------|---------|
 | `qst/` | **Quickstart Toolkit** -- CLI entry point built on Typer. All user-facing commands live here. |
 | `kernel/` | **Core artifact logic** -- ODA tables, manifests, result bundles, mapping specs, provenance, hashing, schema loading, and validation. This is the stable foundation other packages build on. |
-| `models/` | **Prediction models** -- Pluggable model implementations. v0.1 ships a deterministic baseline and an XGBoost model with rolling evaluation. |
+| `models/` | **Prediction models** -- Pluggable model implementations. Ships six models: a deterministic baseline, three rolling-tabular runtime models (XGBoost, Random Forest, MLP), a TF-IDF + kNN runtime model, and a per-user kNN power model. |
+| `models/rolling_tabular/` | **Shared rolling-tabular base** -- `RollingTabularModel` base class plus shared rolling split (`split.py`) and categorical preprocessing (`preprocessing.py`) reused by the XGBoost, Random Forest, and MLP models. |
 | `ingest/` | **Data adapters** -- Ingestion pipeline for transforming site-specific data into canonical format. Includes profiling, mapping suggestions, interactive wizard, and batch transformation. |
 | `adapters/` | **Source parsers** -- Protocol-based adapters for parsing raw data sources. v0.1 includes a slurmctld log parser. |
 | `benchmark/` | **Recipe loading and results aggregation** -- Validates benchmark recipes, aggregates result bundles into leaderboards. |
 | `schema/` | **Schema validation and quality rules** -- JSON Schema validation, semantic checks, missingness analysis, and quality report generation. |
 | `intelligence/` | **Mapping suggestions and metadata** -- Auto-suggestion of field mappings, synthetic data scoring, metadata graph construction. |
 | `registry/` | **Offline registry** -- Bundled registry snapshot of known adapters, models, and recipes with filtering and lookup. |
+| `integrity/` | **Code integrity** -- Known-good source hashes (`known_hashes.json`) used to verify result bundles against clean commits. |
+| `utils/` | **Shared utilities** -- Cross-cutting helpers used by other packages. |
 | `tools/` | **Report generation** -- HTML rendering for leaderboards and analysis reports. |
 | `datasets/` | **Bundled synthetic datasets** -- Deterministic test datasets for reproducible demos without network access. |
 | `schemas/` | **JSON Schema resources** -- Versioned JSON Schema files bundled as package data. |
@@ -74,7 +77,7 @@ The project uses a conventional directory structure for artifacts:
     ingested/<adapter>/<run_id>/      # Ingested data artifacts
       data.parquet                    #   Canonical ODA table
       manifest.json                  #   Transformation manifest
-      quality_report.json            #   Data quality report
+      data.parquet.quality.json      #   Data quality report
   runs/
     <run_id>/                         # Benchmark result bundles
       result.json                    #   Schema-validated result
@@ -94,36 +97,29 @@ The project uses a conventional directory structure for artifacts:
 
 Schemas are the backbone of the HPC ODA Commons interoperability model. All schemas follow the naming convention `oda.<type>.v<MAJOR>.<MINOR>.<PATCH>` and are stored as JSON Schema (Draft 2020-12) files bundled with the package at `src/hpc_oda_commons/schemas/oda/`. Schema validation is enforced at artifact write time by default.
 
-### 4.1 Job Schema (`oda.job.v0.1.0`)
+### 4.1 Job Schema (`oda.job.v0.2.0`)
 
-The canonical job record schema defines the common data model for HPC job data. It is intentionally extensible (`additionalProperties: true`) so sites can include extra fields without breaking validation.
+The canonical job record schema defines the common data model for HPC job data. `oda.job.v0.2.0` is the current version; `oda.job.v0.1.0` is retained for legacy tables only. The schema is intentionally extensible (`additionalProperties: true`) so sites can include extra fields without breaking validation.
 
 **Required fields:**
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `job_id` | integer or string | Unique job identifier |
-| `start_time` | string (ISO 8601) | Job start timestamp |
-| `end_time` | string (ISO 8601) | Job end timestamp |
-| `runtime_seconds` | number | Actual runtime in seconds |
+| `start_time` | native Arrow `timestamp(us, tz=UTC)` | Job start timestamp. Stored as a native Arrow timestamp column, not an ISO-8601 string; the column type is validated structurally (`collect_job_table_type_issues`), not as a JSON string. |
+| `end_time` | native Arrow `timestamp(us, tz=UTC)` | Job end timestamp. Stored as a native Arrow timestamp column, not an ISO-8601 string; validated structurally. |
+| `runtime_seconds` | number (or null), minimum 0 | Actual runtime in seconds (`end_time - start_time`) |
 
-**Common optional fields:**
+**Optional fields defined by the schema:**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `submit_time` | string (ISO 8601) | Job submission timestamp |
-| `state` | string | Job state (e.g., COMPLETED, FAILED, CANCELLED) |
-| `user` | string | User identifier (often hashed for privacy) |
-| `account` | string | Account or project identifier |
-| `partition` | string | Queue or partition name |
-| `qos` | string | Quality of Service level |
-| `nodes_requested` | integer | Number of nodes requested |
-| `processors_requested` | integer | CPU count requested |
-| `gpus_requested` | integer | GPU count requested |
-| `memory_requested` | number | Memory requested (normalized to MB) |
-| `wallclock_requested` | number | Requested wall-clock time |
-| `allocated_cpus` | integer | CPUs actually allocated |
-| `node_list` | string | Nodes assigned to the job |
+| `submit_time` | native Arrow `timestamp(us, tz=UTC)` | Job submission timestamp. Stored as a native Arrow timestamp column, not an ISO-8601 string; validated structurally. |
+| `allocated_cpus` | integer (or null), minimum 1 | CPUs actually allocated |
+| `partition` | string (or null) | Queue or partition name |
+| `node_list` | string (or null) | Nodes assigned to the job |
+
+Because `additionalProperties: true`, sites may carry any additional columns; only the fields above are defined by the schema itself.
 
 ### 4.2 Result Schema (`oda.result.v0.1.0`)
 
@@ -146,7 +142,7 @@ Defines the output format for model evaluation results. A result ties together a
   },
   "dataset": {
     "id": "synthetic/job-runtime/tiny",
-    "schema_version": "oda.job.v0.1.0",
+    "schema_version": "oda.job.v0.2.0",
     "hash": "sha256_hex_string"
   }
 }
@@ -175,7 +171,7 @@ Defines field mapping specifications for transforming site-specific data into th
 ```yaml
 schema_version: oda.mapping.v0.1.0
 kind: jobs_parquet
-output_schema_version: oda.job.v0.1.0
+output_schema_version: oda.job.v0.2.0
 fields:
   job_id:
     source: JobID
@@ -208,7 +204,7 @@ Benchmark recipes are the key to reproducible, comparable evaluations. A recipe 
 
 ### 4.6 Metric Definition Language Schema (`oda.mdl.v0.1.0`)
 
-Defines individual metrics to compute from prediction results. Supported metrics in v0.1: `mae`, `rmse`, `mape`, `r2`. Each metric specifies a `name`, `target` field, and optional `params`.
+Defines individual metrics to compute from prediction results. Supported metrics: `mae`, `rmse`, `mape`, `r2`, `underprediction_ratio`. Each metric specifies a `name`, `target` field, and optional `params`.
 
 ### 4.7 Registry Schema (`oda.registry.v0.1.0`)
 
@@ -260,7 +256,7 @@ hpc-oda validate data/ingested/slurmctld/*/data.parquet
 ```bash
 hpc-oda init
 hpc-oda ingest jobs-parquet --path site_jobs.parquet
-hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
+hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
 
@@ -291,7 +287,7 @@ For sites that already have job data in Parquet format but with non-canonical co
 - Normalization converts column names to lowercase with underscores and alphanumeric characters only
 
 **Stage 2: Suggestion** (`ingest/jobs_parquet/suggest.py`)
-- Maintains an alias table for 16 canonical fields (e.g., `job_id` matches aliases like `jobid`, `job_number`, `id`)
+- Maintains an alias table for 19 canonical fields (e.g., `job_id` matches aliases like `jobid`, `slurm_job_id`, `slurmjobid`)
 - Scoring: exact alias match = 1.0 confidence, substring match = 0.7, kind compatibility = +0.3/-0.2 adjustment
 - Returns ranked candidates per canonical field with confidence scores and reasons
 
@@ -306,8 +302,8 @@ For sites that already have job data in Parquet format but with non-canonical co
 
 **Stage 4: Apply** (`ingest/jobs_parquet/apply.py`)
 - Reads the input Parquet in configurable batch sizes (default 50,000 rows)
-- For each row: extracts source columns, applies typed transformations, derives computed fields
-- Supported transformations: `timestamp` (format parsing to ISO 8601), `duration` (unit conversion to seconds), `memory` (unit conversion to MB), `hash_identifier` (SHA-256 with optional salt)
+- Applies transformations column-at-a-time (vectorized over whole Arrow columns rather than literally per row), then derives computed fields
+- Supported transformations: `timestamp` (format parsing to a native Arrow `timestamp(us, tz=UTC)` column, not an ISO-8601 string), `duration` (unit conversion to seconds), `memory` (unit conversion to MB), `memory_slurm` (parses a SLURM memory string such as `160G`, `2366M`, or a bare `4096` into MiB), `hash_identifier` (SHA-256 with optional salt)
 - Derived fields: `runtime_seconds` can be computed from `end_time - start_time`
 - Optional state filtering (e.g., keep only COMPLETED jobs)
 - Skips rows missing required fields
@@ -316,15 +312,15 @@ For sites that already have job data in Parquet format but with non-canonical co
 ### 6.3 Ingestion Output
 
 Each ingestion run produces a directory under `data/ingested/<adapter>/<run_id>/` containing:
-- `data.parquet` -- canonical ODA table validated against `oda.job.v0.1.0`
+- `data.parquet` -- canonical ODA table validated against `oda.job.v0.2.0`
 - `manifest.json` -- transformation lineage validated against `oda.manifest.v0.1.0`
-- `quality_report.json` -- data quality assessment
+- `data.parquet.quality.json` -- data quality assessment
 
 ---
 
 ## 7. Prediction Models
 
-HPC ODA Commons v0.1 ships three models for job runtime prediction. All operate on `rows`, a list of dictionaries conforming to the job schema, with `runtime_seconds` as the target field.
+HPC ODA Commons ships six models: five for job runtime prediction (baseline, XGBoost, Random Forest, MLP, TF-IDF + kNN) and one for job power prediction (per-user kNN). The runtime models operate on `rows`, a list of dictionaries conforming to the job schema, with `runtime_seconds` as the target field. The XGBoost, Random Forest, and MLP models are rolling-tabular models that share a common base class (`RollingTabularModel`); the shared rolling split (`split.py`) and categorical preprocessing now live in `models/rolling_tabular/`, so they are no longer XGBoost-only.
 
 ### 7.1 Baseline Model (`model.job_runtime_baseline`)
 
@@ -378,7 +374,7 @@ The XGBoost model implements an automated feature engineering pipeline that hand
 
 The rolling evaluation strategy (`evaluate()`) simulates how a model would perform if retrained and deployed on a recurring schedule. This is more realistic than a single train/test split because it captures temporal dynamics in HPC workloads.
 
-**Split construction** (`split.py`):
+**Split construction** (`models/rolling_tabular/split.py`, shared with the Random Forest and MLP models):
 - The evaluation window covers the `n_windows` most recent periods in the dataset
 - For each split at time `t`:
   - **Train window**: all jobs where `end_time` falls in `[t - lookback_days, t)`
@@ -440,6 +436,18 @@ Controlled by `JobRuntimeTfidfKnnConfig`:
 
 The model maintains an incremental hash matrix cache across rolling windows. Between windows, only new/removed jobs are hashed -- the rest of the matrix is reused. This avoids re-vectorizing the full training set each window and provides significant speedup for rolling evaluation.
 
+### 7.4 Random Forest Model (`model.job_runtime_random_forest`)
+
+An alternate runtime prediction model using scikit-learn's Random Forest regression. It subclasses the neutral `RollingTabularModel` base and reuses the shared rolling split and automatic categorical one-hot/SVD preprocessing (from `models/rolling_tabular/`), differing from the XGBoost model only in the underlying regressor. Like XGBoost, it uses the rolling evaluation strategy with a daily preprocessing cache.
+
+### 7.5 MLP Model (`model.job_runtime_mlp`)
+
+An alternate runtime prediction model using a feed-forward neural network (scikit-learn's `MLPRegressor`). It also subclasses `RollingTabularModel` and reuses the shared rolling split and categorical one-hot/SVD preprocessing, swapping in the MLP regressor. It is driven by the bundled `mlp_rolling.yml` recipe.
+
+### 7.6 Job Power Model (`model.job_power_uopc`)
+
+A per-user kNN power-prediction model (UoPC-style) that predicts `maxpcon` (maximum job power) rather than runtime. Unlike the rolling runtime models, it uses a fixed train/test split. For each user, job history is ordered by end time and the most recent `theta` jobs form the training context; categorical job features (e.g., job name) are label-encoded per fit, and a `KNeighborsRegressor` predicts from the nearest neighbors. It operates on raw Fugaku-style columns (`usr`, `jnam`, `cnumr`, `nnumr`, `edt`, `maxpcon`) via field aliases, and is driven by the bundled `uopc_maxpcon.yml` recipe.
+
 ---
 
 ## 8. Benchmarking System
@@ -453,7 +461,7 @@ A recipe is a YAML file validated against `oda.recipe.v0.1.0`. It specifies:
 ```yaml
 recipe_id: recipe.job_runtime.xgb_hourly_recent
 problem_domain: [job-runtime-prediction]
-schema_version: oda.job.v0.1.0
+schema_version: oda.job.v0.2.0
 dataset:
   id: site-jobs-2026
   table_path: data/ingested/jobs_parquet/run-001/data.parquet
@@ -483,13 +491,15 @@ run:
 
 ### 8.2 Bundled Recipes
 
-v0.1 ships three recipes:
+The package ships five recipes:
 
 | Recipe | Model | Split | Purpose |
 |--------|-------|-------|---------|
 | `baseline_tiny.yml` | Baseline | Fixed 80/20 | CI smoke tests, offline demos |
 | `xgb_hourly_recent.yml` | XGBoost | Rolling (1000 windows, 6h, 100d) | Full XGBoost benchmark |
 | `alt_model_example.yml` | XGBoost | Rolling (24 windows, 6h, 30d) | Alternate configuration example |
+| `mlp_rolling.yml` | MLP | Rolling (20 windows, 6h, 7d) | Feed-forward MLP runtime benchmark |
+| `uopc_maxpcon.yml` | Job Power (UoPC) | Fixed 80/20 | Per-user kNN power (`maxpcon`) prediction |
 
 ### 8.3 Result Bundles
 
@@ -525,7 +535,7 @@ Provenance tracking is woven throughout HPC ODA Commons. The `build_provenance()
 ```python
 {
     "schema_versions": {
-        "input": "oda.job.v0.1.0",
+        "input": "oda.job.v0.2.0",
         "result": "oda.result.v0.1.0"
     },
     "environment": {
@@ -577,7 +587,7 @@ Each registry entry is a `RegistryEntry` dataclass with:
 
 ### 10.2 v0.1 Registry Contents
 
-The bundled registry snapshot contains six entries:
+The bundled registry snapshot contains nine entries (one adapter, six models, and two recipes):
 
 | ID | Type | Description |
 |----|------|-------------|
@@ -585,6 +595,9 @@ The bundled registry snapshot contains six entries:
 | `model.job_runtime_baseline` | model | Deterministic mean-prediction baseline |
 | `model.job_runtime_xgboost` | model | XGBoost with rolling evaluation |
 | `model.job_runtime_tfidf_knn` | model | TF-IDF + kNN with rolling evaluation |
+| `model.job_runtime_random_forest` | model | Random Forest with rolling evaluation |
+| `model.job_runtime_mlp` | model | Feed-forward MLP with rolling evaluation |
+| `model.job_power_uopc` | model | Per-user kNN power prediction (UoPC-style, fixed split) |
 | `recipe.job_runtime.baseline_tiny` | recipe | Tiny synthetic dataset benchmark |
 | `recipe.job_runtime.xgb_hourly_recent` | recipe | XGBoost rolling benchmark |
 
@@ -617,6 +630,8 @@ Beyond schema conformance, the validator performs semantic checks specific to th
 - **Negative runtime**: flags rows where `runtime_seconds < 0`
 - **Timestamp ordering**: flags rows where `start_time > end_time`
 - **Timestamp validity**: flags rows with unparseable timestamp values
+
+**Structural timestamp-type check**: JSON Schema cannot express Arrow column types, so `collect_job_table_type_issues()` structurally verifies that the `start_time`, `end_time`, and `submit_time` columns are native Arrow `timestamp(us, tz=UTC)`. The microsecond unit and UTC timezone are pinned, so accidental drift (seconds/nanoseconds, or an untyped column) is caught -- this also rejects legacy `oda.job.v0.1.0` tables that stored timestamps as ISO-8601 strings.
 
 ### 11.3 Quality Report
 
@@ -672,7 +687,7 @@ A `cpu.yml` recipe is provided for creating a Conda environment with Python 3.11
 
 Tests are organized into two tiers:
 
-- **Unit tests** (`tests/unit/`): ~37 test files covering individual components. Run with `make test` or `pytest -q`. No external dependencies required.
+- **Unit tests** (`tests/unit/`): ~42 test files covering individual components. Run with `make test` or `pytest -q`. No external dependencies required.
 
 - **Integration tests** (`tests/integration/`): End-to-end CLI workflow tests. Require `HPC_ODA_OFFLINE=1`. Run with `make test-integration`. Optional native XGBoost tests gated behind `HPC_ODA_ENABLE_NATIVE_XGBOOST_IT=1`.
 
@@ -751,14 +766,16 @@ The ultimate vision is enabling rigorous cross-site comparison of ODA methods. W
 
 | Schema ID | Purpose |
 |-----------|---------|
-| `oda.job.v0.1.0` | Canonical HPC job record |
+| `oda.job.v0.2.0` | Canonical HPC job record (current) |
+| `oda.job.v0.1.0` | Canonical HPC job record (legacy; retained for older tables only) |
 | `oda.result.v0.1.0` | Benchmark result output |
 | `oda.manifest.v0.1.0` | Data artifact lineage |
 | `oda.mapping.v0.1.0` | Field mapping specification |
 | `oda.recipe.v0.1.0` | Benchmark recipe definition |
 | `oda.mdl.v0.1.0` | Metric Definition Language |
 | `oda.registry.v0.1.0` | Registry entry catalogue |
-| `oda.leaderboard.v0.1.0` | Leaderboard aggregation |
+
+Note: `oda.leaderboard.v0.1.0` is not a bundled JSON Schema. It is a version tag emitted in leaderboard output, defined by the `LEADERBOARD_FORMAT_VERSION` constant in `benchmark/results.py`.
 
 ## Appendix B: CLI Command Quick Reference
 

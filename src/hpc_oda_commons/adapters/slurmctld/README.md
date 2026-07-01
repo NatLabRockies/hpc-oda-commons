@@ -1,9 +1,9 @@
 # slurmctld Adapter
 
-This adapter parses slurmctld logs into `oda.job.v0.1.0` rows for runtime
+This adapter parses slurmctld logs into `oda.job.v0.2.0` rows for runtime
 prediction.
 
-## Supported Patterns (v0.1)
+## Supported Patterns
 
 - Allocate lines:
   - `Allocate JobId=<id> NodeList=<nodes> #CPUs=<n> Partition=<name>`
@@ -18,6 +18,9 @@ Required fields:
 3. `end_time`
 4. `runtime_seconds`
 
+`start_time` and `end_time` are emitted as UTC `datetime` objects — native Arrow
+`timestamp(us, tz=UTC)` values, not ISO-8601 strings.
+
 Optional fields:
 1. `allocated_cpus`
 2. `partition`
@@ -26,4 +29,4 @@ Optional fields:
 ## Limitations
 
 - Incomplete jobs (missing start or end) are skipped to preserve schema validity.
-- This parser is intentionally minimal for v0.1.
+- This parser is intentionally minimal.
