@@ -60,6 +60,7 @@ from hpc_oda_commons.kernel.serialization import to_jsonable
 from hpc_oda_commons.kernel.validate import validate_json
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
 from hpc_oda_commons.qst.commands.browse import browse
+from hpc_oda_commons.qst.commands.datasets import datasets_fetch
 from hpc_oda_commons.qst.commands.info import info
 from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
 from hpc_oda_commons.schema.validator import (
@@ -77,6 +78,11 @@ ingest_app = typer.Typer(
     add_completion=False, help="Ingest operational data into canonical ODA artifacts."
 )
 app.add_typer(ingest_app, name="ingest")
+datasets_app = typer.Typer(
+    add_completion=False, help="Discover and fetch public operational datasets."
+)
+app.add_typer(datasets_app, name="datasets")
+datasets_app.command("fetch")(datasets_fetch)
 app.command()(browse)
 app.command()(info)
 
