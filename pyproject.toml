@@ -9,7 +9,7 @@ name = "hpc-oda-commons"
 version = "0.1.0"
 description = "HPC Operational Data Analytics Commons: schema, adapters, models, and reproducible benchmarks."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "HPC-ODA Commons Contributors" }]
 dependencies = [

@@ -236,7 +236,9 @@ class JobRuntimeTfidfKnnModel:
                 keep_mask = np.array([jid not in removed_ids for jid in self._cached_job_id_list])
                 self._cached_hash_matrix = self._cached_hash_matrix[keep_mask]
                 self._cached_job_id_list = [
-                    jid for jid, keep in zip(self._cached_job_id_list, keep_mask) if keep
+                    jid
+                    for jid, keep in zip(self._cached_job_id_list, keep_mask, strict=False)
+                    if keep
                 ]
 
             if new_ids:

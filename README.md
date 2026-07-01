@@ -60,7 +60,7 @@ Together, these let a site operator go from local logs to comparable, provenance
 
 The first vertical slice delivers a complete end-to-end workflow for SLURM job runtime prediction.
 
-**Python 3.9+**
+**Python 3.10+**
 
 ### Quickstart
 

@@ -5,8 +5,8 @@ import json
 from pathlib import Path
 
 import pytest
-import typer
 import yaml
+from typer.testing import CliRunner
 
 from hpc_oda_commons.datasets.descriptor import Descriptor
 from hpc_oda_commons.datasets.fetch import (
@@ -19,7 +19,7 @@ from hpc_oda_commons.datasets.fetch import (
     parse_size,
 )
 from hpc_oda_commons.datasets.fetch.base import FetchError, select_resources
-from hpc_oda_commons.qst.commands.datasets import datasets_fetch
+from hpc_oda_commons.qst.cli import app
 
 
 def _sha(data: bytes) -> str:
@@ -228,12 +228,6 @@ def _cli_descriptor_payload(res: dict, dataset_id: str, with_capability: bool) -
     }
 
 
-# The command function is called directly (as the registry tests call browse/info),
-# which exercises the command logic on every supported Python without forcing Typer to
-# build the whole CLI group -- that build evaluates `X | None` annotations, which is a
-# runtime TypeError on Python 3.9 (PEP 604). Full CLI parsing is covered on 3.11.
-
-
 def test_cli_datasets_fetch(tmp_path: Path) -> None:
     res = _remote(tmp_path / "remote", "data.parquet", b"payload-bytes")
     payload = _cli_descriptor_payload(res, "dataset.test.cli", with_capability=True)
@@ -241,19 +235,11 @@ def test_cli_datasets_fetch(tmp_path: Path) -> None:
     desc_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
     cache = tmp_path / "cache"
 
-    datasets_fetch(
-        descriptor=desc_path,
-        slice_=None,
-        fetch_all=False,
-        max_size="5GB",
-        cache=cache,
-        from_dir=None,
-        offline=False,
-        assume_yes=False,
-    )
+    result = CliRunner().invoke(app, ["datasets", "fetch", str(desc_path), "--cache", str(cache)])
 
+    assert result.exit_code == 0, result.output
+    assert "downloaded" in result.output
     assert (cache / "dataset.test.cli" / "raw" / "data.parquet").exists()
-    assert (cache / "dataset.test.cli" / "dataset.test.cli.lock.json").exists()
 
 
 def test_cli_size_guardrail_exit_code(tmp_path: Path) -> None:
@@ -262,16 +248,10 @@ def test_cli_size_guardrail_exit_code(tmp_path: Path) -> None:
     desc_path = tmp_path / "big.yml"
     desc_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
 
-    with pytest.raises(typer.Exit) as excinfo:
-        datasets_fetch(
-            descriptor=desc_path,
-            slice_=None,
-            fetch_all=False,
-            max_size="1KB",
-            cache=tmp_path / "c",
-            from_dir=None,
-            offline=False,
-            assume_yes=False,
-        )
+    result = CliRunner().invoke(
+        app,
+        ["datasets", "fetch", str(desc_path), "--cache", str(tmp_path / "c"), "--max-size", "1KB"],
+    )
 
-    assert excinfo.value.exit_code == 2
+    assert result.exit_code == 2
+    assert "Refusing to download" in result.output

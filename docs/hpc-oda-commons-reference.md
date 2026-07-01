@@ -6,7 +6,7 @@ High-Performance Computing (HPC) sites generate enormous volumes of operational 
 
 **HPC ODA Commons** (Operational Data Analytics Commons) addresses this by establishing **community-governed contracts** -- versioned schemas, canonical artifacts, and benchmark recipes -- that make ODA workflows **discoverable**, **reproducible**, and **comparable**. It pairs these standards with a practical, CLI-first toolkit that lets operators and researchers go from raw logs to standardized results without sending data off-cluster.
 
-The project is implemented in Python (>=3.9), distributed as the `hpc-oda-commons` package under the Apache-2.0 license, and installed via pip. The CLI entry point is `hpc-oda`. Version 0.1 focuses on **SLURM job runtime prediction** as the inaugural problem domain, with the architecture designed to support additional domains (job failure prediction, resource utilization, queue wait-time modeling) in future versions.
+The project is implemented in Python (>=3.10), distributed as the `hpc-oda-commons` package under the Apache-2.0 license, and installed via pip. The CLI entry point is `hpc-oda`. Version 0.1 focuses on **SLURM job runtime prediction** as the inaugural problem domain, with the architecture designed to support additional domains (job failure prediction, resource utilization, queue wait-time modeling) in future versions.
 
 ---
 
@@ -673,7 +673,7 @@ The intelligence layer provides a `score_job_runtime_rows()` function that asses
 
 ### 12.2 Development Dependencies
 
-pytest, ruff (linting and formatting), mypy (type checking), and pre-commit hooks. Line length is 100 characters. The project targets Python 3.9+.
+pytest, ruff (linting and formatting), mypy (type checking), and pre-commit hooks. Line length is 100 characters. The project targets Python 3.10+.
 
 ### 12.3 Conda Environment
 
@@ -756,7 +756,7 @@ The ultimate vision is enabling rigorous cross-site comparison of ODA methods. W
 
 ## 15. Development Configuration
 
-- **Linting/Formatting**: Ruff with line length 100, Python 3.9 target, rules E/F/I/UP/B
+- **Linting/Formatting**: Ruff with line length 100, Python 3.10 target, rules E/F/I/UP/B
 - **Pre-commit hooks**: trailing whitespace, end-of-file fixer, YAML/TOML/JSON validation, 512 KB file size limit, Ruff
 - **Editor config**: LF line endings, UTF-8, 2-space indentation
 
