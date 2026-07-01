@@ -292,7 +292,8 @@ def analyze_one_hot_encoding(
     encoded = encoder.fit_transform(matrix)
 
     category_sizes = tuple(
-        (column, len(categories)) for column, categories in zip(config.columns, encoder.categories_)
+        (column, len(categories))
+        for column, categories in zip(config.columns, encoder.categories_, strict=False)
     )
 
     analysis = OneHotAnalysis(

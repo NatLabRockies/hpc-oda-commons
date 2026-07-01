@@ -177,7 +177,7 @@ Branch protection enforces this rather than relying on the honor system — see 
   Use synthetic/redacted fixtures only. Generated outputs (`data/`, `runs/`,
   `reports/`, root `recipes/`) are gitignored.
 - **Ruff is the source of truth** for formatting and linting (line length 100,
-  Python 3.9+).
+  Python 3.10+).
 - **Known limitations** are tracked in `docs/known-issues.md` and linked to
   their issue.
 
@@ -188,7 +188,7 @@ Branch protection enforces this rather than relying on the honor system — see 
 `main` is a protected branch with these rules in effect:
 
 - **Required status checks** must pass before merge: Lint (ruff), Unit tests
-  (fast) (3.9 and 3.11), and Golden-path integration (DoD-1..DoD-4) (3.11).
+  (fast) (3.10), and Golden-path integration (DoD-1..DoD-4) (3.11).
 - **Required review:** one approving review for contributors (non-admins).
 - **No direct pushes:** changes land via PR.
 - **Squash-merge only, linear history:** merge-commit and rebase-merge are
