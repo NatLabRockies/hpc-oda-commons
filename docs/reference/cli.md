@@ -19,7 +19,7 @@ This reference covers the v0.1 `hpc-oda` commands.
 1. `hpc-oda run-baseline`
    Runs the offline baseline on the tiny synthetic dataset. Produces a result bundle under `runs/`.
 1. `hpc-oda ingest slurmctld --path <log>`
-   Parses a slurmctld log into `oda.job.v0.1.0` Parquet + manifest.
+   Parses a slurmctld log into `oda.job.v0.2.0` Parquet + manifest.
    Output: `data/ingested/slurmctld/<run>/`
 1. `hpc-oda ingest jobs-parquet --path <parquet> [--mapping <yaml>] [--sample-rows <N>] [--batch-size <N>] [--non-interactive] [--hash-identifiers | --no-hash-identifiers]`
    Ingests a site-specific jobs Parquet file into canonical format.
@@ -40,7 +40,10 @@ This reference covers the v0.1 `hpc-oda` commands.
    - `model.job_runtime_baseline` + `split.method: fixed`
    - `model.job_runtime_baseline` + `split.method: rolling`
    - `model.job_runtime_xgboost` + `split.method: rolling`
+   - `model.job_runtime_random_forest` + `split.method: rolling`
+   - `model.job_runtime_mlp` + `split.method: rolling`
    - `model.job_runtime_tfidf_knn` + `split.method: rolling`
+   - `model.job_power_uopc` + `split.method: fixed`
    Result bundles include an `integrity` block with code hash and validation status.
    For rolling recipes, `split.n_windows` is required.
    Optional: `split.test_window_hours` (default `6`) sets the test window duration.

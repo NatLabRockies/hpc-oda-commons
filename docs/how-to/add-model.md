@@ -23,20 +23,28 @@ The registry entry should include:
 
 ## Reference Implementations
 
-v0.1 ships three models, each illustrating a different complexity level:
+The toolkit ships six models, each illustrating a different complexity level:
 
 | Model | Package | Interface |
 |-------|---------|-----------|
 | `model.job_runtime_baseline` | `models/job_runtime_baseline/` | Simple `fit()`/`predict()` class, rolling loop in runner |
-| `model.job_runtime_xgboost` | `models/job_runtime_xgboost/` | `evaluate()` with OHE+SVD preprocessing and daily cache |
+| `model.job_runtime_xgboost` | `models/job_runtime_xgboost/` | Thin subclass of `RollingTabularModel` (`models/rolling_tabular/`) with OHE+SVD preprocessing and daily cache |
+| `model.job_runtime_random_forest` | `models/job_runtime_random_forest/` | Thin subclass of `RollingTabularModel` |
+| `model.job_runtime_mlp` | `models/job_runtime_mlp/` | Thin subclass of `RollingTabularModel` |
 | `model.job_runtime_tfidf_knn` | `models/job_runtime_tfidf_knn/` | `evaluate()` with TF-IDF vectorization and incremental hash cache |
+| `model.job_power_uopc` | `models/job_power_uopc/` | Per-user kNN job-power model on a fixed split |
 
-For a minimal starting point, see `models/job_runtime_baseline/`. For a rolling-evaluation model with internal state, see `models/job_runtime_tfidf_knn/`.
+For a minimal starting point, see `models/job_runtime_baseline/`. For a new
+rolling tabular regressor, subclass `RollingTabularModel` in
+`models/rolling_tabular/base.py` -- the `xgboost`, `random_forest`, and `mlp`
+models share that base and differ only in the estimator they plug in. For a
+rolling-evaluation model with fully custom internal state, see
+`models/job_runtime_tfidf_knn/`.
 
 ## Running Alternate Models
 
 ```bash
-hpc-oda benchmark -v hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
+hpc-oda benchmark -v src/hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
 ```
 
 For faster local test cycles, copy the recipe and reduce the rolling window:

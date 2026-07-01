@@ -35,7 +35,9 @@ pip install -e ".[dev]"
 
 CI additionally runs `ruff format . --check` (the formatter, not just the
 linter) and the unit suite on multiple Python versions, so see the quality gate
-in §6 before pushing.
+in §6 before pushing. CI triggers on pull requests and pushes to `main`, with
+concurrency cancel-in-progress so superseded runs are cancelled when a branch is
+updated.
 
 ---
 
@@ -172,7 +174,8 @@ Branch protection enforces this rather than relying on the honor system — see 
 `main` is a protected branch with these rules in effect:
 
 - **Required status checks** must pass before merge: Lint (ruff), Unit tests
-  (3.9 and 3.11), Golden-path integration.
+  (3.9 and 3.11), recipe validation (`python scripts/validate_recipes.py`),
+  Golden-path integration.
 - **Required review:** one approving review for contributors (non-admins).
 - **No direct pushes:** changes land via PR.
 - **Admin override:** repository admins (the maintainer) are exempt and may merge

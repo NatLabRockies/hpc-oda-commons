@@ -47,7 +47,7 @@ The wizard produces a YAML file like this:
 ```yaml
 schema_version: oda.mapping.v0.1.0
 kind: jobs_parquet
-output_schema_version: oda.job.v0.1.0
+output_schema_version: oda.job.v0.2.0
 fields:
   job_id:
     source: JobID
@@ -84,10 +84,13 @@ Fields can be **sourced** from a column (`source:`) or **derived** from other fi
 
 ```
 data/ingested/jobs_parquet/<run>/
-  data.parquet      # Canonical ODA table (oda.job.v0.1.0)
+  data.parquet      # Canonical ODA table (oda.job.v0.2.0)
   manifest.json     # Transformation lineage
   mapping.yml       # Reusable mapping spec
 ```
+
+In the canonical table, the `start_time`, `end_time`, and `submit_time` columns
+are written as native Arrow `timestamp(us, tz=UTC)` values, not ISO-8601 strings.
 
 ## Validate
 

@@ -2,16 +2,17 @@
 
 ## MAJOR — Cross-environment numeric reproducibility of fitted models
 
-**Status:** open · **Severity:** major · **Affects:** XGBoost and TF-IDF kNN model outputs · **Tracking:** [#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)
+**Status:** open · **Severity:** major · **Affects:** all fitted rolling models — XGBoost, Random Forest, MLP, TF-IDF kNN, and UoPC — model outputs · **Tracking:** [#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)
 
 ### Summary
 
 hpc-oda-commons positions reproducibility as a core guarantee: the same code on the
 same data should produce the same result, and the integrity hash + critical-path
 regression test are meant to certify that. **Today that guarantee does not hold for the
-fitted models (XGBoost, TF-IDF kNN) across different machines.** The exact MAE/RMSE these
-models produce depends on the CPU architecture, the compiled BLAS/SIMD build, and (under
-emulation) the translation layer — not on the code or the data.
+fitted models (XGBoost, Random Forest, MLP, TF-IDF kNN, and UoPC) across different
+machines.** The exact MAE/RMSE these models produce depends on the CPU architecture, the
+compiled BLAS/SIMD build, and (under emulation) the translation layer — not on the code or
+the data.
 
 ### Evidence
 
@@ -63,3 +64,12 @@ Options to evaluate, roughly in order of preference:
 
 Until one of these lands, treat reproducibility as **verified for the baseline and the
 data/split/metric pipeline, but not yet for the fitted-model metric values across machines.**
+
+## Note — vectorized jobs-parquet ingest
+
+**Status:** informational
+
+The `jobs-parquet` ingest applies mapping transforms column-wise (vectorized) rather than
+row-by-row. One intentional behavior difference: a malformed `memory_slurm` value such as
+`"1.2.3G"` now becomes `null` instead of crashing the ingest, so a few bad rows no longer
+abort the whole run.

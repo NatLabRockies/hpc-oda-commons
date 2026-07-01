@@ -8,7 +8,7 @@ Describe what this change does and why.
 - [ ] Fix (`fix/*`)
 - [ ] Chore (`chore/*`)
 
-## DoD Gates Impact (v0.1 runtime prediction)
+## DoD Gates Impact (v0.2 runtime prediction)
 
 - [ ] DoD-1 (install + `hpc-oda --help`) unaffected or updated tests accordingly
 - [ ] DoD-2 (`run-baseline` offline result bundle) unaffected or updated tests accordingly
@@ -17,6 +17,7 @@ Describe what this change does and why.
 
 ## Checklist
 
+- [ ] `ruff format . --check` passes
 - [ ] `make lint` passes
 - [ ] `make test` passes
 - [ ] Integration tests updated if CLI behavior changed

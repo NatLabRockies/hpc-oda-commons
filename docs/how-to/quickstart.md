@@ -51,18 +51,24 @@ HPC_ODA_OFFLINE=1 hpc-oda run-baseline
 
 Run a benchmark recipe against your ingested data — copy a bundled recipe and update the `dataset.table_path`:
 ```bash
-cp hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml my_recipe.yml
+cp src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml my_recipe.yml
 # Edit my_recipe.yml: set table_path to your ingested parquet
 hpc-oda benchmark my_recipe.yml
 ```
 
-### v0.1 models
+### Bundled models
 
 | Model | Split method | Description |
 |-------|-------------|-------------|
 | `model.job_runtime_baseline` | `fixed` or `rolling` | Mean-prediction baseline |
 | `model.job_runtime_xgboost` | `rolling` | XGBoost with automatic OHE+SVD categorical preprocessing |
+| `model.job_runtime_random_forest` | `rolling` | Random forest with automatic OHE+SVD categorical preprocessing |
+| `model.job_runtime_mlp` | `rolling` | Feed-forward MLP with automatic OHE+SVD categorical preprocessing |
 | `model.job_runtime_tfidf_knn` | `rolling` | TF-IDF text vectorization + k-nearest-neighbor regression |
+| `model.job_power_uopc` | `fixed` | Job power prediction via per-user kNN (UoPC) |
+
+The `xgboost`, `random_forest`, and `mlp` models share the tabular rolling
+implementation in `models/rolling_tabular/` (see `RollingTabularModel`).
 
 For rolling benchmarks, use `-v` for progress output:
 ```bash

@@ -11,9 +11,11 @@ Recipes are YAML files that fully specify an evaluation:
 4. **Split** -- how to divide data into train/test sets
 
 Built-in v0.1 recipes:
-- `hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml` -- baseline model, fixed split
-- `hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml` -- XGBoost, rolling
-- `hpc_oda_commons/recipes/job-runtime/alt_model_example.yml` -- XGBoost, smaller rolling window
+- `src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml` -- baseline model, fixed split
+- `src/hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml` -- XGBoost, rolling
+- `src/hpc_oda_commons/recipes/job-runtime/alt_model_example.yml` -- XGBoost, smaller rolling window
+- `src/hpc_oda_commons/recipes/job-runtime/mlp_rolling.yml` -- MLP, rolling
+- `src/hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml` -- UoPC power prediction, fixed split
 
 See the [Recipes Reference](../reference/recipes.md) for the full format specification with annotated examples.
 
@@ -56,7 +58,7 @@ This enforces strict temporal separation -- the model never sees future data dur
 
 The rolling models use caching to avoid redundant computation across windows:
 
-- **XGBoost**: Categorical feature preprocessing (one-hot encoding + SVD) is cached by day. The encoder and SVD are refit on the first split of each new day, then reused for remaining windows. This mirrors production behavior where preprocessing would be refreshed on a daily schedule.
+- **Rolling tabular models** (`xgboost`, `random_forest`, `mlp`): Categorical feature preprocessing (one-hot encoding + SVD) is cached by day. The encoder and SVD are refit on the first split of each new day, then reused for remaining windows. This mirrors production behavior where preprocessing would be refreshed on a daily schedule. The three models share this preprocessing via the `rolling_tabular` package.
 - **TF-IDF + kNN**: The HashingVectorizer hash matrix is cached incrementally. Between windows, only new/removed jobs are hashed -- the rest of the matrix is reused. This avoids re-vectorizing the full training set each window.
 
 ## Metrics
@@ -68,7 +70,7 @@ The v0.1 runtime prediction problem uses regression metrics:
 | MAE | Mean Absolute Error -- average absolute difference in seconds |
 | RMSE | Root Mean Squared Error -- penalizes large errors more heavily |
 
-Additional metrics (`mape`, `r2`) can be added to a recipe's metric definitions. All metrics must target the same field (e.g., `runtime_seconds`).
+Additional metrics (`mape`, `r2`, `underprediction_ratio`) can be added to a recipe's metric definitions. All metrics must target the same field (e.g., `runtime_seconds`).
 
 ## Result Bundles
 

@@ -1,6 +1,6 @@
 # Job Runtime XGBoost Model
 
-This model is the alternate runtime predictor for `oda.job.v0.1.0` benchmark
+This model is the alternate runtime predictor for `oda.job.v0.2.0` benchmark
 recipes. It trains XGBoost regressors in a rolling evaluation loop and
 reports global and per-window regression metrics.
 
@@ -19,7 +19,7 @@ For reproducibility and tuning support, preprocessing diagnostics can be
 generated via:
 
 - `JobRuntimeXGBoostModel.analyze_preprocessing(...)`
-- helpers in `preprocessing.py`
+- helpers in `rolling_tabular/preprocessing.py` (shared base)
 
 ## Rolling Evaluation Behavior
 
@@ -45,13 +45,13 @@ pip install -e ".[dev]"
 Run the default rolling XGBoost recipe:
 
 ```bash
-HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml
 ```
 
 Run a faster local variant (smaller rolling window):
 
 ```bash
-HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/alt_model_example.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/alt_model_example.yml
 ```
 
 The benchmark writes a result bundle under `runs/benchmark-*/` containing:
@@ -62,7 +62,7 @@ The benchmark writes a result bundle under `runs/benchmark-*/` containing:
 
 ## Recipe Requirements
 
-For this model in v0.1, use:
+For this model, use:
 
 - `model.id: model.job_runtime_xgboost`
 - `split.method: rolling`

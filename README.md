@@ -36,7 +36,7 @@ pip install -e ".[dev]"
 hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
 
 # Run a benchmark
-hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
+hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 
 # Compare results
 hpc-oda leaderboard --runs runs --out leaderboard
@@ -77,7 +77,7 @@ hpc-oda info model.job_runtime_baseline
 HPC_ODA_OFFLINE=1 hpc-oda run-baseline
 
 # Benchmark using the v0.1 baseline recipe
-HPC_ODA_OFFLINE=1 hpc-oda benchmark hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 
 # Generate a leaderboard from result bundles
 hpc-oda leaderboard --runs runs --out leaderboard
@@ -99,7 +99,7 @@ hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
 
 The wizard walks you through mapping your columns to the canonical ODA schema. To replay a mapping non-interactively:
 ```bash
-hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet --mapping /path/to/mapping.yml
+hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet --mapping /path/to/mapping.yml --non-interactive
 ```
 
 ### Validate, Analyze, and Benchmark
@@ -121,7 +121,13 @@ hpc-oda benchmark -v my_recipe.yml
 
 **XGBoost** (`model.job_runtime_xgboost`) — Gradient-boosted tree model with automatic categorical preprocessing (one-hot encoding + SVD dimensionality reduction). Uses a daily preprocessing cache so OHE/SVD are only refit on day boundaries during rolling evaluation.
 
+**Random Forest** (`model.job_runtime_random_forest`) — Random Forest regression with the same automatic categorical preprocessing (one-hot encoding + SVD) and rolling evaluation. Shares the `rolling_tabular` base with XGBoost and MLP.
+
+**MLP** (`model.job_runtime_mlp`) — Feed-forward neural network (sklearn `MLPRegressor`) with automatic categorical preprocessing (one-hot encoding + SVD) and rolling evaluation. Shares the `rolling_tabular` base with XGBoost and Random Forest.
+
 **TF-IDF + kNN** (`model.job_runtime_tfidf_knn`) — Text-similarity model that concatenates job metadata fields (user, account, partition, job name, submit line, working directory, script) into text, vectorizes with TF-IDF, and predicts runtime as the similarity-weighted average of the k nearest neighbors. Uses an incremental HashingVectorizer cache for efficient rolling evaluation.
+
+**Job Power UoPC** (`model.job_power_uopc`) — Power-prediction model (domain `job-power-prediction`) using per-user online kNN regression on label-encoded job features (UoPC-style), with fixed evaluation.
 
 ---
 
@@ -133,7 +139,7 @@ All artifacts are validated against versioned JSON Schemas following the pattern
 
 | Schema | Purpose |
 |--------|---------|
-| `oda.job.v0.1.0` | Canonical job record (the rows in an ODA table) |
+| `oda.job.v0.2.0` | Canonical job record (the rows in an ODA table); `oda.job.v0.1.0` is retained only for legacy reads |
 | `oda.result.v0.1.0` | Benchmark result bundle |
 | `oda.recipe.v0.1.0` | Benchmark recipe definition |
 | `oda.manifest.v0.1.0` | Ingest provenance manifest |
@@ -147,7 +153,7 @@ During v0.1 the core job schema is frozen except for non-breaking fixes.
 
 The pipeline produces four types of artifacts:
 
-**ODA Table** — A Parquet file of job records conforming to the domain's schema (e.g., `oda.job.v0.1.0`). This is the primary input for validation, analysis, and benchmarks.
+**ODA Table** — A Parquet file of job records conforming to the domain's schema (e.g., `oda.job.v0.2.0`). This is the primary input for validation, analysis, and benchmarks. In v0.2 the job timestamps (`start_time`, `end_time`, `submit_time`) are stored as native Arrow `timestamp(us, tz=UTC)` rather than ISO-8601 strings, and the column type is validated structurally; legacy v0.1 string tables are rejected with a clear re-ingest error.
 
 **Manifest** — JSON written alongside each ingested Parquet file. Captures the adapter used, inputs, transformations applied, and provenance (including content hashes).
 
@@ -162,7 +168,7 @@ Recipes are YAML files that fully specify a reproducible evaluation:
 ```yaml
 recipe_id: recipe.job_runtime.baseline_tiny
 problem_domain: [job-runtime-prediction]
-schema_version: oda.job.v0.1.0
+schema_version: oda.job.v0.2.0
 
 dataset:
   id: hpc_oda_commons/datasets/synthetic/job-runtime/tiny
@@ -190,7 +196,7 @@ run:
 
 v0.1 supports two split methods:
 - **`fixed`** — deterministic train/test split (used with the baseline model)
-- **`rolling`** — sliding-window evaluation that simulates production retraining (used with XGBoost). Parameters: `n_windows`, `test_window_hours`, `training_lookback_days`
+- **`rolling`** — sliding-window evaluation that simulates production retraining (used by the rolling baseline, XGBoost, Random Forest, TF-IDF + kNN, and MLP models). Parameters: `n_windows`, `test_window_hours`, `training_lookback_days`
 
 ### Provenance
 
@@ -229,7 +235,9 @@ All transformations are recorded in the manifest's transformation ledger.
 src/hpc_oda_commons/     Package implementation
   qst/                   CLI (Typer-based, entry point: hpc-oda)
   kernel/                Core: artifacts, provenance, validation, schemas
-  models/                Baseline, XGBoost, and TF-IDF kNN runtime models
+  models/                Six models: baseline, xgboost, random_forest, mlp,
+                         tfidf_knn (runtime) + job_power_uopc (power), plus a
+                         shared rolling_tabular base for the tabular rolling models
   adapters/              Source parsers (slurmctld)
   ingest/                Data ingestion pipeline (profile, suggest, wizard, apply)
   benchmark/             Recipe loading and results aggregation

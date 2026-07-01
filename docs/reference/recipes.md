@@ -7,8 +7,10 @@
 | `baseline_tiny.yml` | Baseline (mean predictor) | Fixed 80/20 | CI smoke tests, offline demos |
 | `xgb_hourly_recent.yml` | XGBoost | Rolling (1000 windows, 6h, 100d) | Full XGBoost benchmark |
 | `alt_model_example.yml` | XGBoost | Rolling (24 windows, 6h, 30d) | Alternate config example |
+| `mlp_rolling.yml` | MLP | Rolling (20 windows, 6h, 7d) | Feed-forward neural network example |
+| `uopc_maxpcon.yml` | UoPC (power) | Fixed | Per-user online power prediction example |
 
-Bundled recipes are shipped with the package at `hpc_oda_commons/recipes/job-runtime/`.
+Bundled recipes are shipped with the package at `src/hpc_oda_commons/recipes/job-runtime/`.
 
 ## Recipe Schema (`oda.recipe.v0.1.0`)
 
@@ -25,7 +27,7 @@ problem_domain:
   - job-runtime-prediction
 
 # Input data schema version required
-schema_version: oda.job.v0.1.0
+schema_version: oda.job.v0.2.0
 
 # Dataset to evaluate against
 dataset:
@@ -38,7 +40,8 @@ model:
   id: model.job_runtime_baseline
   version: "0.1.0"
 
-# Metrics to compute (v0.1 requires at least mae and rmse)
+# Metrics to compute (v0.1 requires at least mae and rmse; other supported
+# names are mape, r2, and underprediction_ratio)
 metrics:
   - name: mae
     target: runtime_seconds
@@ -63,7 +66,7 @@ run:
 - `train_fraction` (float, required): fraction of data for training (e.g., `0.8`)
 - `seed` (int, required): random seed for reproducibility
 
-**`rolling`** -- Sliding windows that simulate production retraining. Used with all three v0.1 models (`model.job_runtime_baseline`, `model.job_runtime_xgboost`, `model.job_runtime_tfidf_knn`).
+**`rolling`** -- Sliding windows that simulate production retraining. Used with the five rolling models (`model.job_runtime_baseline`, `model.job_runtime_xgboost`, `model.job_runtime_random_forest`, `model.job_runtime_tfidf_knn`, `model.job_runtime_mlp`).
 - `n_windows` (int, required): number of windows to evaluate
 - `test_window_hours` (int, default `6`): duration of each test window in hours
 - `training_lookback_days` (int, default `100`): days of history per training window
@@ -78,7 +81,7 @@ run:
 To create a custom recipe, copy a bundled one and modify it:
 
 ```bash
-cp hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml my_recipe.yml
+cp src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml my_recipe.yml
 # Edit my_recipe.yml: change dataset.table_path, split params, etc.
 hpc-oda benchmark my_recipe.yml
 ```
