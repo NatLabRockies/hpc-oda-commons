@@ -34,10 +34,13 @@ Like MAE but penalizes large errors more heavily. Always >= MAE.
 
 Run the baseline first to establish a reference, then run alternate models on the same data using the same rolling split parameters. A useful model should achieve lower MAE and RMSE than the baseline, which predicts the global mean runtime for every job.
 
-v0.1 ships three models:
+The toolkit ships six models -- five for job runtime and one for job power:
 - `model.job_runtime_baseline` -- mean predictor (supports fixed and rolling splits)
 - `model.job_runtime_xgboost` -- gradient-boosted trees with OHE+SVD preprocessing
+- `model.job_runtime_random_forest` -- random forest with OHE+SVD preprocessing
+- `model.job_runtime_mlp` -- feed-forward MLP with OHE+SVD preprocessing
 - `model.job_runtime_tfidf_knn` -- text similarity via TF-IDF + k-nearest neighbors
+- `model.job_power_uopc` -- job power prediction via per-user kNN (fixed split)
 
 Use rolling evaluation with the same `n_windows`, `test_window_hours`, and `training_lookback_days` across all models for apples-to-apples comparison.
 
@@ -51,7 +54,7 @@ Use rolling evaluation with the same `n_windows`, `test_window_hours`, and `trai
   "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
   "dataset": {
     "id": "...",
-    "schema_version": "oda.job.v0.1.0",
+    "schema_version": "oda.job.v0.2.0",
     "hash": "e3b0c44..."
   },
   "integrity": {
@@ -70,7 +73,7 @@ Use rolling evaluation with the same `n_windows`, `test_window_hours`, and `trai
 
 ## Reading `metrics.json` (Rolling)
 
-For rolling benchmarks (baseline, XGBoost, or TF-IDF kNN), `metrics.json` contains per-window detail:
+For rolling benchmarks (baseline, XGBoost, random forest, MLP, or TF-IDF kNN), `metrics.json` contains per-window detail:
 
 ```json
 {
@@ -97,14 +100,14 @@ For rolling benchmarks (baseline, XGBoost, or TF-IDF kNN), `metrics.json` contai
 ```
 
 - `windows_scored` vs `windows_skipped` -- some windows may lack enough data to train or test. A high skip rate suggests sparse data in parts of the evaluation window.
-- `preprocessing_refits` -- the OHE/SVD pipeline is refit once per day. This count shows how many unique days were covered.
+- `preprocessing_refits` -- appears only for the tabular rolling models (`xgboost`, `random_forest`, `mlp`), not the baseline or TF-IDF kNN rolling summaries. The OHE/SVD pipeline is refit once per day, and this count shows how many unique days were covered.
 - Per-window `metrics` show how prediction quality varies over time. Large swings may indicate workload pattern changes.
 
 ## Reading `provenance.json`
 
 ```json
 {
-  "schema_versions": {"input": "oda.job.v0.1.0", "result": "oda.result.v0.1.0"},
+  "schema_versions": {"input": "oda.job.v0.2.0", "result": "oda.result.v0.1.0"},
   "environment": {"python": "3.12.1"},
   "code": {"package_version": "0.1.0", "git_commit": "abc123..."},
   "inputs": [{"path": "data.parquet", "sha256": "e3b0c44...", "size_bytes": 1048576}]
