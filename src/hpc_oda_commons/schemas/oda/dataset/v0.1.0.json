@@ -1,0 +1,266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hpc-oda-commons.org/schemas/oda/dataset/v0.1.0.json",
+  "title": "hpc-oda-commons dataset descriptor schema v0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dataset_id",
+    "schema_version",
+    "name",
+    "version",
+    "description",
+    "problem_domains",
+    "source",
+    "decode",
+    "targets"
+  ],
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "description": "Semantic version string."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{1,62}[a-z0-9]$",
+      "description": "Lowercase problem-domain identifier (e.g., job-runtime-prediction)."
+    },
+    "schema_id": {
+      "type": "string",
+      "pattern": "^oda\\.[a-z0-9_.-]+\\.v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+      "description": "Canonical output schema identifier, e.g., oda.job.v0.2.0."
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Lowercase hex SHA-256 of a fetched resource (reproducibility anchor)."
+    },
+    "field_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from"],
+      "properties": {
+        "from": { "type": "string", "minLength": 1, "description": "Source column name." },
+        "type": {
+          "type": "string",
+          "enum": [
+            "timestamp",
+            "duration",
+            "memory",
+            "memory_slurm",
+            "hash_identifier",
+            "integer",
+            "number",
+            "string",
+            "passthrough"
+          ],
+          "description": "Normalization transform; omitted means pass the value through unchanged."
+        },
+        "format": { "type": "string", "description": "e.g., epoch_s, epoch_ms, iso8601, HH:MM:SS." },
+        "unit": { "type": "string", "description": "e.g., seconds, minutes, gb, mib." }
+      }
+    }
+  },
+  "properties": {
+    "dataset_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]{1,80}[a-z0-9]$",
+      "description": "Stable dataset id, e.g., dataset.job_power.fdata_fugaku."
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "oda.dataset.v0.1.0",
+      "description": "Schema identifier for this descriptor format."
+    },
+    "name": { "type": "string", "minLength": 3, "maxLength": 120 },
+    "version": { "$ref": "#/$defs/semver" },
+    "description": { "type": "string", "minLength": 10, "maxLength": 5000 },
+    "problem_domains": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/slug" },
+      "description": "ODA task domains this dataset can serve."
+    },
+    "systems": { "type": "array", "items": { "type": "string" } },
+    "providers": { "type": "array", "items": { "type": "string" } },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "doi": { "type": "string" },
+        "url": { "type": "string" }
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spdx": { "type": "string", "description": "SPDX identifier, e.g., CC-BY-4.0." },
+        "gated": {
+          "type": "boolean",
+          "description": "True if access requires registration/agreement (use source.kind=manual)."
+        },
+        "url": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "size": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Declared sizes; drives the fetch size guardrail and list/info display.",
+      "properties": {
+        "default_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total download for the default slice."
+        },
+        "full_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total download for the full dataset."
+        },
+        "rows_hint": { "type": "string" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "resources"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["http", "zenodo", "osti", "oedi", "github", "git-lfs", "s3", "bigquery", "manual"],
+          "description": "Fetch backend. 'manual' = user supplies a checksum-verified file (gated datasets)."
+        },
+        "record": { "type": "string", "description": "Resolver-specific id (e.g., a Zenodo record)." },
+        "base_url": { "type": "string" },
+        "instructions": {
+          "type": "string",
+          "description": "How to obtain the file(s) for a gated/manual source."
+        },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["filename", "sha256"],
+            "properties": {
+              "filename": { "type": "string", "minLength": 1 },
+              "url": { "type": "string", "description": "Required for non-manual sources." },
+              "sha256": { "$ref": "#/$defs/sha256" },
+              "bytes": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "slices": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["default", "available"],
+          "description": "Named selections over resources; the curated 'default' is fetched unless overridden.",
+          "properties": {
+            "default": { "type": "string", "minLength": 1 },
+            "available": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["include"],
+                "properties": {
+                  "description": { "type": "string" },
+                  "include": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "type": "string" },
+                    "description": "Globs matched against resource filenames."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "decode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["parquet", "csv", "swf", "json", "log", "tar"]
+        },
+        "options": { "type": "object" }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schema", "mapping", "output"],
+        "properties": {
+          "schema": { "$ref": "#/$defs/schema_id" },
+          "capabilities": {
+            "type": "array",
+            "description": "Which model types this target drives; validated against the mapping outputs.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["problem_domain", "target_column"],
+              "properties": {
+                "problem_domain": { "$ref": "#/$defs/slug" },
+                "target_column": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "suitable_models": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional curated model ids known to work with this target."
+          },
+          "mapping": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "$ref": "#/$defs/field_rule" },
+            "description": "Canonical output column -> source field rule."
+          },
+          "select": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional projection: canonical columns to keep."
+          },
+          "filter": {
+            "type": "object",
+            "description": "Optional row filters (free-form in v0.1)."
+          },
+          "sample": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rows"],
+            "description": "Optional deterministic cap on the prepared table.",
+            "properties": {
+              "rows": { "type": "integer", "minimum": 1 },
+              "strategy": { "type": "string", "enum": ["head", "random", "stratified"] },
+              "by": { "type": "array", "items": { "type": "string" } },
+              "seed": { "type": "integer" }
+            }
+          },
+          "output": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "path"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "path": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  }
+}
