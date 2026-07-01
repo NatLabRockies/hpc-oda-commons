@@ -331,7 +331,9 @@ def apply_mapping_spec(
                 ends = columns["end_time"].to_pylist()
                 filled = [
                     _derive_runtime({"start_time": s, "end_time": e}) if nd else r
-                    for nd, s, e, r in zip(need.to_pylist(), starts, ends, runtime.to_pylist())
+                    for nd, s, e, r in zip(
+                        need.to_pylist(), starts, ends, runtime.to_pylist(), strict=False
+                    )
                 ]
                 columns["runtime_seconds"] = pa.array(filled, type=pa.float64())
 

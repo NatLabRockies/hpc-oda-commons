@@ -1,7 +1,7 @@
 # Ruff configuration for hpc-oda-commons (v0.1)
 
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 
 [lint]
 # Start conservative; expand later.
