@@ -510,6 +510,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/helios.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.lassen",
+      "entry_type": "dataset",
+      "name": "Lassen LAST (LLNL)",
+      "version": "1.0.0",
+      "description": "Per-job allocation history from LLNL's Lassen supercomputer (IBM CSM/LSF), 1,467,747 jobs, from the Livermore Archive for System Telemetry (LAST). Runtime derived as end_time - begin_time; requested walltime = time_limit; git-LFS file fetched over plain HTTPS via the LFS media URL (no git-lfs tool). Normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["lassen", "llnl", "lsf", "csm", "gpu"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/lassen.yml"
+      }
     }
   ]
 }
