@@ -98,8 +98,24 @@ def _apply_filter(table: pa.Table, filt: Mapping[str, Any]) -> pa.Table:
             for column in value:
                 if column in table.column_names:
                     table = table.filter(pc.is_valid(table.column(column)))
+        elif key == "require_positive":
+            # Drop rows where a listed field is present but <= 0 (nulls are kept).
+            # or_kleene so ``True OR null`` stays True (else a null field would drop the row).
+            for column in value:
+                if column in table.column_names:
+                    col = table.column(column)
+                    table = table.filter(pc.or_kleene(pc.is_null(col), pc.greater(col, 0)))
+        elif key == "require_end_after_start":
+            # Drop rows whose start_time is after end_time (inverted source timestamps).
+            if value and {"start_time", "end_time"} <= set(table.column_names):
+                start, end = table.column("start_time"), table.column("end_time")
+                keep = pc.or_kleene(pc.less_equal(start, end), pc.is_null(start))
+                table = table.filter(pc.or_kleene(keep, pc.is_null(end)))
         else:
-            raise NormalizeError(f"unsupported filter '{key}' (supported: require_nonnull)")
+            raise NormalizeError(
+                f"unsupported filter '{key}' (supported: require_nonnull, "
+                "require_positive, require_end_after_start)"
+            )
     return table
 
 
