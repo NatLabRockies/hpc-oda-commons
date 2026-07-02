@@ -50,7 +50,7 @@ def test_decode_csv(tmp_path: Path) -> None:
 
 def test_decode_unsupported_format(tmp_path: Path) -> None:
     with pytest.raises(DecodeError, match="unsupported decode format"):
-        decode_to_parquet("swf", [tmp_path / "x"], tmp_path / "out.parquet")
+        decode_to_parquet("json", [tmp_path / "x"], tmp_path / "out.parquet")
 
 
 def test_decode_empty_files(tmp_path: Path) -> None:
@@ -101,3 +101,47 @@ def test_decode_csv_gz(tmp_path: Path) -> None:
     decode_to_parquet("csv", [gz], dest)
 
     assert pq.read_table(dest).num_rows == 2
+
+
+_SWF_SAMPLE = """; SWFversion: 2.2
+; UnixStartTime: 1000000000
+; MaxJobs: 3
+1 0 10 100 4 -1 -1 4 3600 -1 1 5 2 -1 1 0 -1 -1
+2 50 20 200 8 -1 -1 8 7200 -1 1 6 2 -1 1 0 -1 -1
+3 100 -1 -1 -1 -1 -1 -1 -1 -1 5 7 2 -1 1 0 -1 -1
+"""
+
+
+def test_decode_swf_absolute_times(tmp_path: Path) -> None:
+    swf = tmp_path / "log.swf"
+    swf.write_text(_SWF_SAMPLE, encoding="utf-8")
+    dest = tmp_path / "out.parquet"
+
+    decode_to_parquet("swf", [swf], dest)
+
+    table = pq.read_table(dest)
+    rows = table.to_pylist()
+    assert len(rows) == 3
+    # UnixStartTime 1_000_000_000 + submit(0) + wait(10) -> start; + run(100) -> end.
+    assert rows[0]["start_time"] == 1_000_000_010.0
+    assert rows[0]["end_time"] == 1_000_000_110.0
+    assert rows[0]["run_time"] == 100.0
+    assert rows[0]["req_time"] == 3600.0
+    assert rows[0]["procs_alloc"] == 4.0
+    # Row 3 has run_time -1 (unavailable) -> None target, None end.
+    assert rows[2]["run_time"] is None
+    assert rows[2]["end_time"] is None
+    assert rows[2]["status"] == "5"
+
+
+def test_decode_swf_from_gz(tmp_path: Path) -> None:
+    import gzip
+
+    gz = tmp_path / "log.swf.gz"
+    with gzip.open(gz, "wt", encoding="utf-8") as fh:
+        fh.write(_SWF_SAMPLE)
+    dest = tmp_path / "out.parquet"
+
+    decode_to_parquet("swf", [gz], dest)
+
+    assert pq.read_table(dest).num_rows == 3
