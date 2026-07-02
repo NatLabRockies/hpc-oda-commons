@@ -12,6 +12,7 @@ schema but not yet implemented and raise a clear error.
 
 from __future__ import annotations
 
+import fnmatch
 import gzip
 import shutil
 import tarfile
@@ -33,19 +34,36 @@ class DecodeError(Exception):
     """Raised when a dataset's raw files cannot be decoded."""
 
 
-def _extract_one(path: Path, exts: tuple[str, ...], workdir: Path) -> list[Path]:
+def _members(dest: Path, exts: tuple[str, ...], member_glob: str | None) -> list[Path]:
+    """Extracted files matching the inner format, optionally filtered to a member glob
+    (matched against filename or the archive-relative path, e.g. ``*/cluster_log.csv``)."""
+
+    def keep(p: Path) -> bool:
+        if p.suffix.lower() not in exts:
+            return False
+        if member_glob is None:
+            return True
+        rel = p.relative_to(dest).as_posix()
+        return fnmatch.fnmatch(p.name, member_glob) or fnmatch.fnmatch(rel, member_glob)
+
+    return sorted(p for p in dest.rglob("*") if keep(p))
+
+
+def _extract_one(
+    path: Path, exts: tuple[str, ...], workdir: Path, member_glob: str | None = None
+) -> list[Path]:
     """Expand a single fetched file into decodable inner files (or itself if plain)."""
     name = path.name.lower()
     if name.endswith(".zip"):
         dest = Path(tempfile.mkdtemp(dir=workdir))
         with zipfile.ZipFile(path) as archive:
             archive.extractall(dest)
-        return sorted(p for p in dest.rglob("*") if p.suffix.lower() in exts)
+        return _members(dest, exts, member_glob)
     if name.endswith((".tar.gz", ".tgz", ".tar")):
         dest = Path(tempfile.mkdtemp(dir=workdir))
         with tarfile.open(path) as archive:
             archive.extractall(dest)  # checksum-verified, trusted sources
-        return sorted(p for p in dest.rglob("*") if p.suffix.lower() in exts)
+        return _members(dest, exts, member_glob)
     if name.endswith(".gz"):
         inner = Path(tempfile.mkdtemp(dir=workdir)) / path.name[: -len(".gz")]
         with gzip.open(path, "rb") as src, inner.open("wb") as out:
@@ -54,10 +72,12 @@ def _extract_one(path: Path, exts: tuple[str, ...], workdir: Path) -> list[Path]
     return [path]
 
 
-def _expand(files: Sequence[Path], exts: tuple[str, ...], workdir: Path) -> list[Path]:
+def _expand(
+    files: Sequence[Path], exts: tuple[str, ...], workdir: Path, member_glob: str | None = None
+) -> list[Path]:
     expanded: list[Path] = []
     for f in files:
-        expanded.extend(_extract_one(Path(f), exts, workdir))
+        expanded.extend(_extract_one(Path(f), exts, workdir, member_glob))
     if not expanded:
         raise DecodeError(f"no files matching {exts} found after extraction")
     return expanded
@@ -81,7 +101,7 @@ def decode_to_parquet(
         raise DecodeError(f"unsupported decode format: {fmt!r} (supported: parquet, csv)")
 
     with tempfile.TemporaryDirectory() as tmp:
-        expanded = _expand(files, exts, Path(tmp))
+        expanded = _expand(files, exts, Path(tmp), options.get("member_glob"))
         if fmt == "parquet":
             from hpc_oda_commons.datasets.decode.parquet import decode_parquet
 
