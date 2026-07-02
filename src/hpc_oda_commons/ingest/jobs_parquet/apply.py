@@ -23,6 +23,12 @@ def _parse_timestamp(value: Any, fmt: str) -> datetime | None:
         if not text:
             return None
 
+        # A trailing zone word (e.g. "2023-05-31T22:21:04 UTC") -> treat as UTC.
+        for _zone in (" UTC", " GMT"):
+            if text.endswith(_zone):
+                text = text[: -len(_zone)].rstrip()
+                break
+
         # Be permissive for common upstream exports:
         # - "YYYY-MM-DD HH:MM:SS+09"  (space separator, short offset)
         # - "YYYY-MM-DD HH:MM:SS+09:00"

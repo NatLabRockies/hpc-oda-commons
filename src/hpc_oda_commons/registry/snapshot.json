@@ -525,6 +525,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/lassen.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.fresco_anvil",
+      "entry_type": "dataset",
+      "name": "FRESCO Anvil Job Accounting",
+      "version": "1.0.0",
+      "description": "Anonymized SLURM job accounting from Purdue's Anvil supercomputer (A100), FRESCO repository, 11 monthly CSVs (July 2022 - May 2023), 1,475,155 jobs. Runtime = Wall Time; requested walltime = Requested Wall Time; cores/gpus/nodes/queue/exit features. Fetched from the datadepot over direct HTTPS (no Globus). Normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "LicenseRef-fresco",
+      "tags": ["fresco", "anvil", "purdue", "slurm", "a100"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_anvil.yml"
+      }
     }
   ]
 }
