@@ -25,6 +25,7 @@ _FORMAT_EXTS: dict[str, tuple[str, ...]] = {
     "parquet": (".parquet",),
     "csv": (".csv", ".tsv", ".txt"),
     "swf": (".swf",),
+    "json": (".json",),
 }
 
 
@@ -89,6 +90,10 @@ def decode_to_parquet(
             from hpc_oda_commons.datasets.decode.swf import decode_swf
 
             decode_swf(expanded, dest)
+        elif fmt == "json":
+            from hpc_oda_commons.datasets.decode.json import decode_json
+
+            decode_json(expanded, dest, options=options)
         else:  # csv (incl. TSV via options.delimiter)
             from hpc_oda_commons.datasets.decode.csv import decode_csv
 

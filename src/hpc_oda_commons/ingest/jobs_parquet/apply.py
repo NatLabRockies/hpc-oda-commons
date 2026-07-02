@@ -263,6 +263,16 @@ def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Arr
             return pc.cast(pc.cast(col, pa.timestamp("s", tz="UTC")), pa.timestamp("us", tz="UTC"))
     elif ttype == "memory_slurm" and pa.types.is_string(col.type):
         return _memory_slurm_column(col)
+    elif ttype == "integer":
+        # Coerce numeric-as-string (e.g. IC2 "24") or float sources to int64 (via float64
+        # so "24.0" works too); already-integer columns pass through unchanged.
+        if pa.types.is_integer(col.type):
+            return col
+        return pc.cast(pc.cast(col, pa.float64()), pa.int64())
+    elif ttype == "number":
+        if pa.types.is_floating(col.type):
+            return col
+        return pc.cast(col, pa.float64())
 
     # Element-wise fallback: iso8601, hh:mm:ss, epoch_ms/us,
     # hash_identifier, non-numeric sources, or unrecognized transforms.
