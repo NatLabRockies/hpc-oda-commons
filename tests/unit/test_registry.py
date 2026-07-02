@@ -40,7 +40,17 @@ def test_index_filters_by_tag_and_source() -> None:
 
     slurm = index.filter(source="slurmctld")
     slurm_ids = {entry.id for entry in slurm}
-    assert job_runtime_ids.issubset(slurm_ids)
+    # The v0.1 slurm-sourced adapter/model/recipe entries are all present. Dataset
+    # entries carry no `supported_sources` (a dataset isn't a source), so they are
+    # intentionally excluded from the source filter even when tagged job-runtime.
+    slurm_sourced = {
+        "adapter.slurmctld",
+        "model.job_runtime_baseline",
+        "model.job_runtime_xgboost",
+        "recipe.job_runtime.baseline_tiny",
+        "recipe.job_runtime.xgb_hourly_recent",
+    }
+    assert slurm_sourced.issubset(slurm_ids)
 
 
 def test_index_filters_by_entry_type() -> None:

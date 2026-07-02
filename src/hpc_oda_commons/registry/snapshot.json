@@ -210,6 +210,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.pm100",
+      "entry_type": "dataset",
+      "name": "PM100 (Marconi100 Jobs)",
+      "version": "1.0.0",
+      "description": "Per-job SLURM accounting + per-job power curated from the Marconi100 M100 ExaData job_table (231,238 jobs, May-Oct 2020). Runtime-prediction target = run_time; fetched from Zenodo and normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction", "job-power-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["marconi100", "slurm", "power", "benchmark"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pm100.yml"
+      }
     }
   ]
 }
