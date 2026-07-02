@@ -51,6 +51,8 @@ class Target:
     capabilities: tuple[Capability, ...] = ()
     suitable_models: tuple[str, ...] = ()
     select: tuple[str, ...] = ()
+    filter: Mapping[str, Any] | None = None
+    sample: Mapping[str, Any] | None = None
 
     @property
     def produced_columns(self) -> frozenset[str]:
@@ -70,6 +72,8 @@ class Target:
             ),
             suitable_models=tuple(str(m) for m in (payload.get("suitable_models") or [])),
             select=tuple(str(s) for s in (payload.get("select") or [])),
+            filter=payload.get("filter"),
+            sample=payload.get("sample"),
         )
 
 
