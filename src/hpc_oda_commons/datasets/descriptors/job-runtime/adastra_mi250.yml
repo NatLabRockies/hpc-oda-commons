@@ -1,0 +1,53 @@
+dataset_id: dataset.job_runtime.adastra_mi250
+schema_version: oda.dataset.v0.1.0
+name: Adastra MI250 Jobs (15 days)
+version: 1.0.0
+description: >
+  SLURM per-job records from Adastra (CINES, HPE Cray EX, AMD MI250), a 15-day
+  window in 2024 (15,285 jobs). Runtime-prediction target = run_time (seconds).
+  Per-job node/CPU/mem power columns are available for a later power phase. Note:
+  the source time_limit column is an absolute epoch deadline (not a requested
+  duration), so requested walltime is intentionally not mapped.
+problem_domains: [job-runtime-prediction, job-power-prediction]
+systems: [Adastra]
+providers: [CINES]
+citation: { doi: "10.5281/zenodo.14007065", url: "https://zenodo.org/records/14007065" }
+license: { spdx: CC-BY-4.0, gated: false }
+tags: [adastra, cines, slurm, mi250, gpu, power]
+size:
+  default_bytes: 1230367
+  full_bytes: 1230367
+  rows_hint: "15,285 jobs"
+
+source:
+  kind: zenodo
+  record: "14007065"
+  resources:
+    - filename: "AdastaJobsMI250_15days.parquet"
+      url: "https://zenodo.org/records/14007065/files/AdastaJobsMI250_15days.parquet"
+      sha256: 7ed5fce02fa82a852262e2b794e2c6d3914f34930b4f1b5c619800b2f5d52bc0
+      bytes: 1230367
+
+decode:
+  format: parquet
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: job_id }
+      start_time: { from: start_time, type: timestamp, format: iso8601 }
+      end_time: { from: end_time, type: timestamp, format: iso8601 }
+      submit_time: { from: submit_time, type: timestamp, format: iso8601 }
+      runtime_seconds: { from: run_time, type: duration, unit: seconds }
+      partition: { from: partition }
+      qos: { from: qos }
+      num_nodes_req: { from: num_nodes_req, type: integer }
+      num_cores_req: { from: num_cores_req, type: integer }
+      num_gpus_req: { from: num_gpus_req, type: integer }
+      job_state: { from: job_state }
+      user: { from: user_id, type: hash_identifier }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: adastra_mi250, path: data/datasets/adastra_mi250/data.parquet }
