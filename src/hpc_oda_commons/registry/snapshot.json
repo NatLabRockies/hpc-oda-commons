@@ -420,6 +420,51 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/ic2.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.pwa_ricc",
+      "entry_type": "dataset",
+      "name": "PWA RICC (RIKEN Integrated Cluster)",
+      "version": "1.0.0",
+      "description": "Standard Workload Format log for the RIKEN Integrated Cluster of Clusters (RICC) from the Parallel Workloads Archive (447,794 jobs, 2010). Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["pwa", "swf", "riken", "ricc"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_ricc.yml"
+      }
+    },
+    {
+      "id": "dataset.job_runtime.pwa_hpc2n",
+      "entry_type": "dataset",
+      "name": "PWA HPC2N (Seth cluster)",
+      "version": "1.0.0",
+      "description": "Standard Workload Format log for the HPC2N Seth cluster (Sweden) from the Parallel Workloads Archive (527,371 jobs, 2002-2006). Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["pwa", "swf", "hpc2n", "seth"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_hpc2n.yml"
+      }
+    },
+    {
+      "id": "dataset.job_runtime.pwa_sdsc_blue",
+      "entry_type": "dataset",
+      "name": "PWA SDSC Blue Horizon",
+      "version": "1.0.0",
+      "description": "Standard Workload Format log for the SDSC Blue Horizon (IBM SP) from the Parallel Workloads Archive (250,440 jobs, 2000-2002). Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["pwa", "swf", "sdsc", "blue-horizon"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_sdsc_blue.yml"
+      }
     }
   ]
 }
