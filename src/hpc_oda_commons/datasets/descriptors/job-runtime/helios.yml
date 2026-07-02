@@ -1,0 +1,55 @@
+dataset_id: dataset.job_runtime.helios
+schema_version: oda.dataset.v0.1.0
+name: Helios (SenseTime GPU clusters)
+version: 1.0.0
+description: >
+  Job traces from four SenseTime GPU clusters (Saturn, Uranus, Venus, Earth), ~3.36M jobs,
+  Apr-Sep 2020, from the Helios/HeliosData study. Only the per-cluster cluster_log.csv job
+  logs are used (the cluster_gpu_number.csv availability time-series is filtered out via a
+  member glob). There is no requested-walltime field, so the runtime target is derived
+  (end_time - start_time); timestamps are naive and treated as UTC (runtime is tz-invariant).
+  Fetched from GitHub over direct HTTPS. Cross-domain GPU-cluster complement.
+problem_domains: [job-runtime-prediction]
+systems: [Saturn, Uranus, Venus, Earth]
+providers: [SenseTime]
+citation: { url: "https://github.com/S-Lab-System-Group/HeliosData" }
+license: { spdx: CC-BY-4.0, gated: false }
+tags: [helios, sensetime, gpu, cloud]
+size:
+  default_bytes: 36437672
+  full_bytes: 36437672
+  rows_hint: "~3.36M jobs across 4 clusters (2020-04 to 2020-09)"
+
+source:
+  kind: github
+  resources:
+    - filename: data.zip
+      url: "https://raw.githubusercontent.com/S-Lab-System-Group/HeliosData/master/data.zip"
+      sha256: 3d22a5f6c0ae669e2fcbfe4200fa9c48664507bc397c677bad8f085222c032ac
+      bytes: 36437672
+
+decode:
+  format: csv
+  options:
+    member_glob: "*cluster_log.csv"
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: job_id }
+      submit_time: { from: submit_time, type: timestamp, format: iso8601 }
+      start_time: { from: start_time, type: timestamp, format: iso8601 }
+      end_time: { from: end_time, type: timestamp, format: iso8601 }
+      runtime_seconds: { derive: "end_time - start_time" }
+      allocated_cpus: { from: cpu_num, type: integer }
+      num_nodes_alloc: { from: node_num, type: integer }
+      num_gpus_req: { from: gpu_num, type: integer }
+      job_state: { from: state }
+      queue: { from: queue }
+      vc: { from: vc }
+      user: { from: user, type: hash_identifier }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: helios, path: data/datasets/helios/data.parquet }

@@ -495,6 +495,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/acme_kalos.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.helios",
+      "entry_type": "dataset",
+      "name": "Helios (SenseTime GPU clusters)",
+      "version": "1.0.0",
+      "description": "Job traces from four SenseTime GPU clusters (Saturn/Uranus/Venus/Earth), ~3.36M jobs, 2020, from the Helios/HeliosData study. Only the per-cluster cluster_log.csv job logs are used (gpu-number time-series filtered via member glob). No requested-walltime; runtime derived as end_time - start_time. Fetched from GitHub over direct HTTPS; normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["helios", "sensetime", "gpu", "cloud"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/helios.yml"
+      }
     }
   ]
 }

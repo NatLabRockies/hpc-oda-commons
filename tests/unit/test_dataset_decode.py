@@ -222,3 +222,23 @@ def test_decode_json_flatten(tmp_path: Path) -> None:
     # task_id has mixed str/int across records -> string fallback
     assert table.schema.field("task_id").type == pa.string()
     assert table.column("task_id").to_pylist() == ["1", "2"]
+
+
+def test_decode_member_glob_filter(tmp_path: Path) -> None:
+    import zipfile
+
+    (tmp_path / "keep.csv").write_text("a,b\n1,2\n", encoding="utf-8")
+    (tmp_path / "skip.csv").write_text("x,y,z\n1,2,3\n", encoding="utf-8")
+    zpath = tmp_path / "bundle.zip"
+    with zipfile.ZipFile(zpath, "w") as z:
+        z.write(tmp_path / "keep.csv", arcname="d/cluster_log.csv")
+        z.write(tmp_path / "skip.csv", arcname="d/cluster_gpu_number.csv")
+    dest = tmp_path / "out.parquet"
+
+    # Without the glob the two mismatched members would fail to concat; with it, only the
+    # cluster_log member is decoded.
+    decode_to_parquet("csv", [zpath], dest, options={"member_glob": "*cluster_log.csv"})
+
+    table = pq.read_table(dest)
+    assert set(table.column_names) == {"a", "b"}
+    assert table.num_rows == 1
