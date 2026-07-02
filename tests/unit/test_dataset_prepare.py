@@ -400,3 +400,33 @@ def test_strptime_pattern_timestamp() -> None:
     # empty / unparseable -> None (dropped by completeness, e.g. Conte Q/S events)
     assert _parse_timestamp("", "%m/%d/%Y %H:%M:%S") is None
     assert _parse_timestamp("not-a-date", "%m/%d/%Y %H:%M:%S") is None
+
+
+def test_value_filters_positive_and_time_order() -> None:
+    # ALCF DJC needed dropping 0-core rows and start>end rows (source data-quality).
+    from datetime import datetime
+
+    from hpc_oda_commons.datasets.normalize import _apply_filter
+
+    ts = pa.timestamp("us", tz="UTC")
+    table = pa.table(
+        {
+            "allocated_cpus": pa.array([4, 0, None, 8], pa.int64()),
+            "start_time": pa.array(
+                [
+                    datetime(2023, 1, 1, 0, 0),
+                    datetime(2023, 1, 1, 0, 0),
+                    datetime(2023, 1, 1, 5, 0),  # after end -> inverted
+                    datetime(2023, 1, 1, 0, 0),
+                ],
+                ts,
+            ),
+            "end_time": pa.array([datetime(2023, 1, 1, 1, 0)] * 4, ts),
+        }
+    )
+    # require_positive drops allocated_cpus == 0 but keeps null and positive.
+    kept = _apply_filter(table, {"require_positive": ["allocated_cpus"]})
+    assert kept.column("allocated_cpus").to_pylist() == [4, None, 8]
+    # require_end_after_start drops the row whose start is after end (index 2).
+    ordered = _apply_filter(table, {"require_end_after_start": True})
+    assert ordered.num_rows == 3

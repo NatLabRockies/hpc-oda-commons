@@ -555,6 +555,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_conte.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.alcf_djc_polaris",
+      "entry_type": "dataset",
+      "name": "ALCF DJC — Polaris (2023)",
+      "version": "1.0.0",
+      "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Polaris (full-year 2023), ALCF public DATA CATALOG. Cobalt/PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. 192,666 jobs. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the file yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes it to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "LicenseRef-alcf-public",
+      "tags": ["alcf", "argonne", "polaris", "pbs", "cobalt", "manual"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_polaris.yml"
+      }
     }
   ]
 }
