@@ -38,6 +38,14 @@ You must follow the team's process and standards — these are enforced on `main
 
 Key guardrails:
 
+- **Never commit sensitive or site-specific content.** Nothing that describes how
+  you or your site/machine work around a local problem — corporate proxies, TLS
+  interception, internal or root CA certificates, internal hostnames/URLs,
+  credentials or tokens, or personal environment paths (anything of the form "here's
+  how I handle X on my machine / at my site"). It is security-sensitive and this repo
+  is shared (and may be public). Keep such details in local, gitignored config or
+  personal notes (e.g. a gitignored `.claude/CLAUDE.md`) — never in code, comments,
+  docs, fixtures, commit messages, or PR text. When in doubt, leave it out.
 - **Work from an agreed issue.** Non-trivial changes start with an issue and a
   plan that's been discussed; don't start coding against an unreviewed plan.
 - **Never push to `main`.** Develop on a branch named `fix/…-<issue>` /
