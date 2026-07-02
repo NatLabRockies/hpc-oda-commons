@@ -270,6 +270,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/ccin2p3_2024.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.nrel_eagle",
+      "entry_type": "dataset",
+      "name": "NREL Eagle Jobs (OEDI 5860)",
+      "version": "1.0.0",
+      "description": "Per-job SLURM accounting for NREL's Eagle supercomputer (OEDI submission 5860), ~11.03M jobs 2018-Feb 2023 in a single parquet. Runtime-prediction target = run_time; fetched from OEDI and normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["eagle", "nrel", "slurm", "oedi", "home-lab"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nrel_eagle.yml"
+      }
     }
   ]
 }
