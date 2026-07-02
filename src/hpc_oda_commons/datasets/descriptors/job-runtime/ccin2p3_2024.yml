@@ -1,0 +1,55 @@
+dataset_id: dataset.job_runtime.ccin2p3_2024
+schema_version: oda.dataset.v0.1.0
+name: CC-IN2P3 2024 Workload (recent month)
+version: 1.0.0
+description: >
+  SLURM sacct per-job trace from CC-IN2P3 (CNRS national computing centre, France).
+  The full year 2024 is ~44M jobs across 12 monthly tar.gz files; this descriptor
+  curates the most recent month (December 2024) as the premium runtime slice.
+  Runtime-prediction target = elapsed (seconds); requested walltime = timelimit
+  (seconds). CPU/HTC-centric (single-node jobs dominate).
+problem_domains: [job-runtime-prediction]
+systems: [CC-IN2P3]
+providers: [CNRS, "CC-IN2P3"]
+citation: { doi: "10.5281/zenodo.18668107", url: "https://zenodo.org/records/18668107" }
+license: { spdx: CC-BY-4.0, gated: false }
+tags: [cc-in2p3, cnrs, slurm, sacct, htc]
+size:
+  default_bytes: 51103408
+  full_bytes: 885000000
+  rows_hint: "Dec 2024 month; 44M jobs full year"
+
+source:
+  kind: zenodo
+  record: "18668107"
+  resources:
+    - filename: "12.tsv.tar.gz"
+      url: "https://zenodo.org/records/18668107/files/12.tsv.tar.gz"
+      sha256: 3cb2863889afffbc629ff3b1f353ff3d45f49e3aeb7f555d85c4b8166891ada3
+      bytes: 51103408
+
+decode:
+  format: csv
+  options:
+    delimiter: "\t"
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: jobid }
+      submit_time: { from: submit, type: timestamp, format: epoch_s }
+      start_time: { from: start, type: timestamp, format: epoch_s }
+      end_time: { from: end, type: timestamp, format: epoch_s }
+      runtime_seconds: { from: elapsed, type: duration, unit: seconds }
+      requested_seconds: { from: timelimit, type: duration, unit: seconds }
+      allocated_cpus: { from: alloccpus, type: integer }
+      partition: { from: partition }
+      job_state: { from: state }
+      user: { from: user, type: hash_identifier }
+      account: { from: account, type: hash_identifier }
+      allocgpus: { from: allocgpus, type: integer }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: ccin2p3_2024, path: data/datasets/ccin2p3_2024/data.parquet }
