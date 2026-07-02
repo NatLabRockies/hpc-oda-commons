@@ -1,5 +1,5 @@
 {
-  "schema_version": "oda.registry.v0.1.0",
+  "schema_version": "oda.registry.v0.2.0",
   "generated_at": "2026-02-03T00:00:00Z",
   "source": "initial hand-crafted v0.1 snapshot for runtime prediction vertical slice",
   "entries": [

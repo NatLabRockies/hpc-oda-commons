@@ -39,7 +39,7 @@ class RegistryReference:
 @dataclass(frozen=True)
 class RegistryEntry:
     id: str
-    entry_type: Literal["adapter", "model", "recipe"]
+    entry_type: Literal["adapter", "model", "recipe", "dataset"]
     name: str
     version: str
     description: str
@@ -55,7 +55,7 @@ class RegistryEntry:
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> RegistryEntry:
         entry_type = payload.get("entry_type")
-        if entry_type not in ("adapter", "model", "recipe"):
+        if entry_type not in ("adapter", "model", "recipe", "dataset"):
             raise ValueError(f"Invalid entry_type: {entry_type!r}")
 
         problem_domain = tuple(str(tag) for tag in (payload.get("problem_domain") or []))
@@ -106,6 +106,6 @@ class RegistrySnapshot:
 
 
 def entries_by_type(
-    entries: Iterable[RegistryEntry], entry_type: Literal["adapter", "model", "recipe"]
+    entries: Iterable[RegistryEntry], entry_type: Literal["adapter", "model", "recipe", "dataset"]
 ) -> tuple[RegistryEntry, ...]:
     return tuple(e for e in entries if e.entry_type == entry_type)

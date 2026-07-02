@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hpc-oda-commons.org/schemas/oda/registry/v0.2.0.json",
+  "title": "hpc-oda-commons registry schema v0.2.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "entries"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "oda.registry.v0.2.0",
+      "description": "Schema identifier for this registry snapshot format."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this snapshot was generated."
+    },
+    "source": {
+      "type": "string",
+      "description": "Human-readable provenance for snapshot generation (optional)."
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/registry_entry" }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "description": "Semantic version string."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{1,62}[a-z0-9]$",
+      "description": "Lowercase identifier used for stable IDs."
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": ["adapter", "model", "recipe", "dataset"],
+      "description": "Registry entry type."
+    },
+    "problem_domain": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_-]{1,62}[a-z0-9]$"
+      },
+      "description": "Tags describing the ODA task/problem domain (e.g., job-runtime-prediction)."
+    },
+    "supported_sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Identifiers for supported source types (e.g., slurmctld)."
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX identifier recommended (e.g., Apache-2.0)."
+    },
+    "dependencies": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional: human-readable dependency strings."
+    },
+    "schema_id": {
+      "type": "string",
+      "pattern": "^oda\\.[a-z0-9_.-]+\\.v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+      "description": "Schema identifier string, e.g., oda.job.v0.1.0."
+    },
+    "registry_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entry_type",
+        "name",
+        "version",
+        "problem_domain",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_.-]{1,80}[a-z0-9]$",
+          "description": "Stable ID for entry, e.g., model.job_runtime_baseline."
+        },
+        "entry_type": { "$ref": "#/$defs/entry_type" },
+        "name": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Human-readable name."
+        },
+        "version": { "$ref": "#/$defs/semver" },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 5000,
+          "description": "What this entry is and why it exists."
+        },
+        "problem_domain": { "$ref": "#/$defs/problem_domain" },
+
+        "supported_sources": { "$ref": "#/$defs/supported_sources" },
+        "input_schema_version": { "$ref": "#/$defs/schema_id" },
+        "output_schema_version": { "$ref": "#/$defs/schema_id" },
+
+        "license": { "$ref": "#/$defs/license" },
+        "dependencies": { "$ref": "#/$defs/dependencies" },
+
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Free-form tags for search/filter."
+        },
+
+        "reference": {
+          "$ref": "#/$defs/reference",
+          "description": "Where to load/resolve the implementation or recipe."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "entry_type": { "const": "adapter" } },
+            "required": ["entry_type"]
+          },
+          "then": {
+            "required": ["supported_sources", "output_schema_version", "reference"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "entry_type": { "const": "model" } },
+            "required": ["entry_type"]
+          },
+          "then": {
+            "required": ["supported_sources", "input_schema_version", "output_schema_version", "reference"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "entry_type": { "const": "recipe" } },
+            "required": ["entry_type"]
+          },
+          "then": {
+            "required": ["supported_sources", "input_schema_version", "reference"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "entry_type": { "const": "dataset" } },
+            "required": ["entry_type"]
+          },
+          "then": {
+            "required": ["reference"]
+          }
+        }
+      ]
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["python", "path"],
+          "description": "python = module/class reference; path = repo-relative file."
+        },
+        "python": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["module", "object"],
+          "properties": {
+            "module": { "type": "string", "minLength": 1 },
+            "object": { "type": "string", "minLength": 1 }
+          }
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repo-relative path for recipes and other file references."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "python" } } },
+          "then": { "required": ["python"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "path" } } },
+          "then": { "required": ["path"] }
+        }
+      ]
+    }
+  }
+}

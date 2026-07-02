@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import pytest
 
+from hpc_oda_commons.kernel.validate import SchemaValidationError, validate_json
 from hpc_oda_commons.registry.index import RegistryIndex
+from hpc_oda_commons.registry.models import RegistryEntry
 from hpc_oda_commons.registry.snapshot import load_registry_snapshot
 
 pytest.importorskip("typer")
@@ -75,3 +77,73 @@ def test_info_command_outputs_details(capsys: pytest.CaptureFixture[str]) -> Non
     info("model.job_runtime_baseline", snapshot=None)
     captured = capsys.readouterr().out
     assert "Job Runtime Baseline" in captured
+
+
+def test_dataset_entry_type_supported() -> None:
+    entry = RegistryEntry.from_dict(
+        {
+            "id": "dataset.job_runtime.example",
+            "entry_type": "dataset",
+            "name": "Example Dataset",
+            "version": "0.1.0",
+            "description": "An example registered dataset.",
+            "problem_domain": ["job-runtime-prediction"],
+            "output_schema_version": "oda.job.v0.2.0",
+            "reference": {
+                "kind": "path",
+                "path": "hpc_oda_commons/datasets/descriptors/example.yml",
+            },
+        }
+    )
+    assert entry.entry_type == "dataset"
+    index = RegistryIndex.from_entries([entry])
+    assert [e.id for e in index.filter(entry_type="dataset")] == ["dataset.job_runtime.example"]
+
+
+def test_browse_accepts_dataset_type() -> None:
+    # No dataset entries in the bundled snapshot yet; --type dataset must be accepted
+    # (not rejected as invalid) and simply match nothing.
+    browse(
+        tag=None,
+        entry_type="dataset",
+        source=None,
+        input_schema=None,
+        output_schema=None,
+        snapshot=None,
+    )
+
+
+def _snapshot_with_dataset(extra: dict) -> dict:
+    entry = {
+        "id": "dataset.job_runtime.example",
+        "entry_type": "dataset",
+        "name": "Example Dataset",
+        "version": "0.1.0",
+        "description": "An example registered dataset.",
+        "problem_domain": ["job-runtime-prediction"],
+    }
+    entry.update(extra)
+    return {
+        "schema_version": "oda.registry.v0.2.0",
+        "generated_at": "2026-07-02T00:00:00Z",
+        "entries": [entry],
+    }
+
+
+def test_registry_schema_v0_2_0_accepts_dataset_entry() -> None:
+    payload = _snapshot_with_dataset(
+        {
+            "output_schema_version": "oda.job.v0.2.0",
+            "reference": {
+                "kind": "path",
+                "path": "hpc_oda_commons/datasets/descriptors/example.yml",
+            },
+        }
+    )
+    validate_json(payload, "oda.registry.v0.2.0")
+
+
+def test_registry_schema_v0_2_0_dataset_requires_reference() -> None:
+    payload = _snapshot_with_dataset({"output_schema_version": "oda.job.v0.2.0"})
+    with pytest.raises(SchemaValidationError):
+        validate_json(payload, "oda.registry.v0.2.0")
