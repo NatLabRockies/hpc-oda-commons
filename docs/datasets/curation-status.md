@@ -54,12 +54,13 @@ All strict-validate against `oda.job.v0.2.0`.
 
 ## Remaining runtime datasets
 
-Only two remain, and both need a service (Globus / Aliyun-OSS) we deliberately don't fetch in the
-pipeline — they are documented for user ingestion in
-[`external-datasets.md`](external-datasets.md):
+Two remain, documented for user ingestion in [`external-datasets.md`](external-datasets.md):
 
-- **Blue Waters** (NCSA, Torque, ~4.5M jobs) — Globus; has requested walltime (primary-quality).
-- **Alibaba GPU-v2026** (ASI) — Aliyun-OSS; no requested walltime (secondary).
+- **Blue Waters** (NCSA, Torque, ~4.5M jobs) — **Globus only** (verified: NCSA's page gives no
+  direct HTTPS); has requested walltime (primary-quality).
+- **Alibaba GPU-v2026** (ASI) — a **direct-HTTPS public OSS URL** (not an SDK), but its
+  `aliyuncs.com` host was unreachable from this environment (DNS), so it isn't pinned here; no
+  requested walltime (secondary).
 
 ### Fetch-mechanism findings (most "backends" were never needed)
 
@@ -67,8 +68,9 @@ Direct HTTPS (the existing `http` backend) covers far more than expected — **n
 was ever built**. Public **S3** (MIT: `https://<bucket>.s3.amazonaws.com/<key>`), **data.nlr.gov**
 (302→presigned S3), **HuggingFace** (`resolve/<ref>/<path>`), **git-LFS** (GitHub
 `media.githubusercontent.com/media/...` — no `git-lfs` tool), and the **FRESCO datadepot** (a plain
-web directory) are all direct HTTPS. Only **Globus** (Blue Waters) and **Aliyun-OSS** (Alibaba)
-genuinely need a login/SDK → see [`external-datasets.md`](external-datasets.md).
+web directory) are all direct HTTPS. Even **Aliyun-OSS** (Alibaba) is a plain-HTTPS URL, not an
+SDK — only **Globus** (Blue Waters) genuinely needs a login. See
+[`external-datasets.md`](external-datasets.md).
 
 ## What's left
 
