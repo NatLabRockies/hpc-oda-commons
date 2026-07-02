@@ -1,6 +1,6 @@
 # Runtime Dataset Curation — Status & Remaining Roadmap
 
-**Updated:** 2026-07-02 (autonomous curation run; 22 runtime datasets registered)
+**Updated:** 2026-07-02 (autonomous curation run; 23 runtime datasets registered)
 **Companion to:** [`runtime-first-investigation.md`](runtime-first-investigation.md) (the plan) and
 the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../design/public-dataset-ingestion.md)).
 
@@ -48,19 +48,24 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | `helios` | SenseTime ×4 | 3,362,981 | GitHub/https | GPU, no walltime |
 | `lassen` | Lassen (LLNL, LSF) | 1,467,746 | GitHub-LFS/https | via LFS media URL |
 | `fresco_anvil` | Anvil (Purdue, A100) | 1,475,155 | datadepot/https | 11 months, real walltime |
+| `fresco_conte` | Conte (Purdue) | 1,042,125 | datadepot/https | Torque, 2015-16, real walltime |
 
-~55M jobs across SLURM / LSF / Torque / SWF and cloud, 1996–2025, x86 / ARM / GPU, home-lab included.
+~56M jobs across SLURM / LSF / Torque / SWF and cloud, 1996–2025, x86 / ARM / GPU, home-lab included.
 All strict-validate against `oda.job.v0.2.0`.
 
 ## Remaining runtime datasets
 
-Two remain, documented for user ingestion in [`external-datasets.md`](external-datasets.md):
+Four are documented for user ingestion in [`external-datasets.md`](external-datasets.md) — each
+verified as genuinely not fetchable/pinnable from this environment:
 
 - **Blue Waters** (NCSA, Torque, ~4.5M jobs) — **Globus only** (verified: NCSA's page gives no
-  direct HTTPS); has requested walltime (primary-quality).
-- **Alibaba GPU-v2026** (ASI) — a **direct-HTTPS public OSS URL** (not an SDK), but its
-  `aliyuncs.com` host was unreachable from this environment (DNS), so it isn't pinned here; no
-  requested walltime (secondary).
+  direct HTTPS); has requested walltime.
+- **ALCF DJC** (Polaris / Theta / Mira) — direct HTTPS, but the data files are behind a
+  **Cloudflare JS challenge** (browser-only); has requested walltime.
+- **Alibaba GPU-v2026** (ASI) — a **direct-HTTPS OSS URL** (not an SDK), but `aliyuncs.com` was
+  DNS-unreachable here; no requested walltime.
+- **FRESCO Stampede1** (TACC) — direct-HTTPS datadepot URL, but the single 1.13 GB file wouldn't
+  transfer through this proxy; has requested walltime.
 
 ### Fetch-mechanism findings (most "backends" were never needed)
 
@@ -74,8 +79,10 @@ SDK — only **Globus** (Blue Waters) genuinely needs a login. See
 
 ## What's left
 
-Runtime-first auto-fetch curation is effectively complete: **22 datasets** registered, and the
-only two that remain (Blue Waters, Alibaba) require Globus / Aliyun-OSS and are documented for
-user ingestion in [`external-datasets.md`](external-datasets.md) rather than pipeline-fetched.
+Runtime-first auto-fetch curation is effectively complete: **23 datasets** registered. The four
+remaining (Blue Waters, ALCF DJC, Alibaba, FRESCO Stampede1) are each genuinely not
+fetchable/pinnable from this environment (Globus / Cloudflare / DNS / a proxy-limited large
+transfer) and are documented for user ingestion in
+[`external-datasets.md`](external-datasets.md) rather than pipeline-fetched.
 
 Power/failure/anomaly datasets remain deferred to their phases (see the investigation doc §7).

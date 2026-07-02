@@ -7,11 +7,17 @@ need a special backend turn out to be direct HTTPS anyway — public **S3**, **H
 `resolve`, **git-LFS** media URLs, and presigned 302 redirects are all handled by the plain
 `http` backend; see [`curation-status.md`](curation-status.md).)
 
-A couple of valuable datasets aren't auto-fetched: **Blue Waters** needs a **Globus** login (no
-direct HTTPS at all), and **Alibaba GPU-v2026** *is* a plain-HTTPS URL but its Aliyun-OSS host is
-not resolvable from every network (it's blocked from the environment these descriptors were built
-in, so its checksum couldn't be pinned). They're documented here so you can retrieve them yourself
-and turn them into canonical `oda.job.v0.2.0` tables.
+A few valuable datasets aren't auto-fetched, for different reasons — documented here so you can
+retrieve them yourself and turn them into canonical `oda.job.v0.2.0` tables:
+
+- **Blue Waters** — Globus only (no direct HTTPS at all).
+- **ALCF DJC** — direct HTTPS, but the data files sit behind a Cloudflare JS challenge (browser only).
+- **Alibaba GPU-v2026** — a plain-HTTPS OSS URL, but the host isn't resolvable from every network.
+- **FRESCO Stampede1** — a plain-HTTPS datadepot URL, but the single 1.13 GB file wouldn't transfer
+  through the proxy of the environment these descriptors were built in.
+
+The last three are *reachable in principle* — they just weren't fetchable/pinnable from here — so
+on an unrestricted network they can be registered normally (`kind: http` + a pinned `sha256`).
 
 ## How to ingest one of these
 
@@ -58,9 +64,31 @@ After you've downloaded the raw file(s) from the source below, there are two pat
 - **Format:** ZIP → `part-000.parquet` (archive decode + a straightforward mapping handle it).
 - **License:** research-use (see the Alibaba `clusterdata` repository).
 
+### ALCF DJC (Argonne — Polaris / Theta / Mira)
+
+- **What:** `DIM_JOB_COMPOSITE` job accounting for ALCF systems (Polaris 2022–2026, Theta, ThetaGPU,
+  Mira, Aurora) — Cobalt/PBS scheduler data **with requested walltime** → primary-quality.
+- **Where:** per-year files under `https://reports.alcf.anl.gov/data/` (e.g.
+  `ANL-ALCF-DJC-POLARIS_20230101_20231231`). The `.html` viewer pages load fine, but the actual data
+  files sit behind a **Cloudflare JS challenge** ("Just a moment…") that returns 401 to non-browser
+  clients — so a real browser is required (a User-Agent header is not enough).
+- **Format:** per-year CSV/gz once downloaded (see the DIM_JOB_COMPOSITE data dictionary for columns).
+- **License:** unstated.
+
+### FRESCO Stampede1 (TACC)
+
+- **What:** Slurm job accounting for Stampede1 — `jobID,user,account,jobname,queue,walltime,
+  exit_status,start,end,submit,nnodes,ncpus`, a single CSV; **has requested walltime**.
+- **Where:** direct HTTPS on the same FRESCO datadepot as the registered Anvil/Conte:
+  `https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Stampede/AccountingStatistics/stampede_accounting.csv`
+  (~1.13 GB). **Caveat:** that single large file wouldn't complete its TLS transfer through this
+  environment's proxy, so it isn't pinned here — but on a stable network it's a normal `kind: http`
+  dataset (MM/DD/YYYY timestamps via the strptime format, `walltime` in minutes, runtime derived).
+- **License:** FRESCO research data; cite Bagchi et al.
+
 ---
 
-*Note:* FRESCO (Purdue Anvil) and Lassen (LLNL, git-LFS) were initially expected to need Globus /
-git-LFS, but both turned out to be reachable over plain HTTPS, so they are now normally-fetched
-registered datasets (`dataset.job_runtime.fresco_anvil`, `dataset.job_runtime.lassen`). If a
-"Globus/OSS-only" dataset later exposes an HTTPS path, prefer registering it normally.
+*Note:* FRESCO Anvil + Conte and Lassen (LLNL, git-LFS) were initially expected to need Globus /
+git-LFS, but all turned out to be reachable over plain HTTPS, so they are now normally-fetched
+registered datasets (`fresco_anvil`, `fresco_conte`, `lassen`). Always **live-check the fetch
+path** — "gated" labels are frequently wrong; only genuinely-blocked datasets belong on this page.
