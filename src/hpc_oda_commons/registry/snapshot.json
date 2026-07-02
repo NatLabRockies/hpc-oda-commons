@@ -240,6 +240,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fdata_fugaku.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.adastra_mi250",
+      "entry_type": "dataset",
+      "name": "Adastra MI250 Jobs (15 days)",
+      "version": "1.0.0",
+      "description": "SLURM per-job records from Adastra (CINES, HPE Cray EX, AMD MI250), a 15-day 2024 window (15,285 jobs). Runtime target = run_time; normalized to oda.job.v0.2.0. Per-job power columns available for a later power phase.",
+      "problem_domain": ["job-runtime-prediction", "job-power-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["adastra", "cines", "slurm", "mi250", "gpu", "power"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/adastra_mi250.yml"
+      }
     }
   ]
 }
