@@ -559,9 +559,9 @@
     {
       "id": "dataset.job_runtime.alcf_djc_polaris",
       "entry_type": "dataset",
-      "name": "ALCF DJC — Polaris (2023)",
-      "version": "1.0.0",
-      "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Polaris (full-year 2023), ALCF public DATA CATALOG. Cobalt/PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. 192,666 jobs. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the file yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes it to oda.job.v0.2.0.",
+      "name": "ALCF DJC — Polaris (2022–2026)",
+      "version": "1.1.0",
+      "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Polaris, all published years (2022-08 to 2026-06, 5 files), ALCF public DATA CATALOG. Cobalt/PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. 957,606 jobs. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the files yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes them. See docs/datasets/alcf-djc-ingest.md.",
       "problem_domain": ["job-runtime-prediction"],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-alcf-public",
@@ -569,6 +569,21 @@
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_polaris.yml"
+      }
+    },
+    {
+      "id": "dataset.job_runtime.alcf_djc_aurora",
+      "entry_type": "dataset",
+      "name": "ALCF DJC — Aurora (2025–2026)",
+      "version": "1.0.0",
+      "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Aurora, all published years (2025-01 to 2026-06, 2 files), ALCF public DATA CATALOG. Same schema as the Polaris DJC dataset: PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. 891,952 jobs. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the files yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes them. See docs/datasets/alcf-djc-ingest.md.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "LicenseRef-alcf-public",
+      "tags": ["alcf", "argonne", "aurora", "pbs", "cobalt", "manual"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_aurora.yml"
       }
     }
   ]
