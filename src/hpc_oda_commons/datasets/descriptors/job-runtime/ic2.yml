@@ -1,0 +1,60 @@
+dataset_id: dataset.job_runtime.ic2
+schema_version: oda.dataset.v0.1.0
+name: IC2 Integrated Cloud + HPC Jobs
+version: 1.0.0
+description: >
+  Purpose-built runtime + resource-utilization dataset spanning integrated cloud and HPC
+  platforms (IC2, ALCF Polaris, AWS), from "Predicting Runtime and Resource Utilization of
+  Jobs on Integrated Cloud and HPC Systems". Per-task records are flattened from nested
+  workloads (per-node metric arrays dropped) by the json decoder. The runtime-prediction
+  target is derived (finish_time - start_time); timestamps are Unix epoch floats; there is
+  no requested walltime. `platform` distinguishes the three systems.
+problem_domains: [job-runtime-prediction]
+systems: [IC2, Polaris, AWS]
+citation: { doi: "10.5281/zenodo.15545096", url: "https://zenodo.org/records/15545096" }
+license: { spdx: CC-BY-4.0, gated: false }
+tags: [ic2, polaris, aws, cloud, hpc, json]
+size:
+  default_bytes: 239629788
+  full_bytes: 239629788
+  rows_hint: "3,599 tasks (IC2 1250 / Polaris 1100 / AWS 1249); most of the JSON is dropped per-node telemetry"
+
+source:
+  kind: zenodo
+  record: "15545096"
+  resources:
+    - filename: all_workloads_ic2.json
+      url: "https://zenodo.org/records/15545096/files/all_workloads_ic2.json"
+      sha256: 2a6138a1029d5e2cb90ace6956a573ec266a49248d7adcb79790f0e6a2d57131
+      bytes: 104410908
+    - filename: all_workloads_polaris.json
+      url: "https://zenodo.org/records/15545096/files/all_workloads_polaris.json"
+      sha256: d5a6ce69e5d4e649ef28cb4c2c9b0341908729f593189b89632e910acce135d9
+      bytes: 28795923
+    - filename: all_workloads_aws.json
+      url: "https://zenodo.org/records/15545096/files/all_workloads_aws.json"
+      sha256: 1000774c957ac43836aa7ed203ac5c199eb30777575eaef851047114cf949061
+      bytes: 106422957
+
+decode:
+  format: json
+  options:
+    record_path: tasklist
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: task_id }
+      submit_time: { from: submit_time, type: timestamp, format: epoch_s }
+      start_time: { from: start_time, type: timestamp, format: epoch_s }
+      end_time: { from: finish_time, type: timestamp, format: epoch_s }
+      runtime_seconds: { derive: "end_time - start_time" }
+      allocated_cpus: { from: cpus, type: integer }
+      num_gpus_req: { from: gpus, type: integer }
+      name: { from: app_name }
+      platform: { from: platform }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: ic2, path: data/datasets/ic2/data.parquet }

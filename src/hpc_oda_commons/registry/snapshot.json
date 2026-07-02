@@ -405,6 +405,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nlr_eagle.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.ic2",
+      "entry_type": "dataset",
+      "name": "IC2 Integrated Cloud + HPC Jobs",
+      "version": "1.0.0",
+      "description": "Purpose-built runtime + resource-utilization dataset spanning integrated cloud and HPC platforms (IC2, ALCF Polaris, AWS), 3,599 tasks. Per-task records flattened from nested workload JSON (per-node telemetry dropped); runtime derived as finish_time - start_time; no requested walltime. Normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["ic2", "polaris", "aws", "cloud", "hpc", "json"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/ic2.yml"
+      }
     }
   ]
 }

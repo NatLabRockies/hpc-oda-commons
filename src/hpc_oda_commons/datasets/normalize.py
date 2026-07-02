@@ -24,7 +24,9 @@ from hpc_oda_commons.datasets.descriptor import Target
 from hpc_oda_commons.ingest.jobs_parquet.apply import REQUIRED_FIELDS, apply_mapping_spec
 from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec, write_mapping_spec
 
-_TRANSFORM_TYPES = frozenset({"timestamp", "duration", "memory", "memory_slurm", "hash_identifier"})
+_TRANSFORM_TYPES = frozenset(
+    {"timestamp", "duration", "memory", "memory_slurm", "hash_identifier", "integer", "number"}
+)
 _JOB_SCHEMA_PREFIX = "oda.job."
 _SYNTH_PREFIX = "__synth_"
 

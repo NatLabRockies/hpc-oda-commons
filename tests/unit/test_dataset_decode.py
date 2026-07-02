@@ -50,7 +50,7 @@ def test_decode_csv(tmp_path: Path) -> None:
 
 def test_decode_unsupported_format(tmp_path: Path) -> None:
     with pytest.raises(DecodeError, match="unsupported decode format"):
-        decode_to_parquet("json", [tmp_path / "x"], tmp_path / "out.parquet")
+        decode_to_parquet("log", [tmp_path / "x"], tmp_path / "out.parquet")
 
 
 def test_decode_empty_files(tmp_path: Path) -> None:
@@ -190,3 +190,35 @@ def test_decode_parquet_columns_option(tmp_path: Path) -> None:
     table = pq.read_table(dest)
     assert table.column_names == ["keep"]
     assert table.num_rows == 3
+
+
+def test_decode_json_flatten(tmp_path: Path) -> None:
+    import json
+
+    src = tmp_path / "wl.json"
+    src.write_text(
+        json.dumps(
+            [
+                {
+                    "workload-name": "w1",
+                    "platform": "cloud",
+                    "tasklist": [
+                        {"task_id": "1", "cpus": "24", "gpus": 0, "nodes": [{"m": 1}]},
+                        {"task_id": 2, "cpus": 8, "gpus": 1, "nodes": []},
+                    ],
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    dest = tmp_path / "out.parquet"
+
+    decode_to_parquet("json", [src], dest, options={"record_path": "tasklist"})
+
+    table = pq.read_table(dest)
+    assert table.num_rows == 2
+    assert "nodes" not in table.column_names  # nested list dropped
+    assert table.column("platform").to_pylist() == ["cloud", "cloud"]  # parent field carried
+    # task_id has mixed str/int across records -> string fallback
+    assert table.schema.field("task_id").type == pa.string()
+    assert table.column("task_id").to_pylist() == ["1", "2"]

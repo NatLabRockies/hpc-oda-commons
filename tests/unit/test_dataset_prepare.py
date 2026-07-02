@@ -342,3 +342,36 @@ def test_cli_datasets_prepare(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert (out_root / "data" / "datasets" / "test_prep" / "data.parquet").exists()
     assert (out_root / "data" / "datasets" / "test_prep" / "manifest.json").exists()
+
+
+def test_normalize_integer_cast_from_string(tmp_path: Path) -> None:
+    # Numeric-as-string source (e.g. IC2 cpus "24") -> int64 via {type: integer}.
+    src = pa.table(
+        {
+            "id": ["a", "b"],
+            "s": pa.array([1_600_000_000, 1_600_000_100], pa.int64()),
+            "e": pa.array([1_600_000_060, 1_600_000_400], pa.int64()),
+            "cpus": ["24", "8"],
+        }
+    )
+    inter = tmp_path / "inter.parquet"
+    pq.write_table(src, inter)
+    target = Target.from_dict(
+        {
+            "schema": "oda.job.v0.2.0",
+            "mapping": {
+                "job_id": {"from": "id"},
+                "start_time": {"from": "s", "type": "timestamp", "format": "epoch_s"},
+                "end_time": {"from": "e", "type": "timestamp", "format": "epoch_s"},
+                "runtime_seconds": {"derive": "end_time - start_time"},
+                "allocated_cpus": {"from": "cpus", "type": "integer"},
+            },
+            "output": {"id": "int", "path": "data/datasets/int/data.parquet"},
+        }
+    )
+    out = tmp_path / "out.parquet"
+    normalize_target(inter, target, out)
+
+    table = pq.read_table(out)
+    assert table.schema.field("allocated_cpus").type == pa.int64()
+    assert table.column("allocated_cpus").to_pylist() == [24, 8]
