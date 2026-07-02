@@ -225,6 +225,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pm100.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.fdata_fugaku",
+      "entry_type": "dataset",
+      "name": "F-DATA (Fugaku Jobs, recent month)",
+      "version": "1.0.0",
+      "description": "Fujitsu/Fugaku job records from F-DATA (RIKEN R-CCS / Univ. Bologna). Premium runtime slice = most recent monthly file (2024-04, 420,450 jobs); full set spans Mar 2021-Apr 2024 (~24M jobs). Runtime target = duration; normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction", "job-power-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["fugaku", "a64fx", "fujitsu", "arm", "power"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fdata_fugaku.yml"
+      }
     }
   ]
 }
