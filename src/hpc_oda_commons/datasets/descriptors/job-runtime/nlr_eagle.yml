@@ -1,0 +1,82 @@
+dataset_id: dataset.job_runtime.nlr_eagle
+schema_version: oda.dataset.v0.1.0
+name: NLR Eagle Jobs (anonymized)
+version: 1.0.0
+description: >
+  Anonymized SLURM sacct job records from the NLR Eagle HPC system, 2019-2024 full
+  lifetime, ~13.8M jobs, as a zipped Hive-partitioned Parquet dataset (job records only;
+  the separate energy variant is excluded). The runtime-prediction target is derived
+  (end_time - start_time) from the DST-correct tz-aware timestamp columns; requested
+  walltime = wallclock_req (an Arrow duration). user/account are already hashed in the
+  source. Home-lab; the definitive modern Eagle corpus.
+problem_domains: [job-runtime-prediction]
+systems: [Eagle]
+providers: [NLR, "National Laboratory of the Rockies"]
+citation: { doi: "10.7799/3023273", url: "https://data.nlr.gov/submissions/295" }
+license:
+  spdx: LicenseRef-nlr-data-1.0
+  gated: false
+  notes: "NLR HPC data license (nlr-data-1.0); see LICENSE.md in the dataset zip."
+tags: [nlr, eagle, slurm, gpu, home-lab]
+size:
+  default_bytes: 912312837
+  full_bytes: 912312837
+  rows_hint: "~13.8M jobs (2019-2024)"
+
+source:
+  kind: http
+  resources:
+    - filename: eagle.job-anon.zip
+      url: "https://data.nlr.gov/system/files/295/1773544762-esif.hpc.eagle.job-anon.zip"
+      sha256: f6decbe7db906d15886416ba16a2a7b417ec0b561ca3fef6ab37b413853b840b
+      bytes: 912312837
+
+decode:
+  format: parquet
+  options:
+    # Read only the mapped columns; skip Eagle's heavy per-node/per-GPU energy arrays.
+    columns:
+      [
+        id,
+        submit_time_tz,
+        start_time_tz,
+        end_time_tz,
+        wallclock_req,
+        nodes_req,
+        processors_req,
+        nodes_used,
+        processors_used,
+        gpus_requested,
+        memory_req,
+        partition,
+        qos,
+        state_simple,
+        user_hash,
+        account_hash,
+      ]
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: id }
+      submit_time: { from: submit_time_tz }
+      start_time: { from: start_time_tz }
+      end_time: { from: end_time_tz }
+      runtime_seconds: { derive: "end_time - start_time" }
+      requested_seconds: { from: wallclock_req, type: duration }
+      num_nodes_req: { from: nodes_req, type: integer }
+      num_cores_req: { from: processors_req, type: integer }
+      num_nodes_alloc: { from: nodes_used, type: integer }
+      num_cores_alloc: { from: processors_used, type: integer }
+      num_gpus_req: { from: gpus_requested, type: integer }
+      requested_memory_mib: { from: memory_req, type: memory_slurm }
+      partition: { from: partition }
+      qos: { from: qos }
+      job_state: { from: state_simple }
+      user: { from: user_hash }
+      account: { from: account_hash }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: nlr_eagle, path: data/datasets/nlr_eagle/data.parquet }

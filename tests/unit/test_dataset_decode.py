@@ -178,3 +178,15 @@ def test_decode_parquet_unifies_tz_and_duration(tmp_path: Path) -> None:
     assert table.num_rows == 2
     assert table.schema.field("ts").type == pa.timestamp("us", tz="UTC")
     assert table.schema.field("dur").type == pa.duration("us")
+
+
+def test_decode_parquet_columns_option(tmp_path: Path) -> None:
+    src = tmp_path / "a.parquet"
+    _write_parquet(src, pa.table({"keep": [1, 2, 3], "drop": [4, 5, 6]}))
+    dest = tmp_path / "out.parquet"
+
+    decode_to_parquet("parquet", [src], dest, options={"columns": ["keep"]})
+
+    table = pq.read_table(dest)
+    assert table.column_names == ["keep"]
+    assert table.num_rows == 3
