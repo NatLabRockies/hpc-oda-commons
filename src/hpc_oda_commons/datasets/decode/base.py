@@ -84,7 +84,7 @@ def decode_to_parquet(
         if fmt == "parquet":
             from hpc_oda_commons.datasets.decode.parquet import decode_parquet
 
-            decode_parquet(expanded, dest)
+            decode_parquet(expanded, dest, options=options)
         elif fmt == "swf":
             from hpc_oda_commons.datasets.decode.swf import decode_swf
 

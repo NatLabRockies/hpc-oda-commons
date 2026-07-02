@@ -390,6 +390,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nlr_kestrel.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.nlr_eagle",
+      "entry_type": "dataset",
+      "name": "NLR Eagle Jobs (anonymized)",
+      "version": "1.0.0",
+      "description": "Anonymized SLURM job records from the NLR Eagle HPC system, 2019-2024 full lifetime, ~13.8M jobs, as a zipped Hive-partitioned Parquet dataset (job records only; energy variant excluded). Runtime derived as end_time - start_time from the DST-correct tz columns; requested walltime = wallclock_req; user/account pre-hashed; normalized to oda.job.v0.2.0. Home-lab, definitive modern Eagle corpus.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "LicenseRef-nlr-data-1.0",
+      "tags": ["nlr", "eagle", "slurm", "gpu", "home-lab"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nlr_eagle.yml"
+      }
     }
   ]
 }

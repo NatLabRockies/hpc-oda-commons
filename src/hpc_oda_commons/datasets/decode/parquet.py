@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -37,10 +38,15 @@ def _unify_temporal(table: pa.Table) -> pa.Table:
     return table
 
 
-def decode_parquet(files: Sequence[Path], dest: Path) -> None:
+def decode_parquet(
+    files: Sequence[Path], dest: Path, *, options: Mapping[str, Any] | None = None
+) -> None:
     if not files:
         raise DecodeError("no input files to decode")
-    tables = [_unify_temporal(pq.read_table(f)) for f in files]
+    # ``columns`` restricts the read to the mapped source columns — decisive for datasets
+    # that carry heavy per-job array columns (e.g. NLR energy time series) we never map.
+    columns = list(options["columns"]) if options and options.get("columns") else None
+    tables = [_unify_temporal(pq.read_table(f, columns=columns)) for f in files]
     table = (
         tables[0] if len(tables) == 1 else pa.concat_tables(tables, promote_options="permissive")
     )
