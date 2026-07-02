@@ -1,6 +1,6 @@
 # Runtime Dataset Curation — Status & Remaining Roadmap
 
-**Updated:** 2026-07-02 (autonomous curation run; refreshed after the SWF decoder + TLS fix landed)
+**Updated:** 2026-07-02 (autonomous curation run; refreshed after the SWF decoder landed)
 **Companion to:** [`runtime-first-investigation.md`](runtime-first-investigation.md) (the plan) and
 the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../design/public-dataset-ingestion.md)).
 
@@ -17,10 +17,6 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
   matching members concatenated.
 - **SWF decoder** (`datasets/decode/swf.py`): Standard Workload Format → absolute-time
   reconstruction from `UnixStartTime`; readies all ~40 Parallel Workloads Archive logs.
-- **Corporate-TLS fix** ([`../how-to/corporate-tls.md`](../how-to/corporate-tls.md)) + a
-  friendlier fetch cert error. The NREL/Netskope TLS-inspection proxy is resolved via a
-  combined CA bundle (`~/.hpc_oda/ca-bundle.pem` + `SSL_CERT_FILE`) — previously-blocked
-  hosts now fetch.
 - **DoD-5** integration test: descriptor → `datasets prepare` → schema-valid table →
   `benchmark` → result bundle (offline, via `file://`).
 
@@ -38,17 +34,6 @@ Each descriptor maps its native columns to `oda.job.v0.2.0` (runtime target + su
 requested walltime where available + resource/queue/state features), preserving per-job power
 columns for a later phase where present.
 
-## Environment TLS — RESOLVED
-
-The dev network sits behind an **NREL/Netskope TLS-inspection proxy** that re-signs
-non-allowlisted hosts with the NREL Root CA (Zenodo is bypassed — which is why the first four
-datasets are all Zenodo). **This is now fixed** (no verification disabled): a combined CA
-bundle at `~/.hpc_oda/ca-bundle.pem` (certifi + NREL Root CA) with `SSL_CERT_FILE` set — see
-[`../how-to/corporate-tls.md`](../how-to/corporate-tls.md). Verified: the fetch backend now
-reaches **OEDI, the Parallel Workloads Archive, Atlas, and `data.nlr.gov`**. Those hosts are
-**no longer blocked** — remaining work is curation (+ a few fetch backends), not TLS.
-**No fabricated checksums or unvalidated decoders were committed.**
-
 ## Remaining runtime datasets + what each needs
 
 Curate each with the established loop: **fetch premium slice → pin `sha256`+bytes → author
@@ -58,12 +43,12 @@ the templates.
 
 | Dataset | Host / format | Needs |
 |---|---|---|
-| **NREL Eagle (OEDI 5860)** | `data.openei.org`, parquet | **CURATE NOW** (TLS fixed) — single ~253 MB parquet, exactly the `ingest jobs-parquet` shape. Home-lab, CC-BY. Top pick. |
+| **NREL Eagle (OEDI 5860)** | `data.openei.org`, parquet | **CURATE NOW** — single ~253 MB parquet, exactly the `ingest jobs-parquet` shape. Home-lab, CC-BY. Top pick. |
 | **PWA (~40 logs)** | `cs.huji.ac.il`, `.swf.gz` | **CURATE NOW** — SWF decoder done + fetch works. Confirm each log's `.swf.gz` URL (prefer the `-cln` cleaned variant); map SWF cols → `oda.job.v0.2.0`. Highest-value breadth. |
 | **Atlas (Mustang/OpenTrinity)** | `ftp.pdl.cmu.edu`, `csv.gz` | **CURATE NOW** — fetch works; archive decode handles `.gz`; clean SLURM columns. |
-| **NLR Eagle + Kestrel** | `data.nlr.gov`, zip | TLS ok now, but the download URL still 302-redirects to HTML → needs a `data.nlr.gov`/OSTI **resolver** (or the real direct link); then archive decode handles the zip of hive-partitioned parquet. Home-lab, freshest data. |
+| **NLR Eagle + Kestrel** | `data.nlr.gov`, zip | The download URL 302-redirects to HTML → needs a `data.nlr.gov`/OSTI **resolver** (or the real direct link); then archive decode handles the zip of hive-partitioned parquet. Home-lab, freshest data. |
 | **IC2 / Polaris / AWS** | Zenodo, JSON | bespoke JSON-flatten decoder (workloads→`tasklist`; `submit`/`start`/`finish` epoch floats, `cpus`/`gpus`; drop node metrics) + runtime-derive (`finish−start`). |
-| **FRESCO (Anvil accounting)** | datadepot / Globus | **Globus** fetch backend + the host's untrusted TLS cert; take accounting CSVs only (exclude TACC-Stats). |
+| **FRESCO (Anvil accounting)** | datadepot / Globus | **Globus** fetch backend; take accounting CSVs only (exclude TACC-Stats). |
 | **Lassen LAST** | GitHub **git-LFS** | git-LFS fetch backend (selective include of the job-summary CSV). |
 | **MIT Supercloud** | AWS **S3** | S3 backend (`--no-sign-request`), scheduler prefix only (skip the 2 TB telemetry). |
 | **Blue Waters** | **Globus** | Globus backend + a Torque-accounting (`key=value`) text decoder. |
@@ -72,7 +57,6 @@ the templates.
 ### Enabling capabilities
 
 - ✅ **SWF decoder** — DONE (#52); unlocks all of PWA.
-- ✅ **Corporate-TLS fetch** — DONE (#53); OEDI / PWA / Atlas / `data.nlr.gov` now reachable.
 
 Still to build (each small, unit-testable):
 

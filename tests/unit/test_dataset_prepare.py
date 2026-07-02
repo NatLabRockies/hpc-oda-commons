@@ -186,6 +186,64 @@ def test_normalize_select_dropping_required_raises(tmp_path: Path) -> None:
         )
 
 
+def test_normalize_synthesize_derive_timedelta(tmp_path: Path) -> None:
+    # Atlas-shaped source: no job_id column, no runtime column, walltime as a pandas
+    # timedelta string, timestamps with a non-UTC offset.
+    src = pa.table(
+        {
+            "sdt": ["2011-10-27 10:50:10-06:00", "2011-10-27 11:00:00-06:00"],
+            "edt": ["2011-10-27 10:51:50-06:00", "2011-10-27 11:05:00-06:00"],
+            "walltime": ["365 days 00:00:00.000000000", "0 days 01:00:00.000000000"],
+        }
+    )
+    inter = tmp_path / "inter.parquet"
+    pq.write_table(src, inter)
+    target = Target.from_dict(
+        {
+            "schema": "oda.job.v0.2.0",
+            "mapping": {
+                "job_id": {"synthesize": "row_index"},
+                "start_time": {"from": "sdt", "type": "timestamp", "format": "iso8601"},
+                "end_time": {"from": "edt", "type": "timestamp", "format": "iso8601"},
+                "runtime_seconds": {"derive": "end_time - start_time"},
+                "requested_seconds": {"from": "walltime", "type": "duration", "unit": "timedelta"},
+            },
+            "output": {"id": "syn", "path": "data/datasets/syn/data.parquet"},
+        }
+    )
+    out = tmp_path / "out.parquet"
+    normalize_target(inter, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert [r["job_id"] for r in rows] == [0, 1]  # synthesized surrogate ids
+    assert [r["runtime_seconds"] for r in rows] == [100.0, 300.0]  # derived end - start
+    assert [r["requested_seconds"] for r in rows] == [31536000.0, 3600.0]  # timedelta -> seconds
+    validate_parquet_with_quality(out, schema_id="oda.job.v0.2.0", strict=True)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("365 days 00:00:00.000000000", 31_536_000.0),
+        ("0 days 01:00:00.000000000", 3600.0),
+        ("2 days 03:04:05", 183_845.0),
+        ("01:00:00", 3600.0),
+        ("", None),
+    ],
+)
+def test_duration_timedelta_parse(value: str, expected: float | None) -> None:
+    from hpc_oda_commons.ingest.jobs_parquet.apply import _duration_to_seconds
+
+    assert _duration_to_seconds(value, "timedelta") == expected
+
+
+def test_duration_timedelta_invalid_raises() -> None:
+    from hpc_oda_commons.ingest.jobs_parquet.apply import _duration_to_seconds
+
+    with pytest.raises(ValueError, match="Invalid timedelta"):
+        _duration_to_seconds("not-a-duration", "timedelta")
+
+
 # ---- prepare (end to end) --------------------------------------------------
 
 

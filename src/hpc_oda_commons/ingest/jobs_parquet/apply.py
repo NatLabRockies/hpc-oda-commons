@@ -62,6 +62,17 @@ def _duration_to_seconds(value: Any, unit: str) -> float | None:
             raise ValueError(f"Invalid duration format: {value}")
         hours, minutes, seconds = [float(p) for p in parts]
         return hours * 3600.0 + minutes * 60.0 + seconds
+    if unit == "timedelta":
+        # pandas/numpy timedelta string: "N days HH:MM:SS[.ffffff]" or "HH:MM:SS[.ffffff]".
+        text = str(value).strip()
+        if not text:
+            return None
+        m = re.match(r"^(?:(\d+)\s+days?\s+)?(\d+):(\d+):(\d+(?:\.\d+)?)$", text)
+        if not m:
+            raise ValueError(f"Invalid timedelta duration: {value}")
+        days = float(m.group(1) or 0)
+        hours, minutes, seconds = float(m.group(2)), float(m.group(3)), float(m.group(4))
+        return days * 86400.0 + hours * 3600.0 + minutes * 60.0 + seconds
     raise ValueError(f"Unsupported duration unit: {unit}")
 
 

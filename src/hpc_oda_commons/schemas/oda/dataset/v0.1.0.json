@@ -39,7 +39,11 @@
     "field_rule": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["from"],
+      "anyOf": [
+        { "required": ["from"] },
+        { "required": ["derive"] },
+        { "required": ["synthesize"] }
+      ],
       "properties": {
         "from": { "type": "string", "minLength": 1, "description": "Source column name." },
         "type": {
@@ -58,7 +62,16 @@
           "description": "Normalization transform; omitted means pass the value through unchanged."
         },
         "format": { "type": "string", "description": "e.g., epoch_s, epoch_ms, iso8601, HH:MM:SS." },
-        "unit": { "type": "string", "description": "e.g., seconds, minutes, gb, mib." }
+        "unit": { "type": "string", "description": "e.g., seconds, minutes, gb, mib, timedelta." },
+        "derive": {
+          "type": "string",
+          "description": "Derive this field from others when the source is absent/null, e.g., 'end_time - start_time' for runtime_seconds."
+        },
+        "synthesize": {
+          "type": "string",
+          "enum": ["row_index"],
+          "description": "Generate this field from row position when the source has no natural column (e.g., a surrogate job_id)."
+        }
       }
     }
   },
