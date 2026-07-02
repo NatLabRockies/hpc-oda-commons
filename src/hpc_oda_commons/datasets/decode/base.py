@@ -2,12 +2,12 @@
 Decoders turn a dataset's fetched raw files into a single intermediate Parquet
 file that the normalize stage can map onto a canonical ODA schema.
 
-Supported inner formats: ``parquet`` and ``csv`` (also TSV via a delimiter option).
-Fetched resources may additionally be compressed or archived -- ``.gz`` (single
-file), ``.zip``, or ``.tar``/``.tar.gz`` -- in which case the contained files
-matching the inner format are transparently extracted and concatenated. Other inner
-formats (``swf``/``json``/``log``) are declared in the descriptor schema but not yet
-implemented and raise a clear error.
+Supported inner formats: ``parquet``, ``csv`` (also TSV via a delimiter option), and
+``swf`` (Standard Workload Format). Fetched resources may additionally be compressed
+or archived -- ``.gz`` (single file), ``.zip``, or ``.tar``/``.tar.gz`` -- in which
+case the contained files matching the inner format are transparently extracted and
+concatenated. Other inner formats (``json``/``log``) are declared in the descriptor
+schema but not yet implemented and raise a clear error.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from typing import Any
 _FORMAT_EXTS: dict[str, tuple[str, ...]] = {
     "parquet": (".parquet",),
     "csv": (".csv", ".tsv", ".txt"),
+    "swf": (".swf",),
 }
 
 
@@ -84,6 +85,10 @@ def decode_to_parquet(
             from hpc_oda_commons.datasets.decode.parquet import decode_parquet
 
             decode_parquet(expanded, dest)
+        elif fmt == "swf":
+            from hpc_oda_commons.datasets.decode.swf import decode_swf
+
+            decode_swf(expanded, dest)
         else:  # csv (incl. TSV via options.delimiter)
             from hpc_oda_commons.datasets.decode.csv import decode_csv
 
