@@ -244,6 +244,39 @@ def test_duration_timedelta_invalid_raises() -> None:
         _duration_to_seconds("not-a-duration", "timedelta")
 
 
+def test_normalize_arrow_duration_column_to_seconds(tmp_path: Path) -> None:
+    # A native Arrow duration column (as in NLR Kestrel's wallclock_req) -> seconds.
+    src = pa.table(
+        {
+            "id": ["a", "b"],
+            "s": pa.array([1_600_000_000, 1_600_000_100], pa.int64()),
+            "e": pa.array([1_600_000_060, 1_600_000_400], pa.int64()),
+            "req": pa.array([3_600_000_000_000, 7_200_000_000_000], pa.duration("ns")),  # 1h, 2h
+        }
+    )
+    inter = tmp_path / "inter.parquet"
+    pq.write_table(src, inter)
+    target = Target.from_dict(
+        {
+            "schema": "oda.job.v0.2.0",
+            "mapping": {
+                "job_id": {"from": "id"},
+                "start_time": {"from": "s", "type": "timestamp", "format": "epoch_s"},
+                "end_time": {"from": "e", "type": "timestamp", "format": "epoch_s"},
+                "runtime_seconds": {"derive": "end_time - start_time"},
+                "requested_seconds": {"from": "req", "type": "duration"},
+            },
+            "output": {"id": "dur", "path": "data/datasets/dur/data.parquet"},
+        }
+    )
+    out = tmp_path / "out.parquet"
+    normalize_target(inter, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert [r["requested_seconds"] for r in rows] == [3600.0, 7200.0]
+    assert [r["runtime_seconds"] for r in rows] == [60.0, 300.0]
+
+
 # ---- prepare (end to end) --------------------------------------------------
 
 

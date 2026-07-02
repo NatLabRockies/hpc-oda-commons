@@ -375,6 +375,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/mit_supercloud.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.nlr_kestrel",
+      "entry_type": "dataset",
+      "name": "NLR Kestrel Jobs (anonymized)",
+      "version": "1.0.0",
+      "description": "Anonymized SLURM job records from the NLR Kestrel HPC system (H100 GPUs), Aug 2023 - Dec 2025, ~11M jobs, as a zipped Hive-partitioned Parquet dataset. Runtime derived as end_time - start_time; requested walltime = wallclock_req; user/account pre-hashed; normalized to oda.job.v0.2.0. Home-lab, freshest corpus.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "LicenseRef-nlr-data-1.0",
+      "tags": ["nlr", "kestrel", "slurm", "gpu", "h100", "home-lab"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nlr_kestrel.yml"
+      }
     }
   ]
 }

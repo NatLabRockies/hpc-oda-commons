@@ -1,0 +1,60 @@
+dataset_id: dataset.job_runtime.nlr_kestrel
+schema_version: oda.dataset.v0.1.0
+name: NLR Kestrel Jobs (anonymized)
+version: 1.0.0
+description: >
+  Anonymized SLURM sacct job records from the NLR Kestrel HPC system (H100 GPUs),
+  Aug 2023 - Dec 2025, ~11M jobs, as a zipped Hive-partitioned Parquet dataset. The
+  runtime-prediction target is derived (end_time - start_time); requested walltime =
+  wallclock_req (an Arrow duration). Timestamps are tz-aware and normalized to UTC on
+  decode. user/account are already hashed in the source. Home-lab; freshest corpus.
+problem_domains: [job-runtime-prediction]
+systems: [Kestrel]
+providers: [NLR, "National Laboratory of the Rockies"]
+citation: { doi: "10.7799/3023270", url: "https://data.nlr.gov/submissions/302" }
+license:
+  spdx: LicenseRef-nlr-data-1.0
+  gated: false
+  notes: "NLR HPC data license (nlr-data-1.0); see LICENSE.md in the dataset zip."
+tags: [nlr, kestrel, slurm, gpu, h100, home-lab]
+size:
+  default_bytes: 731139558
+  full_bytes: 731139558
+  rows_hint: "~11M jobs (2023-08 to 2025-12)"
+
+source:
+  kind: http
+  resources:
+    - filename: kestrel.job-anon.zip
+      url: "https://data.nlr.gov/system/files/302/1773544299-esif.hpc.kestrel.job-anon.zip"
+      sha256: 3a90f9ac40991712f8718c686fa7b05d7a303a44a87ed1a8f21b403c11efd26f
+      bytes: 731139558
+
+decode:
+  format: parquet
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: id }
+      submit_time: { from: submit_time }
+      start_time: { from: start_time }
+      end_time: { from: end_time }
+      runtime_seconds: { derive: "end_time - start_time" }
+      requested_seconds: { from: wallclock_req, type: duration }
+      num_nodes_req: { from: nodes_req, type: integer }
+      num_cores_req: { from: processors_req, type: integer }
+      num_nodes_alloc: { from: nodes_used, type: integer }
+      num_cores_alloc: { from: processors_used, type: integer }
+      num_gpus_req: { from: gpus_requested, type: integer }
+      requested_memory_mib: { from: memory_req, type: memory_slurm }
+      partition: { from: partition }
+      qos: { from: qos }
+      job_state: { from: state_simple }
+      user: { from: user_hash }
+      account: { from: account_hash }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: nlr_kestrel, path: data/datasets/nlr_kestrel/data.parquet }
