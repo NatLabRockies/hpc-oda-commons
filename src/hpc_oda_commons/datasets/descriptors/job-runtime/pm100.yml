@@ -1,0 +1,55 @@
+dataset_id: dataset.job_runtime.pm100
+schema_version: oda.dataset.v0.1.0
+name: PM100 (Marconi100 Jobs)
+version: 1.0.0
+description: >
+  Per-job SLURM accounting table curated from the Marconi100 "M100 ExaData"
+  job_table (231,238 jobs, May-Oct 2020), with runtime, requested time limit,
+  requested/allocated nodes/cores/GPUs, and per-job power. The runtime-prediction
+  target is run_time (seconds). Also usable later for power prediction.
+problem_domains: [job-runtime-prediction, job-power-prediction]
+systems: [Marconi100]
+providers: ["University of Bologna", "CINECA"]
+citation: { doi: "10.5281/zenodo.10127767", url: "https://zenodo.org/records/10127767" }
+license: { spdx: CC-BY-4.0, gated: false }
+tags: [marconi100, slurm, power, benchmark]
+size:
+  default_bytes: 287154521
+  full_bytes: 287154521
+  rows_hint: "231,238 jobs"
+
+source:
+  kind: zenodo
+  record: "10127767"
+  resources:
+    - filename: job_table.parquet
+      url: "https://zenodo.org/records/10127767/files/job_table.parquet"
+      sha256: 6be954098d9bd6bfdef6881c6d8a3260170b00d16839509700e1b6976da3a7eb
+      bytes: 287154521
+
+decode:
+  format: parquet
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      # Required job fields. PM100 timestamps are already timestamp[us, tz=UTC].
+      job_id: { from: job_id }
+      start_time: { from: start_time }
+      end_time: { from: end_time }
+      submit_time: { from: submit_time }
+      runtime_seconds: { from: run_time, type: duration, unit: seconds }
+      # Canonical optional + runtime-prediction features (carried via additionalProperties).
+      partition: { from: partition }
+      requested_seconds: { from: time_limit, type: duration, unit: minutes }
+      num_nodes_req: { from: num_nodes_req, type: integer }
+      num_cores_req: { from: num_cores_req, type: integer }
+      num_cores_alloc: { from: num_cores_alloc, type: integer }
+      qos: { from: qos }
+      job_state: { from: job_state }
+      user: { from: user_id, type: hash_identifier }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: pm100, path: data/datasets/pm100/data.parquet }
