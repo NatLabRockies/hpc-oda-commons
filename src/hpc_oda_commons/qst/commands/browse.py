@@ -22,7 +22,8 @@ def browse(
         str | None, typer.Option("--tag", help="Filter by tag or problem domain.")
     ] = None,
     entry_type: Annotated[
-        str | None, typer.Option("--type", help="Filter by entry type (adapter, model, recipe).")
+        str | None,
+        typer.Option("--type", help="Filter by entry type (adapter, model, recipe, dataset)."),
     ] = None,
     source: Annotated[
         str | None, typer.Option("--source", help="Filter by supported source.")
@@ -40,8 +41,8 @@ def browse(
         ),
     ] = None,
 ) -> None:
-    if entry_type and entry_type not in {"adapter", "model", "recipe"}:
-        raise typer.BadParameter("type must be one of: adapter, model, recipe")
+    if entry_type and entry_type not in {"adapter", "model", "recipe", "dataset"}:
+        raise typer.BadParameter("type must be one of: adapter, model, recipe, dataset")
 
     snapshot_obj = load_registry_snapshot(snapshot)
     index = RegistryIndex.from_entries(snapshot_obj.entries)

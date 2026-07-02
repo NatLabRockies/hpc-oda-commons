@@ -8,7 +8,7 @@ from pathlib import Path
 
 from hpc_oda_commons.kernel.validate import validate_json
 
-REGISTRY_SCHEMA_ID = "oda.registry.v0.1.0"
+REGISTRY_SCHEMA_ID = "oda.registry.v0.2.0"
 
 
 def validate_registry_snapshot(path: Path) -> dict:
