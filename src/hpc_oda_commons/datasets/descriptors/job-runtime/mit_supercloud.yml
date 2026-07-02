@@ -1,0 +1,53 @@
+dataset_id: dataset.job_runtime.mit_supercloud
+schema_version: oda.dataset.v0.1.0
+name: MIT Supercloud Datacenter Challenge (scheduler)
+version: 1.0.0
+description: >
+  Raw slurmdbd scheduler log from the MIT Supercloud Datacenter Challenge (202201),
+  ~396k jobs, modern SLURM + GPU. Only the ~103 MB scheduler CSV is used; the ~2 TB
+  node telemetry is excluded. Runtime target is derived (time_end - time_start);
+  requested walltime = timelimit (minutes; 4294967295 is the SLURM "unlimited" sentinel).
+  Timestamps are Unix epoch seconds; state is a numeric SLURM state code.
+problem_domains: [job-runtime-prediction]
+systems: [Supercloud]
+providers: [MIT, "MIT Lincoln Laboratory"]
+citation: { url: "https://dcc.mit.edu/" }
+license: { spdx: CC-BY-4.0, gated: false }
+tags: [mit, supercloud, slurm, gpu, s3]
+size:
+  default_bytes: 103165427
+  full_bytes: 103165427
+  rows_hint: "395,914 jobs (Jan 2021)"
+
+source:
+  kind: s3
+  resources:
+    - filename: slurm-log.csv
+      url: "https://mit-supercloud-dataset.s3.amazonaws.com/datacenter-challenge/202201/slurm-log.csv"
+      sha256: 27259e5b8e6daecd80b7853126af40ba759bc25edc9053fc174ef7a4f186aa01
+      bytes: 103165427
+
+decode:
+  format: csv
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: id_job }
+      submit_time: { from: time_submit, type: timestamp, format: epoch_s }
+      start_time: { from: time_start, type: timestamp, format: epoch_s }
+      end_time: { from: time_end, type: timestamp, format: epoch_s }
+      runtime_seconds: { derive: "end_time - start_time" }
+      requested_seconds: { from: timelimit, type: duration, unit: minutes }
+      num_cores_req: { from: cpus_req, type: integer }
+      num_nodes_alloc: { from: nodes_alloc, type: integer }
+      partition: { from: partition }
+      job_state: { from: state }
+      user: { from: id_user, type: hash_identifier }
+      exit_code: { from: exit_code }
+      constraints: { from: constraints }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: mit_supercloud, path: data/datasets/mit_supercloud/data.parquet }

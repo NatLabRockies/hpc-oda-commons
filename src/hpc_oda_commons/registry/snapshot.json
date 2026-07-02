@@ -360,6 +360,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/atlas_opentrinity.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.mit_supercloud",
+      "entry_type": "dataset",
+      "name": "MIT Supercloud Datacenter Challenge (scheduler)",
+      "version": "1.0.0",
+      "description": "Raw slurmdbd scheduler log from the MIT Supercloud Datacenter Challenge (202201), ~396k modern SLURM+GPU jobs; only the ~103 MB scheduler CSV is used (2 TB node telemetry excluded). Runtime derived as time_end - time_start; requested walltime = timelimit; normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["mit", "supercloud", "slurm", "gpu", "s3"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/mit_supercloud.yml"
+      }
     }
   ]
 }
