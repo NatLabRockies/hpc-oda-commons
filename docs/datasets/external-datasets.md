@@ -11,13 +11,18 @@ A few valuable datasets aren't auto-fetched, for different reasons — documente
 retrieve them yourself and turn them into canonical `oda.job.v0.2.0` tables:
 
 - **Blue Waters** — Globus only (no direct HTTPS at all).
-- **ALCF DJC** — direct HTTPS, but the data files sit behind a Cloudflare JS challenge (browser only).
 - **Alibaba GPU-v2026** — a plain-HTTPS OSS URL, but the host isn't resolvable from every network.
 - **FRESCO Stampede1** — a plain-HTTPS datadepot URL, but the single 1.13 GB file wouldn't transfer
   through the proxy of the environment these descriptors were built in.
 
-The last three are *reachable in principle* — they just weren't fetchable/pinnable from here — so
+The last two are *reachable in principle* — they just weren't fetchable/pinnable from here — so
 on an unrestricted network they can be registered normally (`kind: http` + a pinned `sha256`).
+
+**ALCF DJC** was on this list too, but a closer look showed it isn't a hard wall — its downloads
+sit behind a one-time name/email form on *public* data. It is now a **registered `manual`-kind
+dataset** (`dataset.job_runtime.alcf_djc_polaris`): you clear the form once, download the file, and
+`datasets prepare --from <dir>` checksum-verifies + normalizes it. See the ALCF DJC entry below and
+"How to ingest" path 2 — it's the working example of the manual flow.
 
 ## How to ingest one of these
 
@@ -64,16 +69,24 @@ After you've downloaded the raw file(s) from the source below, there are two pat
 - **Format:** ZIP → `part-000.parquet` (archive decode + a straightforward mapping handle it).
 - **License:** research-use (see the Alibaba `clusterdata` repository).
 
-### ALCF DJC (Argonne — Polaris / Theta / Mira)
+### ALCF DJC (Argonne — Polaris / Theta / Mira) — **registered (manual-kind)**
+
+Polaris 2023 is registered as `dataset.job_runtime.alcf_djc_polaris`; this entry is the recipe for
+adding **more years / systems** (Theta, Mira, other Polaris years) the same way.
 
 - **What:** `DIM_JOB_COMPOSITE` job accounting for ALCF systems (Polaris 2022–2026, Theta, ThetaGPU,
   Mira, Aurora) — Cobalt/PBS scheduler data **with requested walltime** → primary-quality.
-- **Where:** per-year files under `https://reports.alcf.anl.gov/data/` (e.g.
-  `ANL-ALCF-DJC-POLARIS_20230101_20231231`). The `.html` viewer pages load fine, but the actual data
-  files sit behind a **Cloudflare JS challenge** ("Just a moment…") that returns 401 to non-browser
-  clients — so a real browser is required (a User-Agent header is not enough).
-- **Format:** per-year CSV/gz once downloaded (see the DIM_JOB_COMPOSITE data dictionary for columns).
-- **License:** unstated.
+- **Where:** per-year files under `https://reports.alcf.anl.gov/data/` (open the viewer, e.g.
+  `ANL-ALCF-DJC-POLARIS_20230101_20231231.html`, and click the CSV link). The download itself
+  (`…/data/data/ANL-ALCF-DJC-<SYS>_<start>_<end>.csv.gz`) 302-redirects to a **one-time name/email
+  form** on public data — not a login. Fill it once in a browser and the `.csv.gz` downloads.
+- **Ingest:** `hpc-oda datasets prepare dataset.job_runtime.alcf_djc_polaris --from <dir>` (the
+  `manual` backend checksum-verifies your placed file). For a new year/system, copy the descriptor,
+  swap the filename + pinned `sha256`, and adjust the date in the id/name.
+- **Format:** `.csv.gz`, 67 columns; the descriptor reads the ~17 mapped ones (`WALLTIME_SECONDS`,
+  `RUNTIME_SECONDS`, queued/start/end, cores/nodes used+requested, queue, exit status, machine,
+  science field, anonymized `USERNAME_GENID`/`PROJECT_NAME_GENID`).
+- **License:** unstated — cite ALCF.
 
 ### FRESCO Stampede1 (TACC)
 

@@ -1,6 +1,6 @@
 # Runtime Dataset Curation — Status & Remaining Roadmap
 
-**Updated:** 2026-07-02 (autonomous curation run; 23 runtime datasets registered)
+**Updated:** 2026-07-02 (autonomous curation run; 24 runtime datasets registered)
 **Companion to:** [`runtime-first-investigation.md`](runtime-first-investigation.md) (the plan) and
 the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../design/public-dataset-ingestion.md)).
 
@@ -49,23 +49,26 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | `lassen` | Lassen (LLNL, LSF) | 1,467,746 | GitHub-LFS/https | via LFS media URL |
 | `fresco_anvil` | Anvil (Purdue, A100) | 1,475,155 | datadepot/https | 11 months, real walltime |
 | `fresco_conte` | Conte (Purdue) | 1,042,125 | datadepot/https | Torque, 2015-16, real walltime |
+| `alcf_djc_polaris` | Polaris (Argonne) | 192,666 | ALCF (manual) | PBS, 2023, real walltime |
 
 ~56M jobs across SLURM / LSF / Torque / SWF and cloud, 1996–2025, x86 / ARM / GPU, home-lab included.
 All strict-validate against `oda.job.v0.2.0`.
 
 ## Remaining runtime datasets
 
-Four are documented for user ingestion in [`external-datasets.md`](external-datasets.md) — each
+Three are documented for user ingestion in [`external-datasets.md`](external-datasets.md) — each
 verified as genuinely not fetchable/pinnable from this environment:
 
 - **Blue Waters** (NCSA, Torque, ~4.5M jobs) — **Globus only** (verified: NCSA's page gives no
   direct HTTPS); has requested walltime.
-- **ALCF DJC** (Polaris / Theta / Mira) — direct HTTPS, but the data files are behind a
-  **Cloudflare JS challenge** (browser-only); has requested walltime.
 - **Alibaba GPU-v2026** (ASI) — a **direct-HTTPS OSS URL** (not an SDK), but `aliyuncs.com` was
   DNS-unreachable here; no requested walltime.
 - **FRESCO Stampede1** (TACC) — direct-HTTPS datadepot URL, but the single 1.13 GB file wouldn't
   transfer through this proxy; has requested walltime.
+
+(**ALCF DJC** was here too, but a closer look found its data isn't behind a Cloudflare wall — just a
+one-time name/email form on public data. Polaris 2023 is now registered as the manual-kind
+`alcf_djc_polaris`; more years/systems add the same way.)
 
 ### Fetch-mechanism findings (most "backends" were never needed)
 
@@ -74,14 +77,16 @@ was ever built**. Public **S3** (MIT: `https://<bucket>.s3.amazonaws.com/<key>`)
 (302→presigned S3), **HuggingFace** (`resolve/<ref>/<path>`), **git-LFS** (GitHub
 `media.githubusercontent.com/media/...` — no `git-lfs` tool), and the **FRESCO datadepot** (a plain
 web directory) are all direct HTTPS. Even **Aliyun-OSS** (Alibaba) is a plain-HTTPS URL, not an
-SDK — only **Globus** (Blue Waters) genuinely needs a login. See
+SDK, and **ALCF DJC** is public data behind a one-time name/email form (now a registered
+manual-kind dataset), not the Cloudflare wall it first looked like — only **Globus** (Blue Waters)
+genuinely needs a login. **Lesson: always live-check the fetch path.** See
 [`external-datasets.md`](external-datasets.md).
 
 ## What's left
 
-Runtime-first auto-fetch curation is effectively complete: **23 datasets** registered. The four
-remaining (Blue Waters, ALCF DJC, Alibaba, FRESCO Stampede1) are each genuinely not
-fetchable/pinnable from this environment (Globus / Cloudflare / DNS / a proxy-limited large
+Runtime-first curation is effectively complete: **24 datasets** registered (incl. `alcf_djc_polaris`
+via the manual-kind flow). The three remaining (Blue Waters, Alibaba, FRESCO Stampede1) are each
+genuinely not fetchable/pinnable from this environment (Globus / DNS / a proxy-limited large
 transfer) and are documented for user ingestion in
 [`external-datasets.md`](external-datasets.md) rather than pipeline-fetched.
 
