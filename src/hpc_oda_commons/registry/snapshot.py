@@ -12,7 +12,7 @@ from hpc_oda_commons.kernel.validate import validate_json
 from hpc_oda_commons.registry.index import RegistryIndex
 from hpc_oda_commons.registry.models import RegistrySnapshot
 
-REGISTRY_SCHEMA_ID = "oda.registry.v0.1.0"
+REGISTRY_SCHEMA_ID = "oda.registry.v0.2.0"
 
 
 class RegistrySnapshotNotFound(FileNotFoundError):
