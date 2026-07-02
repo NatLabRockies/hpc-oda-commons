@@ -50,7 +50,15 @@ def _parse_timestamp(value: Any, fmt: str) -> datetime | None:
         return datetime.fromtimestamp(float(value) / 1000.0, tz=timezone.utc)
     if fmt == "epoch_us":
         return datetime.fromtimestamp(float(value) / 1_000_000.0, tz=timezone.utc)
-    raise ValueError(f"Unsupported timestamp format: {fmt}")
+    # Otherwise treat fmt as a datetime.strptime pattern, e.g. "%m/%d/%Y %H:%M:%S".
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        dt = datetime.strptime(text, fmt)
+    except (ValueError, TypeError):
+        return None
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
 
 
 def _duration_to_seconds(value: Any, unit: str) -> float | None:

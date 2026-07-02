@@ -540,6 +540,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_anvil.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.fresco_conte",
+      "entry_type": "dataset",
+      "name": "FRESCO Conte Job Accounting",
+      "version": "1.0.0",
+      "description": "Torque/PBS job accounting from Purdue's Conte cluster (FRESCO repository), 12 months 2015-03 to 2016-02, ~1.04M completed jobs. Runtime = resources_used.walltime; requested = Resource_List.walltime; MM/DD/YYYY timestamps; the require_nonnull filter keeps only completed (E) events. Fetched from the datadepot over direct HTTPS; normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "LicenseRef-fresco",
+      "tags": ["fresco", "conte", "purdue", "torque", "pbs"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_conte.yml"
+      }
     }
   ]
 }

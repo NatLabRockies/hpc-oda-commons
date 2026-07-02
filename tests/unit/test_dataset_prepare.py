@@ -386,3 +386,17 @@ def test_iso8601_trailing_zone_word() -> None:
     dt = _parse_timestamp("2023-05-31T22:21:04 UTC", "iso8601")
     assert dt is not None and dt.utcoffset() == timezone.utc.utcoffset(None)
     assert (dt.year, dt.month, dt.day, dt.hour, dt.second) == (2023, 5, 31, 22, 4)
+
+
+def test_strptime_pattern_timestamp() -> None:
+    # FRESCO Conte/Stampede-style MM/DD/YYYY parsed via a strptime pattern format.
+    from datetime import timezone
+
+    from hpc_oda_commons.ingest.jobs_parquet.apply import _parse_timestamp
+
+    dt = _parse_timestamp("03/01/2015 07:04:29", "%m/%d/%Y %H:%M:%S")
+    assert dt is not None and dt.utcoffset() == timezone.utc.utcoffset(None)
+    assert (dt.year, dt.month, dt.day, dt.hour, dt.minute) == (2015, 3, 1, 7, 4)
+    # empty / unparseable -> None (dropped by completeness, e.g. Conte Q/S events)
+    assert _parse_timestamp("", "%m/%d/%Y %H:%M:%S") is None
+    assert _parse_timestamp("not-a-date", "%m/%d/%Y %H:%M:%S") is None

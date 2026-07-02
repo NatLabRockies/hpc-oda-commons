@@ -1,0 +1,81 @@
+dataset_id: dataset.job_runtime.fresco_conte
+schema_version: oda.dataset.v0.1.0
+name: FRESCO Conte Job Accounting
+version: 1.0.0
+description: >
+  Torque/PBS job accounting from Purdue's Conte cluster, from the FRESCO repository. The
+  premium slice is 12 consecutive months (2015-03 to 2016-02) of the per-event accounting
+  CSVs; the require_nonnull runtime filter keeps only the completed-job (E) records (Q/S
+  events have no runtime). Runtime target = resources_used.walltime (seconds); requested
+  walltime = Resource_List.walltime (seconds); timestamps are MM/DD/YYYY (parsed via a
+  strptime pattern). user/group already anonymized. Fetched from the datadepot over direct HTTPS.
+problem_domains: [job-runtime-prediction]
+systems: [Conte]
+providers: [Purdue]
+citation: { url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/" }
+license:
+  spdx: LicenseRef-fresco
+  gated: false
+  notes: "FRESCO research data; citation required (Bagchi et al., Purdue/TACC)."
+tags: [fresco, conte, purdue, torque, pbs]
+size:
+  default_bytes: 1054857342
+  full_bytes: 1054857342
+  rows_hint: "~1M completed jobs (E events), 2015-03 to 2016-02"
+
+source:
+  kind: http
+  resources:
+    - { filename: 2015-03.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2015-03.csv", sha256: 6fe61af3c0f304a4f273fd4f2ff4ec20143904d0c57af9e57c5b1d7f83fe18c9, bytes: 80189771 }
+    - { filename: 2015-04.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2015-04.csv", sha256: 64b5c472e2416a7f387a80f1485f153c78d4fe797edefcf14335d2abb1515428, bytes: 94119975 }
+    - { filename: 2015-05.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2015-05.csv", sha256: 05f263f5a1be5e3bc09af9de872b7d872fcdf728f3daa7eca24e3d81e3db07b7, bytes: 90241546 }
+    - { filename: 2015-06.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2015-06.csv", sha256: 03d765f3341eb25e0ec5669624f74e6dd23a6c473083b0407b69be708eb95ab5, bytes: 82552736 }
+    - { filename: 2015-07.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2015-07.csv", sha256: be7a32e5ac560a717a9b21e9965b213a16f5f01621f971d0ed6d2eccd022dd6c, bytes: 78725034 }
+    - { filename: 2015-08.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2015-08.csv", sha256: de5caad487d1f38e0deb6f1caae4ee8cce3ae3f161c9fc9b8ce337d8c746f56d, bytes: 82946732 }
+    - { filename: 2015-09.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2015-09.csv", sha256: aa292eba1b9991727ea232ee7189fa0952ca3bc29a781724371f8748e85cc271, bytes: 66717378 }
+    - { filename: 2015-10.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2015-10.csv", sha256: 1f01d31ddbb1294e4bf52ef354e1800a5fe3932cd66c910640e7f499be7bc7df, bytes: 100030162 }
+    - { filename: 2015-11.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2015-11.csv", sha256: 882f9fed1f90789af90aeec6101956a91d970a70036304a7d5b9ceded50cd311, bytes: 65438801 }
+    - { filename: 2015-12.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2015-12.csv", sha256: d395ae9c555017fb8ad2815d2e2b12ae5b7f560dc76b72e5f52940caf7365d11, bytes: 86190431 }
+    - { filename: 2016-01.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2016-01.csv", sha256: 4c6aac7f7af0f4946d8aafd366205765b103b4796c6f6483e7412f8cd30ab357, bytes: 95669764 }
+    - { filename: 2016-02.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Conte/AccountingStatistics/2016-02.csv", sha256: ad6a0f961840aeeaa08c04ae94076adc17e778f4535638f072d84218d2bc258a, bytes: 132035012 }
+
+decode:
+  format: csv
+  options:
+    # Read only the mapped columns (skips unmapped columns whose inferred type varies by month).
+    columns:
+      [
+        jobID,
+        qtime,
+        start,
+        end,
+        "resources_used.walltime",
+        "Resource_List.walltime",
+        "Resource_List.ncpus",
+        "Resource_List.nodect",
+        queue,
+        Exit_status,
+        user,
+        group,
+      ]
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: jobID }
+      submit_time: { from: qtime, type: timestamp, format: "%m/%d/%Y %H:%M:%S" }
+      start_time: { from: start, type: timestamp, format: "%m/%d/%Y %H:%M:%S" }
+      end_time: { from: end, type: timestamp, format: "%m/%d/%Y %H:%M:%S" }
+      runtime_seconds: { from: "resources_used.walltime", type: duration, unit: seconds }
+      requested_seconds: { from: "Resource_List.walltime", type: duration, unit: seconds }
+      num_cores_alloc: { from: "Resource_List.ncpus", type: integer }
+      num_nodes_alloc: { from: "Resource_List.nodect", type: integer }
+      queue: { from: queue }
+      job_state: { from: Exit_status }
+      user: { from: user }
+      account: { from: group }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: fresco_conte, path: data/datasets/fresco_conte/data.parquet }
