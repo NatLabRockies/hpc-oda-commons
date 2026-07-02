@@ -10,7 +10,6 @@ caller verifies the checksum afterwards.
 from __future__ import annotations
 
 import shutil
-import ssl
 import urllib.request
 from collections.abc import Mapping
 from pathlib import Path
@@ -36,13 +35,6 @@ def materialize_http(resource: Mapping[str, Any], dest: Path) -> None:
     except FetchError:
         tmp_path.unlink(missing_ok=True)
         raise
-    except ssl.REDACTED as exc:  # pragma: no cover - REDACTED networks
-        tmp_path.unlink(missing_ok=True)
-        raise FetchError(
-            f"TLS REDACTED failed for {url}: {exc}. On a REDACTED "
-            "network (e.g. a corporate proxy), point REDACTED at a CA bundle that "
-            "includes your organization's root CA -- see docs/how-to/REDACTED.md."
-        ) from exc
     except Exception as exc:  # pragma: no cover - network/file errors
         tmp_path.unlink(missing_ok=True)
         raise FetchError(f"failed to fetch {url}: {exc}") from exc

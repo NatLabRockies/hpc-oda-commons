@@ -26,17 +26,33 @@ from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec, writ
 
 _TRANSFORM_TYPES = frozenset({"timestamp", "duration", "memory", "memory_slurm", "hash_identifier"})
 _JOB_SCHEMA_PREFIX = "oda.job."
+_SYNTH_PREFIX = "__synth_"
 
 
 class NormalizeError(Exception):
     """Raised when a target cannot be normalized."""
 
 
+def _synth_fields(target: Target) -> list[str]:
+    """Canonical fields whose value is a row-index surrogate (no natural source column)."""
+    return [
+        canonical
+        for canonical, rule in target.mapping.items()
+        if isinstance(rule, Mapping) and rule.get("synthesize") == "row_index"
+    ]
+
+
 def target_to_mapping_spec(target: Target) -> dict[str, Any]:
     """Translate a target's inline mapping into an ``oda.mapping.v0.1.0`` spec."""
     fields: dict[str, Any] = {}
     for canonical, rule in target.mapping.items():
+        if rule.get("synthesize") == "row_index":
+            # Surrogate column injected into the intermediate by normalize_target.
+            fields[canonical] = {"source": f"{_SYNTH_PREFIX}{canonical}"}
+            continue
         spec: dict[str, Any] = {"source": rule.get("from")}
+        if rule.get("derive"):
+            spec["derive"] = rule["derive"]
         ttype = rule.get("type")
         if ttype in _TRANSFORM_TYPES:
             transform: dict[str, Any] = {"type": ttype}
@@ -49,6 +65,29 @@ def target_to_mapping_spec(target: Target) -> dict[str, Any]:
     return new_mapping_spec(
         kind="public_dataset", output_schema_version=target.schema, fields=fields
     )
+
+
+def _write_with_synthetic_ids(
+    src: Path, fields: Sequence[str], dest: Path, *, batch_size: int
+) -> None:
+    """Copy ``src`` to ``dest`` adding an int64 ``__synth_<field>`` column (0..N-1)
+    per synthesized field, assigned across batches so ids stay globally unique."""
+    reader = pq.ParquetFile(src)
+    writer: pq.ParquetWriter | None = None
+    offset = 0
+    try:
+        for batch in reader.iter_batches(batch_size=batch_size):
+            table = pa.Table.from_batches([batch])
+            idx = pa.array(range(offset, offset + table.num_rows), type=pa.int64())
+            for field in fields:
+                table = table.append_column(f"{_SYNTH_PREFIX}{field}", idx)
+            if writer is None:
+                writer = pq.ParquetWriter(dest, table.schema)
+            writer.write_table(table)
+            offset += table.num_rows
+    finally:
+        if writer is not None:
+            writer.close()
 
 
 def _apply_filter(table: pa.Table, filt: Mapping[str, Any]) -> pa.Table:
@@ -121,12 +160,19 @@ def normalize_target(
 ) -> dict[str, Any]:
     """Map ``intermediate_parquet`` onto ``target.schema`` and write ``out_path``."""
     spec = target_to_mapping_spec(target)
+    synth = _synth_fields(target)
     with tempfile.TemporaryDirectory() as tmp:
+        source_parquet = intermediate_parquet
+        if synth:
+            source_parquet = Path(tmp) / "with_synth.parquet"
+            _write_with_synthetic_ids(
+                intermediate_parquet, synth, source_parquet, batch_size=batch_size
+            )
         mapping_path = Path(tmp) / "mapping.yml"
         write_mapping_spec(mapping_path, spec, validate=True)
         mapped_path = Path(tmp) / "mapped.parquet"
         summary = apply_mapping_spec(
-            intermediate_parquet, mapping_path, mapped_path, batch_size=batch_size
+            source_parquet, mapping_path, mapped_path, batch_size=batch_size
         )
         table = pq.read_table(mapped_path)
 

@@ -330,6 +330,36 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_metacentrum.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.atlas_mustang",
+      "entry_type": "dataset",
+      "name": "Atlas Mustang (LANL)",
+      "version": "1.0.0",
+      "description": "LANL Mustang SLURM trace from the Atlas repository (~2.1M jobs, 2011-2016). Runtime target derived as end_time - start_time; requested walltime = wallclock_limit; synthesized row-index job_id (no id column); normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["atlas", "lanl", "mustang", "slurm"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/atlas_mustang.yml"
+      }
+    },
+    {
+      "id": "dataset.job_runtime.atlas_opentrinity",
+      "entry_type": "dataset",
+      "name": "Atlas OpenTrinity (LANL)",
+      "version": "1.0.0",
+      "description": "LANL Trinity (OpenTrinity) SLURM trace from the Atlas repository, formatted release (~25k jobs, 2017). Runtime target derived as end_time - start_time; requested walltime = wallclock_limit; synthesized row-index job_id; normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["atlas", "lanl", "trinity", "slurm"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/atlas_opentrinity.yml"
+      }
     }
   ]
 }

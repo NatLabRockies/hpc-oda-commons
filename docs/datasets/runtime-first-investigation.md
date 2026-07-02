@@ -150,8 +150,7 @@ schemas, and — for the home-lab Eagle/Kestrel — full coverage since those ar
   exit) for Conte (Torque, 2015–17), Stampede1 (Torque, 2013–16), **Anvil (Slurm+XDMoD,
   2022–23, A100)**. Take **accounting CSVs only** (~5–20 GB); **deliberately exclude the
   per-node TACC-Stats/XDMoD timeseries** (hundreds of GB). Web browse or Globus at
-  `datadepot.rcac.purdue.edu/sbagchi/fresco/`. **Gotcha: REDACTED cert chain** — strict
-  fetchers fail; use Globus / browser / `REDACTED`.
+  `datadepot.rcac.purdue.edu/sbagchi/fresco/`; fetch via Globus.
 - **Adastra MI250 (#31)** — SLURM, 15 days 2024, 30,570 jobs, **single 1.2 MB parquet**.
   **CC-BY-4.0**, Zenodo 14007065. Most recent EU system; trivially include (verify columns on
   open).
@@ -319,8 +318,7 @@ across the deferred phases.
 
 1. **No requested-walltime in cloud/GPU traces** (Helios, Acme, Philly, Alibaba, Google) — the
    key HPC feature is absent; model duration from resources/type/queue for those.
-2. **FRESCO datadepot** has an REDACTED cert chain — strict HTTPS fetchers fail; use
-   Globus / browser / `REDACTED`. Flag in the downloader.
+2. **FRESCO datadepot** is fetched via Globus (see the FRESCO row above).
 3. **Atlas ftp.pdl.cmu.edu** blocks HEAD/range → can't size remotely; download the (small) gz.
 4. **ALCF `reports.alcf.anl.gov`** blocks scripted user-agents → send browser headers.
 5. **Schema heterogeneity** across schedulers (SLURM `sacct`, Cobalt/PBS DJC, Torque
