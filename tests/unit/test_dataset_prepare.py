@@ -375,3 +375,14 @@ def test_normalize_integer_cast_from_string(tmp_path: Path) -> None:
     table = pq.read_table(out)
     assert table.schema.field("allocated_cpus").type == pa.int64()
     assert table.column("allocated_cpus").to_pylist() == [24, 8]
+
+
+def test_iso8601_trailing_zone_word() -> None:
+    # FRESCO-style "2023-05-31T22:21:04 UTC" -> parsed as UTC.
+    from datetime import timezone
+
+    from hpc_oda_commons.ingest.jobs_parquet.apply import _parse_timestamp
+
+    dt = _parse_timestamp("2023-05-31T22:21:04 UTC", "iso8601")
+    assert dt is not None and dt.utcoffset() == timezone.utc.utcoffset(None)
+    assert (dt.year, dt.month, dt.day, dt.hour, dt.second) == (2023, 5, 31, 22, 4)

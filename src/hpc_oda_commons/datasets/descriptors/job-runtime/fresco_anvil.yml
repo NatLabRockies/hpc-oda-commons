@@ -1,0 +1,65 @@
+dataset_id: dataset.job_runtime.fresco_anvil
+schema_version: oda.dataset.v0.1.0
+name: FRESCO Anvil Job Accounting
+version: 1.0.0
+description: >
+  Anonymized SLURM job accounting from Purdue's Anvil supercomputer (A100), from the FRESCO
+  repository, 11 monthly CSVs covering July 2022 - May 2023. Runtime target = Wall Time
+  (seconds); requested walltime = Requested Wall Time (seconds). Timestamps are ISO with a
+  trailing "UTC" zone word. Cores/GPUs/nodes, requested nodes, queue, exit status, wait time
+  as features; user/account already anonymized. Fetched from the datadepot over direct HTTPS
+  (no Globus). Primary-quality Slurm accounting.
+problem_domains: [job-runtime-prediction]
+systems: [Anvil]
+providers: [Purdue, TACC]
+citation: { url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/" }
+license:
+  spdx: LicenseRef-fresco
+  gated: false
+  notes: "FRESCO research data; citation required (Bagchi et al., Purdue/TACC)."
+tags: [fresco, anvil, purdue, slurm, a100]
+size:
+  default_bytes: 289633623
+  full_bytes: 289633623
+  rows_hint: "~1.5M jobs across 11 months (2022-07 to 2023-05)"
+
+source:
+  kind: http
+  resources:
+    - { filename: job_accounting_july2022_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_july2022_anon.csv", sha256: 9fb35e7eb76dc9aa2bf5b5c52a13971b9dc392b87556dbcfbfb3fae7e53abe12, bytes: 9158807 }
+    - { filename: job_accounting_aug2022_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_aug2022_anon.csv", sha256: f181808a84ab2e06adb7df7bedbd1497f1c4ac9513c8f2e0829ff855f83328a9, bytes: 30637558 }
+    - { filename: job_accounting_sep2022_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_sep2022_anon.csv", sha256: 1a2fea68e506a915d00e6d4a86cd31b0d92d983bed9a3bb051cc7bd4ddabc69e, bytes: 7521728 }
+    - { filename: job_accounting_oct2022_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_oct2022_anon.csv", sha256: 94efc4e589830aa1091e8cb54b62403dc4b793692a6d5972cb7571b1e7a9b5e2, bytes: 30046261 }
+    - { filename: job_accounting_nov2022_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_nov2022_anon.csv", sha256: 562f7039d992ce8c30ec7d0ede7e9fab2adec9439e73a75ae826a714a68c9563, bytes: 17066625 }
+    - { filename: job_accounting_dec2022_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_dec2022_anon.csv", sha256: a0d372f0b37aeba623acc14f19c184c71fb63b483d9b0837b31aac4f77b80c35, bytes: 36916927 }
+    - { filename: job_accounting_jan2023_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_jan2023_anon.csv", sha256: 8c55fc86ebe8c6e740d3f7ff3273462682d18c92ff6e9e76188d69bde0602cb8, bytes: 13290749 }
+    - { filename: job_accounting_feb2023_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_feb2023_anon.csv", sha256: bf48b7bf198f7f5bc7a4441c9898e2749e48a9d1b6a4f9c9ae1403a71577d9f1, bytes: 13100362 }
+    - { filename: job_accounting_mar2023_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_mar2023_anon.csv", sha256: 6cacc545e24b240d4af5c891fa50e2cf4ef92cc08cbbda72603afdeac1b62966, bytes: 31281936 }
+    - { filename: job_accounting_apr2023_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_apr2023_anon.csv", sha256: 19530b602b3e5125a02bec44fa4823a03733154b5121db8b9c48186a039072a8, bytes: 52968101 }
+    - { filename: job_accounting_may2023_anon.csv, url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Anvil/JobAccounting/job_accounting_may2023_anon.csv", sha256: af7b8c3477854568a33e909765ded0aaa72341c114dd5eb30b90365ddc70b0c6, bytes: 47644569 }
+
+decode:
+  format: csv
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: "Job Id" }
+      submit_time: { from: "Submit Time", type: timestamp, format: iso8601 }
+      start_time: { from: "Start Time", type: timestamp, format: iso8601 }
+      end_time: { from: "End Time", type: timestamp, format: iso8601 }
+      runtime_seconds: { from: "Wall Time", type: duration, unit: seconds }
+      requested_seconds: { from: "Requested Wall Time", type: duration, unit: seconds }
+      allocated_cpus: { from: "Cores", type: integer }
+      num_nodes_alloc: { from: "Nodes", type: integer }
+      num_gpus_req: { from: "Gpus", type: integer }
+      num_nodes_req: { from: "Requested Nodes", type: integer }
+      queue: { from: "Queue" }
+      job_state: { from: "Exit Status" }
+      user: { from: "User" }
+      account: { from: "Account" }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: fresco_anvil, path: data/datasets/fresco_anvil/data.parquet }
