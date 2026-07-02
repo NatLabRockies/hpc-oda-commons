@@ -1,6 +1,6 @@
 # Runtime Dataset Curation — Status & Remaining Roadmap
 
-**Updated:** 2026-07-02 (autonomous curation run; 21 runtime datasets registered)
+**Updated:** 2026-07-02 (autonomous curation run; 22 runtime datasets registered)
 **Companion to:** [`runtime-first-investigation.md`](runtime-first-investigation.md) (the plan) and
 the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../design/public-dataset-ingestion.md)).
 
@@ -47,35 +47,33 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | `acme_kalos` | Kalos (Shanghai AI) | 62,410 | HF/https | GPU/LLM, no walltime |
 | `helios` | SenseTime ×4 | 3,362,981 | GitHub/https | GPU, no walltime |
 | `lassen` | Lassen (LLNL, LSF) | 1,467,746 | GitHub-LFS/https | via LFS media URL |
+| `fresco_anvil` | Anvil (Purdue, A100) | 1,475,155 | datadepot/https | 11 months, real walltime |
 
-~53M jobs across SLURM / LSF / Torque / SWF and cloud, 1996–2025, x86 / ARM / GPU, home-lab included.
+~55M jobs across SLURM / LSF / Torque / SWF and cloud, 1996–2025, x86 / ARM / GPU, home-lab included.
 All strict-validate against `oda.job.v0.2.0`.
 
-## Remaining runtime datasets + what each needs
+## Remaining runtime datasets
 
-| Dataset | Host / format | Needs |
-|---|---|---|
-| **FRESCO (Anvil accounting)** | Purdue datadepot / Globus | Check the datadepot **web/HTTPS** path first; else **Globus** (login). Accounting CSVs only (exclude TACC-Stats). |
-| **Blue Waters** (Torque, 4.5M jobs) | NCSA / Globus | **Globus** login + a small **Torque `key=value`** accounting decoder. Heaviest. |
-| **Alibaba GPU-v2026** | Aliyun-OSS | Verify public OSS **HTTPS** access + release status; no requested-walltime → secondary. |
+Only two remain, and both need a service (Globus / Aliyun-OSS) we deliberately don't fetch in the
+pipeline — they are documented for user ingestion in
+[`external-datasets.md`](external-datasets.md):
+
+- **Blue Waters** (NCSA, Torque, ~4.5M jobs) — Globus; has requested walltime (primary-quality).
+- **Alibaba GPU-v2026** (ASI) — Aliyun-OSS; no requested walltime (secondary).
 
 ### Fetch-mechanism findings (most "backends" were never needed)
 
-Direct HTTPS (existing `http` backend) covers far more than expected — no new fetch backend was built:
-- **S3** (MIT Supercloud): public objects at `https://<bucket>.s3.amazonaws.com/<key>`.
-- **data.nlr.gov** (NLR): the stable URL 302-redirects to a presigned S3 object; urllib follows it.
-- **HuggingFace** (Acme): the `resolve/<ref>/<path>` endpoint is direct HTTPS.
-- **git-LFS** (Lassen): GitHub serves LFS content at `media.githubusercontent.com/media/<owner>/<repo>/<ref>/<path>` — **no `git-lfs` tool**.
+Direct HTTPS (the existing `http` backend) covers far more than expected — **no new fetch backend
+was ever built**. Public **S3** (MIT: `https://<bucket>.s3.amazonaws.com/<key>`), **data.nlr.gov**
+(302→presigned S3), **HuggingFace** (`resolve/<ref>/<path>`), **git-LFS** (GitHub
+`media.githubusercontent.com/media/...` — no `git-lfs` tool), and the **FRESCO datadepot** (a plain
+web directory) are all direct HTTPS. Only **Globus** (Blue Waters) and **Aliyun-OSS** (Alibaba)
+genuinely need a login/SDK → see [`external-datasets.md`](external-datasets.md).
 
-Genuinely gated: **Globus** (FRESCO, Blue Waters) — no stable pinnable URL, needs the user's login
-(use the `manual` source kind), plus a Torque decoder for Blue Waters. **Aliyun-OSS** (Alibaba) —
-needs an access check.
+## What's left
 
-## Suggested finish order
-
-1. **FRESCO** — quick datadepot-HTTPS check; if it works, curate now; else it joins the Globus set.
-2. **Globus set** (FRESCO + Blue Waters) — needs a user login (manual-kind flow); Blue Waters also
-   needs the Torque decoder.
-3. **Alibaba GPU-v2026** — verify OSS HTTPS access; secondary (no walltime).
+Runtime-first auto-fetch curation is effectively complete: **22 datasets** registered, and the
+only two that remain (Blue Waters, Alibaba) require Globus / Aliyun-OSS and are documented for
+user ingestion in [`external-datasets.md`](external-datasets.md) rather than pipeline-fetched.
 
 Power/failure/anomaly datasets remain deferred to their phases (see the investigation doc §7).
