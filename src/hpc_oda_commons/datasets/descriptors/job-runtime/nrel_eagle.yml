@@ -1,0 +1,55 @@
+dataset_id: dataset.job_runtime.nrel_eagle
+schema_version: oda.dataset.v0.1.0
+name: NREL Eagle Jobs (OEDI 5860)
+version: 1.0.0
+description: >
+  Per-job SLURM accounting for NREL's Eagle supercomputer (OEDI submission 5860),
+  ~11.03M jobs from 2018 through Feb 2023, as a single parquet. The runtime-prediction
+  target is run_time (seconds); requested walltime = wallclock_req (seconds). Includes
+  requested nodes/processors/GPUs, partition, QOS, and final job state. Home-lab corpus.
+problem_domains: [job-runtime-prediction]
+systems: [Eagle]
+providers: [NREL]
+citation: { url: "https://data.openei.org/submissions/5860" }
+license: { spdx: CC-BY-4.0, gated: false }
+tags: [eagle, nrel, slurm, oedi, home-lab]
+size:
+  default_bytes: 253083944
+  full_bytes: 253083944
+  rows_hint: "11,030,377 jobs (2018–Feb 2023)"
+
+source:
+  kind: oedi
+  resources:
+    - filename: eagle_data.parquet
+      url: "https://data.openei.org/files/5860/eagle_data.parquet"
+      sha256: 55d5b8d1bb74abac22519276f83f585bcc5f349528f3a6caee847a738762e89e
+      bytes: 253083944
+
+decode:
+  format: parquet
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      # Eagle timestamps are naive timestamp[us]; iso8601 treats them as UTC.
+      job_id: { from: job_id }
+      submit_time: { from: submit_time, type: timestamp, format: iso8601 }
+      start_time: { from: start_time, type: timestamp, format: iso8601 }
+      end_time: { from: end_time, type: timestamp, format: iso8601 }
+      runtime_seconds: { from: run_time, type: duration, unit: seconds }
+      requested_seconds: { from: wallclock_req, type: duration, unit: seconds }
+      partition: { from: partition }
+      qos: { from: qos }
+      num_nodes_req: { from: nodes_req, type: integer }
+      num_cores_req: { from: processors_req, type: integer }
+      num_gpus_req: { from: gpus_req, type: integer }
+      job_state: { from: state }
+      user: { from: user, type: hash_identifier }
+      account: { from: account, type: hash_identifier }
+      name: { from: name }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: nrel_eagle, path: data/datasets/nrel_eagle/data.parquet }
