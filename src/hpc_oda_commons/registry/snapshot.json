@@ -255,6 +255,21 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/adastra_mi250.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.ccin2p3_2024",
+      "entry_type": "dataset",
+      "name": "CC-IN2P3 2024 Workload (recent month)",
+      "version": "1.0.0",
+      "description": "SLURM sacct per-job trace from CC-IN2P3 (CNRS, France). Premium runtime slice = December 2024 (~2.35M jobs); full year = ~44M jobs. Runtime target = elapsed, requested walltime = timelimit; normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["cc-in2p3", "cnrs", "slurm", "sacct", "htc"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/ccin2p3_2024.yml"
+      }
     }
   ]
 }
