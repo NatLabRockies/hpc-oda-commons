@@ -1,6 +1,6 @@
 # Runtime Dataset Curation — Status & Remaining Roadmap
 
-**Updated:** 2026-07-02 (autonomous curation run)
+**Updated:** 2026-07-02 (autonomous curation run; refreshed after the SWF decoder + TLS fix landed)
 **Companion to:** [`runtime-first-investigation.md`](runtime-first-investigation.md) (the plan) and
 the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../design/public-dataset-ingestion.md)).
 
@@ -15,6 +15,12 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 - **Registry `v0.2.0`** with a `dataset` entry_type (`browse --type dataset` / `info`).
 - **Archive decode**: `.gz` / `.zip` / `.tar` / `.tar.gz` are extracted transparently and
   matching members concatenated.
+- **SWF decoder** (`datasets/decode/swf.py`): Standard Workload Format → absolute-time
+  reconstruction from `UnixStartTime`; readies all ~40 Parallel Workloads Archive logs.
+- **Corporate-TLS fix** ([`../how-to/corporate-tls.md`](../how-to/corporate-tls.md)) + a
+  friendlier fetch cert error. The NREL/Netskope TLS-inspection proxy is resolved via a
+  combined CA bundle (`~/.hpc_oda/ca-bundle.pem` + `SSL_CERT_FILE`) — previously-blocked
+  hosts now fetch.
 - **DoD-5** integration test: descriptor → `datasets prepare` → schema-valid table →
   `benchmark` → result bundle (offline, via `file://`).
 
@@ -32,13 +38,15 @@ Each descriptor maps its native columns to `oda.job.v0.2.0` (runtime target + su
 requested walltime where available + resource/queue/state features), preserving per-job power
 columns for a later phase where present.
 
-## Environment constraint hit during this run
+## Environment TLS — RESOLVED
 
-This session's network sat behind a **TLS-intercepting proxy**: only **Zenodo** validated
-cleanly. OEDI (`data.openei.org`), `cs.huji.ac.il` (PWA), and others failed with
-`self-signed certificate in certificate chain`. Consequently only **Zenodo-hosted** datasets
-could be fetched + checksum-pinned here. Descriptors for the rest must be authored in a
-network-unrestricted environment (each needs a one-time fetch to compute `sha256` + byte size).
+The dev network sits behind an **NREL/Netskope TLS-inspection proxy** that re-signs
+non-allowlisted hosts with the NREL Root CA (Zenodo is bypassed — which is why the first four
+datasets are all Zenodo). **This is now fixed** (no verification disabled): a combined CA
+bundle at `~/.hpc_oda/ca-bundle.pem` (certifi + NREL Root CA) with `SSL_CERT_FILE` set — see
+[`../how-to/corporate-tls.md`](../how-to/corporate-tls.md). Verified: the fetch backend now
+reaches **OEDI, the Parallel Workloads Archive, Atlas, and `data.nlr.gov`**. Those hosts are
+**no longer blocked** — remaining work is curation (+ a few fetch backends), not TLS.
 **No fabricated checksums or unvalidated decoders were committed.**
 
 ## Remaining runtime datasets + what each needs
@@ -50,28 +58,39 @@ the templates.
 
 | Dataset | Host / format | Needs |
 |---|---|---|
-| **PWA (~40 logs)** | `cs.huji.ac.il`, `.swf.gz` | **SWF decoder** (18-col SWF; use header `UnixStartTime` to turn relative offsets into absolute UTC; `submit=Start+offset`, `start=submit+wait`, `end=start+runtime`) + fetch (TLS-blocked here). Archive decode already handles the `.gz`. Highest-value single unlock. |
-| **IC2 / Polaris / AWS** | Zenodo, JSON | bespoke flattening decoder: top-level list of workloads, each with `tasklist` of tasks (`submit_time`/`start_time`/`finish_time` epoch floats, `cpus`, `gpus`); runtime = `finish−start`; drop nested per-node metric time-series. |
-| **NREL Eagle (OEDI 5860)** | `data.openei.org`, parquet | OEDI TLS chain fails here → fetch in a CA-complete/unrestricted env (single 241 MB parquet; already the shape the repo's `ingest jobs-parquet` expects). Home-lab, CC-BY. |
-| **NLR Eagle + Kestrel** | `data.nlr.gov`, zip | download URL 302-redirects to an HTML page → needs a `data.nlr.gov`/OSTI **resolver** (or the real direct link) to get a stable URL; then archive decode handles the zip of hive-partitioned parquet. Home-lab, freshest data. |
-| **Atlas (Mustang/OpenTrinity)** | `ftp.pdl.cmu.edu`, `csv.gz` | fetch (host blocks HEAD/range; TLS here). Archive decode handles the `.gz`; clean SLURM columns. |
+| **NREL Eagle (OEDI 5860)** | `data.openei.org`, parquet | **CURATE NOW** (TLS fixed) — single ~253 MB parquet, exactly the `ingest jobs-parquet` shape. Home-lab, CC-BY. Top pick. |
+| **PWA (~40 logs)** | `cs.huji.ac.il`, `.swf.gz` | **CURATE NOW** — SWF decoder done + fetch works. Confirm each log's `.swf.gz` URL (prefer the `-cln` cleaned variant); map SWF cols → `oda.job.v0.2.0`. Highest-value breadth. |
+| **Atlas (Mustang/OpenTrinity)** | `ftp.pdl.cmu.edu`, `csv.gz` | **CURATE NOW** — fetch works; archive decode handles `.gz`; clean SLURM columns. |
+| **NLR Eagle + Kestrel** | `data.nlr.gov`, zip | TLS ok now, but the download URL still 302-redirects to HTML → needs a `data.nlr.gov`/OSTI **resolver** (or the real direct link); then archive decode handles the zip of hive-partitioned parquet. Home-lab, freshest data. |
+| **IC2 / Polaris / AWS** | Zenodo, JSON | bespoke JSON-flatten decoder (workloads→`tasklist`; `submit`/`start`/`finish` epoch floats, `cpus`/`gpus`; drop node metrics) + runtime-derive (`finish−start`). |
 | **FRESCO (Anvil accounting)** | datadepot / Globus | **Globus** fetch backend + the host's untrusted TLS cert; take accounting CSVs only (exclude TACC-Stats). |
 | **Lassen LAST** | GitHub **git-LFS** | git-LFS fetch backend (selective include of the job-summary CSV). |
 | **MIT Supercloud** | AWS **S3** | S3 backend (`--no-sign-request`), scheduler prefix only (skip the 2 TB telemetry). |
 | **Blue Waters** | **Globus** | Globus backend + a Torque-accounting (`key=value`) text decoder. |
 | **Cloud complements** | GitHub / HF / Aliyun-OSS | Helios (zip CSV — archive decode ready; GitHub http), Acme (HF `resolve` https CSV), Alibaba GPU-v2026 (Aliyun-OSS). All lack requested-walltime → secondary. |
 
-### Enabling capabilities still to build (each small, unit-testable)
+### Enabling capabilities
 
-1. **SWF decoder** (`datasets/decode/swf.py`) — unlocks all of PWA. *Do this first.*
-2. **JSON flattening decoder** — unlocks IC2 (bespoke nesting).
-3. **Fetch backends**: `git-lfs`, `s3` (`--no-sign-request`), `globus`, Aliyun-OSS, and an
-   OSTI/`data.nlr.gov` **resolver** kind; plus a per-resource CA/verify option for hosts with
-   incomplete TLS chains (OEDI, FRESCO). Route through the `manual` kind in the interim.
+- ✅ **SWF decoder** — DONE (#52); unlocks all of PWA.
+- ✅ **Corporate-TLS fetch** — DONE (#53); OEDI / PWA / Atlas / `data.nlr.gov` now reachable.
+
+Still to build (each small, unit-testable):
+
+1. **Fetch backends** — in rough effort order: `s3` (`--no-sign-request`, easy → MIT
+   Supercloud); Aliyun-OSS / HuggingFace `resolve` (≈ plain https → Alibaba, Acme); `git-lfs`
+   (medium → Lassen); `globus` (heavy: SDK + auth → FRESCO, Blue Waters).
+2. **`data.nlr.gov` / OSTI resolver** — follow the 302 to the real file URL (home-lab NLR).
+3. **JSON-flatten decoder** + a runtime-derive rule (`end − start`) — unlocks IC2.
 4. **Torque `key=value` accounting decoder** — unlocks Blue Waters.
 
 ## Suggested finish order
 
-SWF → PWA · then NLR Eagle/Kestrel + NREL Eagle (home-lab) · then Atlas / FRESCO / MIT /
-Blue Waters via their backends · cloud complements last. Power/failure/anomaly datasets remain
-deferred to their phases (see the investigation doc §7).
+1. **Now — no new code:** NREL Eagle (home-lab, OEDI), PWA, Atlas — fetch → pin → author →
+   register → verify. Highest value for zero new capability.
+2. **Easy backends:** `s3` → MIT Supercloud (modern SLURM+GPU); OSS/HF (≈ https) → Alibaba,
+   Acme, Helios.
+3. **`data.nlr.gov` resolver** → NLR Eagle + Kestrel (home-lab, freshest data).
+4. **git-LFS** → Lassen · **IC2** (JSON-flatten + derive) · then **Globus** (FRESCO,
+   Blue Waters) last — the heaviest lift.
+
+Power/failure/anomaly datasets remain deferred to their phases (see the investigation doc §7).
