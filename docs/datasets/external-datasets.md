@@ -7,10 +7,11 @@ need a special backend turn out to be direct HTTPS anyway — public **S3**, **H
 `resolve`, **git-LFS** media URLs, and presigned 302 redirects are all handled by the plain
 `http` backend; see [`curation-status.md`](curation-status.md).)
 
-A few valuable datasets are reachable **only** through a service that needs an interactive login
-or an SDK we deliberately don't take on — **Globus** and **Aliyun OSS**. We do **not** fetch
-these in the pipeline. Instead they're documented here so you can retrieve them yourself and turn
-them into canonical `oda.job.v0.2.0` tables.
+A couple of valuable datasets aren't auto-fetched: **Blue Waters** needs a **Globus** login (no
+direct HTTPS at all), and **Alibaba GPU-v2026** *is* a plain-HTTPS URL but its Aliyun-OSS host is
+not resolvable from every network (it's blocked from the environment these descriptors were built
+in, so its checksum couldn't be pinned). They're documented here so you can retrieve them yourself
+and turn them into canonical `oda.job.v0.2.0` tables.
 
 ## How to ingest one of these
 
@@ -33,8 +34,10 @@ After you've downloaded the raw file(s) from the source below, there are two pat
   ~4.5M jobs. Records include `Resource_List.walltime` (requested) and `resources_used.walltime`,
   `ctime`/`qtime`/`etime`, start/end, `nodect`, `exec_host`, `Exit_status` — **primary-quality**
   (it has requested walltime).
-- **Where:** Globus collection `854c1a5c-…` (NCSA). Grab only the **Torque accounting** subfolder
-  (~4–5 GB); skip the 95 TB LDMS telemetry.
+- **Where:** **Globus only** (verified — the [NCSA data-sets page](https://bluewaters.ncsa.illinois.edu/data-sets)
+  provides *no* direct HTTPS, just a Globus file-manager link to collection
+  `854c1a5c-fa9f-4df4-a71c-407a33e44da0`). Grab only the **Torque accounting** subfolder (~4–5 GB);
+  skip the 95 TB LDMS telemetry.
 - **Format:** per-day `key=value` text files — needs a Torque-accounting parser (a `manual`
   descriptor for this would also add that decoder).
 - **License:** none stated — cite the NSF Blue Waters project.
@@ -45,10 +48,14 @@ After you've downloaded the raw file(s) from the source below, there are two pat
   6 months, OSDI'26). Fields include `duration_hours`, `schedule_delay_sec` (queue wait),
   `gpu_request`, priority/type. **No requested-walltime** (Kubernetes GPU trace) → a secondary,
   cross-domain complement.
-- **Where:** Aliyun **OSS** — grab only the job-summary ZIP (~1–10 GB); skip the hourly
-  pod/server/network tables.
-- **Format:** CSV inside a ZIP (once downloaded, the archive decode + a straightforward mapping
-  handle it).
+- **Where:** a plain-HTTPS public OSS URL — **not** an SDK (the
+  [clusterdata download page](https://github.com/alibaba/clusterdata/blob/master/cluster-trace-gpu-v2026/docs/data_download.md)
+  uses `curl -O`): `https://tre-clusterdata.oss-cn-hangzhou.aliyuncs.com/cluster-trace-gpu-v2026/data/asi_opensource_job_execution_summary.zip`
+  (1,188,295,031 bytes; skip the huge `*_hourly.zip` telemetry). **Caveat:** that host did not
+  resolve from the environment these descriptors were built in (DNS-blocked), so it isn't a
+  registered/pinned dataset — but on a network that reaches `aliyuncs.com` it fits the normal
+  lightweight fetch: download it, then use the wizard or a pinned `kind: http` descriptor.
+- **Format:** ZIP → `part-000.parquet` (archive decode + a straightforward mapping handle it).
 - **License:** research-use (see the Alibaba `clusterdata` repository).
 
 ---
