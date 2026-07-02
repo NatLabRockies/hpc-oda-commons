@@ -1,0 +1,51 @@
+dataset_id: dataset.job_runtime.acme_kalos
+schema_version: oda.dataset.v0.1.0
+name: ACME Kalos (Shanghai AI Lab LLM cluster)
+version: 1.0.0
+description: >
+  Job trace from the Kalos LLM-training GPU cluster (Shanghai AI Laboratory), from the
+  ACME/AcmeTrace study (~62k jobs, 2023). GPU/CPU/node counts, queue, and state; timestamps
+  carry UTC offsets. There is no requested-walltime field, so the runtime target is derived
+  (end_time - start_time); a cross-domain GPU-cluster complement. Fetched from the HuggingFace
+  dataset over direct HTTPS.
+problem_domains: [job-runtime-prediction]
+systems: [Kalos]
+providers: ["Shanghai AI Laboratory"]
+citation: { url: "https://huggingface.co/datasets/Qinghao/AcmeTrace" }
+license: { spdx: CC-BY-4.0, gated: false }
+tags: [acme, kalos, gpu, llm, cloud]
+size:
+  default_bytes: 8960159
+  full_bytes: 8960159
+  rows_hint: "~62,414 jobs (2023)"
+
+source:
+  kind: http
+  resources:
+    - filename: trace_kalos.csv
+      url: "https://huggingface.co/datasets/Qinghao/AcmeTrace/resolve/main/data/job_trace/trace_kalos.csv"
+      sha256: 7c5a7845da1d66448fa668342e4ecb622fd9a005118080660ec3ad2788d4c9bf
+      bytes: 8960159
+
+decode:
+  format: csv
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: job_id }
+      submit_time: { from: submit_time, type: timestamp, format: iso8601 }
+      start_time: { from: start_time, type: timestamp, format: iso8601 }
+      end_time: { from: end_time, type: timestamp, format: iso8601 }
+      runtime_seconds: { derive: "end_time - start_time" }
+      allocated_cpus: { from: cpu_num, type: integer }
+      num_nodes_alloc: { from: node_num, type: integer }
+      num_gpus_req: { from: gpu_num, type: integer }
+      job_state: { from: state }
+      queue: { from: queue }
+      user: { from: user, type: hash_identifier }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: acme_kalos, path: data/datasets/acme_kalos/data.parquet }

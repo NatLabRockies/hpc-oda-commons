@@ -465,6 +465,36 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_sdsc_blue.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.acme_seren",
+      "entry_type": "dataset",
+      "name": "ACME Seren (Shanghai AI Lab LLM cluster)",
+      "version": "1.0.0",
+      "description": "Job trace from the Seren LLM-training GPU cluster (Shanghai AI Laboratory), ACME/AcmeTrace study (~818k jobs, 2023). No requested-walltime; runtime derived as end_time - start_time. Cross-domain GPU-cluster complement; fetched from HuggingFace over direct HTTPS; normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["acme", "seren", "gpu", "llm", "cloud"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/acme_seren.yml"
+      }
+    },
+    {
+      "id": "dataset.job_runtime.acme_kalos",
+      "entry_type": "dataset",
+      "name": "ACME Kalos (Shanghai AI Lab LLM cluster)",
+      "version": "1.0.0",
+      "description": "Job trace from the Kalos LLM-training GPU cluster (Shanghai AI Laboratory), ACME/AcmeTrace study (~62k jobs, 2023). No requested-walltime; runtime derived as end_time - start_time. Cross-domain GPU-cluster complement; fetched from HuggingFace over direct HTTPS; normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["acme", "kalos", "gpu", "llm", "cloud"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/acme_kalos.yml"
+      }
     }
   ]
 }
