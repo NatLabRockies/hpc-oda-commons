@@ -20,7 +20,16 @@ def decode_csv(
         raise DecodeError("no input files to decode")
     options = dict(options or {})
     parse_options = pacsv.ParseOptions(delimiter=str(options.get("delimiter", ",")))
-    tables = [pacsv.read_csv(f, parse_options=parse_options) for f in files]
+    # ``columns`` restricts the read to the mapped source columns -- skips heavy unmapped
+    # columns and avoids concat failures when an unmapped column's inferred type varies
+    # across files (e.g. FRESCO Conte's Resource_List.neednodes: string vs int64).
+    convert_options = None
+    if options.get("columns"):
+        convert_options = pacsv.ConvertOptions(include_columns=list(options["columns"]))
+    tables = [
+        pacsv.read_csv(f, parse_options=parse_options, convert_options=convert_options)
+        for f in files
+    ]
     table = (
         tables[0] if len(tables) == 1 else pa.concat_tables(tables, promote_options="permissive")
     )

@@ -242,3 +242,18 @@ def test_decode_member_glob_filter(tmp_path: Path) -> None:
     table = pq.read_table(dest)
     assert set(table.column_names) == {"a", "b"}
     assert table.num_rows == 1
+
+
+def test_decode_csv_columns_option(tmp_path: Path) -> None:
+    a = tmp_path / "a.csv"
+    b = tmp_path / "b.csv"
+    # 'extra' is inferred int in a, string in b -> would break concat; 'columns' excludes it.
+    a.write_text("keep,extra\n1,10\n", encoding="utf-8")
+    b.write_text("keep,extra\n2,foo\n", encoding="utf-8")
+    dest = tmp_path / "out.parquet"
+
+    decode_to_parquet("csv", [a, b], dest, options={"columns": ["keep"]})
+
+    table = pq.read_table(dest)
+    assert table.column_names == ["keep"]
+    assert table.num_rows == 2
