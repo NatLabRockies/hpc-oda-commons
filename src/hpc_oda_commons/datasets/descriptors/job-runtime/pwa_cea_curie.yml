@@ -1,0 +1,52 @@
+dataset_id: dataset.job_runtime.pwa_cea_curie
+schema_version: oda.dataset.v0.1.0
+name: PWA CEA-Curie (cleaned)
+version: 1.0.0
+description: >
+  Standard Workload Format log for the CEA Curie system (TGCC/GENCI), cleaned "-cln"
+  release from the Parallel Workloads Archive (312,826 jobs, 2011-2012). Runtime target
+  = Run Time (seconds); requested walltime = Requested Time (seconds). A subset of jobs
+  carry the SWF "no limit" sentinel (2147483647) in Requested Time. Absolute UTC
+  submit/start/end reconstructed from the SWF UnixStartTime header.
+problem_domains: [job-runtime-prediction]
+systems: [Curie]
+providers: [CEA, GENCI]
+citation: { url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_cea_curie/" }
+license: { spdx: CC-BY-4.0, gated: false }
+tags: [pwa, swf, cea, curie]
+size:
+  default_bytes: 3629411
+  full_bytes: 3629411
+  rows_hint: "312,826 jobs (2011-2012)"
+
+source:
+  kind: http
+  resources:
+    - filename: CEA-Curie-2011-2.1-cln.swf.gz
+      url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_cea_curie/CEA-Curie-2011-2.1-cln.swf.gz"
+      sha256: 2a0fdbd40837590b491bbbac7d4cfe521de1f0b14c0dc39bbf82c4e49ea75bce
+      bytes: 3629411
+
+decode:
+  format: swf
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: swf_job }
+      submit_time: { from: submit_time, type: timestamp, format: epoch_s }
+      start_time: { from: start_time, type: timestamp, format: epoch_s }
+      end_time: { from: end_time, type: timestamp, format: epoch_s }
+      runtime_seconds: { from: run_time, type: duration, unit: seconds }
+      requested_seconds: { from: req_time, type: duration, unit: seconds }
+      allocated_cpus: { from: procs_alloc, type: integer }
+      num_cores_req: { from: req_procs, type: integer }
+      job_state: { from: status }
+      queue: { from: queue }
+      partition: { from: partition }
+      user: { from: user, type: hash_identifier }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: pwa_cea_curie, path: data/datasets/pwa_cea_curie/data.parquet }

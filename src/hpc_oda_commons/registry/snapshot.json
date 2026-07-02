@@ -285,6 +285,51 @@
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nrel_eagle.yml"
       }
+    },
+    {
+      "id": "dataset.job_runtime.pwa_kit_fh2",
+      "entry_type": "dataset",
+      "name": "PWA KIT-FH2 (ForHLR II)",
+      "version": "1.0.0",
+      "description": "Standard Workload Format log for ForHLR II (KIT-FH2) from the Parallel Workloads Archive (114,355 jobs, 2016-2018). Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["pwa", "swf", "kit", "forhlr2"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_kit_fh2.yml"
+      }
+    },
+    {
+      "id": "dataset.job_runtime.pwa_cea_curie",
+      "entry_type": "dataset",
+      "name": "PWA CEA-Curie (cleaned)",
+      "version": "1.0.0",
+      "description": "Standard Workload Format cleaned log for CEA Curie (TGCC/GENCI) from the Parallel Workloads Archive (312,826 jobs, 2011-2012). Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["pwa", "swf", "cea", "curie"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_cea_curie.yml"
+      }
+    },
+    {
+      "id": "dataset.job_runtime.pwa_metacentrum",
+      "entry_type": "dataset",
+      "name": "PWA MetaCentrum (2013-2015)",
+      "version": "1.0.0",
+      "description": "Standard Workload Format log for the Czech MetaCentrum grid (CESNET) from the Parallel Workloads Archive (5,731,100 jobs, 2013-2015) - the largest premium PWA runtime log. Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["pwa", "swf", "metacentrum", "cesnet", "grid"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_metacentrum.yml"
+      }
     }
   ]
 }

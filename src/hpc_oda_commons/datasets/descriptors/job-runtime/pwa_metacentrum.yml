@@ -1,0 +1,51 @@
+dataset_id: dataset.job_runtime.pwa_metacentrum
+schema_version: oda.dataset.v0.1.0
+name: PWA MetaCentrum (2013-2015)
+version: 1.0.0
+description: >
+  Standard Workload Format log for the Czech MetaCentrum national grid (CESNET), from
+  the Parallel Workloads Archive (5,731,100 jobs, 2013-2015) — the largest premium PWA
+  runtime log. Runtime target = Run Time (seconds); requested walltime = Requested Time
+  (seconds). Absolute UTC submit/start/end reconstructed from the SWF UnixStartTime header.
+problem_domains: [job-runtime-prediction]
+systems: [MetaCentrum]
+providers: [CESNET]
+citation: { url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_metacentrum2/" }
+license: { spdx: CC-BY-4.0, gated: false }
+tags: [pwa, swf, metacentrum, cesnet, grid]
+size:
+  default_bytes: 72243602
+  full_bytes: 72243602
+  rows_hint: "5,731,100 jobs (2013-2015)"
+
+source:
+  kind: http
+  resources:
+    - filename: METACENTRUM-2013-1.swf.gz
+      url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_metacentrum2/METACENTRUM-2013-1.swf.gz"
+      sha256: ae125f591316f4b4354402b8536471ba361d71792b82c2adaf432ca385154020
+      bytes: 72243602
+
+decode:
+  format: swf
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: swf_job }
+      submit_time: { from: submit_time, type: timestamp, format: epoch_s }
+      start_time: { from: start_time, type: timestamp, format: epoch_s }
+      end_time: { from: end_time, type: timestamp, format: epoch_s }
+      runtime_seconds: { from: run_time, type: duration, unit: seconds }
+      requested_seconds: { from: req_time, type: duration, unit: seconds }
+      allocated_cpus: { from: procs_alloc, type: integer }
+      num_cores_req: { from: req_procs, type: integer }
+      job_state: { from: status }
+      queue: { from: queue }
+      partition: { from: partition }
+      user: { from: user, type: hash_identifier }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: pwa_metacentrum, path: data/datasets/pwa_metacentrum/data.parquet }
