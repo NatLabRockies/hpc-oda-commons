@@ -2,20 +2,63 @@
 Decoders turn a dataset's fetched raw files into a single intermediate Parquet
 file that the normalize stage can map onto a canonical ODA schema.
 
-P3 supports ``parquet`` and ``csv``; ``swf``/``json``/``log``/``tar`` are declared
-in the descriptor schema but not yet implemented (they serve the deferred Parallel
-Workloads Archive and log corpora) and raise a clear error.
+Supported inner formats: ``parquet`` and ``csv`` (also TSV via a delimiter option).
+Fetched resources may additionally be compressed or archived -- ``.gz`` (single
+file), ``.zip``, or ``.tar``/``.tar.gz`` -- in which case the contained files
+matching the inner format are transparently extracted and concatenated. Other inner
+formats (``swf``/``json``/``log``) are declared in the descriptor schema but not yet
+implemented and raise a clear error.
 """
 
 from __future__ import annotations
 
+import gzip
+import shutil
+import tarfile
+import tempfile
+import zipfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+_FORMAT_EXTS: dict[str, tuple[str, ...]] = {
+    "parquet": (".parquet",),
+    "csv": (".csv", ".tsv", ".txt"),
+}
+
 
 class DecodeError(Exception):
     """Raised when a dataset's raw files cannot be decoded."""
+
+
+def _extract_one(path: Path, exts: tuple[str, ...], workdir: Path) -> list[Path]:
+    """Expand a single fetched file into decodable inner files (or itself if plain)."""
+    name = path.name.lower()
+    if name.endswith(".zip"):
+        dest = Path(tempfile.mkdtemp(dir=workdir))
+        with zipfile.ZipFile(path) as archive:
+            archive.extractall(dest)
+        return sorted(p for p in dest.rglob("*") if p.suffix.lower() in exts)
+    if name.endswith((".tar.gz", ".tgz", ".tar")):
+        dest = Path(tempfile.mkdtemp(dir=workdir))
+        with tarfile.open(path) as archive:
+            archive.extractall(dest)  # checksum-verified, trusted sources
+        return sorted(p for p in dest.rglob("*") if p.suffix.lower() in exts)
+    if name.endswith(".gz"):
+        inner = Path(tempfile.mkdtemp(dir=workdir)) / path.name[: -len(".gz")]
+        with gzip.open(path, "rb") as src, inner.open("wb") as out:
+            shutil.copyfileobj(src, out)
+        return [inner]
+    return [path]
+
+
+def _expand(files: Sequence[Path], exts: tuple[str, ...], workdir: Path) -> list[Path]:
+    expanded: list[Path] = []
+    for f in files:
+        expanded.extend(_extract_one(Path(f), exts, workdir))
+    if not expanded:
+        raise DecodeError(f"no files matching {exts} found after extraction")
+    return expanded
 
 
 def decode_to_parquet(
@@ -25,15 +68,23 @@ def decode_to_parquet(
     *,
     options: Mapping[str, Any] | None = None,
 ) -> None:
-    """Decode ``files`` (of format ``fmt``) into a single Parquet file at ``dest``."""
+    """Decode ``files`` (of inner format ``fmt``) into a single Parquet file at ``dest``.
+
+    Archived/compressed resources (.gz / .zip / .tar / .tar.gz) are extracted first and
+    their ``fmt``-matching members concatenated with the plain inputs.
+    """
     options = dict(options or {})
-    if fmt == "parquet":
-        from hpc_oda_commons.datasets.decode.parquet import decode_parquet
+    exts = _FORMAT_EXTS.get(fmt)
+    if exts is None:
+        raise DecodeError(f"unsupported decode format: {fmt!r} (supported: parquet, csv)")
 
-        decode_parquet(files, dest)
-    elif fmt == "csv":
-        from hpc_oda_commons.datasets.decode.csv import decode_csv
+    with tempfile.TemporaryDirectory() as tmp:
+        expanded = _expand(files, exts, Path(tmp))
+        if fmt == "parquet":
+            from hpc_oda_commons.datasets.decode.parquet import decode_parquet
 
-        decode_csv(files, dest, options=options)
-    else:
-        raise DecodeError(f"unsupported decode format: {fmt!r} (P3 supports parquet, csv)")
+            decode_parquet(expanded, dest)
+        else:  # csv (incl. TSV via options.delimiter)
+            from hpc_oda_commons.datasets.decode.csv import decode_csv
+
+            decode_csv(expanded, dest, options=options)
