@@ -145,3 +145,36 @@ def test_decode_swf_from_gz(tmp_path: Path) -> None:
     decode_to_parquet("swf", [gz], dest)
 
     assert pq.read_table(dest).num_rows == 3
+
+
+def test_decode_parquet_unifies_tz_and_duration(tmp_path: Path) -> None:
+    # Hive-partition-style members with the same columns stored differently: one member
+    # in UTC / duration(us), another in a local offset / duration(ns). They must concat.
+    a = tmp_path / "a.parquet"
+    b = tmp_path / "b.parquet"
+    _write_parquet(
+        a,
+        pa.table(
+            {
+                "ts": pa.array([1_672_531_200_000_000], pa.timestamp("us", tz="UTC")),
+                "dur": pa.array([1_000_000], pa.duration("us")),
+            }
+        ),
+    )
+    _write_parquet(
+        b,
+        pa.table(
+            {
+                "ts": pa.array([1_685_602_800_000_000], pa.timestamp("us", tz="-07:00")),
+                "dur": pa.array([2_000_000_000], pa.duration("ns")),
+            }
+        ),
+    )
+    dest = tmp_path / "out.parquet"
+
+    decode_to_parquet("parquet", [a, b], dest)
+
+    table = pq.read_table(dest)
+    assert table.num_rows == 2
+    assert table.schema.field("ts").type == pa.timestamp("us", tz="UTC")
+    assert table.schema.field("dur").type == pa.duration("us")

@@ -243,6 +243,10 @@ def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Arr
 
     ttype = transform.get("type")
     if ttype == "duration":
+        if pa.types.is_duration(col.type):
+            # Native Arrow duration -> seconds (int64 gives ticks in the column's unit).
+            unit_seconds = {"s": 1.0, "ms": 1e-3, "us": 1e-6, "ns": 1e-9}[col.type.unit]
+            return pc.multiply(pc.cast(pc.cast(col, pa.int64()), pa.float64()), unit_seconds)
         factor = {"seconds": 1.0, "minutes": 60.0, "hours": 3600.0}.get(
             str(transform.get("unit", "seconds"))
         )
