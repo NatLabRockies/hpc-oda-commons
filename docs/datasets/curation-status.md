@@ -1,6 +1,6 @@
 # Runtime Dataset Curation — Status & Remaining Roadmap
 
-**Updated:** 2026-07-02 (autonomous curation run; 24 runtime datasets registered)
+**Updated:** 2026-07-02 (autonomous curation run; 25 runtime datasets registered)
 **Companion to:** [`runtime-first-investigation.md`](runtime-first-investigation.md) (the plan) and
 the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../design/public-dataset-ingestion.md)).
 
@@ -49,9 +49,10 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | `lassen` | Lassen (LLNL, LSF) | 1,467,746 | GitHub-LFS/https | via LFS media URL |
 | `fresco_anvil` | Anvil (Purdue, A100) | 1,475,155 | datadepot/https | 11 months, real walltime |
 | `fresco_conte` | Conte (Purdue) | 1,042,125 | datadepot/https | Torque, 2015-16, real walltime |
-| `alcf_djc_polaris` | Polaris (Argonne) | 192,666 | ALCF (manual) | PBS, 2023, real walltime |
+| `alcf_djc_polaris` | Polaris (Argonne) | 957,606 | ALCF (manual) | PBS, 2022-2026, real walltime |
+| `alcf_djc_aurora` | Aurora (Argonne) | 891,952 | ALCF (manual) | PBS, 2025-2026, real walltime |
 
-~56M jobs across SLURM / LSF / Torque / SWF and cloud, 1996–2025, x86 / ARM / GPU, home-lab included.
+~58M jobs across SLURM / LSF / PBS / Torque / SWF and cloud, 1996–2026, x86 / ARM / GPU, home-lab included.
 All strict-validate against `oda.job.v0.2.0`.
 
 ## Remaining runtime datasets
@@ -67,8 +68,9 @@ verified as genuinely not fetchable/pinnable from this environment:
   transfer through this proxy; has requested walltime.
 
 (**ALCF DJC** was here too, but a closer look found its data isn't behind a Cloudflare wall — just a
-one-time name/email form on public data. Polaris 2023 is now registered as the manual-kind
-`alcf_djc_polaris`; more years/systems add the same way.)
+one-time name/email form on public data. Now registered as two manual-kind datasets — all Polaris
+years (`alcf_djc_polaris`, 2022–2026) + Aurora (`alcf_djc_aurora`, 2025–2026); Theta/Mira add the
+same way. See [`alcf-djc-ingest.md`](alcf-djc-ingest.md).)
 
 ### Fetch-mechanism findings (most "backends" were never needed)
 
@@ -84,8 +86,8 @@ genuinely needs a login. **Lesson: always live-check the fetch path.** See
 
 ## What's left
 
-Runtime-first curation is effectively complete: **24 datasets** registered (incl. `alcf_djc_polaris`
-via the manual-kind flow). The three remaining (Blue Waters, Alibaba, FRESCO Stampede1) are each
+Runtime-first curation is effectively complete: **25 datasets** registered (incl. ALCF Polaris +
+Aurora via the manual-kind flow). The three remaining (Blue Waters, Alibaba, FRESCO Stampede1) are each
 genuinely not fetchable/pinnable from this environment (Globus / DNS / a proxy-limited large
 transfer) and are documented for user ingestion in
 [`external-datasets.md`](external-datasets.md) rather than pipeline-fetched.
