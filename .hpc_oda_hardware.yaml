@@ -1,0 +1,17 @@
+{
+  "platform": "Darwin",
+  "python_version": "3.9.6",
+  "cpu_count_logical": 12,
+  "system_memory_bytes": null,
+  "torch_available": false,
+  "cuda_available": false,
+  "cuda_device_count": 0,
+  "cuda_devices": [],
+  "mps_available": false,
+  "summary": {
+    "has_cuda": false,
+    "cuda_count": 0,
+    "has_mps": false,
+    "cpu_count": 12
+  }
+}
