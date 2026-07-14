@@ -1,0 +1,40 @@
+# Rolling embedding-based kNN recipe for runtime prediction.
+# Requires a dataset whose job table carries a precomputed dense `embedding`
+# column (Arrow FixedSizeList<float32>[D]); see docs/how-to/embedding-knn.md.
+#
+# Place ingested (embedded) data at:
+#   data/ingested/jobs_parquet/embedded_jobs/data.parquet
+#   data/ingested/jobs_parquet/embedded_jobs/manifest.json
+# (relative to the repo root when running `hpc-oda benchmark`)
+
+recipe_id: recipe.job_runtime.embedding_knn_rolling
+problem_domain:
+  - job-runtime-prediction
+schema_version: oda.job.v0.2.0
+
+dataset:
+  id: embedded_jobs
+  table_path: data/ingested/jobs_parquet/embedded_jobs/data.parquet
+  manifest_path: data/ingested/jobs_parquet/embedded_jobs/manifest.json
+
+model:
+  id: model.job_runtime_embedding_knn
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: runtime_seconds
+  - name: rmse
+    target: runtime_seconds
+  - name: underprediction_ratio
+    target: runtime_seconds
+
+split:
+  method: rolling
+  n_windows: 20
+  test_window_hours: 6
+  training_lookback_days: 7
+
+run:
+  output_dir: runs
+  overwrite: false
