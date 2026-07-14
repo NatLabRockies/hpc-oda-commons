@@ -93,13 +93,15 @@ temp/
 .oda_runs/
 .oda_outputs/
 
-# Result bundles / leaderboard outputs / ingested data generated locally
-data/
-leaderboard/
-recipes/
-results/
-runs/
-outputs/
+# Result bundles / leaderboard outputs / ingested data generated locally.
+# Anchored to the repo root so they only ignore the generated output dirs and do
+# not shadow same-named source directories (e.g. src/hpc_oda_commons/recipes/).
+/data/
+/leaderboard/
+/recipes/
+/results/
+/runs/
+/outputs/
 
 # =========================
 # Data artifacts (keep manifests, ignore big/binary by default)
