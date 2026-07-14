@@ -16,6 +16,10 @@ from hpc_oda_commons.kernel.metrics import (
 )
 from hpc_oda_commons.models.job_power_uopc.model import JobPowerUopcModel
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
+from hpc_oda_commons.models.job_runtime_embedding_knn.model import (
+    JobRuntimeEmbeddingKnnConfig,
+    JobRuntimeEmbeddingKnnModel,
+)
 from hpc_oda_commons.models.job_runtime_mlp.model import (
     JobRuntimeMlpConfig,
     JobRuntimeMlpModel,
@@ -386,6 +390,37 @@ def run_rolling_mlp(
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
+        )
+    )
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
+
+
+def run_rolling_embedding_knn(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run a rolling benchmark with the embedding-based kNN model."""
+    model = JobRuntimeEmbeddingKnnModel(
+        config=JobRuntimeEmbeddingKnnConfig(
+            n_windows=int(split.get("n_windows", 1000)),
+            test_window_hours=int(split.get("test_window_hours", 6)),
+            training_lookback_days=int(split.get("training_lookback_days", 100)),
+            k=int(split.get("k", 5)),
+            embedding_field=str(split.get("embedding_field", "embedding")),
+            backend=str(split.get("backend", "auto")),
+            device=str(split.get("device", "auto")),
+            weighting=str(split.get("weighting", "similarity")),
         )
     )
     return _run_rolling_model_evaluate(
