@@ -25,6 +25,7 @@ from hpc_oda_commons.benchmark.runner import (
     run_fixed_baseline,
     run_fixed_uopc,
     run_rolling_baseline,
+    run_rolling_embedding_knn,
     run_rolling_mlp,
     run_rolling_random_forest,
     run_rolling_tfidf_knn,
@@ -779,6 +780,14 @@ def benchmark(
         )
     elif model_id == "model.job_runtime_tfidf_knn" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_tfidf_knn(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
+    elif model_id == "model.job_runtime_embedding_knn" and split_method == "rolling":
+        metrics, metrics_payload, artifacts = run_rolling_embedding_knn(
             rows,
             split=split,
             metric_defs=metric_defs,

@@ -40,6 +40,16 @@ dev = [
   "xgboost>=2.0.0",
   "rich>=13.7.0",
 ]
+# Optional accelerated search backends for the embedding kNN model. Not required:
+# the model's default numpy backend is dependency-free. torch enables the CPU/CUDA/
+# MPS matmul path; faiss enables the FAISS IndexFlatIP path (CPU, or CUDA via a
+# separate faiss-gpu build). faiss has no Apple-GPU backend.
+torch = [
+  "torch>=2.0.0",
+]
+faiss = [
+  "faiss-cpu>=1.7",
+]
 
 [tool.setuptools]
 include-package-data = true

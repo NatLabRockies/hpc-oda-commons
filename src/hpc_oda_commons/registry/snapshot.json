@@ -85,6 +85,26 @@
       }
     },
     {
+      "id": "model.job_runtime_embedding_knn",
+      "entry_type": "model",
+      "name": "Job Runtime Embedding + kNN (Rolling)",
+      "version": "0.1.0",
+      "description": "Runtime prediction model using precomputed dense embeddings of job metadata with similarity-weighted k-nearest-neighbor regression and rolling evaluation.",
+      "problem_domain": ["job-runtime-prediction"],
+      "supported_sources": ["slurmctld"],
+      "input_schema_version": "oda.job.v0.2.0",
+      "output_schema_version": "oda.prediction.v0.1.0",
+      "license": "Apache-2.0",
+      "tags": ["alternate", "embedding", "knn", "regression", "runtime", "rolling"],
+      "reference": {
+        "kind": "python",
+        "python": {
+          "module": "hpc_oda_commons.models.job_runtime_embedding_knn.model",
+          "object": "JobRuntimeEmbeddingKnnModel"
+        }
+      }
+    },
+    {
       "id": "model.job_runtime_random_forest",
       "entry_type": "model",
       "name": "Job Runtime Random Forest (Rolling)",
