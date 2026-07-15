@@ -3,10 +3,8 @@
 
 Usage: python3 scripts/detect_hardware_and_write.py
 """
-from pathlib import Path
-import sys
 
-sys.path.insert(0, "src")
+from pathlib import Path
 
 from hpc_oda_commons.utils import hardware
 
