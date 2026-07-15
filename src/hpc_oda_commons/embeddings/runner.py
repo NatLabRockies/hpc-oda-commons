@@ -21,7 +21,30 @@ from hpc_oda_commons.embeddings.serialize import EmbedConfig, included_fields, s
 ProgressFn = Callable[[int, int, float], None]
 
 
-def _run_signature(encoder: Encoder, config: EmbedConfig, n_rows: int) -> str:
+def _dedup_texts(texts: list[str]) -> tuple[list[str], np.ndarray]:
+    """Collapse identical serialized texts to a unique set (first-occurrence order).
+
+    Returns ``(unique_texts, inverse)`` where ``unique_texts[inverse[i]] == texts[i]``,
+    so ``unique_vecs[inverse]`` scatters one embedding per unique text back to every row
+    that produced it. Deterministic: same input order -> same unique order -> same output.
+    """
+    index_of: dict[str, int] = {}
+    unique: list[str] = []
+    inverse = np.empty(len(texts), dtype=np.int64)
+    for i, text in enumerate(texts):
+        j = index_of.get(text)
+        if j is None:
+            j = len(unique)
+            index_of[text] = j
+            unique.append(text)
+        inverse[i] = j
+    return unique, inverse
+
+
+def _run_signature(encoder: Encoder, config: EmbedConfig, unique_texts: list[str]) -> str:
+    # Content-addressed: the cache key digests the *unique* corpus that will be embedded,
+    # so a re-run of the same dataset resumes and a different dataset never collides.
+    corpus_digest = hashlib.sha256("\n\x00\n".join(unique_texts).encode("utf-8")).hexdigest()[:16]
     key = "|".join(
         [
             encoder.info.model_id,
@@ -30,7 +53,7 @@ def _run_signature(encoder: Encoder, config: EmbedConfig, n_rows: int) -> str:
             config.text_format,
             config.format_version,
             ",".join(config.extra_text_columns),
-            str(n_rows),
+            corpus_digest,
         ]
     )
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
@@ -96,8 +119,15 @@ def embed_table(
 
     rows = table.to_pylist()
     texts = serialize_rows(rows, config)
-    signature = _run_signature(encoder, config, len(rows))
-    vecs = _embed_cached(encoder, texts, cache_dir, signature, chunk_size, on_progress)
+    # Embed each distinct text once, then scatter its vector to every row that produced
+    # it. Real ODA corpora are heavily duplicated on submission-time text, so this is a
+    # large speedup; it also makes identical jobs bit-identical (no fp16 batch drift).
+    unique_texts, inverse = _dedup_texts(texts)
+    signature = _run_signature(encoder, config, unique_texts)
+    unique_vecs = _embed_cached(
+        encoder, unique_texts, cache_dir, signature, chunk_size, on_progress
+    )
+    vecs = unique_vecs[inverse]
 
     dim = encoder.info.dim
     flat = pa.array(vecs.reshape(-1), type=pa.float32())
@@ -108,7 +138,9 @@ def embed_table(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(out_table, output_path)
 
-    manifest = _build_manifest(encoder, config, columns, texts, len(rows), dim, output_path)
+    manifest = _build_manifest(
+        encoder, config, columns, texts, len(rows), len(unique_texts), dim, output_path
+    )
     manifest_path = output_path.with_suffix(output_path.suffix + ".manifest.json")
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -122,6 +154,7 @@ def _build_manifest(
     columns: list[str],
     texts: list[str],
     n_rows: int,
+    n_unique: int,
     dim: int,
     output_path: Path,
 ) -> dict:
@@ -149,6 +182,8 @@ def _build_manifest(
         },
         "text_fingerprint": fingerprint,
         "row_count": n_rows,
+        "unique_text_count": n_unique,
+        "duplicate_ratio": round(1.0 - n_unique / n_rows, 6) if n_rows else 0.0,
         "embedding_column": "embedding",
         "embedding_dim": dim,
         "output": str(output_path),

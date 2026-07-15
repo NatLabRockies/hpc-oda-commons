@@ -93,7 +93,8 @@ def embed(
         if pct >= state["last"] + 10 or done == total:
             state["last"] = pct
             rate = done / elapsed if elapsed > 0 else 0.0
-            console.print(f"  {done}/{total} ({pct}%)  {rate:.1f} rows/s")
+            # `total` is the count of *unique* texts (duplicates are embedded once).
+            console.print(f"  {done}/{total} unique ({pct}%)  {rate:.1f} emb/s")
 
     manifest = embed_table(
         input_path,
@@ -105,6 +106,8 @@ def embed(
         on_progress=_progress,
     )
     console.print(
-        f"[green]done[/green]: {manifest['row_count']} rows, dim {manifest['embedding_dim']}; "
-        f"manifest {out}.manifest.json"
+        f"[green]done[/green]: {manifest['row_count']} rows "
+        f"({manifest['unique_text_count']} unique, "
+        f"{manifest['duplicate_ratio']:.0%} duplicate), "
+        f"dim {manifest['embedding_dim']}; manifest {out}.manifest.json"
     )

@@ -65,6 +65,16 @@ full 1M-row table in ~3.5 h; nemotron-8b ≈ 9 rows/s → days locally, i.e. a G
 job. `--cache-dir` makes runs resumable (embedding is chunk-cached), so a long run
 survives interruption.
 
+**De-duplication:** ODA corpora are heavily duplicated on submission-time text — on a
+representative 60-day production slice, 72% of jobs serialized to a text some other job
+already had. `hpc-oda embed` embeds each *distinct* text once and scatters its vector to
+every row that produced it, so wall-clock scales with the number of **unique** texts, not
+rows (~3.4× fewer forward passes on that slice). Output is unchanged, and identical jobs
+get bit-identical vectors (no fp16 batch-order drift). The manifest reports `row_count`,
+`unique_text_count`, and `duplicate_ratio`. Note this does **not** remove the duplicate
+*vectors* from the kNN corpus, so it is not a fix for cross-backend neighbour-tie
+variance (see [Known Issues](../known-issues.md)).
+
 **Internal columns (e.g. job scripts):** name extra text columns in a **local
 (gitignored) config**, never on the command line, so sensitive content stays off the
 repo — the manifest records column *names* + a corpus fingerprint, never content:

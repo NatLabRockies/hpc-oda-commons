@@ -119,6 +119,81 @@ def test_embed_table_writes_embedding_column_and_manifest(tmp_path):
     assert json.loads(mpath.read_text()) == manifest
 
 
+class _CountingEncoder:
+    """Wraps an encoder to count how many texts are actually pushed through it."""
+
+    def __init__(self, inner):
+        self.inner = inner
+        self.encoded = 0
+
+    @property
+    def info(self):
+        return self.inner.info
+
+    def encode(self, texts):
+        self.encoded += len(texts)
+        return self.inner.encode(texts)
+
+
+def test_embed_table_embeds_each_unique_text_once(tmp_path):
+    import pyarrow as pa
+
+    # 6 rows, 2 distinct submission-time texts (gpu/a vs cpu/b), 3 each.
+    table = pa.table(
+        {
+            "job_id": [1, 2, 3, 4, 5, 6],
+            "partition": ["gpu", "cpu", "gpu", "cpu", "gpu", "cpu"],
+            "account": ["a", "b", "a", "b", "a", "b"],
+            "submit_time": [datetime(2026, 1, 1, tzinfo=timezone.utc)] * 6,
+            "runtime_seconds": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        }
+    )
+    src = tmp_path / "in.parquet"
+    pq.write_table(table, src)
+    out = tmp_path / "out.parquet"
+
+    enc = _CountingEncoder(HashingEncoder(dim=16))
+    manifest = embed_table(src, out, enc, EmbedConfig(), cache_dir=None)
+
+    # duplicates are embedded once: 2 unique texts, not 6 rows
+    assert enc.encoded == 2
+    assert manifest["row_count"] == 6
+    assert manifest["unique_text_count"] == 2
+    assert manifest["duplicate_ratio"] == round(1.0 - 2 / 6, 6)
+
+    vecs = pq.read_table(out).column("embedding").to_pylist()
+    assert pq.read_table(out).num_rows == 6
+    # rows sharing a text share a vector; the two groups differ
+    assert vecs[0] == vecs[2] == vecs[4]
+    assert vecs[1] == vecs[3] == vecs[5]
+    assert vecs[0] != vecs[1]
+
+
+def test_dedup_output_matches_per_row_reference(tmp_path):
+    """Dedup is output-preserving: identical to embedding every row (stub is a pure fn)."""
+    import pyarrow as pa
+
+    from hpc_oda_commons.embeddings.serialize import serialize_rows
+
+    table = pa.table(
+        {
+            "partition": ["gpu", "cpu", "gpu", "gpu", "cpu"],
+            "account": ["a", "b", "a", "a", "b"],
+            "submit_time": [datetime(2026, 1, 1, tzinfo=timezone.utc)] * 5,
+            "runtime_seconds": [1.0] * 5,
+        }
+    )
+    src = tmp_path / "in.parquet"
+    pq.write_table(table, src)
+    out = tmp_path / "out.parquet"
+    embed_table(src, out, HashingEncoder(dim=16), EmbedConfig(), cache_dir=None)
+
+    got = np.array(pq.read_table(out).column("embedding").to_pylist(), dtype=np.float32)
+    rows = pq.read_table(src).to_pylist()
+    ref = HashingEncoder(dim=16).encode(serialize_rows(rows, EmbedConfig()))
+    assert np.array_equal(got, ref)
+
+
 def test_embed_table_cache_resumes(tmp_path):
     import pyarrow as pa
 
