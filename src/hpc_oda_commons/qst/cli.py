@@ -62,6 +62,7 @@ from hpc_oda_commons.kernel.validate import validate_json
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
 from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.datasets import datasets_fetch, datasets_prepare
+from hpc_oda_commons.qst.commands.embed import embed
 from hpc_oda_commons.qst.commands.info import info
 from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
 from hpc_oda_commons.schema.validator import (
@@ -87,6 +88,7 @@ datasets_app.command("fetch")(datasets_fetch)
 datasets_app.command("prepare")(datasets_prepare)
 app.command()(browse)
 app.command()(info)
+app.command()(embed)
 
 console = Console()
 

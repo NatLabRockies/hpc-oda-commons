@@ -30,6 +30,58 @@ available for testing:
 from hpc_oda_commons.datasets.synthetic import generate_tiny_embedded_runtime_dataset
 ```
 
+## Embedding a dataset (`hpc-oda embed`)
+
+`hpc-oda embed` produces that column: it serializes each job row to text and encodes
+it, writing an embedded parquet + a provenance manifest.
+
+```bash
+# offline / CI: deterministic stub encoder, no model download
+hpc-oda embed data/ingested/jobs_parquet/<id>/data.parquet \
+  --out data/ingested/jobs_parquet/<id>_embedded/data.parquet --model stub
+
+# a real model (needs the `embed` extra: pip install -e ".[embed]")
+hpc-oda embed <in.parquet> --out <out.parquet> \
+  --model microsoft/harrier-oss-v1-0.6b --format prose --cache-dir .hpc_oda/embed-cache
+```
+
+**What gets embedded (leakage rule):** only **submission-time** fields — job name,
+partition/queue, account, user, requested walltime/nodes/cores/GPUs/memory, science
+field, machine, submit time. The target and post-hoc fields (`runtime_seconds`,
+`end_time`, `start_time`, state, *actual* usage) are **excluded** and refused if
+requested — embedding them would leak the prediction target. Two formats: `prose`
+(default) and `kv`.
+
+**Models** (swap via `--model`, all model-agnostic):
+
+| model | license | notes |
+|---|---|---|
+| `stub` | — | deterministic hashing, no download — offline/CI/pipeline checks (not semantic) |
+| `microsoft/harrier-oss-v1-0.6b` | **MIT** | **recommended default** — 1024-d, laptop-scale full runs |
+| `nvidia/llama-embed-nemotron-8b` | research/gated | 4096-d max quality; GPU for scale |
+
+**Performance** (measured, this-laptop Apple MPS): harrier ≈ 78 rows/s (prose) → a
+full 1M-row table in ~3.5 h; nemotron-8b ≈ 9 rows/s → days locally, i.e. a GPU-node
+job. `--cache-dir` makes runs resumable (embedding is chunk-cached), so a long run
+survives interruption.
+
+**Internal columns (e.g. job scripts):** name extra text columns in a **local
+(gitignored) config**, never on the command line, so sensitive content stays off the
+repo — the manifest records column *names* + a corpus fingerprint, never content:
+
+```yaml
+# .hpc_oda/embed.yml  (local, gitignored)
+extra_text_columns: [script]
+extra_char_limit: 2000
+```
+```bash
+hpc-oda embed <in.parquet> --out <out.parquet> --model harrier ... --config .hpc_oda/embed.yml
+```
+
+Note: in spike experiments, naively appending raw truncated job scripts *hurt*
+accuracy on capable models (boilerplate dilution) — treat script inclusion as an
+experiment (strip/normalize boilerplate first), not a default.
+
 ## Run a benchmark
 
 Point a rolling recipe at your embedded dataset and run the benchmark offline:
