@@ -148,6 +148,10 @@ secrets/
 hpc-oda.local.toml
 *.local.toml
 
+# Hardware provenance generated locally by helper scripts/evaluators
+.hpc_oda_hardware.yaml
+.hpc_oda_hardware.env
+
 # =========================
 # Containers / HPC runtime
 # =========================
