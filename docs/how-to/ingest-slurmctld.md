@@ -4,7 +4,7 @@
 
 The adapter recognizes two slurmctld log patterns:
 
-```
+```text
 [2026-01-01T00:00:00.000] sched: Allocate JobId=1001 NodeList=node01 #CPUs=4 Partition=debug
 [2026-01-01T00:00:05.000] _job_complete: JobId=1001 done
 ```
@@ -26,7 +26,7 @@ The command validates the ingested table, prints any ingest-check warnings, and
 reports where the run was written. For a clean log with no schema, semantic, or
 ingest-check issues:
 
-```
+```text
 Validation summary: no schema or semantic issues detected.
 Ingest complete → data/ingested/slurmctld/slurmctld-20260301-120000
 ```
@@ -37,7 +37,7 @@ lines before the final `Ingest complete → ...` line.
 
 ## Output Directory
 
-```
+```text
 data/ingested/slurmctld/<run>/
   data.parquet      # Canonical ODA table (oda.job.v0.2.0)
   manifest.json     # Transformation lineage (oda.manifest.v0.1.0)

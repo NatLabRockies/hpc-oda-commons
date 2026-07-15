@@ -2,15 +2,15 @@
 
 ## MAJOR — Cross-environment numeric reproducibility of fitted models
 
-**Status:** open · **Severity:** major · **Affects:** all fitted rolling models — XGBoost, Random Forest, MLP, TF-IDF kNN, and UoPC — model outputs · **Tracking:** [#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)
+**Status:** open · **Severity:** major · **Affects:** all fitted rolling models — XGBoost, Random Forest, MLP, TF-IDF kNN, Embedding kNN, and UoPC — model outputs (the Embedding kNN model's optional torch/faiss backends add a second axis of variance beyond BLAS) · **Tracking:** [#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)
 
 ### Summary
 
 hpc-oda-commons positions reproducibility as a core guarantee: the same code on the
 same data should produce the same result, and the integrity hash + critical-path
 regression test are meant to certify that. **Today that guarantee does not hold for the
-fitted models (XGBoost, Random Forest, MLP, TF-IDF kNN, and UoPC) across different
-machines.** The exact MAE/RMSE these models produce depends on the CPU architecture, the
+fitted models (XGBoost, Random Forest, MLP, TF-IDF kNN, Embedding kNN, and UoPC) across
+different machines.** The exact MAE/RMSE these models produce depends on the CPU architecture, the
 compiled BLAS/SIMD build, and (under emulation) the translation layer — not on the code or
 the data.
 

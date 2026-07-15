@@ -65,6 +65,7 @@ hpc-oda benchmark my_recipe.yml
 | `model.job_runtime_random_forest` | `rolling` | Random forest with automatic OHE+SVD categorical preprocessing |
 | `model.job_runtime_mlp` | `rolling` | Feed-forward MLP with automatic OHE+SVD categorical preprocessing |
 | `model.job_runtime_tfidf_knn` | `rolling` | TF-IDF text vectorization + k-nearest-neighbor regression |
+| `model.job_runtime_embedding_knn` | `rolling` | kNN over a precomputed dense embedding column (see `hpc-oda embed`) |
 | `model.job_power_uopc` | `fixed` | Job power prediction via per-user kNN (UoPC) |
 
 The `xgboost`, `random_forest`, and `mlp` models share the tabular rolling

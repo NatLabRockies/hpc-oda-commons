@@ -82,7 +82,7 @@ Fields can be **sourced** from a column (`source:`) or **derived** from other fi
 
 ## Output
 
-```
+```text
 data/ingested/jobs_parquet/<run>/
   data.parquet      # Canonical ODA table (oda.job.v0.2.0)
   manifest.json     # Transformation lineage

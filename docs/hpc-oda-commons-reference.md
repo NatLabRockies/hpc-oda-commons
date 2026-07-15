@@ -51,8 +51,9 @@ The codebase is organized into purpose-specific packages under `src/hpc_oda_comm
 |---------|---------|
 | `qst/` | **Quickstart Toolkit** -- CLI entry point built on Typer. All user-facing commands live here. |
 | `kernel/` | **Core artifact logic** -- ODA tables, manifests, result bundles, mapping specs, provenance, hashing, schema loading, and validation. This is the stable foundation other packages build on. |
-| `models/` | **Prediction models** -- Pluggable model implementations. Ships six models: a deterministic baseline, three rolling-tabular runtime models (XGBoost, Random Forest, MLP), a TF-IDF + kNN runtime model, and a per-user kNN power model. |
+| `models/` | **Prediction models** -- Pluggable model implementations. Ships seven models: a deterministic baseline, three rolling-tabular runtime models (XGBoost, Random Forest, MLP), a TF-IDF + kNN runtime model, an embedding + kNN runtime model, and a per-user kNN power model. |
 | `models/rolling_tabular/` | **Shared rolling-tabular base** -- `RollingTabularModel` base class plus shared rolling split (`split.py`) and categorical preprocessing (`preprocessing.py`) reused by the XGBoost, Random Forest, and MLP models. |
+| `embeddings/` | **Embedding module** -- Serializes job rows to text and encodes them (`hpc-oda embed`), writing an embedded table + provenance manifest for the embedding + kNN model. Model-agnostic; heavy deps are the optional `embed` extra. |
 | `ingest/` | **Data adapters** -- Ingestion pipeline for transforming site-specific data into canonical format. Includes profiling, mapping suggestions, interactive wizard, and batch transformation. |
 | `adapters/` | **Source parsers** -- Protocol-based adapters for parsing raw data sources. v0.1 includes a slurmctld log parser. |
 | `benchmark/` | **Recipe loading and results aggregation** -- Validates benchmark recipes, aggregates result bundles into leaderboards. |
@@ -225,6 +226,7 @@ The CLI is built on Typer and exposed as the `hpc-oda` command. It provides a co
 | `hpc-oda benchmark <recipe>` | Run a benchmark defined by a YAML recipe file. Resolves the model, loads the dataset, executes the evaluation strategy, computes metrics, and writes a validated result bundle. |
 | `hpc-oda analyze --data <path>` | Analyze a local dataset with the baseline model and emit a report bundle (JSON + HTML). |
 | `hpc-oda validate <path>` | Validate artifacts against their schemas. Accepts result bundles, manifests, or Parquet files. |
+| `hpc-oda embed <parquet> --out <path>` | Serialize job rows to text and encode them into a dense `embedding` column (for `model.job_runtime_embedding_knn`). Writes an embedded Parquet + provenance manifest. `--model stub` needs no download; real models need the `embed` extra. |
 | `hpc-oda leaderboard --runs <dir> --out <dir>` | Aggregate result bundles from a runs directory into a leaderboard (JSON + HTML). Includes Validated and Code Hash columns. |
 | `hpc-oda record-hash` | Record the current source code hash and git commit in `integrity/known_hashes.json`. Run after tests pass on a clean commit. |
 | `hpc-oda browse` | Browse the registry snapshot. Supports filters: `--tag`, `--type`, `--source`, `--input-schema`, `--output-schema`. |
@@ -320,7 +322,7 @@ Each ingestion run produces a directory under `data/ingested/<adapter>/<run_id>/
 
 ## 7. Prediction Models
 
-HPC ODA Commons ships six models: five for job runtime prediction (baseline, XGBoost, Random Forest, MLP, TF-IDF + kNN) and one for job power prediction (per-user kNN). The runtime models operate on `rows`, a list of dictionaries conforming to the job schema, with `runtime_seconds` as the target field. The XGBoost, Random Forest, and MLP models are rolling-tabular models that share a common base class (`RollingTabularModel`); the shared rolling split (`split.py`) and categorical preprocessing now live in `models/rolling_tabular/`, so they are no longer XGBoost-only.
+HPC ODA Commons ships seven models: six for job runtime prediction (baseline, XGBoost, Random Forest, MLP, TF-IDF + kNN, Embedding + kNN) and one for job power prediction (per-user kNN). The runtime models operate on `rows`, a list of dictionaries conforming to the job schema, with `runtime_seconds` as the target field. The XGBoost, Random Forest, and MLP models are rolling-tabular models that share a common base class (`RollingTabularModel`); the shared rolling split (`split.py`) and categorical preprocessing now live in `models/rolling_tabular/`, so they are no longer XGBoost-only.
 
 ### 7.1 Baseline Model (`model.job_runtime_baseline`)
 
@@ -444,7 +446,11 @@ An alternate runtime prediction model using scikit-learn's Random Forest regress
 
 An alternate runtime prediction model using a feed-forward neural network (scikit-learn's `MLPRegressor`). It also subclasses `RollingTabularModel` and reuses the shared rolling split and categorical one-hot/SVD preprocessing, swapping in the MLP regressor. It is driven by the bundled `mlp_rolling.yml` recipe.
 
-### 7.6 Job Power Model (`model.job_power_uopc`)
+### 7.6 Embedding + kNN Model (`model.job_runtime_embedding_knn`)
+
+The embedding-space counterpart to the TF-IDF + kNN model. Instead of vectorizing text internally, it consumes a **precomputed dense `embedding` column** (produced by `hpc-oda embed`) and predicts runtime as the similarity-weighted average of the *k* nearest neighbors in embedding space, under the same rolling-window evaluation. Search is an exact dense top-k with a selectable backend (`numpy` default, optional `torch`/`faiss`). Because it reuses the shared rolling split (`models/rolling_tabular/split.py`) and `kernel.metrics`, it is directly comparable to the other runtime models. Driven by the bundled `embedding_knn_rolling.yml` recipe. See [Embedding-based kNN](how-to/embedding-knn.md).
+
+### 7.7 Job Power Model (`model.job_power_uopc`)
 
 A per-user kNN power-prediction model (UoPC-style) that predicts `maxpcon` (maximum job power) rather than runtime. Unlike the rolling runtime models, it uses a fixed train/test split. For each user, job history is ordered by end time and the most recent `theta` jobs form the training context; categorical job features (e.g., job name) are label-encoded per fit, and a `KNeighborsRegressor` predicts from the nearest neighbors. It operates on raw Fugaku-style columns (`usr`, `jnam`, `cnumr`, `nnumr`, `edt`, `maxpcon`) via field aliases, and is driven by the bundled `uopc_maxpcon.yml` recipe.
 
@@ -587,7 +593,7 @@ Each registry entry is a `RegistryEntry` dataclass with:
 
 ### 10.2 v0.1 Registry Contents
 
-The bundled registry snapshot contains nine entries (one adapter, six models, and two recipes):
+The bundled registry snapshot contains 37 entries: one adapter, seven models, four recipes, and 25 datasets (registered via the `oda.registry.v0.2.0` `dataset` entry_type). A representative subset:
 
 | ID | Type | Description |
 |----|------|-------------|
@@ -779,16 +785,18 @@ Note: `oda.leaderboard.v0.1.0` is not a bundled JSON Schema. It is a version tag
 
 ## Appendix B: CLI Command Quick Reference
 
-```
+```text
 hpc-oda init
 hpc-oda run-baseline
 hpc-oda ingest slurmctld --path <log-file>
 hpc-oda ingest jobs-parquet --path <parquet-file> [--mapping <yaml>] [--non-interactive]
 hpc-oda validate <artifact-path>
+hpc-oda embed <parquet-file> --out <embedded.parquet> [--model <stub|hf-id>] [--config <local.yml>]
 hpc-oda benchmark <recipe.yml>
 hpc-oda analyze --data <parquet-file>
 hpc-oda leaderboard --runs <dir> --out <dir>
-hpc-oda browse [--tag X] [--type adapter|model|recipe] [--source X]
+hpc-oda datasets fetch <dataset-id> | prepare <dataset-id>
+hpc-oda browse [--tag X] [--type adapter|model|recipe|dataset] [--source X]
 hpc-oda info <entry_id>
 ```
 

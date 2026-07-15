@@ -19,18 +19,18 @@ dataset per system.
 
 | Coverage | File | Status |
 |---|---|---|
-| 2022 (Aug 9 – Dec 31) | `ANL-ALCF-DJC-POLARIS_20220809_20221231.csv.gz` | to add |
+| 2022 (Aug 9 – Dec 31) | `ANL-ALCF-DJC-POLARIS_20220809_20221231.csv.gz` | **registered** |
 | 2023 | `ANL-ALCF-DJC-POLARIS_20230101_20231231.csv.gz` | **registered** |
-| 2024 | `ANL-ALCF-DJC-POLARIS_20240101_20241231.csv.gz` | to add |
-| 2025 | `ANL-ALCF-DJC-POLARIS_20250101_20251231.csv.gz` | to add |
-| 2026 (Jan 1 – Jun 16) | `ANL-ALCF-DJC-POLARIS_20260101_20260616.csv.gz` | to add |
+| 2024 | `ANL-ALCF-DJC-POLARIS_20240101_20241231.csv.gz` | **registered** |
+| 2025 | `ANL-ALCF-DJC-POLARIS_20250101_20251231.csv.gz` | **registered** |
+| 2026 (Jan 1 – Jun 16) | `ANL-ALCF-DJC-POLARIS_20260101_20260616.csv.gz` | **registered** |
 
 ### Aurora → `dataset.job_runtime.alcf_djc_aurora`
 
 | Coverage | File | Status |
 |---|---|---|
-| 2025 (Jan 27 – Dec 31) | `ANL-ALCF-DJC-AURORA_20250127_20251231.csv.gz` | to add |
-| 2026 (Jan 1 – Jun 16) | `ANL-ALCF-DJC-AURORA_20260101_20260616.csv.gz` | to add |
+| 2025 (Jan 27 – Dec 31) | `ANL-ALCF-DJC-AURORA_20250127_20251231.csv.gz` | **registered** |
+| 2026 (Jan 1 – Jun 16) | `ANL-ALCF-DJC-AURORA_20260101_20260616.csv.gz` | **registered** |
 
 > Date ranges are what ALCF publishes today; the newest year grows over time and new ranges appear.
 > Confirm the current list from the viewer pages

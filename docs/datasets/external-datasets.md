@@ -20,8 +20,9 @@ on an unrestricted network they can be registered normally (`kind: http` + a pin
 
 **ALCF DJC** was on this list too, but a closer look showed it isn't a hard wall — its downloads
 sit behind a one-time name/email form on *public* data. It is now a **registered `manual`-kind
-dataset** (`dataset.job_runtime.alcf_djc_polaris`): you clear the form once, download the file, and
-`datasets prepare --from <dir>` checksum-verifies + normalizes it. See the ALCF DJC entry below and
+dataset** (`dataset.job_runtime.alcf_djc_polaris` + `dataset.job_runtime.alcf_djc_aurora`): you clear
+the form once, download the files, and `datasets prepare --from <dir>` checksum-verifies + normalizes
+them. See the ALCF DJC entry below and
 "How to ingest" path 2 — it's the working example of the manual flow.
 
 ## How to ingest one of these
@@ -69,10 +70,11 @@ After you've downloaded the raw file(s) from the source below, there are two pat
 - **Format:** ZIP → `part-000.parquet` (archive decode + a straightforward mapping handle it).
 - **License:** research-use (see the Alibaba `clusterdata` repository).
 
-### ALCF DJC (Argonne — Polaris / Theta / Mira) — **registered (manual-kind)**
+### ALCF DJC (Argonne — Polaris / Aurora / Theta / Mira) — **registered (manual-kind)**
 
-Polaris 2023 is registered as `dataset.job_runtime.alcf_djc_polaris`; this entry is the recipe for
-adding **more years / systems** (Theta, Mira, other Polaris years) the same way.
+Polaris (all published years 2022–2026, five files) and Aurora (2025–2026) are registered as
+`dataset.job_runtime.alcf_djc_polaris` and `dataset.job_runtime.alcf_djc_aurora`; these entries are
+the recipe for adding **further years / systems** (Theta, Mira) the same way.
 
 - **What:** `DIM_JOB_COMPOSITE` job accounting for ALCF systems (Polaris 2022–2026, Theta, ThetaGPU,
   Mira, Aurora) — Cobalt/PBS scheduler data **with requested walltime** → primary-quality.

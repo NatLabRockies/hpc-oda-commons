@@ -27,6 +27,10 @@ hpc-oda ingest slurmctld --path /path/to/slurmctld.log
 # 2. Validate ingested data
 hpc-oda validate data/ingested/jobs_parquet/<run>/data.parquet
 
+# 2b. (optional) embed rows for the embedding-knn model
+hpc-oda embed data/ingested/jobs_parquet/<run>/data.parquet \
+  --out data/ingested/jobs_parquet/<run>_embedded/data.parquet --model stub
+
 # 3. Run a benchmark
 hpc-oda benchmark my_recipe.yml
 
@@ -41,6 +45,7 @@ hpc-oda leaderboard --runs runs --out leaderboard
 | `hpc-oda ingest jobs-parquet --path <parquet>` | Transform Parquet with interactive wizard | `data/ingested/jobs_parquet/<run>/` |
 | `hpc-oda ingest slurmctld --path <log>` | Parse slurmctld logs to canonical Parquet | `data/ingested/slurmctld/<run>/` |
 | `hpc-oda validate <path>` | Validate artifacts against schemas | `*.quality.json` next to input |
+| `hpc-oda embed <parquet> --out <path> --model <stub\|hf-id>` | Serialize + encode rows into a dense `embedding` column | `<out>` + `<out>.manifest.json` |
 | `hpc-oda analyze --data <path>` | Quick baseline analysis with HTML report | `reports/analysis-<id>/` |
 | `hpc-oda benchmark <recipe.yml>` | Run a benchmark recipe | `runs/benchmark-<timestamp>/` |
 | `hpc-oda benchmark -v <recipe.yml>` | Benchmark with verbose progress | Same, with console output |
@@ -56,12 +61,14 @@ Bundled recipes are at `src/hpc_oda_commons/recipes/job-runtime/`:
 - `xgb_hourly_recent.yml` -- XGBoost, rolling evaluation (slower, production-realistic)
 - `alt_model_example.yml` -- XGBoost with smaller window (faster iteration)
 - `mlp_rolling.yml` -- feed-forward neural network, rolling evaluation
+- `embedding_knn_rolling.yml` -- embedding-space kNN, rolling evaluation (needs an embedded dataset; see `hpc-oda embed`)
 - `uopc_maxpcon.yml` -- UoPC user-based power prediction, fixed chronological split
 
 v0.1 models:
 - `model.job_runtime_baseline` -- mean predictor (supports fixed and rolling splits)
 - `model.job_runtime_xgboost` -- XGBoost with OHE+SVD preprocessing (rolling splits)
 - `model.job_runtime_tfidf_knn` -- TF-IDF text vectorization + kNN regression (rolling splits)
+- `model.job_runtime_embedding_knn` -- kNN over a precomputed dense embedding column (rolling splits; see `hpc-oda embed`)
 - `model.job_runtime_random_forest` -- Random Forest, uses the shared `rolling_tabular` OHE+SVD preprocessing (rolling splits)
 - `model.job_runtime_mlp` -- feed-forward neural network, uses the shared `rolling_tabular` preprocessing (rolling splits)
 - `model.job_power_uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split)

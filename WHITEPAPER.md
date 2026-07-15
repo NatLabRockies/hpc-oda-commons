@@ -4,7 +4,7 @@
 
 High Performance Computing (HPC) operational data analytics (ODA) is fragmented: each site and research group often develops bespoke log parsers, schemas, and evaluation pipelines that are difficult to reproduce or compare. **hpc-oda-commons** addresses this by establishing a small, testable set of contracts (schemas and artifacts) and a pragmatic end-to-end toolchain that makes ODA workflows **discoverable (Find)**, **reproducible/comparable (Compare)**, and **easy to adopt locally (Run)**.
 
-This document describes the system as it exists today: a **v0.1 vertical slice** focused primarily on **SLURM job runtime prediction** (with a second **job power prediction** slice), delivered as a Python package with a CLI, packaged schemas/recipes/datasets, deterministic benchmark execution, provenance capture, validation and data quality reports, and a static leaderboard generator. Runtime prediction ships several models (a deterministic baseline plus XGBoost, Random Forest, MLP, and TF-IDF + kNN), and power prediction ships a per-user UoPC-style kNN model.
+This document describes the system as it exists today: a **v0.1 vertical slice** focused primarily on **SLURM job runtime prediction** (with a second **job power prediction** slice), delivered as a Python package with a CLI, packaged schemas/recipes/datasets, deterministic benchmark execution, provenance capture, validation and data quality reports, and a static leaderboard generator. Runtime prediction ships several models (a deterministic baseline plus XGBoost, Random Forest, MLP, TF-IDF + kNN, and an embedding + kNN model that consumes precomputed dense embeddings), and power prediction ships a per-user UoPC-style kNN model.
 
 ## 1) The Problem This Solves
 
@@ -39,7 +39,7 @@ In v0.1, the scope is intentionally narrow:
 - **Domains:** SLURM job runtime prediction (primary) and job power prediction (second slice)
 - **Source:** `slurmctld` logs (minimal patterns)
 - **Data:** tiny packaged synthetic dataset (offline) + manifest
-- **Models:** a deterministic baseline (mean predictor) plus XGBoost, Random Forest, and MLP (sharing a rolling-tabular base) and TF-IDF + kNN for runtime, all with rolling evaluation, and a per-user UoPC-style kNN model for power (fixed evaluation)
+- **Models:** a deterministic baseline (mean predictor) plus XGBoost, Random Forest, and MLP (sharing a rolling-tabular base), TF-IDF + kNN, and an embedding + kNN model (kNN over a precomputed dense embedding column) for runtime, all with rolling evaluation, and a per-user UoPC-style kNN model for power (fixed evaluation)
 - **Benchmark:** recipe-driven execution with regression metrics (MAE, RMSE)
 - **Outputs:** schema-valid artifacts and static leaderboard generation
 
@@ -85,8 +85,9 @@ Schemas are packaged JSON Schemas, loaded by ID at runtime:
 - `oda.job.v0.2.0` (job table rows; current canonical job schema — `oda.job.v0.1.0` is retained only for legacy reads)
 - `oda.manifest.v0.1.0` (manifests for ingested artifacts)
 - `oda.result.v0.1.0` (result bundles)
-- `oda.registry.v0.1.0` (registry snapshot)
+- `oda.registry.v0.2.0` (registry snapshot; adds the `dataset` entry_type)
 - `oda.recipe.v0.1.0` (benchmark recipes)
+- `oda.dataset.v0.1.0` (public-dataset ingestion descriptors)
 - `oda.mdl.v0.1.0` (metric definitions; “MDL v0”)
 - `oda.mapping.v0.1.0` (field mapping specifications for data ingestion)
 
@@ -191,7 +192,7 @@ Execution (`hpc_oda_commons.benchmark.runner`):
 - loads recipe and dataset parquet
 - resolves the model and split strategy:
   - **fixed split** (deterministic train/test partition), used by the baseline and by the job-power UoPC model
-  - **rolling split** (sliding window evaluation simulating production retraining), used by the rolling baseline, XGBoost, Random Forest, MLP, and TF-IDF + kNN runtime models
+  - **rolling split** (sliding window evaluation simulating production retraining), used by the rolling baseline, XGBoost, Random Forest, MLP, TF-IDF + kNN, and embedding + kNN runtime models
 - computes metrics and writes a result bundle under `runs/`
 
 ### 4.7 Leaderboard Generation
