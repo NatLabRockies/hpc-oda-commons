@@ -32,6 +32,18 @@ This reference covers the v0.1 `hpc-oda` commands.
 1. `hpc-oda validate <path>`
    Validates a result bundle, manifest, or parquet file. For parquet, writes a `*.quality.json` report.
 
+## Embed
+1. `hpc-oda embed <ingested.parquet> --out <embedded.parquet> [--model <id>] [--format prose|kv] [--config <local.yml>] [--cache-dir <dir>] [--device auto|cpu|cuda|mps] [--dtype fp16|fp32] [--batch-size <N>] [--chunk-size <N>] [--instruction <text>]`
+   Serializes each job row to text (submission-time fields only) and encodes it, writing an
+   embedded Parquet (original columns + a dense `embedding` column) plus a provenance
+   manifest — the input for `model.job_runtime_embedding_knn`.
+   `--model stub` uses a deterministic, dependency-free encoder (offline/CI); a real model
+   (e.g. `microsoft/harrier-oss-v1-0.6b`, the recommended default) needs the `embed` extra
+   (`pip install -e ".[embed]"`). Extra text columns (e.g. local job scripts) are named only
+   in a local `--config` YAML so sensitive content stays off the command line. Embedding is
+   chunk-cached and resumable via `--cache-dir`. See
+   [Embedding-based kNN](../how-to/embedding-knn.md).
+
 ## Compare
 1. `hpc-oda benchmark <recipe.yml> [--verbose|-v]`
    Runs a benchmark recipe and emits a result bundle under `runs/`.
@@ -43,6 +55,7 @@ This reference covers the v0.1 `hpc-oda` commands.
    - `model.job_runtime_random_forest` + `split.method: rolling`
    - `model.job_runtime_mlp` + `split.method: rolling`
    - `model.job_runtime_tfidf_knn` + `split.method: rolling`
+   - `model.job_runtime_embedding_knn` + `split.method: rolling` (needs an `embedding` column; see `hpc-oda embed`)
    - `model.job_power_uopc` + `split.method: fixed`
    Result bundles include an `integrity` block with code hash and validation status.
    For rolling recipes, `split.n_windows` is required.

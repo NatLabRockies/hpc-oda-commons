@@ -10,6 +10,8 @@
 
 **I want to understand results** -- [Interpreting Results](how-to/interpret-results.md)
 
+**I want to predict with embeddings** -- [Embedding-based kNN model + `hpc-oda embed`](how-to/embedding-knn.md)
+
 **I want to contribute** -- [Contributing](../CONTRIBUTING.md) | [Add a Model](how-to/add-model.md)
 
 **I'm an AI agent** -- [Agent Guide](../CLAUDE.md) (routes to [usage](agent-usage.md) or development)

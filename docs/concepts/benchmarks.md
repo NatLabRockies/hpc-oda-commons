@@ -15,6 +15,7 @@ Built-in v0.1 recipes:
 - `src/hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml` -- XGBoost, rolling
 - `src/hpc_oda_commons/recipes/job-runtime/alt_model_example.yml` -- XGBoost, smaller rolling window
 - `src/hpc_oda_commons/recipes/job-runtime/mlp_rolling.yml` -- MLP, rolling
+- `src/hpc_oda_commons/recipes/job-runtime/embedding_knn_rolling.yml` -- embedding kNN, rolling (needs an embedded dataset)
 - `src/hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml` -- UoPC power prediction, fixed split
 
 See the [Recipes Reference](../reference/recipes.md) for the full format specification with annotated examples.
@@ -31,7 +32,7 @@ This is fast and easy to understand, but it does not account for temporal dynami
 
 Simulates production deployment by evaluating the model as if it were retrained on a recurring schedule. For each window:
 
-```
+```text
          lookback_days         test_window_hours
     |◄─────────────────────►|◄──────────────►|
     ┌───────────────────────┬────────────────┐
@@ -76,7 +77,7 @@ Additional metrics (`mape`, `r2`, `underprediction_ratio`) can be added to a rec
 
 Every benchmark run produces a result bundle directory:
 
-```
+```text
 runs/<run-id>/
   result.json       # Schema-validated result (oda.result.v0.1.0)
   metrics.json      # Detailed metrics (includes per-window data for rolling)

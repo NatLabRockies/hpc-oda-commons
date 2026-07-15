@@ -127,6 +127,8 @@ hpc-oda benchmark -v my_recipe.yml
 
 **TF-IDF + kNN** (`model.job_runtime_tfidf_knn`) — Text-similarity model that concatenates job metadata fields (user, account, partition, job name, submit line, working directory, script) into text, vectorizes with TF-IDF, and predicts runtime as the similarity-weighted average of the k nearest neighbors. Uses an incremental HashingVectorizer cache for efficient rolling evaluation.
 
+**Embedding + kNN** (`model.job_runtime_embedding_knn`) — Embedding-space counterpart to TF-IDF + kNN: predicts runtime as the similarity-weighted average of the k nearest neighbors in a **precomputed dense embedding space**, using an exact dense top-k search. Model-agnostic — produce the `embedding` column with `hpc-oda embed` (any HuggingFace sentence-transformers model, or a dependency-free stub). See [Embedding-based kNN](docs/how-to/embedding-knn.md).
+
 **Job Power UoPC** (`model.job_power_uopc`) — Power-prediction model (domain `job-power-prediction`) using per-user online kNN regression on label-encoded job features (UoPC-style), with fixed evaluation.
 
 ---
@@ -224,6 +226,7 @@ All transformations are recorded in the manifest's transformation ledger.
 | `hpc-oda ingest slurmctld ...` | `data/ingested/slurmctld/<run>/{data.parquet, manifest.json}` |
 | `hpc-oda ingest jobs-parquet ...` | `data/ingested/jobs_parquet/<run>/{data.parquet, manifest.json, mapping.yml}` |
 | `hpc-oda validate <parquet>` | `<parquet>.quality.json` |
+| `hpc-oda embed <parquet> --out <out>` | `<out>` (embedded Parquet) + `<out>.manifest.json` |
 | `hpc-oda run-baseline` | `runs/run-baseline-*/{result.json, metrics.json, provenance.json}` |
 | `hpc-oda benchmark <recipe>` | `runs/benchmark-*/{result.json, metrics.json, provenance.json}` |
 | `hpc-oda analyze --data ...` | `reports/analysis-*/{analysis.json, index.html}` |
@@ -235,9 +238,10 @@ All transformations are recorded in the manifest's transformation ledger.
 src/hpc_oda_commons/     Package implementation
   qst/                   CLI (Typer-based, entry point: hpc-oda)
   kernel/                Core: artifacts, provenance, validation, schemas
-  models/                Six models: baseline, xgboost, random_forest, mlp,
-                         tfidf_knn (runtime) + job_power_uopc (power), plus a
-                         shared rolling_tabular base for the tabular rolling models
+  models/                Seven models: baseline, xgboost, random_forest, mlp,
+                         tfidf_knn, embedding_knn (runtime) + job_power_uopc (power),
+                         plus a shared rolling_tabular base for the tabular rolling models
+  embeddings/            Text serialization + encoders for `hpc-oda embed`
   adapters/              Source parsers (slurmctld)
   ingest/                Data ingestion pipeline (profile, suggest, wizard, apply)
   benchmark/             Recipe loading and results aggregation

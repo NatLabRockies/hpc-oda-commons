@@ -6,7 +6,7 @@ After running `hpc-oda benchmark` or `hpc-oda analyze`, you'll have result artif
 
 A benchmark produces a directory under `runs/<run-id>/` with three files:
 
-```
+```text
 runs/benchmark-20260301-120000/
   result.json       # Summary: recipe, model, dataset, metrics
   metrics.json      # Detailed metrics (per-window entries for rolling)
@@ -34,12 +34,13 @@ Like MAE but penalizes large errors more heavily. Always >= MAE.
 
 Run the baseline first to establish a reference, then run alternate models on the same data using the same rolling split parameters. A useful model should achieve lower MAE and RMSE than the baseline, which predicts the global mean runtime for every job.
 
-The toolkit ships six models -- five for job runtime and one for job power:
+The toolkit ships seven models -- six for job runtime and one for job power:
 - `model.job_runtime_baseline` -- mean predictor (supports fixed and rolling splits)
 - `model.job_runtime_xgboost` -- gradient-boosted trees with OHE+SVD preprocessing
 - `model.job_runtime_random_forest` -- random forest with OHE+SVD preprocessing
 - `model.job_runtime_mlp` -- feed-forward MLP with OHE+SVD preprocessing
 - `model.job_runtime_tfidf_knn` -- text similarity via TF-IDF + k-nearest neighbors
+- `model.job_runtime_embedding_knn` -- kNN over precomputed dense embeddings (see `hpc-oda embed`)
 - `model.job_power_uopc` -- job power prediction via per-user kNN (fixed split)
 
 Use rolling evaluation with the same `n_windows`, `test_window_hours`, and `training_lookback_days` across all models for apples-to-apples comparison.
@@ -73,7 +74,7 @@ Use rolling evaluation with the same `n_windows`, `test_window_hours`, and `trai
 
 ## Reading `metrics.json` (Rolling)
 
-For rolling benchmarks (baseline, XGBoost, random forest, MLP, or TF-IDF kNN), `metrics.json` contains per-window detail:
+For rolling benchmarks (baseline, XGBoost, random forest, MLP, TF-IDF kNN, or embedding kNN), `metrics.json` contains per-window detail:
 
 ```json
 {

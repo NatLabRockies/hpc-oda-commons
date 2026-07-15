@@ -75,7 +75,7 @@ extra_text_columns: [script]
 extra_char_limit: 2000
 ```
 ```bash
-hpc-oda embed <in.parquet> --out <out.parquet> --model harrier ... --config .hpc_oda/embed.yml
+hpc-oda embed <in.parquet> --out <out.parquet> --model microsoft/harrier-oss-v1-0.6b --config .hpc_oda/embed.yml
 ```
 
 Note: in spike experiments, naively appending raw truncated job scripts *hurt*
@@ -87,7 +87,7 @@ experiment (strip/normalize boilerplate first), not a default.
 Point a rolling recipe at your embedded dataset and run the benchmark offline:
 
 ```bash
-HPC_ODA_OFFLINE=1 hpc-oda benchmark --recipe src/hpc_oda_commons/recipes/job-runtime/embedding_knn_rolling.yml
+HPC_ODA_OFFLINE=1 hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/embedding_knn_rolling.yml
 ```
 
 The recipe's `model.id` is `model.job_runtime_embedding_knn` with a rolling split.

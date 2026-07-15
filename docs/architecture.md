@@ -7,10 +7,12 @@ contribution process and coding standards, see
 
 ## Data flow
 
-```
+```text
 Raw Input (slurmctld.log / jobs.parquet)
   -> [Adapter/Ingest] parse, profile, map, validate, hash
   -> Canonical ODA Table (Parquet) + Manifest + Quality Report
+  -> [Embed] (optional) serialize submission-time fields, encode to a dense
+             `embedding` column -> Embedded ODA Table + Embed Manifest
   -> [Benchmark/Analyze] train model, evaluate metrics via recipe
   -> Result Bundle {result.json, metrics.json, provenance.json}
   -> [Leaderboard] aggregate multiple runs
@@ -36,8 +38,16 @@ Raw Input (slurmctld.log / jobs.parquet)
     splits and overriding only the regressor.
   - `job_runtime_tfidf_knn/` -- TF-IDF + kNN with rolling evaluation (`evaluate()`),
     HashingVectorizer with incremental cache (`vectorization.py`)
+  - `job_runtime_embedding_knn/` -- kNN over a precomputed dense `embedding` column
+    (`model.py`), with a selectable exact dense top-k backend (`backends.py`:
+    numpy / torch / faiss). Reuses `rolling_tabular` split + `kernel.metrics`.
   - `job_power_uopc/` -- user-based online power prediction (UoPC), fixed chronological split,
     per-user kNN (`evaluate_fixed()`)
+- **`embeddings/`** -- Embedding module behind `hpc-oda embed`: leakage-guarded row
+  serialization (`serialize.py` -- submission-time fields only, `prose`/`kv` formats),
+  encoders (`encoders.py` -- `HashingEncoder` stub + `SentenceTransformerEncoder`), and the
+  `embed_table` runner (`runner.py` -- chunk-cached/resumable, writes an embedded table +
+  provenance manifest). Heavy deps are the optional `embed` extra.
 - **`benchmark/`** -- Recipe loading (`recipes.py`), results aggregation (`results.py`),
   benchmark execution (`runner.py`), optional run artifacts (`run_extras.py`), and shared
   leaderboard formatting (`leaderboard_display.py`).
@@ -49,6 +59,9 @@ Raw Input (slurmctld.log / jobs.parquet)
 - **`intelligence/`** -- Library-level APIs (not CLI-integrated): mapping suggestions,
   metadata graph, synthetic scoring.
 - **`registry/`** -- Offline registry snapshot with filtering and lookup.
+- **`integrity/`** -- Known-good code-hash ledger (`known_hashes.json`) recorded by
+  `hpc-oda record-hash` and checked into result-bundle `integrity` blocks.
+- **`utils/`** -- Small shared low-level helpers.
 - **`tools/`** -- Report generation: `report/html.py` (HTML), `report/console.py` (Rich console).
 - **`datasets/`** -- Bundled synthetic datasets for offline demos.
 - **`schemas/`** -- JSON Schema files (Draft 2020-12), versioned as `oda.<type>.v<MAJOR>.<MINOR>.<PATCH>`.
@@ -78,4 +91,5 @@ Raw Input (slurmctld.log / jobs.parquet)
 - `CONTRIBUTING.md` -- contribution process, quality gates, coding standards.
 
 If CLI commands, flags, or output paths change, update `README.md`,
-`docs/how-to/quickstart.md`, `docs/reference/cli.md`, and `docs/agent-usage.md`.
+`docs/how-to/quickstart.md`, `docs/reference/cli.md`, `docs/agent-usage.md`, and
+(for the embedding path) `docs/how-to/embedding-knn.md`.

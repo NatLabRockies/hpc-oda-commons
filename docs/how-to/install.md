@@ -11,6 +11,9 @@ pip install -e .
 ```
 
 Optional extras are listed in `pyproject.toml` under `project.optional-dependencies`.
+Notable extras: `dev` (test/lint toolchain), `embed` (real embedding models for `hpc-oda
+embed`), and `torch` / `faiss` (accelerated dense-search backends for the embedding-kNN
+model). Install with, e.g., `pip install -e ".[embed]"`.
 
 ## Offline install options (recommended for HPC)
 
