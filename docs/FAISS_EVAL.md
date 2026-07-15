@@ -19,4 +19,4 @@ python3 scripts/run_faiss_eval.py
 
 Implementation notes
 - `src/hpc_oda_commons/models/job_runtime_faiss/eval.py` contains `evaluate_offline()` which implements exact top-k search using FAISS (IndexFlatIP) or a torch matmul fallback.
-- The harness writes hardware detection info to `.hpc_oda_hardware.yaml` and `.hpc_oda_hardware.env` for reproducibility.
+- Hardware provenance can be written explicitly via `scripts/detect_hardware_and_write.py`.

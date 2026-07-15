@@ -4,17 +4,14 @@
 Usage:
   python3 scripts/run_faiss_eval.py
 """
-import sys
-from pathlib import Path
-
-sys.path.insert(0, "src")
 
 from hpc_oda_commons.models.job_runtime_faiss import eval as faiss_eval
 
 
-def main():
+def main() -> int:
     faiss_eval.smoke_test()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import math
-import os
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+import warnings
 
 import numpy as np
 
@@ -25,7 +22,9 @@ def _ensure_float32(x: np.ndarray) -> np.ndarray:
     return x.astype("float32", copy=False)
 
 
-def search_exact_torch(corpus: np.ndarray, queries: np.ndarray, k: int, device: str = "cpu") -> Tuple[np.ndarray, np.ndarray]:
+def search_exact_torch(
+    corpus: np.ndarray, queries: np.ndarray, k: int, device: str = "cpu"
+) -> tuple[np.ndarray, np.ndarray]:
     """Exact top-k using torch matmul. Returns (scores, indices).
 
     corpus: (N, d) numpy
@@ -42,7 +41,9 @@ def search_exact_torch(corpus: np.ndarray, queries: np.ndarray, k: int, device: 
     return vals.cpu().numpy(), idx.cpu().numpy()
 
 
-def search_exact_faiss(corpus: np.ndarray, queries: np.ndarray, k: int, use_gpu: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+def search_exact_faiss(
+    corpus: np.ndarray, queries: np.ndarray, k: int, use_gpu: bool = False
+) -> tuple[np.ndarray, np.ndarray]:
     """Exact top-k using FAISS IndexFlatIP. Builds an index on the provided corpus slice.
 
     This builds an in-memory flat index per call; suitable for offline evaluation and small prefixes.
@@ -57,12 +58,16 @@ def search_exact_faiss(corpus: np.ndarray, queries: np.ndarray, k: int, use_gpu:
         try:
             res = faiss.StandardGpuResources()
             index = faiss.index_cpu_to_gpu(res, 0, index)
-        except Exception:
-            pass
+        except Exception as err:
+            warnings.warn(
+                f"FAISS GPU init failed; falling back to CPU index: {err}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     index.add(_ensure_float32(corpus))
-    D, I = index.search(_ensure_float32(queries), min(k, corpus.shape[0]))
-    return D, I
+    distances, indices = index.search(_ensure_float32(queries), min(k, corpus.shape[0]))
+    return distances, indices
 
 
 def evaluate_offline(
@@ -73,8 +78,8 @@ def evaluate_offline(
     query_split_times: np.ndarray,
     k: int = 5,
     backend: str = "auto",
-    device: Optional[str] = None,
-) -> List[float]:
+    device: str | None = None,
+) -> list[float]:
     """Run offline exact k-NN evaluation with temporal rolling-window.
 
     For each query i, use corpus rows with end_time < query_split_times[i].
@@ -90,14 +95,6 @@ def evaluate_offline(
 
     # decide backend
     hw = hardware.detect_hardware()
-    # optionally write hardware config for reproducibility
-    try:
-        # write to repo root for traceability
-        repo_root = Path(os.getcwd())
-        hardware.write_yaml(repo_root / ".hpc_oda_hardware.yaml", hw)
-        hardware.write_env_file(repo_root / ".hpc_oda_hardware.env", hw)
-    except Exception:
-        pass
     chosen_backend = backend
     if backend == "auto":
         if faiss is not None and hw.get("summary", {}).get("has_cuda"):
@@ -109,7 +106,7 @@ def evaluate_offline(
         else:
             chosen_backend = "numpy"
 
-    preds: List[float] = []
+    preds: list[float] = []
 
     # Group queries by split time to avoid repeated work
     # For simplicity, process queries in order given
@@ -127,9 +124,9 @@ def evaluate_offline(
 
         if chosen_backend.startswith("faiss"):
             use_gpu = chosen_backend.endswith("gpu")
-            D, I = search_exact_faiss(corpus_prefix, q, k=k, use_gpu=use_gpu)
-            sims = D[0]
-            inds = I[0]
+            distances, indices = search_exact_faiss(corpus_prefix, q, k=k, use_gpu=use_gpu)
+            sims = distances[0]
+            inds = indices[0]
         elif chosen_backend == "torch":
             dev = device or ("cuda" if hw.get("summary", {}).get("has_cuda") else "cpu")
             vals, idx = search_exact_torch(corpus_prefix, q, k=k, device=dev)
@@ -178,7 +175,7 @@ def smoke_test() -> None:
     preds = evaluate_offline(corpus, end_times, runtimes, queries, split_times, k=5, backend="auto")
     t1 = time.time()
     print(f"smoke_test preds: {preds}")
-    print(f"elapsed {t1-t0:.3f}s")
+    print(f"elapsed {t1 - t0:.3f}s")
 
 
 if __name__ == "__main__":
