@@ -50,6 +50,13 @@ torch = [
 faiss = [
   "faiss-cpu>=1.7",
 ]
+# Optional: the `hpc-oda embed` command with a real embedding model. Not required —
+# `--model stub` uses a deterministic dependency-free encoder. Provides the HuggingFace
+# sentence-transformers path (harrier-0.6b default, nemotron-8b, etc.).
+embed = [
+  "sentence-transformers>=2.7",
+  "torch>=2.0.0",
+]
 
 [tool.setuptools]
 include-package-data = true
