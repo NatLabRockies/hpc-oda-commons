@@ -88,9 +88,10 @@ extra_char_limit: 2000
 hpc-oda embed <in.parquet> --out <out.parquet> --model microsoft/harrier-oss-v1-0.6b --config .hpc_oda/embed.yml
 ```
 
-Note: in spike experiments, naively appending raw truncated job scripts *hurt*
-accuracy on capable models (boilerplate dilution) — treat script inclusion as an
-experiment (strip/normalize boilerplate first), not a default.
+Note: appending internal columns (raw job scripts, script *diffs*, or the `work_dir`
+path) as embedded text was **measured to degrade accuracy** on real ODA data — see
+[Accuracy](#accuracy) below. The capability exists for experimentation, but is **not**
+recommended by default; keep the serialization to submission-time prose.
 
 ## Run a benchmark
 
@@ -136,6 +137,31 @@ CPU faster, so measure before committing to a device.
 
 ## Accuracy
 
-Whether neural embeddings beat `tfidf_knn` on job metadata is an empirical question —
-run both through the same rolling harness on your embedded dataset and compare MAE /
-RMSE. This model exists to make that comparison possible.
+Run both this model and `tfidf_knn` through the same rolling harness on your embedded
+dataset and compare MAE / RMSE — accuracy is dataset-dependent. What we found on a
+representative 60-day production slice (~632k SLURM jobs, `microsoft/harrier-oss-v1-0.6b`)
+is a useful starting point:
+
+**Recommended default: `prose` serialization with `log_target: true`.** It was the
+strongest configuration in every experiment (MAE ≈ 10,600 s), and neural embeddings beat
+the tf-idf baseline by ~11–15% MAE on the representative sample. `log_target` alone
+improved MAE ~8% (heavy-tailed runtimes).
+
+**What did *not* help: appending non-linguistic text.** Adding job-script diffs or the
+`work_dir` path to the embedded text *degraded* accuracy, even though it sharply cut the
+serialized-text duplicate rate:
+
+| variant | effect vs prose[log] |
+|---|---|
+| `work_dir` (whole path) | MAE flat (within noise), **RMSE +6%** |
+| `work_dir` tail-residual | MAE +3%, RMSE +5% |
+| script diff, on the 111k jobs it targets | **MAE +17% (log) to +46% (non-log), RMSE up to +70%** |
+
+The cause is fundamental: a natural-language embedder can't read `T300` as a temperature
+or a run index as a magnitude. The extra path/code tokens dominate the vector and break
+the (already good) prose neighbour structure, so kNN starts matching on path/code-token
+similarity, which correlates poorly with runtime. On real HPC data most duplicate jobs are
+**parameter sweeps** — identical submission and script, differing only in an input file or
+directory — so the runtime-determining information lives in file *contents* the export
+doesn't capture. Using that signal would require **numeric/structured feature extraction**
+(site-specific), not text embedding. Keep the serialization to submission-time prose.
