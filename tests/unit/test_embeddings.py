@@ -194,6 +194,51 @@ def test_dedup_output_matches_per_row_reference(tmp_path):
     assert np.array_equal(got, ref)
 
 
+def test_script_residual_column_must_be_in_extra_text_columns():
+    with pytest.raises(ValueError, match="extra_text_columns"):
+        EmbedConfig(script_residual_column="script")  # not listed in extra_text_columns
+
+
+def test_embed_table_script_residual_distinguishes_prose_twins(tmp_path):
+    import pyarrow as pa
+
+    # rows 0,1: identical prose, scripts differ by one line -> residual distinguishes them.
+    # rows 2,3: identical prose AND identical scripts -> residual empty -> still duplicates.
+    common = "#SBATCH -N 4\nmodule load foo\nsrun ./run.sh"
+    table = pa.table(
+        {
+            "partition": ["gpu", "gpu", "cpu", "cpu"],
+            "account": ["a", "a", "b", "b"],
+            "submit_time": [datetime(2026, 1, 1, tzinfo=timezone.utc)] * 4,
+            "script": [
+                common + "\nINPUT=a.dat",
+                common + "\nINPUT=b.dat",
+                "#SBATCH -N 1\nsrun ./x",
+                "#SBATCH -N 1\nsrun ./x",
+            ],
+            "runtime_seconds": [1.0, 2.0, 3.0, 4.0],
+        }
+    )
+    src = tmp_path / "in.parquet"
+    pq.write_table(table, src)
+    out = tmp_path / "out.parquet"
+
+    cfg = EmbedConfig(extra_text_columns=("script",), script_residual_column="script")
+    manifest = embed_table(src, out, HashingEncoder(dim=16), cfg, cache_dir=None)
+
+    vecs = pq.read_table(out).column("embedding").to_pylist()
+    assert vecs[0] != vecs[1]  # prose-twins distinguished by their script residual
+    assert vecs[2] == vecs[3]  # identical prose + identical script -> identical vector
+    assert vecs[0] != vecs[2]
+    # 3 unique of 4 rows
+    assert manifest["unique_text_count"] == 3
+    assert manifest["duplicate_ratio"] == round(1.0 - 3 / 4, 6)
+    sr = manifest["serialization"]["script_residual"]
+    assert sr["column"] == "script"
+    assert sr["sbatch_stripped"] and sr["common_line_stripped"]
+    assert sr["empty_residual_rows"] == 2  # rows 2,3
+
+
 def test_embed_table_cache_resumes(tmp_path):
     import pyarrow as pa
 

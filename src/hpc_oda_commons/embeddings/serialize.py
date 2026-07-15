@@ -68,6 +68,10 @@ class EmbedConfig:
     extra_text_columns: tuple[str, ...] = ()  # user-added local columns (e.g. job script)
     extra_char_limit: int = 2000  # per-column truncation for extra columns
     instruction: str = ""  # optional model instruction (empty = embed as document)
+    # Name of a raw script column to reduce to its distinguishing residual before
+    # embedding (strip #SBATCH + lines common to prose-twins). Empty = disabled. Must
+    # also appear in extra_text_columns so the residual is included in the text.
+    script_residual_column: str = ""
 
     def __post_init__(self) -> None:
         if self.text_format not in ("prose", "kv"):
@@ -77,6 +81,14 @@ class EmbedConfig:
             raise LeakageError(
                 f"extra_text_columns includes target/post-hoc field(s) {bad}; embedding these "
                 "would leak the prediction target."
+            )
+        if (
+            self.script_residual_column
+            and self.script_residual_column not in self.extra_text_columns
+        ):
+            raise ValueError(
+                f"script_residual_column {self.script_residual_column!r} must also be listed in "
+                "extra_text_columns so the residual is embedded."
             )
 
 

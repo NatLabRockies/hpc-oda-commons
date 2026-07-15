@@ -82,15 +82,28 @@ repo — the manifest records column *names* + a corpus fingerprint, never conte
 ```yaml
 # .hpc_oda/embed.yml  (local, gitignored)
 extra_text_columns: [script]
+script_residual_column: script   # reduce the script to its distinguishing residual
 extra_char_limit: 2000
 ```
 ```bash
 hpc-oda embed <in.parquet> --out <out.parquet> --model microsoft/harrier-oss-v1-0.6b --config .hpc_oda/embed.yml
 ```
 
-Note: in spike experiments, naively appending raw truncated job scripts *hurt*
-accuracy on capable models (boilerplate dilution) — treat script inclusion as an
-experiment (strip/normalize boilerplate first), not a default.
+**Script residuals.** Naively appending whole job scripts dilutes the signal with shared
+boilerplate — and the `#SBATCH` directives just restate the prose. Set
+`script_residual_column` to embed only what *distinguishes* each script:
+
+1. `#SBATCH` directive lines are dropped from every script (they duplicate the prose).
+2. For rows sharing an identical prose serialization (prose-twins), lines common to the
+   whole group are dropped; each row keeps only its residual (original order).
+3. Rows with unique prose keep their `#SBATCH`-stripped script (no group to diff against).
+
+This directly attacks the 72%-duplicate problem: prose-twins that differ only in, say, an
+input file become distinct in embedding space, while truly identical jobs stay identical
+(and dedup collapses them). The manifest records the *method* and aggregate stats
+(`groups`, `singletons`, `empty_residual_rows`, `mean_residual_chars`) — **never script
+content**. Script content stays in your local, gitignored data and never reaches logs,
+the manifest, or the repo.
 
 ## Run a benchmark
 

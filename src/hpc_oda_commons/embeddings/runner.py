@@ -8,6 +8,7 @@ import hashlib
 import json
 import time
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -16,9 +17,33 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from hpc_oda_commons.embeddings.encoders import Encoder
+from hpc_oda_commons.embeddings.script_residual import ResidualStats, compute_residuals
 from hpc_oda_commons.embeddings.serialize import EmbedConfig, included_fields, serialize_rows
 
 ProgressFn = Callable[[int, int, float], None]
+
+
+def _apply_script_residuals(rows: list[dict], config: EmbedConfig) -> ResidualStats:
+    """In place, replace each row's script column with its distinguishing residual.
+
+    Groups rows by their prose serialization (submission-time text *without* the script
+    column), then reduces each script to what is unique relative to its prose-twins. The
+    residual rides the existing extra-column path, so downstream serialization is unchanged.
+    """
+    col = config.script_residual_column
+    # Group key = the serialized text with the script column excluded, so a "group" is the
+    # set of rows sharing an identical submission signature.
+    key_config = replace(
+        config,
+        extra_text_columns=tuple(c for c in config.extra_text_columns if c != col),
+        script_residual_column="",
+    )
+    group_keys = serialize_rows(rows, key_config)
+    scripts = [str(row.get(col) or "") for row in rows]
+    residuals, stats = compute_residuals(scripts, group_keys)
+    for row, residual in zip(rows, residuals, strict=True):
+        row[col] = residual
+    return stats
 
 
 def _dedup_texts(texts: list[str]) -> tuple[list[str], np.ndarray]:
@@ -118,6 +143,9 @@ def embed_table(
         raise ValueError(f"extra_text_columns not present in table: {missing}")
 
     rows = table.to_pylist()
+    residual_stats = (
+        _apply_script_residuals(rows, config) if config.script_residual_column else None
+    )
     texts = serialize_rows(rows, config)
     # Embed each distinct text once, then scatter its vector to every row that produced
     # it. Real ODA corpora are heavily duplicated on submission-time text, so this is a
@@ -139,7 +167,15 @@ def embed_table(
     pq.write_table(out_table, output_path)
 
     manifest = _build_manifest(
-        encoder, config, columns, texts, len(rows), len(unique_texts), dim, output_path
+        encoder,
+        config,
+        columns,
+        texts,
+        len(rows),
+        len(unique_texts),
+        dim,
+        output_path,
+        residual_stats,
     )
     manifest_path = output_path.with_suffix(output_path.suffix + ".manifest.json")
     manifest_path.write_text(
@@ -157,10 +193,23 @@ def _build_manifest(
     n_unique: int,
     dim: int,
     output_path: Path,
+    residual_stats: ResidualStats | None = None,
 ) -> dict:
     # Fingerprint the serialized corpus (a one-way digest — records *what* was embedded,
     # including any internal extra columns, without storing their content).
     fingerprint = hashlib.sha256("\n\x00\n".join(texts).encode("utf-8")).hexdigest()
+    # Content-free: method flags + aggregate counts only. Never residual/script content.
+    script_residual = None
+    if residual_stats is not None:
+        script_residual = {
+            "column": config.script_residual_column,
+            "sbatch_stripped": True,
+            "common_line_stripped": True,
+            "groups": residual_stats.groups,
+            "singletons": residual_stats.singletons,
+            "empty_residual_rows": residual_stats.empty_residual_rows,
+            "mean_residual_chars": residual_stats.mean_residual_chars,
+        }
     return {
         "schema_version": "oda.embedding.v0.1.0",
         "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -179,6 +228,7 @@ def _build_manifest(
             "included_fields": included_fields(config, columns),
             "extra_text_columns": list(config.extra_text_columns),
             "instruction": config.instruction,
+            "script_residual": script_residual,
         },
         "text_fingerprint": fingerprint,
         "row_count": n_rows,

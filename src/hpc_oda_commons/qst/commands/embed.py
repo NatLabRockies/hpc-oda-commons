@@ -38,8 +38,9 @@ def _load_config(config_path: Path | None, text_format: str, instruction: str) -
             extra_text_columns=tuple(data.get("extra_text_columns", ()) or ()),
             extra_char_limit=int(data.get("extra_char_limit", 2000)),
             instruction=str(data.get("instruction", instruction)),
+            script_residual_column=str(data.get("script_residual_column", "") or ""),
         )
-    except LeakageError as exc:
+    except (LeakageError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
 
 
