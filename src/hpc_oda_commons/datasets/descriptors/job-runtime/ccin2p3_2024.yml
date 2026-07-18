@@ -1,13 +1,13 @@
 dataset_id: dataset.job_runtime.ccin2p3_2024
 schema_version: oda.dataset.v0.1.0
-name: CC-IN2P3 2024 Workload (recent month)
-version: 1.0.0
+name: CC-IN2P3 2024 Workload (Sep–Dec)
+version: 1.1.0
 description: >
   SLURM sacct per-job trace from CC-IN2P3 (CNRS national computing centre, France).
   The full year 2024 is ~44M jobs across 12 monthly tar.gz files; this descriptor
-  curates the most recent month (December 2024) as the premium runtime slice.
-  Runtime-prediction target = elapsed (seconds); requested walltime = timelimit
-  (seconds). CPU/HTC-centric (single-node jobs dominate).
+  curates the last four months (September–December 2024) as the premium runtime slice —
+  enough for a 3-month rolling-benchmark window. Runtime-prediction target = elapsed
+  (seconds); requested walltime = timelimit (seconds). CPU/HTC-centric (single-node jobs dominate).
 problem_domains: [job-runtime-prediction]
 systems: [CC-IN2P3]
 providers: [CNRS, "CC-IN2P3"]
@@ -15,14 +15,26 @@ citation: { doi: "10.5281/zenodo.18668107", url: "https://zenodo.org/records/186
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [cc-in2p3, cnrs, slurm, sacct, htc]
 size:
-  default_bytes: 51103408
+  default_bytes: 316634301
   full_bytes: 885000000
-  rows_hint: "Dec 2024 month; 44M jobs full year"
+  rows_hint: "Sep-Dec 2024 (~4 months); 44M jobs full year"
 
 source:
   kind: zenodo
   record: "18668107"
   resources:
+    - filename: "09.tsv.tar.gz"
+      url: "https://zenodo.org/records/18668107/files/09.tsv.tar.gz"
+      sha256: d6e95189bac9fe622162188d987ee5e44202fab9766608c1c994f4b5467758f8
+      bytes: 91009248
+    - filename: "10.tsv.tar.gz"
+      url: "https://zenodo.org/records/18668107/files/10.tsv.tar.gz"
+      sha256: 72edf88070eef948f338d65ed36f7e955cadea84052da4b476313bca3d97cc3b
+      bytes: 87347145
+    - filename: "11.tsv.tar.gz"
+      url: "https://zenodo.org/records/18668107/files/11.tsv.tar.gz"
+      sha256: 2e56fa4a3883b3e4f150be7df6dbbcff3b6a4ece9d3a4c19a19d12581db8bf8b
+      bytes: 87174500
     - filename: "12.tsv.tar.gz"
       url: "https://zenodo.org/records/18668107/files/12.tsv.tar.gz"
       sha256: 3cb2863889afffbc629ff3b1f353ff3d45f49e3aeb7f555d85c4b8166891ada3

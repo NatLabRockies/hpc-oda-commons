@@ -1,12 +1,15 @@
 dataset_id: dataset.job_runtime.fdata_fugaku
 schema_version: oda.dataset.v0.1.0
-name: F-DATA (Fugaku Jobs, recent month)
-version: 1.0.0
+name: F-DATA (Fugaku Jobs, Jul–Sep 2023)
+version: 1.1.0
 description: >
   Fujitsu/Fugaku job records from F-DATA (RIKEN R-CCS / University of Bologna).
-  This descriptor curates the most recent monthly file (2024-04, 420,450 jobs) as
-  the premium runtime slice; the full dataset spans Mar 2021 - Apr 2024 (38 monthly
-  parquet files, ~24M jobs, ~28 GB). Runtime-prediction target = duration (seconds).
+  This descriptor curates a gap-free three-month slice (2023-07 through 2023-09) as the
+  premium runtime slice — an outage-free 90-day window for the rolling benchmark. Fugaku
+  takes periodic ~3-day maintenance outages, so this quarter was chosen by scanning for an
+  outage-free period (the recent Jan–Apr 2024 had two 3-day full outages and no clean 90-day
+  window). The full dataset spans Mar 2021 - Apr 2024 (38 monthly parquet files, ~24M jobs,
+  ~28 GB). Runtime-prediction target = duration (seconds).
   Rich per-job power/perf counters (econ, avg/min/max pcon, flops, mbwidth) are
   available for a later power phase.
 problem_domains: [job-runtime-prediction, job-power-prediction]
@@ -16,18 +19,26 @@ citation: { doi: "10.5281/zenodo.11467483", url: "https://zenodo.org/records/114
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [fugaku, a64fx, fujitsu, arm, power]
 size:
-  default_bytes: 568138934
+  default_bytes: 2601266499
   full_bytes: 28000000000
-  rows_hint: "420,450 jobs (2024-04); ~24M full"
+  rows_hint: "Jul-Sep 2023 (3 clean months); ~24M full"
 
 source:
   kind: zenodo
   record: "11467483"
   resources:
-    - filename: "24_04.parquet"
-      url: "https://zenodo.org/records/11467483/files/24_04.parquet"
-      sha256: 7d56cab2d30e8faf3863e72a177c1da6393df960f93d5183e4fdcb56538cec1d
-      bytes: 568138934
+    - filename: "23_07.parquet"
+      url: "https://zenodo.org/records/11467483/files/23_07.parquet"
+      sha256: eaed73c23bae77d51901bd946d7c7f1c80b17403305dab72f8e9435acb87a31f
+      bytes: 968169044
+    - filename: "23_08.parquet"
+      url: "https://zenodo.org/records/11467483/files/23_08.parquet"
+      sha256: 08c3d68d165e5e5f635a9b077acaf416d066006f7fee618c9dd2df46af32648d
+      bytes: 1177409305
+    - filename: "23_09.parquet"
+      url: "https://zenodo.org/records/11467483/files/23_09.parquet"
+      sha256: a5fb88d30448ccec00224c43abab62723e1f2bc31db93fc3985650fcc9dbf5b9
+      bytes: 455688150
 
 decode:
   format: parquet
