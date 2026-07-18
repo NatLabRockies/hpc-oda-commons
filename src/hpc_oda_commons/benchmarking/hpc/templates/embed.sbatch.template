@@ -1,0 +1,18 @@
+#!/bin/bash
+#SBATCH --account={{account}}
+#SBATCH --partition={{partition}}
+#SBATCH --time={{time}}
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task={{cpus}}
+#SBATCH --gres={{gres}}
+#SBATCH --job-name={{job_name}}
+#SBATCH --output={{log}}
+# Embed dataset={{dataset_id}} window={{window}} with model={{model}} on GPU (reused by embedding_knn)
+set -euo pipefail
+cd {{workdir}}
+{{hpc_oda}} embed {{input}} \
+  --out {{output}} \
+  --model {{model}} \
+  --format prose --device auto --dtype fp16 \
+  --batch-size 64 --cache-dir {{cache_dir}}

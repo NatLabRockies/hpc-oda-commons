@@ -1,0 +1,16 @@
+#!/bin/bash
+#SBATCH --account={{account}}
+#SBATCH --partition={{partition}}
+#SBATCH --time={{time}}
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task={{cpus}}
+#SBATCH --mem={{mem}}
+#SBATCH --job-name={{job_name}}
+#SBATCH --output={{log}}
+# Benchmark cell: model={{model_id}} dataset={{dataset_id}} window={{window}} tier={{tier}}
+set -euo pipefail
+export HPC_ODA_OFFLINE=1
+export OMP_NUM_THREADS={{cpus}}
+cd {{workdir}}
+{{hpc_oda}} benchmark {{recipe}}

@@ -1,0 +1,29 @@
+# EXAMPLE HPC site config for the benchmark-matrix runner.
+#
+# Copy this to a GITIGNORED local path (default: `.hpc_oda/hpc-site.yml`) and fill in YOUR
+# cluster's values. This tracked example must contain ONLY placeholders — never real hostnames,
+# usernames, accounts, or paths. Site-specific values stay local (see CONTRIBUTING / the repo's
+# no-site-specifics rule); the runner reads them from your local copy and fills the tracked
+# `templates/*.sbatch.template` at submit time.
+schema_version: oda.hpc_site.v0.1.0
+
+# --- SSH + staging ---
+host: your-ssh-alias               # ~/.ssh/config alias for passwordless login (CPU login node)
+gpu_host: your-gpu-ssh-alias       # GPU login node, for building the embed env (optional)
+user: your-username
+remote_base: /path/to/project/oda-bench   # everything (repo, env, data, results) lives here
+
+# --- Cluster environment ---
+conda_module: anaconda3/2024.06.1  # module to `module load` for conda; "" if conda is on PATH
+env_prefix: /path/to/project/oda-bench/env   # conda env prefix (has bin/python, bin/hpc-oda)
+
+# --- Slurm ---
+account: your-slurm-account
+partitions:
+  cpu: your-cpu-partition          # most benchmark cells
+  bigmem: your-bigmem-partition    # the heaviest dataset (large per-window training set)
+  gpu: your-gpu-partition          # embedding jobs
+gpu_gres: "gpu:1"                  # GRES for one GPU, e.g. "gpu:h100:1"
+
+# --- Embedding ---
+embedding_model: microsoft/harrier-oss-v1-0.6b   # sentence-transformers model id (or "stub")
