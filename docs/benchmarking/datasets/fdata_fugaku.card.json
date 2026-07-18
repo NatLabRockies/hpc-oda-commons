@@ -1,0 +1,88 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.fdata_fugaku",
+  "generated_at": "2026-07-18T19:53:42.870105+00:00",
+  "source": {
+    "table_path": "data/datasets/fdata_fugaku/data.parquet",
+    "system": "Fugaku",
+    "descriptor": "dataset.job_runtime.fdata_fugaku"
+  },
+  "characterization": {
+    "n_rows": 2576793,
+    "full_span": {
+      "start": "2023-06-30",
+      "end": "2023-09-30"
+    },
+    "healthy_span": {
+      "start": "2023-06-30",
+      "end": "2023-09-30",
+      "days": 93,
+      "rows": 2576793
+    },
+    "daily_volume": {
+      "median": 25087.0,
+      "min": 2583,
+      "max": 113432,
+      "gap_floor": 1254.4
+    },
+    "rate_per_day": 27707.5,
+    "gaps": [],
+    "columns": {
+      "user": {
+        "cardinality": 826,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 2,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 1.0,
+      "median": 2065.0,
+      "p90": 39923.0,
+      "p99": 158888.1,
+      "max": 259175.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2023-06-30",
+    "window_end": "2023-09-27",
+    "test_start": "2023-08-29",
+    "test_end": "2023-09-27",
+    "n_rows": 2453969,
+    "rate_per_day": 27266.3,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "a79f56da07bdff876a5c47ba3d082b18a12fab77",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/fdata_fugaku/data.parquet",
+        "sha256": "e127f180acd9cb1768a4f0fa2e367a98ee203f37a54fbd821cb132f2a603e583",
+        "size_bytes": 60349120,
+        "mtime_epoch": 1784404352.1837244
+      }
+    ]
+  }
+}

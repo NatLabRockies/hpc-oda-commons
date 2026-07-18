@@ -1,0 +1,96 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.ccin2p3_2024",
+  "generated_at": "2026-07-18T19:36:47.973884+00:00",
+  "source": {
+    "table_path": "data/datasets/ccin2p3_2024/data.parquet",
+    "system": "CC-IN2P3",
+    "descriptor": "dataset.job_runtime.ccin2p3_2024"
+  },
+  "characterization": {
+    "n_rows": 15737082,
+    "full_span": {
+      "start": "2024-07-25",
+      "end": "2024-12-31"
+    },
+    "healthy_span": {
+      "start": "2024-09-01",
+      "end": "2024-12-31",
+      "days": 122,
+      "rows": 15723471
+    },
+    "daily_volume": {
+      "median": 100677.5,
+      "min": 12096,
+      "max": 1290966,
+      "gap_floor": 5033.9
+    },
+    "rate_per_day": 128880.9,
+    "gaps": [],
+    "columns": {
+      "partition": {
+        "cardinality": 8,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 629,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 93,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 6,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 2556.0,
+      "p90": 12844.0,
+      "p99": 70558.0,
+      "max": 4585042.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2024-09-09",
+    "window_end": "2024-12-07",
+    "test_start": "2024-11-08",
+    "test_end": "2024-12-07",
+    "n_rows": 12581060,
+    "rate_per_day": 139789.6,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "a79f56da07bdff876a5c47ba3d082b18a12fab77",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/ccin2p3_2024/data.parquet",
+        "sha256": "a8fed83a542d85809b2db11f0ecc939395c162e6a1d2510721e64324b4f5afb5",
+        "size_bytes": 268507634,
+        "mtime_epoch": 1784402899.4075432
+      }
+    ]
+  }
+}
