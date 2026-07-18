@@ -11,12 +11,11 @@ A few valuable datasets aren't auto-fetched, for different reasons — documente
 retrieve them yourself and turn them into canonical `oda.job.v0.2.0` tables:
 
 - **Blue Waters** — Globus only (no direct HTTPS at all).
-- **Alibaba GPU-v2026** — a plain-HTTPS OSS URL, but the host isn't resolvable from every network.
 - **FRESCO Stampede1** — a plain-HTTPS datadepot URL, but the single 1.13 GB file wouldn't transfer
   through the proxy of the environment these descriptors were built in.
 
-The last two are *reachable in principle* — they just weren't fetchable/pinnable from here — so
-on an unrestricted network they can be registered normally (`kind: http` + a pinned `sha256`).
+The last one is *reachable in principle* — it just wasn't fetchable/pinnable from here — so
+on an unrestricted network it can be registered normally (`kind: http` + a pinned `sha256`).
 
 **ALCF DJC** was on this list too, but a closer look showed it isn't a hard wall — its downloads
 sit behind a one-time name/email form on *public* data. It is now a **registered `manual`-kind
@@ -53,22 +52,6 @@ After you've downloaded the raw file(s) from the source below, there are two pat
 - **Format:** per-day `key=value` text files — needs a Torque-accounting parser (a `manual`
   descriptor for this would also add that decoder).
 - **License:** none stated — cite the NSF Blue Waters project.
-
-### Alibaba GPU-v2026 (Alibaba ASI)
-
-- **What:** `asi_opensource_job_execution_summary` from Alibaba's ASI GPU platform (155k GPUs,
-  6 months, OSDI'26). Fields include `duration_hours`, `schedule_delay_sec` (queue wait),
-  `gpu_request`, priority/type. **No requested-walltime** (Kubernetes GPU trace) → a secondary,
-  cross-domain complement.
-- **Where:** a plain-HTTPS public OSS URL — **not** an SDK (the
-  [clusterdata download page](https://github.com/alibaba/clusterdata/blob/master/cluster-trace-gpu-v2026/docs/data_download.md)
-  uses `curl -O`): `https://tre-clusterdata.oss-cn-hangzhou.aliyuncs.com/cluster-trace-gpu-v2026/data/asi_opensource_job_execution_summary.zip`
-  (1,188,295,031 bytes; skip the huge `*_hourly.zip` telemetry). **Caveat:** that host did not
-  resolve from the environment these descriptors were built in (DNS-blocked), so it isn't a
-  registered/pinned dataset — but on a network that reaches `aliyuncs.com` it fits the normal
-  lightweight fetch: download it, then use the wizard or a pinned `kind: http` descriptor.
-- **Format:** ZIP → `part-000.parquet` (archive decode + a straightforward mapping handle it).
-- **License:** research-use (see the Alibaba `clusterdata` repository).
 
 ### ALCF DJC (Argonne — Polaris / Aurora / Theta / Mira) — **registered (manual-kind)**
 
