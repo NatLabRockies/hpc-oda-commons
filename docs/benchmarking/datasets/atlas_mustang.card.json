@@ -1,0 +1,133 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.atlas_mustang",
+  "generated_at": "2026-07-18T18:30:40.698932+00:00",
+  "source": {
+    "table_path": "data/datasets/atlas_mustang/data.parquet",
+    "system": "Mustang",
+    "descriptor": "dataset.job_runtime.atlas_mustang"
+  },
+  "characterization": {
+    "n_rows": 2019005,
+    "full_span": {
+      "start": "2011-10-27",
+      "end": "2016-11-08"
+    },
+    "healthy_span": {
+      "start": "2011-11-05",
+      "end": "2016-11-04",
+      "days": 1827,
+      "rows": 2016065
+    },
+    "daily_volume": {
+      "median": 276.5,
+      "min": 1,
+      "max": 23446,
+      "gap_floor": 13.8
+    },
+    "rate_per_day": 1103.5,
+    "gaps": [
+      {
+        "start": "2011-11-06",
+        "end": "2011-11-08",
+        "days": 3
+      },
+      {
+        "start": "2011-11-10",
+        "end": "2011-11-15",
+        "days": 6
+      },
+      {
+        "start": "2011-11-23",
+        "end": "2011-11-28",
+        "days": 6
+      },
+      {
+        "start": "2011-12-03",
+        "end": "2011-12-05",
+        "days": 3
+      },
+      {
+        "start": "2011-12-10",
+        "end": "2011-12-12",
+        "days": 3
+      },
+      {
+        "start": "2011-12-27",
+        "end": "2012-01-02",
+        "days": 7
+      },
+      {
+        "start": "2014-09-19",
+        "end": "2014-09-21",
+        "days": 3
+      },
+      {
+        "start": "2016-10-22",
+        "end": "2016-10-26",
+        "days": 5
+      }
+    ],
+    "columns": {
+      "user": {
+        "cardinality": 558,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 574,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 3,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 259.0,
+      "p90": 4724.0,
+      "p99": 57601.0,
+      "max": 523186.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2015-08-08",
+    "window_end": "2015-11-05",
+    "test_start": "2015-10-07",
+    "test_end": "2015-11-05",
+    "n_rows": 65571,
+    "rate_per_day": 728.6,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "1f961b887ea83187480cb4d7e415e8f7a1bff418",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/atlas_mustang/data.parquet",
+        "sha256": "9c711af0053f79bf91cd7c3a32bdf65fdb3062d90ba7463b752461092fce61fb",
+        "size_bytes": 45560508,
+        "mtime_epoch": 1784399389.8058217
+      }
+    ]
+  }
+}
