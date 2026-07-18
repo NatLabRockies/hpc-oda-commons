@@ -57,4 +57,8 @@ Key guardrails:
 
 Personal, per-developer agent preferences may live in a gitignored
 `.claude/CLAUDE.md`, but anything that should bind the team belongs in the
-tracked docs above.
+tracked docs above. Your local `.claude/CLAUDE.md`, if present, is imported here
+(a harmless no-op when absent — the file is gitignored, so nothing site-specific
+is committed):
+
+@.claude/CLAUDE.md
