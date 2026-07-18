@@ -99,6 +99,7 @@ def remote_mkdirs_command(site: SiteConfig, *, extra: list[str] | None = None) -
         f"{site.repo_dir}/data/embeddings",
         f"{site.repo_dir}/runs",
         site.cache_dir,
+        f"{site.hf_home}/hub",
         *(extra or []),
     ]
     quoted = " ".join(shlex.quote(d) for d in dirs)

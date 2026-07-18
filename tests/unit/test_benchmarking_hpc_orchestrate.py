@@ -102,6 +102,7 @@ def test_remote_mkdirs_and_sacct_commands() -> None:
     assert "mkdir -p" in mk.argv[-1]
     assert "/base/hpc-oda-commons/logs" in mk.argv[-1]
     assert "/base/cache" in mk.argv[-1]
+    assert "/base/hf/hub" in mk.argv[-1]  # HF model cache dir
 
     sacct = sacct_command(_site(), ["1", "2", "3"])
     assert "sacct -X -j 1,2,3" in sacct.argv[-1]

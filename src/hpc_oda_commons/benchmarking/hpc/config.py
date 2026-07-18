@@ -63,8 +63,14 @@ class SiteConfig:
 
     @property
     def cache_dir(self) -> str:
-        """Shared HF/vector cache dir (keeps embed jobs offline-friendly and resumable)."""
+        """Vector cache dir for embed resume (``embed --cache-dir``)."""
         return f"{self.remote_base}/cache"
+
+    @property
+    def hf_home(self) -> str:
+        """Shared Hugging Face home (``HF_HOME``). The embedding model is pre-staged into
+        ``{hf_home}/hub`` so embed jobs load it offline (compute nodes have no internet)."""
+        return f"{self.remote_base}/hf"
 
     def partition(self, kind: str) -> str:
         try:
