@@ -1,6 +1,6 @@
 # Runtime Dataset Curation — Status & Remaining Roadmap
 
-**Updated:** 2026-07-18 (23 runtime datasets registered)
+**Updated:** 2026-07-18 (24 runtime datasets registered)
 **Companion to:** [`runtime-first-investigation.md`](runtime-first-investigation.md) (the plan) and
 the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../design/public-dataset-ingestion.md)).
 
@@ -48,8 +48,9 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | `fresco_anvil` | Anvil (Purdue, A100) | 1,475,155 | datadepot/https | 11 months, real walltime |
 | `fresco_conte` | Conte (Purdue) | 1,042,125 | datadepot/https | Torque, 2015-16, real walltime |
 | `fresco_stampede1` | Stampede1 (TACC) | 8,710,048 | datadepot/https | Slurm, 2013-2018, real walltime |
-| `alcf_djc_polaris` | Polaris (Argonne) | 957,606 | ALCF (manual) | PBS, 2022-2026, real walltime |
-| `alcf_djc_aurora` | Aurora (Argonne) | 891,952 | ALCF (manual) | PBS, 2025-2026, real walltime |
+| `alcf_djc_polaris` | Polaris (Argonne) | 1,000,194 | ALCF (manual) | PBS, 2022-2026, real walltime |
+| `alcf_djc_aurora` | Aurora (Argonne) | 927,999 | ALCF (manual) | PBS, 2025-2026, real walltime |
+| `alcf_djc_theta` | Theta (Argonne) | 540,391 | ALCF (manual) | Cobalt/PBS, 2017-2023 (KNL), real walltime |
 
 ~62M jobs across SLURM / LSF / PBS / Torque / SWF and cloud, 1996–2026, x86 / ARM / GPU, home-lab included.
 All strict-validate against `oda.job.v0.2.0`.
@@ -72,8 +73,9 @@ downloads fine; it is now the registered `fresco_stampede1` dataset — 8,710,04
 walltime.)
 
 (**ALCF DJC** was here too, but a closer look found its data isn't behind a Cloudflare wall — just a
-one-time name/email form on public data. Now registered as two manual-kind datasets — all Polaris
-years (`alcf_djc_polaris`, 2022–2026) + Aurora (`alcf_djc_aurora`, 2025–2026); Theta/Mira add the
+one-time name/email form on public data. Now registered as three manual-kind datasets — all Polaris
+years (`alcf_djc_polaris`, 2022–2026) + Aurora (`alcf_djc_aurora`, 2025–2026) + Theta
+(`alcf_djc_theta`, 2017–2023); Mira adds the
 same way. See [`alcf-djc-ingest.md`](alcf-djc-ingest.md).)
 
 ### Fetch-mechanism findings (most "backends" were never needed)
@@ -89,8 +91,9 @@ form (now a registered manual-kind dataset), not the Cloudflare wall it first lo
 
 ## What's left
 
-Runtime-first curation is effectively complete: **23 datasets** registered (incl. ALCF Polaris +
-Aurora via the manual-kind flow). The one remaining (Blue Waters) is genuinely not
+Runtime-first curation is effectively complete: **24 datasets** registered (incl. ALCF Polaris +
+Aurora + Theta via the manual-kind flow; the 2026 Polaris/Aurora files were re-pinned to the
+latest published export). The one remaining (Blue Waters) is genuinely not
 fetchable/pinnable from this environment (Globus) and is documented for user ingestion in
 [`external-datasets.md`](external-datasets.md) rather than pipeline-fetched.
 

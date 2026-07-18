@@ -551,7 +551,7 @@
       "entry_type": "dataset",
       "name": "ALCF DJC — Polaris (2022–2026)",
       "version": "1.1.0",
-      "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Polaris, all published years (2022-08 to 2026-06, 5 files), ALCF public DATA CATALOG. Cobalt/PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. 957,606 jobs. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the files yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes them. See docs/datasets/alcf-djc-ingest.md.",
+      "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Polaris, all published years (2022-08 to 2026-06, 5 files), ALCF public DATA CATALOG. Cobalt/PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. 1,000,194 jobs. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the files yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes them. See docs/datasets/alcf-djc-ingest.md.",
       "problem_domain": ["job-runtime-prediction"],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-alcf-public",
@@ -566,7 +566,7 @@
       "entry_type": "dataset",
       "name": "ALCF DJC — Aurora (2025–2026)",
       "version": "1.0.0",
-      "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Aurora, all published years (2025-01 to 2026-06, 2 files), ALCF public DATA CATALOG. Same schema as the Polaris DJC dataset: PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. 891,952 jobs. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the files yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes them. See docs/datasets/alcf-djc-ingest.md.",
+      "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Aurora, all published years (2025-01 to 2026-06, 2 files), ALCF public DATA CATALOG. Same schema as the Polaris DJC dataset: PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. 927,999 jobs. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the files yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes them. See docs/datasets/alcf-djc-ingest.md.",
       "problem_domain": ["job-runtime-prediction"],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-alcf-public",
@@ -574,6 +574,21 @@
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_aurora.yml"
+      }
+    },
+    {
+      "id": "dataset.job_runtime.alcf_djc_theta",
+      "entry_type": "dataset",
+      "name": "ALCF DJC — Theta (2017–2024)",
+      "version": "1.0.0",
+      "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Theta (Cray XC40/KNL), all published years (2017-07 to 2024, 8 files), ALCF public DATA CATALOG. Same schema as the Polaris/Aurora DJC datasets: Cobalt/PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. Theta decommissioned end of 2023. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the files yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes them. See docs/datasets/alcf-djc-ingest.md.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "LicenseRef-alcf-public",
+      "tags": ["alcf", "argonne", "theta", "knl", "pbs", "cobalt", "manual"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_theta.yml"
       }
     }
   ]

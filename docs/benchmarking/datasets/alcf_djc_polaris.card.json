@@ -1,0 +1,117 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.alcf_djc_polaris",
+  "generated_at": "2026-07-18T18:54:03.699257+00:00",
+  "source": {
+    "table_path": "data/datasets/alcf_djc_polaris/data.parquet",
+    "system": "Polaris",
+    "descriptor": "dataset.job_runtime.alcf_djc_polaris"
+  },
+  "characterization": {
+    "n_rows": 1000194,
+    "full_span": {
+      "start": "2022-08-08",
+      "end": "2026-07-15"
+    },
+    "healthy_span": {
+      "start": "2022-08-12",
+      "end": "2026-07-14",
+      "days": 1433,
+      "rows": 999068
+    },
+    "daily_volume": {
+      "median": 577.5,
+      "min": 2,
+      "max": 6936,
+      "gap_floor": 28.9
+    },
+    "rate_per_day": 697.2,
+    "gaps": [
+      {
+        "start": "2023-05-06",
+        "end": "2023-05-12",
+        "days": 7
+      },
+      {
+        "start": "2023-07-29",
+        "end": "2023-08-01",
+        "days": 4
+      },
+      {
+        "start": "2025-01-03",
+        "end": "2025-01-07",
+        "days": 5
+      },
+      {
+        "start": "2025-02-15",
+        "end": "2025-02-18",
+        "days": 4
+      }
+    ],
+    "columns": {
+      "queue": {
+        "cardinality": 3513,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 2522,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 587,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 121,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 224.0,
+      "p90": 5307.0,
+      "p99": 86510.1,
+      "max": 710741.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2025-07-04",
+    "window_end": "2025-10-01",
+    "test_start": "2025-09-02",
+    "test_end": "2025-10-01",
+    "n_rows": 72912,
+    "rate_per_day": 810.1,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "3071c4dd863b48e8b27e6870cdb937244d5b1347",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/alcf_djc_polaris/data.parquet",
+        "sha256": "d37bab17159447ecb93634512853e344d779aff627e9bdf2ecc7858089a19452",
+        "size_bytes": 33186859,
+        "mtime_epoch": 1784400811.7368062
+      }
+    ]
+  }
+}

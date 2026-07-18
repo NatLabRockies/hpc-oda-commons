@@ -1,0 +1,117 @@
+dataset_id: dataset.job_runtime.alcf_djc_theta
+schema_version: oda.dataset.v0.1.0
+name: ALCF DJC — Theta (2017–2024)
+version: 1.0.0
+description: >
+  DIM_JOB_COMPOSITE job accounting from Argonne's Theta supercomputer (Cray XC40 / KNL), all
+  published years (2017-07 through 2024, eight files), from the ALCF public DATA CATALOG. Same
+  schema as the Polaris/Aurora DJC datasets: Cobalt/PBS scheduler data with real requested walltime
+  (WALLTIME_SECONDS) and elapsed runtime (RUNTIME_SECONDS), plus cores/nodes used+requested, queue,
+  exit status, machine, award category, and science field; user/project pre-anonymized. Theta was
+  decommissioned end of 2023, so the 2024 file is near-empty. Primary-quality. ALCF gates downloads
+  behind a one-time name/email form, so this is a `manual`-kind dataset: fetch the files yourself,
+  then `datasets prepare --from <dir>` checksum-verifies and normalizes them. See
+  docs/datasets/alcf-djc-ingest.md.
+problem_domains: [job-runtime-prediction]
+systems: [Theta]
+providers: [ALCF, Argonne]
+citation: { url: "https://reports.alcf.anl.gov/data/index.html" }
+license:
+  spdx: LicenseRef-alcf-public
+  gated: true
+  notes: "ALCF Public Data; download requires a one-time name/email form. License unstated; cite ALCF."
+tags: [alcf, argonne, theta, knl, pbs, cobalt]
+size:
+  default_bytes: 57777942
+  full_bytes: 57777942
+  rows_hint: "540,391 jobs (Theta, 2017-2023); KNL, decommissioned end of 2023"
+
+source:
+  kind: manual
+  instructions: >
+    ALCF DJC is public data behind a one-time name/email form. In a browser open
+    https://reports.alcf.anl.gov/data/theta.html, click a DIM_JOB_COMPOSITE download link,
+    complete the short form (first/last name + email) once, then download all eight Theta
+    ANL-ALCF-DJC-THETA_*.csv.gz files into one directory. Run
+    `hpc-oda datasets prepare dataset.job_runtime.alcf_djc_theta --from <dir>` pointing at that
+    directory (each file's sha256 is checksum-verified before normalization). See
+    docs/datasets/alcf-djc-ingest.md for the full recipe.
+  resources:
+    - filename: ANL-ALCF-DJC-THETA_20170701_20171231.csv.gz
+      sha256: 37815dfa0fb4a6388c3863c4c27c45c6160780b752445a321bf815b13468ee10
+      bytes: 5388991
+    - filename: ANL-ALCF-DJC-THETA_20180101_20181231.csv.gz
+      sha256: 617e454f0d1e7c9734713f52a32f1c2d55b1ae998fd2879ac17489155af7120d
+      bytes: 14004346
+    - filename: ANL-ALCF-DJC-THETA_20190101_20191231.csv.gz
+      sha256: a1b2a1ddc1a6a1b8b895c6f5a6cdaab6b3f3ff670fa8cecb18d2fcfaa6abc654
+      bytes: 10073019
+    - filename: ANL-ALCF-DJC-THETA_20200101_20201231.csv.gz
+      sha256: fe75b2debe5c1d107e73e804bde801c5ebcc1b3fc9292d3ea5f61d56a9e2ded2
+      bytes: 7955354
+    - filename: ANL-ALCF-DJC-THETA_20210101_20211231.csv.gz
+      sha256: 544992c3b2e116e305e1dabd4d07fe5e3d51f297258be798c0e3ec1f984a0416
+      bytes: 8395387
+    - filename: ANL-ALCF-DJC-THETA_20220101_20221231.csv.gz
+      sha256: 44e28efdf727c153cc21724c449810f33678f213fa70d224e06fddae45eb3ba7
+      bytes: 6927863
+    - filename: ANL-ALCF-DJC-THETA_20230101_20231231.csv.gz
+      sha256: 8de5a9d17caf6a24ccfe094693ee78588be10fdaf74c8ebf723dc54ace055903
+      bytes: 5006763
+    - filename: ANL-ALCF-DJC-THETA_20240101_20241231.csv.gz
+      sha256: 5e4be84c7cc2bac4c4fbd7b2f7757bb44c18702af7f9ed91ecb13b082a0aec32
+      bytes: 26219
+
+decode:
+  format: csv
+  options:
+    # Read only the mapped columns (the raw file has 67 columns incl. a heavy node-list field).
+    columns:
+      [
+        JOB_NAME,
+        QUEUED_TIMESTAMP,
+        START_TIMESTAMP,
+        END_TIMESTAMP,
+        RUNTIME_SECONDS,
+        WALLTIME_SECONDS,
+        CORES_USED,
+        CORES_REQUESTED,
+        NODES_USED,
+        NODES_REQUESTED,
+        QUEUE_NAME,
+        EXIT_STATUS,
+        USERNAME_GENID,
+        PROJECT_NAME_GENID,
+        MACHINE_NAME,
+        ALLOCATION_AWARD_CATEGORY,
+        SCIENCE_FIELD_SHORT,
+      ]
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: JOB_NAME }
+      submit_time: { from: QUEUED_TIMESTAMP, type: timestamp, format: iso8601 }
+      start_time: { from: START_TIMESTAMP, type: timestamp, format: iso8601 }
+      end_time: { from: END_TIMESTAMP, type: timestamp, format: iso8601 }
+      runtime_seconds: { from: RUNTIME_SECONDS, type: duration, unit: seconds }
+      requested_seconds: { from: WALLTIME_SECONDS, type: duration, unit: seconds }
+      allocated_cpus: { from: CORES_USED, type: integer }
+      num_cores_req: { from: CORES_REQUESTED, type: integer }
+      num_nodes_alloc: { from: NODES_USED, type: integer }
+      num_nodes_req: { from: NODES_REQUESTED, type: integer }
+      queue: { from: QUEUE_NAME }
+      job_state: { from: EXIT_STATUS }
+      user: { from: USERNAME_GENID }
+      account: { from: PROJECT_NAME_GENID }
+      machine: { from: MACHINE_NAME }
+      award_category: { from: ALLOCATION_AWARD_CATEGORY }
+      science_field: { from: SCIENCE_FIELD_SHORT }
+    filter:
+      require_nonnull: [runtime_seconds, start_time, end_time]
+      require_positive: [allocated_cpus]
+      require_end_after_start: true
+    output: { id: alcf_djc_theta, path: data/datasets/alcf_djc_theta/data.parquet }
