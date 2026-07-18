@@ -40,7 +40,7 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | `pwa_sdsc_blue` | SDSC Blue Horizon | 238,562 | PWA/SWF | |
 | `atlas_mustang` | Mustang (LANL) | 2,019,005 | Atlas/https | synth id, timedelta |
 | `atlas_opentrinity` | Trinity (LANL) | 21,531 | Atlas/https | synth id, timedelta |
-| `mit_supercloud` | Supercloud (MIT) | 395,914 | S3/https | |
+| `mit_supercloud` | Supercloud (MIT) | 395,914 | S3/https | Jan–Oct 2021 (~9 mo) |
 | `nlr_kestrel` | Kestrel (H100) | 9,321,737 | data.nlr.gov | home-lab |
 | `nlr_eagle` | Eagle | 13,836,216 | data.nlr.gov | home-lab |
 | `ic2` | IC2/Polaris/AWS | 3,599 | Zenodo/JSON | cloud+HPC |

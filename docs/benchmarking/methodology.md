@@ -73,22 +73,29 @@ submission) with heavily overlapping years. **Use `nlr_eagle`** (more recent, lo
 double-count one machine. `nrel_eagle` stays registered as valid data; it is only excluded
 from the benchmark roster.
 
-**Requires ≥3 months of contiguous data** (the config needs 90 days). Under this rule:
+**Targets a 90-day window** (60d train + 30d test) — a *soft* target, not a hard cutoff. A
+dataset is included if it has a healthy span that supports a meaningful rolling evaluation,
+using the largest window that fits; a span shorter than 90 days is used as-is and the reduced
+coverage is noted on the card (its earliest rolling windows get reduced lookback). A dataset is
+excluded only when its span is too short to even form the 30-day test period, or the data is
+fundamentally unsuitable. Under this:
 
-- **Excluded — too short:** `mit_supercloud` (~1 month, no more available), `adastra_mi250`
-  (~15 days), `ic2` (3,599 rows total; cloud tasks, not a machine time-series), and
-  `atlas_opentrinity` — **characterization measured its real span at only 80 days** (the
-  descriptor's "2017" hint was wrong); under the ≥90-day rule it is excluded (its card records
-  the measured span as evidence).
+- **Excluded — too short / unsuitable:** `adastra_mi250` (a deliberately-published ~15-day
+  sample; measured ~24 days — shorter than the 30-day test period, and unhealthy) and `ic2`
+  (3,599 rows total; cloud tasks, not a machine time-series).
 - **Re-curate to 3 months** (data is available; a small curation task): `ccin2p3_2024`
   (currently Dec-2024 only → pull ~3 months from its 12 monthly files), `fdata_fugaku`
   (currently 2024-04 only → 3 consecutive monthly files).
-- **Qualify as-is:** the remaining datasets. Some are *thin* (`atlas_mustang`, `pwa_kit_fh2`)
-  — sparse rolling windows; flagged on their cards.
+- **Qualify as-is:** the remaining datasets. Some are *thin* (`atlas_mustang`, `pwa_kit_fh2` —
+  sparse rolling windows) or *short* (`atlas_opentrinity` — a healthy 80-day span < the 90-day
+  target, included with an 80-day window and reduced early-window lookback); all flagged on
+  their cards.
 
-Net benchmark roster: ~18 datasets (16 as-is + 2 after re-curation). Each dataset's final
-window, health, and any caveats are recorded on its card; the health gate may reclassify a
-dataset once its real timestamps are measured — as it did for `atlas_opentrinity`.
+Net benchmark roster: ~20 datasets (18 as-is + 2 after re-curation). Each dataset's final
+window, health, and any caveats are recorded on its card; measuring real timestamps reclassified
+several — **re-included `mit_supercloud`** (its "~1 month" hint was wrong — measured ~9 months,
+Jan–Oct 2021, healthy) and **kept `atlas_opentrinity`** on an 80-day window (the 90-day target
+is soft, and 80 healthy days are worth keeping).
 
 ## The dataset card
 
