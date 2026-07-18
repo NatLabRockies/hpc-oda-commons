@@ -79,30 +79,51 @@ max `submit_time` to `window_end` also anchors the rolling split to exactly the 
 window. (Sliced row counts run slightly above the card's submit-based `n_rows` for this
 reason — expected.)
 
-### 3. Stage → embed → benchmark (on the cluster)
-
-Stage the plan and windows to `remote_base` and submit:
+### 3. Stage
 
 ```bash
-# from plan.json: repo_dir, staging_remote
-rsync -a .hpc_oda/bench-matrix/data/windows/   <host>:<repo_dir>/data/windows/
-rsync -a .hpc_oda/bench-matrix/<plan_id>/       <host>:<repo_dir>/.hpc_oda/bench-matrix/<plan_id>/
-
-# embed first (GPU); benchmark cells for embedding_knn depend on the matching embed job
-sbatch <repo_dir>/.hpc_oda/bench-matrix/<plan_id>/scripts/embed__<dataset>.sbatch
-sbatch [--dependency=afterok:<embed_jobid>] <.../scripts/bench__<dataset>__<model>.sbatch
+hpc-oda bench-matrix stage           # rsync windows + plan to the cluster
 ```
 
-Each benchmark cell writes a result bundle to `runs/<dataset>/<model>/` under `repo_dir`.
+Creates the remote dirs (`logs`, `data/windows`, `data/embeddings`, `runs`, cache) and
+rsyncs the sliced windows and the plan (recipes + scripts) under `repo_dir`. Add
+`--dry-run` to preview the exact ssh/rsync commands first.
 
-> Staging, submission (with the embed→`embedding_knn` dependency), polling, and leaderboard
-> aggregation are the **orchestration** step, tracked separately. Until it lands, run the
-> `rsync`/`sbatch` above from `plan.json`.
+### 4. Submit
 
-### 4. Aggregate
+```bash
+# smoke first: one quick cell on the debug partition, actually submitted
+hpc-oda bench-matrix submit --only alcf_djc_theta --only-model baseline \
+        --partition debug --time 00:20:00 --execute
 
-Once the `runs/` bundles are back, build the leaderboard with `hpc-oda analyze` over the
-collected runs.
+# then the full fleet
+hpc-oda bench-matrix submit --execute
+```
+
+Submits each GPU embed job first, then every benchmark cell; `embedding_knn` cells are
+submitted with `--dependency=afterok:<embed_jobid>` for their dataset, so they wait for the
+embedding to land. **Dry-run by default** — it prints the `sbatch` commands without
+submitting; pass `--execute` to actually submit (it charges the allocation). `--only` /
+`--only-model` scope the submission; `--partition` / `--time` override the tier defaults
+(sbatch CLI flags win over the script directives) for a quick `debug` smoke. A
+`submitted.json` (cell → jobid) is written to the plan dir.
+
+### 5. Status
+
+```bash
+hpc-oda bench-matrix status          # sacct over the submitted jobids
+```
+
+### 6. Collect → aggregate
+
+```bash
+hpc-oda bench-matrix collect         # rsync runs/ back to <plan-dir>/collected-runs
+hpc-oda bench-matrix aggregate       # leaderboard over the collected bundles
+```
+
+Each cell writes a result bundle to `runs/<dataset>/<model>/` under `repo_dir`; `collect`
+pulls them back and `aggregate` builds the leaderboard (equivalently, `hpc-oda analyze
+--runs <plan-dir>/collected-runs`).
 
 ## Resource tiers
 
