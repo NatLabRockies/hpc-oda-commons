@@ -1,10 +1,10 @@
 dataset_id: dataset.job_runtime.alcf_djc_aurora
 schema_version: oda.dataset.v0.1.0
 name: ALCF DJC — Aurora (2025–2026)
-version: 1.0.0
+version: 1.1.0
 description: >
   DIM_JOB_COMPOSITE job accounting from Argonne's Aurora supercomputer, all published years
-  (2025-01 through 2026-06, two files), from the ALCF public DATA CATALOG. Same schema as the
+  (2025-01 through 2026-07, two files), from the ALCF public DATA CATALOG. Same schema as the
   Polaris DJC dataset: PBS scheduler data with real requested walltime (WALLTIME_SECONDS) and
   elapsed runtime (RUNTIME_SECONDS), plus cores/nodes used+requested, queue, exit status, machine,
   award category, and science field; user/project pre-anonymized. Primary-quality. ALCF gates
@@ -23,7 +23,7 @@ tags: [alcf, argonne, aurora, pbs, cobalt]
 size:
   default_bytes: 79571194
   full_bytes: 79571194
-  rows_hint: "891,952 jobs (Aurora, 2025-2026)"
+  rows_hint: "927,999 jobs (Aurora, 2025-2026)"
 
 source:
   kind: manual
@@ -39,9 +39,9 @@ source:
     - filename: ANL-ALCF-DJC-AURORA_20250127_20251231.csv.gz
       sha256: 33e829a855567924569fa06a92cfa64215922f1fffd1b7a1dd57f17b2ddd6491
       bytes: 61534432
-    - filename: ANL-ALCF-DJC-AURORA_20260101_20260616.csv.gz
-      sha256: b0fd41d9c65de7c1d9e05f0856bdc6fce2c6e2b3ad2415b279e735277bf3a1fc
-      bytes: 18036762
+    - filename: ANL-ALCF-DJC-AURORA_20260101_20260716.csv.gz
+      sha256: 7ca7f8259524d85ba9e8a9bb0f1f2f9e3fb112fe4451b77a9c55d510ad9d3d67
+      bytes: 21656320
 
 decode:
   format: csv

@@ -1,0 +1,127 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.alcf_djc_theta",
+  "generated_at": "2026-07-18T18:55:10.203439+00:00",
+  "source": {
+    "table_path": "data/datasets/alcf_djc_theta/data.parquet",
+    "system": "Theta",
+    "descriptor": "dataset.job_runtime.alcf_djc_theta"
+  },
+  "characterization": {
+    "n_rows": 540391,
+    "full_span": {
+      "start": "2017-06-30",
+      "end": "2024-01-10"
+    },
+    "healthy_span": {
+      "start": "2017-07-05",
+      "end": "2023-12-27",
+      "days": 2367,
+      "rows": 539395
+    },
+    "daily_volume": {
+      "median": 208.0,
+      "min": 3,
+      "max": 1386,
+      "gap_floor": 10.4
+    },
+    "rate_per_day": 227.9,
+    "gaps": [
+      {
+        "start": "2018-11-06",
+        "end": "2018-11-08",
+        "days": 3
+      },
+      {
+        "start": "2019-09-07",
+        "end": "2019-09-09",
+        "days": 3
+      },
+      {
+        "start": "2020-07-14",
+        "end": "2020-07-21",
+        "days": 8
+      },
+      {
+        "start": "2021-11-20",
+        "end": "2021-11-22",
+        "days": 3
+      },
+      {
+        "start": "2023-05-06",
+        "end": "2023-05-12",
+        "days": 7
+      },
+      {
+        "start": "2023-07-29",
+        "end": "2023-08-01",
+        "days": 4
+      }
+    ],
+    "columns": {
+      "queue": {
+        "cardinality": 157,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 1827,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 628,
+        "missingness": 4.4e-05
+      },
+      "job_state": {
+        "cardinality": 103,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.54,
+      "median": 1084.0,
+      "p90": 10884.0,
+      "p99": 34276.2,
+      "max": 628014.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2022-06-13",
+    "window_end": "2022-09-10",
+    "test_start": "2022-08-12",
+    "test_end": "2022-09-10",
+    "n_rows": 15472,
+    "rate_per_day": 171.9,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "3071c4dd863b48e8b27e6870cdb937244d5b1347",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/alcf_djc_theta/data.parquet",
+        "sha256": "728baf1bbf8862c83badb11b7cfd7ad19d2c3c151a100d43e0a0e0cf6534e1a3",
+        "size_bytes": 20358562,
+        "mtime_epoch": 1784400892.226377
+      }
+    ]
+  }
+}
