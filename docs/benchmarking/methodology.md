@@ -49,9 +49,11 @@ era, after ramp-up and before wind-down. We deliberately **do not use the last 3
 **Health gate (missing-block detection):** a **run of ≥3 consecutive days with volume below
 5% of the median daily volume** counts as a *missing block* (sustained downtime or lost
 records — indistinguishable from the data, and disqualifying either way). If the anchored
-window contains a missing block, it is **shifted to the nearest gap-free 90-day window**, and
-the shift is recorded on the card. If no gap-free window exists at this size, the window is
-flagged **unhealthy** and the dataset is escalated (seek other months / widen the window).
+window **overlaps any missing block at all** — even clipping its leading/trailing edge — it is
+**shifted to the nearest 90-day window clear of every block**, and the shift is recorded on
+the card. (The ≥3-day rule defines what a block *is*; the window must not touch one, so it
+never ends inside the start of an outage.) If no clear window exists at this size, the window
+is flagged **unhealthy** and the dataset is escalated (seek other months / widen the window).
 
 **Reproducibility:** the whole thing is deterministic — `hpc-oda datasets characterize
 <parquet>` regenerates the identical card from the prepared table + these parameters.

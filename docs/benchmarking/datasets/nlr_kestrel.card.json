@@ -1,0 +1,127 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.nlr_kestrel",
+  "generated_at": "2026-07-18T18:04:50.002962+00:00",
+  "source": {
+    "table_path": "data/datasets/nlr_kestrel/data.parquet",
+    "system": "Kestrel",
+    "descriptor": "dataset.job_runtime.nlr_kestrel"
+  },
+  "characterization": {
+    "n_rows": 9321737,
+    "full_span": {
+      "start": "2023-08-10",
+      "end": "2026-01-01"
+    },
+    "healthy_span": {
+      "start": "2023-08-24",
+      "end": "2025-12-30",
+      "days": 860,
+      "rows": 9311227
+    },
+    "daily_volume": {
+      "median": 8660.5,
+      "min": 1,
+      "max": 132360,
+      "gap_floor": 433.0
+    },
+    "rate_per_day": 10827.0,
+    "gaps": [
+      {
+        "start": "2023-09-30",
+        "end": "2023-10-03",
+        "days": 4
+      },
+      {
+        "start": "2024-01-30",
+        "end": "2024-02-10",
+        "days": 12
+      },
+      {
+        "start": "2024-04-13",
+        "end": "2024-04-16",
+        "days": 4
+      },
+      {
+        "start": "2024-10-02",
+        "end": "2024-10-07",
+        "days": 6
+      },
+      {
+        "start": "2024-12-20",
+        "end": "2024-12-22",
+        "days": 3
+      },
+      {
+        "start": "2025-06-27",
+        "end": "2025-06-30",
+        "days": 4
+      }
+    ],
+    "columns": {
+      "partition": {
+        "cardinality": 32,
+        "missingness": 0.00011
+      },
+      "user": {
+        "cardinality": 1087,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 641,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 7,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 290.0,
+      "p90": 29188.0,
+      "p99": 172815.0,
+      "max": 6055479.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2025-03-29",
+    "window_end": "2025-06-26",
+    "test_start": "2025-05-28",
+    "test_end": "2025-06-26",
+    "n_rows": 1647566,
+    "rate_per_day": 18306.3,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "anchor (80%) window overlapped a missing block; shifted 15d to the nearest window clear of every block."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "3c2bfa8165313c0c068a90777903b0f02f5f5a7d",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/nlr_kestrel/data.parquet",
+        "sha256": "ecf8b85c199ac36e8c8fbee4abc60349efe8a1c743c323cf65f3c52f91a88073",
+        "size_bytes": 171453925,
+        "mtime_epoch": 1784397126.9642484
+      }
+    ]
+  }
+}
