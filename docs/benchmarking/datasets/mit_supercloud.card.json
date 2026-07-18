@@ -1,0 +1,108 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.mit_supercloud",
+  "generated_at": "2026-07-18T20:02:12.454007+00:00",
+  "source": {
+    "table_path": "data/datasets/mit_supercloud/data.parquet",
+    "system": "Supercloud",
+    "descriptor": "dataset.job_runtime.mit_supercloud"
+  },
+  "characterization": {
+    "n_rows": 395914,
+    "full_span": {
+      "start": "2021-01-01",
+      "end": "2021-10-01"
+    },
+    "healthy_span": {
+      "start": "2021-01-05",
+      "end": "2021-10-01",
+      "days": 270,
+      "rows": 395901
+    },
+    "daily_volume": {
+      "median": 840.0,
+      "min": 1,
+      "max": 18880,
+      "gap_floor": 42.0
+    },
+    "rate_per_day": 1466.3,
+    "gaps": [
+      {
+        "start": "2021-01-12",
+        "end": "2021-01-18",
+        "days": 7
+      },
+      {
+        "start": "2021-01-26",
+        "end": "2021-02-01",
+        "days": 7
+      },
+      {
+        "start": "2021-02-27",
+        "end": "2021-03-02",
+        "days": 4
+      }
+    ],
+    "columns": {
+      "partition": {
+        "cardinality": 5,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 608,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 7,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 300.0,
+      "median": 2640.0,
+      "p90": 43221.0,
+      "p99": 356911.7,
+      "max": 3367134.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2021-05-11",
+    "window_end": "2021-08-08",
+    "test_start": "2021-07-10",
+    "test_end": "2021-08-08",
+    "n_rows": 93107,
+    "rate_per_day": 1034.5,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "a79f56da07bdff876a5c47ba3d082b18a12fab77",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/mit_supercloud/data.parquet",
+        "sha256": "88949e96b67b6f2c4b5fb29ccb2cf61564fb65f7d2793153ef1c810810904d96",
+        "size_bytes": 10809160,
+        "mtime_epoch": 1784404870.9504654
+      }
+    ]
+  }
+}

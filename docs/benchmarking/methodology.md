@@ -75,20 +75,21 @@ from the benchmark roster.
 
 **Requires ≥3 months of contiguous data** (the config needs 90 days). Under this rule:
 
-- **Excluded — too short:** `mit_supercloud` (~1 month, no more available), `adastra_mi250`
-  (~15 days), `ic2` (3,599 rows total; cloud tasks, not a machine time-series), and
-  `atlas_opentrinity` — **characterization measured its real span at only 80 days** (the
-  descriptor's "2017" hint was wrong); under the ≥90-day rule it is excluded (its card records
-  the measured span as evidence).
+- **Excluded — too short:** `adastra_mi250` (~15 days), `ic2` (3,599 rows total; cloud tasks,
+  not a machine time-series), and `atlas_opentrinity` — **characterization measured its real
+  span at only 80 days** (the descriptor's "2017" hint was wrong); under the ≥90-day rule it is
+  excluded (its card records the measured span as evidence).
 - **Re-curate to 3 months** (data is available; a small curation task): `ccin2p3_2024`
   (currently Dec-2024 only → pull ~3 months from its 12 monthly files), `fdata_fugaku`
   (currently 2024-04 only → 3 consecutive monthly files).
 - **Qualify as-is:** the remaining datasets. Some are *thin* (`atlas_mustang`, `pwa_kit_fh2`)
   — sparse rolling windows; flagged on their cards.
 
-Net benchmark roster: ~18 datasets (16 as-is + 2 after re-curation). Each dataset's final
+Net benchmark roster: ~19 datasets (17 as-is + 2 after re-curation). Each dataset's final
 window, health, and any caveats are recorded on its card; the health gate may reclassify a
-dataset once its real timestamps are measured — as it did for `atlas_opentrinity`.
+dataset once its real timestamps are measured — it excluded `atlas_opentrinity` (real span 80
+days) and **re-included `mit_supercloud`** (its "~1 month" hint was wrong — measured ~9 months,
+Jan–Oct 2021, healthy).
 
 ## The dataset card
 
