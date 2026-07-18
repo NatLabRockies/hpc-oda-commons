@@ -54,6 +54,11 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 ~62M jobs across SLURM / LSF / PBS / Torque / SWF and cloud, 1996–2026, x86 / ARM / GPU, home-lab included.
 All strict-validate against `oda.job.v0.2.0`.
 
+> **Note — `nrel_eagle` and `nlr_eagle` are the same machine** (NREL's Eagle), from two
+> sources with overlapping years. For benchmarks/aggregates use **only `nlr_eagle`** (more
+> recent, longer span) to avoid double-counting one machine. See
+> [`../benchmarking/methodology.md`](../benchmarking/methodology.md).
+
 ## Remaining runtime datasets
 
 One is documented for user ingestion in [`external-datasets.md`](external-datasets.md) —
