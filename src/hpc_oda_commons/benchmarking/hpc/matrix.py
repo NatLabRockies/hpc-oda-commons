@@ -327,6 +327,7 @@ def _embed_script(job: EmbedJob, site: SiteConfig) -> str:
             "input": job.input_path,
             "output": job.output_path,
             "cache_dir": site.cache_dir,
+            "hf_home": site.hf_home,
         },
     )
 

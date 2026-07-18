@@ -40,6 +40,19 @@ gitignored — so real hostnames, accounts, users, and paths stay off the repo.
    `pip install`ed, plus a CUDA-matched `torch` for the embedding jobs). Everything —
    repo clone, env, data, results — lives under `remote_base`.
 
+3. **Pre-stage the embedding model** into `remote_base/hf/hub` (`HF_HOME=remote_base/hf`).
+   Compute nodes typically have no internet, so the embed jobs run with `HF_HUB_OFFLINE=1`
+   and load the model from this shared cache. Either download it once on a login node, or
+   rsync your local Hugging Face cache entry, e.g.:
+
+   ```bash
+   rsync -a --partial ~/.cache/huggingface/hub/models--<org>--<model>/ \
+     <host>:<remote_base>/hf/hub/models--<org>--<model>/
+   ```
+
+   (`stage` creates `remote_base/hf/hub` for you.) Skip this only if you benchmark with
+   `--model stub`, which needs no download.
+
 ## Pipeline
 
 ```

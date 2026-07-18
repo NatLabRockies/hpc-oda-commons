@@ -57,6 +57,7 @@ def test_load_site_config_resolves_paths_and_defaults(tmp_path: Path) -> None:
     assert cfg.repo_dir == "/scratch/bench/hpc-oda-commons"
     assert cfg.hpc_oda == "/scratch/bench/env/bin/hpc-oda"
     assert cfg.cache_dir == "/scratch/bench/cache"
+    assert cfg.hf_home == "/scratch/bench/hf"
     assert cfg.partition("bigmem") == "bigmem"
 
 
@@ -160,6 +161,11 @@ def test_write_plan_emits_valid_recipes_and_filled_scripts(tmp_path: Path) -> No
         text = s.read_text(encoding="utf-8")
         assert "{{" not in text
         assert "--account=proj123" in text
+
+    # the embed script loads the model from the shared cache offline
+    embed_script = (staging / "scripts" / "embed__ds.sbatch").read_text(encoding="utf-8")
+    assert "export HF_HOME=/scratch/bench/hf" in embed_script
+    assert "export HF_HUB_OFFLINE=1" in embed_script
 
     plan_json = json.loads(plan_path.read_text(encoding="utf-8"))
     assert plan_json["n_cells"] == len(RUNTIME_MODELS)

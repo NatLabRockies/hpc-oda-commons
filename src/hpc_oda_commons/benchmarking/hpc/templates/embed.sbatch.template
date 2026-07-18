@@ -10,6 +10,9 @@
 #SBATCH --output={{log}}
 # Embed dataset={{dataset_id}} window={{window}} with model={{model}} on GPU (reused by embedding_knn)
 set -euo pipefail
+# Load the embedding model from the pre-staged shared cache — compute nodes have no internet.
+export HF_HOME={{hf_home}}
+export HF_HUB_OFFLINE=1
 cd {{workdir}}
 {{hpc_oda}} embed {{input}} \
   --out {{output}} \
