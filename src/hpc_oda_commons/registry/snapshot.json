@@ -532,6 +532,21 @@
       }
     },
     {
+      "id": "dataset.job_runtime.fresco_stampede1",
+      "entry_type": "dataset",
+      "name": "FRESCO Stampede1 Job Accounting",
+      "version": "1.0.0",
+      "description": "Slurm job accounting from TACC's Stampede1 (FRESCO repository), a single ~1.13 GB CSV of ~8.7M jobs (2013-2018). Runtime derived as end_time - start_time; requested walltime = the walltime column (minutes; UNLIMITED sentinels normalized to null); MM/DD/YYYY timestamps; user/account/jobID anonymized at source. 8,710,048 rows after dropping inverted-timestamp and non-positive-cpu rows. Fetched from the datadepot over direct HTTPS (no Globus); normalized to oda.job.v0.2.0.",
+      "problem_domain": ["job-runtime-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "LicenseRef-fresco",
+      "tags": ["fresco", "stampede1", "tacc", "slurm"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_stampede1.yml"
+      }
+    },
+    {
       "id": "dataset.job_runtime.alcf_djc_polaris",
       "entry_type": "dataset",
       "name": "ALCF DJC — Polaris (2022–2026)",

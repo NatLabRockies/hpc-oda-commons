@@ -1,6 +1,6 @@
 # Runtime Dataset Curation — Status & Remaining Roadmap
 
-**Updated:** 2026-07-18 (22 runtime datasets registered)
+**Updated:** 2026-07-18 (23 runtime datasets registered)
 **Companion to:** [`runtime-first-investigation.md`](runtime-first-investigation.md) (the plan) and
 the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../design/public-dataset-ingestion.md)).
 
@@ -17,7 +17,8 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
   with a **`member_glob`** filter; a parquet **`columns`** option; parquet **temporal unification**
   (mixed-tz/mixed-unit Hive partitions → UTC / `duration(us)`).
 - **Mapping transforms**: timestamp (iso8601/epoch), duration (seconds/minutes/hours/hh:mm:ss/
-  **timedelta**/native-Arrow-`duration`), memory/memory_slurm, hash_identifier, **integer/number**
+  **timedelta**/native-Arrow-`duration`; non-numeric walltime sentinels like `UNLIMITED` → null),
+  memory/memory_slurm, hash_identifier, **integer/number**
   cast, **`synthesize: row_index`** (surrogate job_id), **`derive: "end_time - start_time"`**.
 - **DoD-5** integration test: descriptor → `datasets prepare` → schema-valid table → `benchmark`.
 
@@ -46,21 +47,24 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | `lassen` | Lassen (LLNL, LSF) | 1,467,746 | GitHub-LFS/https | via LFS media URL |
 | `fresco_anvil` | Anvil (Purdue, A100) | 1,475,155 | datadepot/https | 11 months, real walltime |
 | `fresco_conte` | Conte (Purdue) | 1,042,125 | datadepot/https | Torque, 2015-16, real walltime |
+| `fresco_stampede1` | Stampede1 (TACC) | 8,710,048 | datadepot/https | Slurm, 2013-2018, real walltime |
 | `alcf_djc_polaris` | Polaris (Argonne) | 957,606 | ALCF (manual) | PBS, 2022-2026, real walltime |
 | `alcf_djc_aurora` | Aurora (Argonne) | 891,952 | ALCF (manual) | PBS, 2025-2026, real walltime |
 
-~53M jobs across SLURM / LSF / PBS / Torque / SWF and cloud, 1996–2026, x86 / ARM / GPU, home-lab included.
+~62M jobs across SLURM / LSF / PBS / Torque / SWF and cloud, 1996–2026, x86 / ARM / GPU, home-lab included.
 All strict-validate against `oda.job.v0.2.0`.
 
 ## Remaining runtime datasets
 
-Two are documented for user ingestion in [`external-datasets.md`](external-datasets.md) — each
+One is documented for user ingestion in [`external-datasets.md`](external-datasets.md) —
 verified as genuinely not fetchable/pinnable from this environment:
 
 - **Blue Waters** (NCSA, Torque, ~4.5M jobs) — **Globus only** (verified: NCSA's page gives no
   direct HTTPS); has requested walltime.
-- **FRESCO Stampede1** (TACC) — direct-HTTPS datadepot URL, but the single 1.13 GB file wouldn't
-  transfer through this proxy; has requested walltime.
+
+(**FRESCO Stampede1** was here too, but on an unrestricted network the single 1.13 GB datadepot CSV
+downloads fine; it is now the registered `fresco_stampede1` dataset — 8,710,048 jobs, real requested
+walltime.)
 
 (**ALCF DJC** was here too, but a closer look found its data isn't behind a Cloudflare wall — just a
 one-time name/email form on public data. Now registered as two manual-kind datasets — all Polaris
@@ -80,10 +84,9 @@ form (now a registered manual-kind dataset), not the Cloudflare wall it first lo
 
 ## What's left
 
-Runtime-first curation is effectively complete: **22 datasets** registered (incl. ALCF Polaris +
-Aurora via the manual-kind flow). The two remaining (Blue Waters, FRESCO Stampede1) are each
-genuinely not fetchable/pinnable from this environment (Globus / a proxy-limited large
-transfer) and are documented for user ingestion in
+Runtime-first curation is effectively complete: **23 datasets** registered (incl. ALCF Polaris +
+Aurora via the manual-kind flow). The one remaining (Blue Waters) is genuinely not
+fetchable/pinnable from this environment (Globus) and is documented for user ingestion in
 [`external-datasets.md`](external-datasets.md) rather than pipeline-fetched.
 
 Power/failure/anomaly datasets remain deferred to their phases (see the investigation doc §7).

@@ -11,11 +11,6 @@ A few valuable datasets aren't auto-fetched, for different reasons — documente
 retrieve them yourself and turn them into canonical `oda.job.v0.2.0` tables:
 
 - **Blue Waters** — Globus only (no direct HTTPS at all).
-- **FRESCO Stampede1** — a plain-HTTPS datadepot URL, but the single 1.13 GB file wouldn't transfer
-  through the proxy of the environment these descriptors were built in.
-
-The last one is *reachable in principle* — it just wasn't fetchable/pinnable from here — so
-on an unrestricted network it can be registered normally (`kind: http` + a pinned `sha256`).
 
 **ALCF DJC** was on this list too, but a closer look showed it isn't a hard wall — its downloads
 sit behind a one-time name/email form on *public* data. It is now a **registered `manual`-kind
@@ -72,17 +67,6 @@ the recipe for adding **further years / systems** (Theta, Mira) the same way.
   `RUNTIME_SECONDS`, queued/start/end, cores/nodes used+requested, queue, exit status, machine,
   science field, anonymized `USERNAME_GENID`/`PROJECT_NAME_GENID`).
 - **License:** unstated — cite ALCF.
-
-### FRESCO Stampede1 (TACC)
-
-- **What:** Slurm job accounting for Stampede1 — `jobID,user,account,jobname,queue,walltime,
-  exit_status,start,end,submit,nnodes,ncpus`, a single CSV; **has requested walltime**.
-- **Where:** direct HTTPS on the same FRESCO datadepot as the registered Anvil/Conte:
-  `https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Stampede/AccountingStatistics/stampede_accounting.csv`
-  (~1.13 GB). **Caveat:** that single large file wouldn't complete its TLS transfer through this
-  environment's proxy, so it isn't pinned here — but on a stable network it's a normal `kind: http`
-  dataset (MM/DD/YYYY timestamps via the strptime format, `walltime` in minutes, runtime derived).
-- **License:** FRESCO research data; cite Bagchi et al.
 
 ---
 

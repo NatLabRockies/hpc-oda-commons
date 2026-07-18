@@ -1,0 +1,61 @@
+dataset_id: dataset.job_runtime.fresco_stampede1
+schema_version: oda.dataset.v0.1.0
+name: FRESCO Stampede1 Job Accounting
+version: 1.0.0
+description: >
+  Slurm job accounting for TACC's Stampede1 supercomputer, from the FRESCO repository:
+  a single ~1.13 GB CSV of ~8.7M jobs (2013-2018). The runtime-prediction target is derived
+  (end_time - start_time); requested walltime = the walltime column (minutes). Timestamps are
+  MM/DD/YYYY (parsed via a strptime pattern). Nodes/cpus, queue, and exit status are features;
+  user/account/jobID are already anonymized at source. A require_end_after_start filter drops
+  the few inverted-timestamp rows and require_positive keeps allocated_cpus >= 1; a couple of
+  rows carry corrupt epoch-era start timestamps (2 rows exceed 8 days out of 8.34M) and are
+  left as negligible outliers. Fetched from the datadepot over direct HTTPS (no Globus).
+problem_domains: [job-runtime-prediction]
+systems: [Stampede1]
+providers: [TACC, Purdue]
+citation: { url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/" }
+license:
+  spdx: LicenseRef-fresco
+  gated: false
+  notes: "FRESCO research data; citation required (Bagchi et al., Purdue/TACC)."
+tags: [fresco, stampede1, tacc, slurm]
+size:
+  default_bytes: 1130120989
+  full_bytes: 1130120989
+  rows_hint: "~8.7M jobs (2013-2018), single CSV"
+
+source:
+  kind: http
+  resources:
+    - filename: stampede_accounting.csv
+      url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/repository/Stampede/AccountingStatistics/stampede_accounting.csv"
+      sha256: 3b0ce5689b62214410867467cb038544fe50d59b4dfcd7d7d2805cc60fa24941
+      bytes: 1130120989
+
+decode:
+  format: csv
+
+targets:
+  - schema: oda.job.v0.2.0
+    capabilities:
+      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+    mapping:
+      job_id: { from: jobID }
+      submit_time: { from: submit, type: timestamp, format: "%m/%d/%Y %H:%M:%S" }
+      start_time: { from: start, type: timestamp, format: "%m/%d/%Y %H:%M:%S" }
+      end_time: { from: end, type: timestamp, format: "%m/%d/%Y %H:%M:%S" }
+      runtime_seconds: { derive: "end_time - start_time" }
+      requested_seconds: { from: walltime, type: duration, unit: minutes }
+      allocated_cpus: { from: ncpus, type: integer }
+      num_nodes_alloc: { from: nnodes, type: integer }
+      queue: { from: queue }
+      job_state: { from: exit_status }
+      user: { from: user }
+      account: { from: account }
+    filter:
+      require_nonnull: [runtime_seconds]
+      require_positive: [allocated_cpus]
+      require_end_after_start: true
+    output: { id: fresco_stampede1, path: data/datasets/fresco_stampede1/data.parquet }

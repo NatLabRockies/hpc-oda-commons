@@ -64,12 +64,17 @@ def _parse_timestamp(value: Any, fmt: str) -> datetime | None:
 def _duration_to_seconds(value: Any, unit: str) -> float | None:
     if value is None:
         return None
-    if unit == "seconds":
-        return float(value)
-    if unit == "minutes":
-        return float(value) * 60.0
-    if unit == "hours":
-        return float(value) * 3600.0
+    if unit in ("seconds", "minutes", "hours"):
+        # SLURM (and other schedulers) emit sentinels like UNLIMITED / INVALID /
+        # Partition_Limit (and blanks) for a walltime limit; treat any non-numeric
+        # value as unknown (null) rather than crashing the whole prepare, mirroring
+        # the lenient timestamp parser above.
+        text = str(value).strip()
+        try:
+            base = float(text)
+        except ValueError:
+            return None
+        return base * {"seconds": 1.0, "minutes": 60.0, "hours": 3600.0}[unit]
     if unit == "hh:mm:ss":
         parts = str(value).split(":")
         if len(parts) != 3:
