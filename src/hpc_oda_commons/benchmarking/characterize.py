@@ -67,12 +67,15 @@ def _daily_counts(epoch_seconds: np.ndarray, lo_day: int, hi_day: int) -> np.nda
     return series
 
 
-def _find_gaps(
+def _find_gap_ranges(
     series: np.ndarray, lo_day: int, floor: float, gap_min_days: int
-) -> list[dict[str, Any]]:
-    """Runs of ``>= gap_min_days`` consecutive days with volume below ``floor``."""
+) -> list[tuple[int, int]]:
+    """Missing blocks: runs of ``>= gap_min_days`` consecutive days below ``floor``.
+
+    Returned as inclusive ``(start_day, end_day)`` epoch-day integer ranges.
+    """
     dead = series < floor
-    gaps: list[dict[str, Any]] = []
+    ranges: list[tuple[int, int]] = []
     i = 0
     n = len(series)
     while i < n:
@@ -82,17 +85,14 @@ def _find_gaps(
         j = i
         while j < n and dead[j]:
             j += 1
-        length = j - i
-        if length >= gap_min_days:
-            gaps.append(
-                {
-                    "start": _iso_day(lo_day + i),
-                    "end": _iso_day(lo_day + j - 1),
-                    "days": int(length),
-                }
-            )
+        if j - i >= gap_min_days:
+            ranges.append((lo_day + i, lo_day + j - 1))
         i = j
-    return gaps
+    return ranges
+
+
+def _gaps_to_dicts(ranges: list[tuple[int, int]]) -> list[dict[str, Any]]:
+    return [{"start": _iso_day(a), "end": _iso_day(b), "days": int(b - a + 1)} for a, b in ranges]
 
 
 def characterize_table(
@@ -129,7 +129,8 @@ def characterize_table(
     active = series[series > 0]
     daily_median = float(np.median(active)) if active.size else 0.0
     floor = max(1.0, gap_floor_frac * daily_median)
-    gaps = _find_gaps(series, lo_day, floor, gap_min_days)
+    gap_ranges = _find_gap_ranges(series, lo_day, floor, gap_min_days)
+    gaps = _gaps_to_dicts(gap_ranges)
     rows_in_span = int(series.sum())
 
     columns: dict[str, Any] = {}
@@ -181,16 +182,20 @@ def characterize_table(
         "columns": columns,
         "runtime_seconds": runtime_stats,
         # private: consumed by select_window, stripped before the card is written.
-        "_daily": {"lo_day": int(lo_day), "series": series.tolist(), "floor": float(floor)},
+        "_daily": {
+            "lo_day": int(lo_day),
+            "series": series.tolist(),
+            "floor": float(floor),
+            "gaps": [[int(a), int(b)] for a, b in gap_ranges],
+        },
     }
 
 
-def _window_gaps(
-    series: np.ndarray, lo_day: int, floor: float, gap_min_days: int, start_day: int, end_day: int
-) -> list[dict[str, Any]]:
-    a, b = start_day - lo_day, end_day - lo_day
-    sub = series[max(0, a) : b + 1]
-    return _find_gaps(sub, start_day, floor, gap_min_days)
+def _overlapping_gaps(
+    gap_ranges: list[tuple[int, int]], start_day: int, end_day: int
+) -> list[tuple[int, int]]:
+    """Missing blocks that intersect ``[start_day, end_day]`` at all (even partially)."""
+    return [(a, b) for (a, b) in gap_ranges if a <= end_day and b >= start_day]
 
 
 def select_window(
@@ -204,24 +209,24 @@ def select_window(
     """Choose the rolling-benchmark window per the agreed rule + health gate.
 
     Places the ``train_days + test_days`` window's END at ``anchor`` of the healthy span,
-    then rejects any window containing a missing block and shifts to the nearest healthy
-    window. Returns dates, in-window rows/rate, health verdict, and rationale.
+    then rejects any window that **overlaps a missing block at all** (even partially — so the
+    window never clips the edge of an outage) and shifts to the nearest window clear of every
+    block. Returns dates, in-window rows/rate, health verdict, and rationale.
     """
     daily = characterization.get("_daily")
     if daily is None:
         raise CharacterizeError("characterization is missing daily series; run characterize_table")
     lo_day = int(daily["lo_day"])
     series = np.asarray(daily["series"], dtype="int64")
-    floor = float(daily["floor"])
+    gap_ranges = [(int(a), int(b)) for a, b in daily.get("gaps", [])]
     span_days = len(series)
     win_days = train_days + test_days
 
     if span_days < win_days:
         # Not enough data for the standard window — use the whole healthy span.
         start_day, end_day = lo_day, lo_day + span_days - 1
-        gaps = _window_gaps(series, lo_day, floor, gap_min_days, start_day, end_day)
+        overlaps = _overlapping_gaps(gap_ranges, start_day, end_day)
         return _window_result(
-            characterization,
             lo_day,
             series,
             start_day,
@@ -229,23 +234,23 @@ def select_window(
             train_days,
             test_days,
             anchor,
-            gaps,
-            healthy=not gaps,
+            _gaps_to_dicts(overlaps),
+            healthy=not overlaps,
             rationale=(
                 f"healthy span is only {span_days}d (< {win_days}d requested); used the whole "
-                f"span. {_gap_note(gaps)}"
+                f"span. {_gap_note(_gaps_to_dicts(overlaps))}"
             ),
         )
 
-    anchor_end = lo_day + int(round(anchor * (span_days - 1)))
     max_end = lo_day + span_days - 1
     min_end = lo_day + win_days - 1  # earliest end that still fits a full window
 
-    # Candidate ends: the anchor first, then nearest neighbours outward, all within bounds.
     def _clamp(e: int) -> int:
         return max(min_end, min(max_end, e))
 
-    tried: list[int] = []
+    anchor_end = _clamp(lo_day + int(round(anchor * (span_days - 1))))
+
+    # Candidate ends: the anchor first, then nearest neighbours outward, all within bounds.
     seen: set[int] = set()
     for delta in range(0, span_days):
         for cand in (anchor_end + delta, anchor_end - delta):
@@ -253,20 +258,17 @@ def select_window(
             if e in seen:
                 continue
             seen.add(e)
-            tried.append(e)
-            gaps = _window_gaps(series, lo_day, floor, gap_min_days, e - win_days + 1, e)
-            if not gaps:
-                shifted = e != _clamp(anchor_end)
+            if not _overlapping_gaps(gap_ranges, e - win_days + 1, e):
+                shift = abs(e - anchor_end)
                 rationale = (
-                    f"window END at {anchor:.0%} of healthy span; gap-free."
-                    if not shifted
+                    f"window END at {anchor:.0%} of healthy span; clear of all missing blocks."
+                    if shift == 0
                     else (
-                        f"anchor ({anchor:.0%}) window hit a missing block; shifted "
-                        f"{abs(e - _clamp(anchor_end))}d to the nearest gap-free window."
+                        f"anchor ({anchor:.0%}) window overlapped a missing block; shifted "
+                        f"{shift}d to the nearest window clear of every block."
                     )
                 )
                 return _window_result(
-                    characterization,
                     lo_day,
                     series,
                     e - win_days + 1,
@@ -274,28 +276,26 @@ def select_window(
                     train_days,
                     test_days,
                     anchor,
-                    gaps,
+                    [],
                     healthy=True,
                     rationale=rationale,
                 )
 
-    # No gap-free window anywhere — return the anchor window flagged unhealthy.
-    e = _clamp(anchor_end)
-    gaps = _window_gaps(series, lo_day, floor, gap_min_days, e - win_days + 1, e)
+    # No block-free window anywhere — return the anchor window flagged unhealthy.
+    overlaps = _overlapping_gaps(gap_ranges, anchor_end - win_days + 1, anchor_end)
     return _window_result(
-        characterization,
         lo_day,
         series,
-        e - win_days + 1,
-        e,
+        anchor_end - win_days + 1,
+        anchor_end,
         train_days,
         test_days,
         anchor,
-        gaps,
+        _gaps_to_dicts(overlaps),
         healthy=False,
         rationale=(
-            "NO gap-free window exists at this window size; returned the anchor window. "
-            f"{_gap_note(gaps)} — investigate the source data or widen the window."
+            "NO window clear of all missing blocks exists at this size; returned the anchor "
+            f"window. {_gap_note(_gaps_to_dicts(overlaps))} — seek other months or widen the window."
         ),
     )
 
@@ -308,7 +308,6 @@ def _gap_note(gaps: list[dict[str, Any]]) -> str:
 
 
 def _window_result(
-    characterization: dict[str, Any],
     lo_day: int,
     series: np.ndarray,
     start_day: int,
