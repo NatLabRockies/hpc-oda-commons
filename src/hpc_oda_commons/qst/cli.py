@@ -60,7 +60,15 @@ from hpc_oda_commons.kernel.provenance import build_provenance
 from hpc_oda_commons.kernel.serialization import to_jsonable
 from hpc_oda_commons.kernel.validate import validate_json
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
-from hpc_oda_commons.qst.commands.bench_matrix import bench_matrix_plan, bench_matrix_slice
+from hpc_oda_commons.qst.commands.bench_matrix import (
+    bench_matrix_aggregate,
+    bench_matrix_collect,
+    bench_matrix_plan,
+    bench_matrix_slice,
+    bench_matrix_stage,
+    bench_matrix_status,
+    bench_matrix_submit,
+)
 from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.datasets import (
     datasets_characterize,
@@ -98,6 +106,11 @@ bench_matrix_app = typer.Typer(
 app.add_typer(bench_matrix_app, name="bench-matrix")
 bench_matrix_app.command("plan")(bench_matrix_plan)
 bench_matrix_app.command("slice")(bench_matrix_slice)
+bench_matrix_app.command("stage")(bench_matrix_stage)
+bench_matrix_app.command("submit")(bench_matrix_submit)
+bench_matrix_app.command("status")(bench_matrix_status)
+bench_matrix_app.command("collect")(bench_matrix_collect)
+bench_matrix_app.command("aggregate")(bench_matrix_aggregate)
 app.command()(browse)
 app.command()(info)
 app.command()(embed)
