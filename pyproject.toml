@@ -68,7 +68,9 @@ hpc_oda_commons = [
   "recipes/**/*.yml",
   "recipes/**/*.yaml",
   "recipes/**/*.toml",
-  "datasets/**/*"
+  "datasets/**/*",
+  "benchmarking/hpc/site.example.yml",
+  "benchmarking/hpc/templates/*.template"
 ]
 
 [project.scripts]

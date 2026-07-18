@@ -60,6 +60,7 @@ from hpc_oda_commons.kernel.provenance import build_provenance
 from hpc_oda_commons.kernel.serialization import to_jsonable
 from hpc_oda_commons.kernel.validate import validate_json
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
+from hpc_oda_commons.qst.commands.bench_matrix import bench_matrix_plan, bench_matrix_slice
 from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.datasets import (
     datasets_characterize,
@@ -91,6 +92,12 @@ app.add_typer(datasets_app, name="datasets")
 datasets_app.command("fetch")(datasets_fetch)
 datasets_app.command("prepare")(datasets_prepare)
 datasets_app.command("characterize")(datasets_characterize)
+bench_matrix_app = typer.Typer(
+    add_completion=False, help="Plan the full model x dataset benchmark for an HPC cluster."
+)
+app.add_typer(bench_matrix_app, name="bench-matrix")
+bench_matrix_app.command("plan")(bench_matrix_plan)
+bench_matrix_app.command("slice")(bench_matrix_slice)
 app.command()(browse)
 app.command()(info)
 app.command()(embed)
