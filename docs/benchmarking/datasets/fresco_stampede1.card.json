@@ -1,0 +1,102 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.fresco_stampede1",
+  "generated_at": "2026-07-18T17:35:02.552197+00:00",
+  "source": {
+    "table_path": "data/datasets/fresco_stampede1/data.parquet",
+    "system": "Stampede1",
+    "descriptor": "dataset.job_runtime.fresco_stampede1"
+  },
+  "characterization": {
+    "n_rows": 8710048,
+    "full_span": {
+      "start": "2012-12-28",
+      "end": "2018-06-30"
+    },
+    "healthy_span": {
+      "start": "2013-01-11",
+      "end": "2018-01-17",
+      "days": 1833,
+      "rows": 8693278
+    },
+    "daily_volume": {
+      "median": 4539.0,
+      "min": 1,
+      "max": 39445,
+      "gap_floor": 227.0
+    },
+    "rate_per_day": 4742.7,
+    "gaps": [
+      {
+        "start": "2018-01-13",
+        "end": "2018-01-15",
+        "days": 3
+      }
+    ],
+    "columns": {
+      "queue": {
+        "cardinality": 16,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 13115,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 5154,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 5,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 406.0,
+      "p90": 30977.0,
+      "p99": 172804.0,
+      "max": 1430986363.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2016-10-19",
+    "window_end": "2017-01-16",
+    "test_start": "2016-12-18",
+    "test_end": "2017-01-16",
+    "n_rows": 378696,
+    "rate_per_day": 4207.7,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; gap-free."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "1041677a0eb01a73353df2b7bc3895972851ff37",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/fresco_stampede1/data.parquet",
+        "sha256": "400f62a95570da0d7474764bd59ac15b5f72502e07bfc917b52c3e6365697b6f",
+        "size_bytes": 261480256,
+        "mtime_epoch": 1784386427.4485912
+      }
+    ]
+  }
+}

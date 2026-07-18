@@ -1,0 +1,118 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://hpc-oda-commons.org/schemas/oda/dataset_card/v0.1.0.json",
+    "title": "ODA Dataset Card Schema v0.1.0",
+    "description": "Reproducible characterization + benchmark-window choice for one dataset. The single source of truth consumed by the runtime-prediction benchmark runner.",
+    "type": "object",
+    "additionalProperties": true,
+    "required": [
+        "schema_version",
+        "dataset_id",
+        "generated_at",
+        "characterization",
+        "benchmark_window"
+    ],
+    "properties": {
+        "schema_version": {"const": "oda.dataset_card.v0.1.0"},
+        "dataset_id": {"type": "string", "minLength": 1},
+        "generated_at": {"type": "string"},
+        "source": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+                "table_path": {"type": "string"},
+                "system": {"type": "string"},
+                "descriptor": {"type": "string"}
+            }
+        },
+        "characterization": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["n_rows", "healthy_span", "rate_per_day", "gaps"],
+            "properties": {
+                "n_rows": {"type": "integer", "minimum": 0},
+                "full_span": {"$ref": "#/$defs/span"},
+                "healthy_span": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "required": ["start", "end", "days"],
+                    "properties": {
+                        "start": {"type": "string"},
+                        "end": {"type": "string"},
+                        "days": {"type": "integer", "minimum": 1},
+                        "rows": {"type": "integer", "minimum": 0}
+                    }
+                },
+                "daily_volume": {"type": "object", "additionalProperties": true},
+                "rate_per_day": {"type": "number", "minimum": 0},
+                "gaps": {"type": "array", "items": {"$ref": "#/$defs/gap"}},
+                "columns": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                            "cardinality": {"type": "integer", "minimum": 0},
+                            "missingness": {"type": "number", "minimum": 0, "maximum": 1}
+                        }
+                    }
+                },
+                "runtime_seconds": {"type": "object", "additionalProperties": true}
+            }
+        },
+        "benchmark_window": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+                "rule",
+                "window_start",
+                "window_end",
+                "test_start",
+                "test_end",
+                "n_rows",
+                "healthy",
+                "rationale"
+            ],
+            "properties": {
+                "rule": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "required": ["anchor", "train_days", "test_days"],
+                    "properties": {
+                        "anchor": {"type": "number", "minimum": 0, "maximum": 1},
+                        "train_days": {"type": "integer", "minimum": 1},
+                        "test_days": {"type": "integer", "minimum": 1}
+                    }
+                },
+                "window_start": {"type": "string"},
+                "window_end": {"type": "string"},
+                "test_start": {"type": "string"},
+                "test_end": {"type": "string"},
+                "n_rows": {"type": "integer", "minimum": 0},
+                "rate_per_day": {"type": "number", "minimum": 0},
+                "gaps_in_window": {"type": "array", "items": {"$ref": "#/$defs/gap"}},
+                "healthy": {"type": "boolean"},
+                "rationale": {"type": "string"}
+            }
+        },
+        "decisions": {"type": "array", "items": {"type": "string"}},
+        "provenance": {"type": "object", "additionalProperties": true}
+    },
+    "$defs": {
+        "span": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {"start": {"type": "string"}, "end": {"type": "string"}}
+        },
+        "gap": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["start", "end", "days"],
+            "properties": {
+                "start": {"type": "string"},
+                "end": {"type": "string"},
+                "days": {"type": "integer", "minimum": 1}
+            }
+        }
+    }
+}

@@ -6,10 +6,18 @@ import os
 from pathlib import Path
 from typing import Annotated
 
+import pyarrow.parquet as pq
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from hpc_oda_commons.benchmarking import (
+    CharacterizeError,
+    build_card,
+    characterize_table,
+    select_window,
+    write_card,
+)
 from hpc_oda_commons.datasets.decode import DecodeError
 from hpc_oda_commons.datasets.descriptor import load_descriptor
 from hpc_oda_commons.datasets.fetch import (
@@ -231,3 +239,88 @@ def datasets_prepare(
         rows = str(result.summary.get("rows_final", "?"))
         table.add_row(result.target_schema, rows, str(result.table_path))
     console.print(table)
+
+
+def datasets_characterize(
+    table_path: Annotated[
+        Path,
+        typer.Argument(
+            exists=True, readable=True, help="Canonical oda.job parquet to characterize."
+        ),
+    ],
+    out: Annotated[
+        Path,
+        typer.Option("--out", help="Output directory for the dataset card."),
+    ] = Path("docs/benchmarking/datasets"),
+    dataset_id: Annotated[
+        str | None,
+        typer.Option("--dataset-id", help="Dataset id label (default: derived from the path)."),
+    ] = None,
+    system: Annotated[
+        str | None, typer.Option("--system", help="System name recorded on the card.")
+    ] = None,
+    descriptor: Annotated[
+        str | None, typer.Option("--descriptor", help="Descriptor id/path recorded on the card.")
+    ] = None,
+    anchor: Annotated[
+        float,
+        typer.Option("--anchor", help="Place the window END at this fraction of the healthy span."),
+    ] = 0.80,
+    train_days: Annotated[int, typer.Option("--train-days", help="Training lookback (days).")] = 60,
+    test_days: Annotated[int, typer.Option("--test-days", help="Test coverage (days).")] = 30,
+    gap_min_days: Annotated[
+        int,
+        typer.Option(
+            "--gap-min-days", help="Consecutive low-volume days that count as a missing block."
+        ),
+    ] = 3,
+    gap_floor: Annotated[
+        float,
+        typer.Option(
+            "--gap-floor", help="Missing-block threshold, as a fraction of median daily volume."
+        ),
+    ] = 0.05,
+) -> None:
+    """Characterize a prepared dataset's health, pick its 3-month benchmark window, write a card.
+
+    Emits ``<stem>.card.json`` (machine-readable, consumed by the benchmark runner) and
+    ``<stem>.md`` (human-readable) under ``--out``. See docs/benchmarking/methodology.md.
+    """
+    stem = dataset_id.split(".")[-1] if dataset_id else table_path.parent.name
+    did = dataset_id or f"dataset.job_runtime.{stem}"
+    table = pq.read_table(table_path)
+    try:
+        char = characterize_table(table, gap_min_days=gap_min_days, gap_floor_frac=gap_floor)
+        window = select_window(
+            char,
+            anchor=anchor,
+            train_days=train_days,
+            test_days=test_days,
+            gap_min_days=gap_min_days,
+        )
+    except CharacterizeError as exc:
+        console.print(f"[red]Cannot characterize {table_path}: {exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    source = {}
+    if system:
+        source["system"] = system
+    if descriptor:
+        source["descriptor"] = descriptor
+    card = build_card(did, table_path, char, window, source=source or None)
+    json_path, md_path = write_card(card, out, stem=stem)
+
+    hs = char["healthy_span"]
+    verdict = "[green]healthy[/green]" if window["healthy"] else "[red]UNHEALTHY[/red]"
+    console.print(
+        f"[bold]{did}[/bold]: {char['n_rows']:,} rows · healthy span {hs['start']}..{hs['end']} "
+        f"· {char['rate_per_day']:,.0f} jobs/day"
+    )
+    if char["gaps"]:
+        console.print(f"  [yellow]missing blocks in full span: {len(char['gaps'])}[/yellow]")
+    console.print(
+        f"  window {window['window_start']}..{window['window_end']} "
+        f"({window['n_rows']:,} rows) → {verdict}"
+    )
+    console.print(f"  card: {json_path}")
+    console.print(f"        {md_path}")
