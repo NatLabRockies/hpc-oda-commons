@@ -1,0 +1,92 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.pwa_ricc",
+  "generated_at": "2026-07-18T18:37:43.129791+00:00",
+  "source": {
+    "table_path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/pwa_ricc/data.parquet",
+    "system": "RICC",
+    "descriptor": "dataset.job_runtime.pwa_ricc"
+  },
+  "characterization": {
+    "n_rows": 447794,
+    "full_span": {
+      "start": "2010-04-30",
+      "end": "2010-09-30"
+    },
+    "healthy_span": {
+      "start": "2010-05-03",
+      "end": "2010-09-29",
+      "days": 150,
+      "rows": 447126
+    },
+    "daily_volume": {
+      "median": 1481.0,
+      "min": 13,
+      "max": 24306,
+      "gap_floor": 74.0
+    },
+    "rate_per_day": 2980.8,
+    "gaps": [],
+    "columns": {
+      "queue": {
+        "cardinality": 2,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 176,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 2,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 1218.0,
+      "p90": 26429.7,
+      "p99": 229840.0,
+      "max": 363357.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2010-06-02",
+    "window_end": "2010-08-30",
+    "test_start": "2010-08-01",
+    "test_end": "2010-08-30",
+    "n_rows": 239589,
+    "rate_per_day": 2662.1,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "4aacd474f835e7e91f9bd91bb250b0d9843620d3",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/pwa_ricc/data.parquet",
+        "sha256": "3a8fb1352dcc582b58f9a8b3d4021dd57535468f426bff4ac923ebe0b6bb0010",
+        "size_bytes": 9720984,
+        "mtime_epoch": 1784399849.31859
+      }
+    ]
+  }
+}

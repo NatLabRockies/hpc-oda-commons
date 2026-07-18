@@ -1,0 +1,102 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.pwa_kit_fh2",
+  "generated_at": "2026-07-18T18:38:42.053413+00:00",
+  "source": {
+    "table_path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/pwa_kit_fh2/data.parquet",
+    "system": "ForHLR-II",
+    "descriptor": "dataset.job_runtime.pwa_kit_fh2"
+  },
+  "characterization": {
+    "n_rows": 114355,
+    "full_span": {
+      "start": "2016-06-01",
+      "end": "2018-01-04"
+    },
+    "healthy_span": {
+      "start": "2016-06-02",
+      "end": "2018-01-04",
+      "days": 582,
+      "rows": 114352
+    },
+    "daily_volume": {
+      "median": 130.0,
+      "min": 1,
+      "max": 2451,
+      "gap_floor": 6.5
+    },
+    "rate_per_day": 196.5,
+    "gaps": [
+      {
+        "start": "2017-09-27",
+        "end": "2017-10-01",
+        "days": 5
+      }
+    ],
+    "columns": {
+      "queue": {
+        "cardinality": 2,
+        "missingness": 0.0
+      },
+      "partition": {
+        "cardinality": 2,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 166,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 1,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 1.0,
+      "median": 600.0,
+      "p90": 53285.8,
+      "p99": 259140.0,
+      "max": 604800.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2017-06-13",
+    "window_end": "2017-09-10",
+    "test_start": "2017-08-12",
+    "test_end": "2017-09-10",
+    "n_rows": 21975,
+    "rate_per_day": 244.2,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "4aacd474f835e7e91f9bd91bb250b0d9843620d3",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/pwa_kit_fh2/data.parquet",
+        "sha256": "9c14e0b7afbdb3374630855205516983f555de4733612704d3be6efdc6f7e42d",
+        "size_bytes": 3990421,
+        "mtime_epoch": 1784399917.2317429
+      }
+    ]
+  }
+}

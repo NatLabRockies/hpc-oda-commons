@@ -1,0 +1,102 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.fresco_anvil",
+  "generated_at": "2026-07-18T18:45:31.138493+00:00",
+  "source": {
+    "table_path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/fresco_anvil/data.parquet",
+    "system": "Anvil",
+    "descriptor": "dataset.job_runtime.fresco_anvil"
+  },
+  "characterization": {
+    "n_rows": 1475155,
+    "full_span": {
+      "start": "2022-02-13",
+      "end": "2023-05-31"
+    },
+    "healthy_span": {
+      "start": "2022-07-05",
+      "end": "2023-05-30",
+      "days": 330,
+      "rows": 1473516
+    },
+    "daily_volume": {
+      "median": 2220.0,
+      "min": 6,
+      "max": 38578,
+      "gap_floor": 111.0
+    },
+    "rate_per_day": 4465.2,
+    "gaps": [
+      {
+        "start": "2022-09-23",
+        "end": "2022-09-27",
+        "days": 5
+      }
+    ],
+    "columns": {
+      "queue": {
+        "cardinality": 9,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 2165,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 252,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 5,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 197.0,
+      "p90": 10974.0,
+      "p99": 345618.0,
+      "max": 1189169.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2022-12-26",
+    "window_end": "2023-03-25",
+    "test_start": "2023-02-24",
+    "test_end": "2023-03-25",
+    "n_rows": 257239,
+    "rate_per_day": 2858.2,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "4aacd474f835e7e91f9bd91bb250b0d9843620d3",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/fresco_anvil/data.parquet",
+        "sha256": "bf81e13b0b2b2c8805701590de4190149cc8301af024e103e4a91757d62b4619",
+        "size_bytes": 29474905,
+        "mtime_epoch": 1784400286.8373997
+      }
+    ]
+  }
+}

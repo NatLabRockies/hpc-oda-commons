@@ -1,0 +1,96 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.fresco_conte",
+  "generated_at": "2026-07-18T18:47:38.174696+00:00",
+  "source": {
+    "table_path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/fresco_conte/data.parquet",
+    "system": "Conte",
+    "descriptor": "dataset.job_runtime.fresco_conte"
+  },
+  "characterization": {
+    "n_rows": 1042125,
+    "full_span": {
+      "start": "2015-02-08",
+      "end": "2016-02-29"
+    },
+    "healthy_span": {
+      "start": "2015-02-28",
+      "end": "2016-02-29",
+      "days": 367,
+      "rows": 1041686
+    },
+    "daily_volume": {
+      "median": 2172.0,
+      "min": 696,
+      "max": 10657,
+      "gap_floor": 108.6
+    },
+    "rate_per_day": 2838.4,
+    "gaps": [],
+    "columns": {
+      "queue": {
+        "cardinality": 83,
+        "missingness": 2e-06
+      },
+      "user": {
+        "cardinality": 431,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 30,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 93,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 568.0,
+      "p90": 13375.0,
+      "p99": 169229.6,
+      "max": 2160054.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2015-09-20",
+    "window_end": "2015-12-18",
+    "test_start": "2015-11-19",
+    "test_end": "2015-12-18",
+    "n_rows": 193764,
+    "rate_per_day": 2152.9,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "4aacd474f835e7e91f9bd91bb250b0d9843620d3",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/fresco_conte/data.parquet",
+        "sha256": "2baf86cc9bf124625676eb65e766465af6e2232204465bd450fe156556ebe3b5",
+        "size_bytes": 29321219,
+        "mtime_epoch": 1784400430.0889697
+      }
+    ]
+  }
+}
