@@ -69,11 +69,13 @@ def test_ssh_command_uses_batch_mode_and_host() -> None:
     assert cmd.argv == ["ssh", "-o", "BatchMode=yes", "mycluster", "echo hi"]
 
 
-def test_rsync_push_and_pull_use_host_alias() -> None:
+def test_rsync_push_and_pull_use_host_alias_and_resume_flags() -> None:
     push = rsync_push(Path("/local/win"), "/base/data/windows", _site(), label="x")
-    assert push.argv == ["rsync", "-a", "/local/win/", "mycluster:/base/data/windows/"]
+    assert push.argv[-2:] == ["/local/win/", "mycluster:/base/data/windows/"]
+    assert "--partial" in push.argv and "--timeout=600" in push.argv
     pull = rsync_pull("/base/runs", Path("/local/runs"), _site(), label="x")
-    assert pull.argv == ["rsync", "-a", "mycluster:/base/runs/", "/local/runs/"]
+    assert pull.argv[-2:] == ["mycluster:/base/runs/", "/local/runs/"]
+    assert "--partial" in pull.argv
 
 
 def test_sbatch_command_plain_and_with_overrides() -> None:
@@ -106,13 +108,15 @@ def test_remote_mkdirs_and_sacct_commands() -> None:
     assert "--parsable2" in sacct.argv[-1]
 
 
-def test_stage_and_collect_commands_shape() -> None:
+def test_stage_creates_staging_parent_and_has_three_steps() -> None:
     plan = _plan()
     stage = stage_commands(
         plan, _site(), windows_dir=Path("/local/win"), plan_dir=Path("/local/p1")
     )
     assert [c.label for c in stage][0] == "mkdir remote dirs"
     assert len(stage) == 3
+    # the mkdir must include the plan's staging dir (rsync won't create missing parents)
+    assert plan.staging_remote in stage[0].argv[-1]
     collect = collect_commands(plan, _site(), Path("/local/out"))
     assert collect[0].argv[0] == "rsync"
 

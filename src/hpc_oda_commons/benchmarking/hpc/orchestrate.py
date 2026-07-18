@@ -52,14 +52,19 @@ def ssh_command(site: SiteConfig, remote: str, *, label: str) -> Command:
     return Command(["ssh", *_SSH_OPTS, site.host, remote], label)
 
 
+# --partial keeps partially-transferred files so a dropped large transfer resumes on
+# re-run (a single window can be 100s of MB); --timeout avoids an indefinite hang.
+_RSYNC_BASE = ["rsync", "-a", "--partial", "--timeout=600"]
+
+
 def rsync_push(local: Path, remote_path: str, site: SiteConfig, *, label: str) -> Command:
     # trailing slash on source: copy contents, not the dir itself
     src = f"{local}/" if not str(local).endswith("/") else str(local)
-    return Command(["rsync", "-a", src, f"{site.host}:{remote_path}/"], label)
+    return Command([*_RSYNC_BASE, src, f"{site.host}:{remote_path}/"], label)
 
 
 def rsync_pull(remote_path: str, local: Path, site: SiteConfig, *, label: str) -> Command:
-    return Command(["rsync", "-a", f"{site.host}:{remote_path}/", f"{local}/"], label)
+    return Command([*_RSYNC_BASE, f"{site.host}:{remote_path}/", f"{local}/"], label)
 
 
 def sbatch_command(
@@ -87,13 +92,14 @@ def sbatch_command(
     return ssh_command(site, " ".join(parts), label=label)
 
 
-def remote_mkdirs_command(site: SiteConfig) -> Command:
+def remote_mkdirs_command(site: SiteConfig, *, extra: list[str] | None = None) -> Command:
     dirs = [
         f"{site.repo_dir}/logs",
         f"{site.repo_dir}/data/windows",
         f"{site.repo_dir}/data/embeddings",
         f"{site.repo_dir}/runs",
         site.cache_dir,
+        *(extra or []),
     ]
     quoted = " ".join(shlex.quote(d) for d in dirs)
     return ssh_command(site, f"mkdir -p {quoted}", label="mkdir remote dirs")
@@ -157,9 +163,13 @@ def load_plan(plan_path: Path) -> LoadedPlan:
 def stage_commands(
     plan: LoadedPlan, site: SiteConfig, *, windows_dir: Path, plan_dir: Path
 ) -> list[Command]:
-    """Remote mkdirs + rsync of sliced windows and the plan dir to the cluster."""
+    """Remote mkdirs + rsync of sliced windows and the plan dir to the cluster.
+
+    The plan's staging dir is created explicitly: rsync does not create missing destination
+    parents, and the cluster's rsync (3.1.3) predates ``--mkpath``.
+    """
     return [
-        remote_mkdirs_command(site),
+        remote_mkdirs_command(site, extra=[plan.staging_remote]),
         rsync_push(
             windows_dir, f"{site.repo_dir}/data/windows", site, label="rsync windowed parquets"
         ),
