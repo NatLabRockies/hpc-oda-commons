@@ -487,51 +487,6 @@
       }
     },
     {
-      "id": "dataset.job_runtime.acme_seren",
-      "entry_type": "dataset",
-      "name": "ACME Seren (Shanghai AI Lab LLM cluster)",
-      "version": "1.0.0",
-      "description": "Job trace from the Seren LLM-training GPU cluster (Shanghai AI Laboratory), ACME/AcmeTrace study (~818k jobs, 2023). No requested-walltime; runtime derived as end_time - start_time. Cross-domain GPU-cluster complement; fetched from HuggingFace over direct HTTPS; normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
-      "output_schema_version": "oda.job.v0.2.0",
-      "license": "CC-BY-4.0",
-      "tags": ["acme", "seren", "gpu", "llm", "cloud"],
-      "reference": {
-        "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/acme_seren.yml"
-      }
-    },
-    {
-      "id": "dataset.job_runtime.acme_kalos",
-      "entry_type": "dataset",
-      "name": "ACME Kalos (Shanghai AI Lab LLM cluster)",
-      "version": "1.0.0",
-      "description": "Job trace from the Kalos LLM-training GPU cluster (Shanghai AI Laboratory), ACME/AcmeTrace study (~62k jobs, 2023). No requested-walltime; runtime derived as end_time - start_time. Cross-domain GPU-cluster complement; fetched from HuggingFace over direct HTTPS; normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
-      "output_schema_version": "oda.job.v0.2.0",
-      "license": "CC-BY-4.0",
-      "tags": ["acme", "kalos", "gpu", "llm", "cloud"],
-      "reference": {
-        "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/acme_kalos.yml"
-      }
-    },
-    {
-      "id": "dataset.job_runtime.helios",
-      "entry_type": "dataset",
-      "name": "Helios (SenseTime GPU clusters)",
-      "version": "1.0.0",
-      "description": "Job traces from four SenseTime GPU clusters (Saturn/Uranus/Venus/Earth), ~3.36M jobs, 2020, from the Helios/HeliosData study. Only the per-cluster cluster_log.csv job logs are used (gpu-number time-series filtered via member glob). No requested-walltime; runtime derived as end_time - start_time. Fetched from GitHub over direct HTTPS; normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
-      "output_schema_version": "oda.job.v0.2.0",
-      "license": "CC-BY-4.0",
-      "tags": ["helios", "sensetime", "gpu", "cloud"],
-      "reference": {
-        "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/helios.yml"
-      }
-    },
-    {
       "id": "dataset.job_runtime.lassen",
       "entry_type": "dataset",
       "name": "Lassen LAST (LLNL)",

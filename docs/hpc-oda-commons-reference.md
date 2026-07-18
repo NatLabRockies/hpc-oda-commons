@@ -593,7 +593,7 @@ Each registry entry is a `RegistryEntry` dataclass with:
 
 ### 10.2 v0.1 Registry Contents
 
-The bundled registry snapshot contains 37 entries: one adapter, seven models, four recipes, and 25 datasets (registered via the `oda.registry.v0.2.0` `dataset` entry_type). A representative subset:
+The bundled registry snapshot contains 34 entries: one adapter, seven models, four recipes, and 22 datasets (registered via the `oda.registry.v0.2.0` `dataset` entry_type). A representative subset:
 
 | ID | Type | Description |
 |----|------|-------------|

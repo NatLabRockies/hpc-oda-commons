@@ -1,6 +1,6 @@
 # Runtime Dataset Curation — Status & Remaining Roadmap
 
-**Updated:** 2026-07-02 (autonomous curation run; 25 runtime datasets registered)
+**Updated:** 2026-07-18 (22 runtime datasets registered)
 **Companion to:** [`runtime-first-investigation.md`](runtime-first-investigation.md) (the plan) and
 the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../design/public-dataset-ingestion.md)).
 
@@ -43,27 +43,22 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | `nlr_kestrel` | Kestrel (H100) | 9,321,737 | data.nlr.gov | home-lab |
 | `nlr_eagle` | Eagle | 13,836,216 | data.nlr.gov | home-lab |
 | `ic2` | IC2/Polaris/AWS | 3,599 | Zenodo/JSON | cloud+HPC |
-| `acme_seren` | Seren (Shanghai AI) | 818,327 | HF/https | GPU/LLM, no walltime |
-| `acme_kalos` | Kalos (Shanghai AI) | 62,410 | HF/https | GPU/LLM, no walltime |
-| `helios` | SenseTime ×4 | 3,362,981 | GitHub/https | GPU, no walltime |
 | `lassen` | Lassen (LLNL, LSF) | 1,467,746 | GitHub-LFS/https | via LFS media URL |
 | `fresco_anvil` | Anvil (Purdue, A100) | 1,475,155 | datadepot/https | 11 months, real walltime |
 | `fresco_conte` | Conte (Purdue) | 1,042,125 | datadepot/https | Torque, 2015-16, real walltime |
 | `alcf_djc_polaris` | Polaris (Argonne) | 957,606 | ALCF (manual) | PBS, 2022-2026, real walltime |
 | `alcf_djc_aurora` | Aurora (Argonne) | 891,952 | ALCF (manual) | PBS, 2025-2026, real walltime |
 
-~58M jobs across SLURM / LSF / PBS / Torque / SWF and cloud, 1996–2026, x86 / ARM / GPU, home-lab included.
+~53M jobs across SLURM / LSF / PBS / Torque / SWF and cloud, 1996–2026, x86 / ARM / GPU, home-lab included.
 All strict-validate against `oda.job.v0.2.0`.
 
 ## Remaining runtime datasets
 
-Three are documented for user ingestion in [`external-datasets.md`](external-datasets.md) — each
+Two are documented for user ingestion in [`external-datasets.md`](external-datasets.md) — each
 verified as genuinely not fetchable/pinnable from this environment:
 
 - **Blue Waters** (NCSA, Torque, ~4.5M jobs) — **Globus only** (verified: NCSA's page gives no
   direct HTTPS); has requested walltime.
-- **Alibaba GPU-v2026** (ASI) — a **direct-HTTPS OSS URL** (not an SDK), but `aliyuncs.com` was
-  DNS-unreachable here; no requested walltime.
 - **FRESCO Stampede1** (TACC) — direct-HTTPS datadepot URL, but the single 1.13 GB file wouldn't
   transfer through this proxy; has requested walltime.
 
@@ -78,17 +73,16 @@ Direct HTTPS (the existing `http` backend) covers far more than expected — **n
 was ever built**. Public **S3** (MIT: `https://<bucket>.s3.amazonaws.com/<key>`), **data.nlr.gov**
 (302→presigned S3), **HuggingFace** (`resolve/<ref>/<path>`), **git-LFS** (GitHub
 `media.githubusercontent.com/media/...` — no `git-lfs` tool), and the **FRESCO datadepot** (a plain
-web directory) are all direct HTTPS. Even **Aliyun-OSS** (Alibaba) is a plain-HTTPS URL, not an
-SDK, and **ALCF DJC** is public data behind a one-time name/email form (now a registered
-manual-kind dataset), not the Cloudflare wall it first looked like — only **Globus** (Blue Waters)
-genuinely needs a login. **Lesson: always live-check the fetch path.** See
+web directory) are all direct HTTPS. And **ALCF DJC** is public data behind a one-time name/email
+form (now a registered manual-kind dataset), not the Cloudflare wall it first looked like — only
+**Globus** (Blue Waters) genuinely needs a login. **Lesson: always live-check the fetch path.** See
 [`external-datasets.md`](external-datasets.md).
 
 ## What's left
 
-Runtime-first curation is effectively complete: **25 datasets** registered (incl. ALCF Polaris +
-Aurora via the manual-kind flow). The three remaining (Blue Waters, Alibaba, FRESCO Stampede1) are each
-genuinely not fetchable/pinnable from this environment (Globus / DNS / a proxy-limited large
+Runtime-first curation is effectively complete: **22 datasets** registered (incl. ALCF Polaris +
+Aurora via the manual-kind flow). The two remaining (Blue Waters, FRESCO Stampede1) are each
+genuinely not fetchable/pinnable from this environment (Globus / a proxy-limited large
 transfer) and are documented for user ingestion in
 [`external-datasets.md`](external-datasets.md) rather than pipeline-fetched.
 
