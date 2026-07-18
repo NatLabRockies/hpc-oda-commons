@@ -6,7 +6,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from hpc_oda_commons.ingest.jobs_parquet.apply import apply_mapping_spec
+from hpc_oda_commons.ingest.jobs_parquet.apply import _duration_to_seconds, apply_mapping_spec
 from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec, write_mapping_spec
 
 
@@ -709,3 +709,15 @@ def test_apply_all_null_optional_timestamp_column_dropped(tmp_path: Path) -> Non
     table = pq.read_table(tmp_path / "out.parquet")
     assert "submit_time" not in table.column_names
     assert pa.types.is_timestamp(table.schema.field("start_time").type)
+
+
+def test_duration_numeric_units_are_null_for_scheduler_sentinels() -> None:
+    # Real numeric values convert normally, in each numeric unit.
+    assert _duration_to_seconds("30", "minutes") == 1800.0
+    assert _duration_to_seconds(30, "seconds") == 30.0
+    assert _duration_to_seconds("2", "hours") == 7200.0
+    # SLURM-style sentinels and blanks for an unknown walltime limit -> null,
+    # rather than raising and aborting the whole prepare (e.g. FRESCO Stampede1
+    # has a handful of UNLIMITED walltime rows).
+    for sentinel in ("UNLIMITED", "INVALID", "Partition_Limit", "", "  ", None):
+        assert _duration_to_seconds(sentinel, "minutes") is None
