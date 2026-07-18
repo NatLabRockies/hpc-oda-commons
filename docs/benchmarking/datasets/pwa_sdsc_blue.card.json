@@ -1,0 +1,103 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.pwa_sdsc_blue",
+  "generated_at": "2026-07-18T18:38:32.787896+00:00",
+  "source": {
+    "table_path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/pwa_sdsc_blue/data.parquet",
+    "system": "Blue Horizon",
+    "descriptor": "dataset.job_runtime.pwa_sdsc_blue"
+  },
+  "characterization": {
+    "n_rows": 238562,
+    "full_span": {
+      "start": "2000-04-25",
+      "end": "2002-12-30"
+    },
+    "healthy_span": {
+      "start": "2000-05-01",
+      "end": "2002-12-28",
+      "days": 972,
+      "rows": 238336
+    },
+    "daily_volume": {
+      "median": 230.0,
+      "min": 2,
+      "max": 1037,
+      "gap_floor": 11.5
+    },
+    "rate_per_day": 245.2,
+    "gaps": [
+      {
+        "start": "2000-09-30",
+        "end": "2000-10-02",
+        "days": 3
+      },
+      {
+        "start": "2000-12-29",
+        "end": "2000-12-31",
+        "days": 3
+      }
+    ],
+    "columns": {
+      "queue": {
+        "cardinality": 22,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 468,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 2,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 210.0,
+      "p90": 7890.9,
+      "p99": 64848.0,
+      "max": 616793.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2002-03-20",
+    "window_end": "2002-06-17",
+    "test_start": "2002-05-19",
+    "test_end": "2002-06-17",
+    "n_rows": 33222,
+    "rate_per_day": 369.1,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "4aacd474f835e7e91f9bd91bb250b0d9843620d3",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/pwa_sdsc_blue/data.parquet",
+        "sha256": "7fda6ce1bfc7a93c43f742ee255dd554faddacd8910ee195ceb508710d558f6b",
+        "size_bytes": 8299567,
+        "mtime_epoch": 1784399904.8662767
+      }
+    ]
+  }
+}

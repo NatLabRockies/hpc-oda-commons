@@ -1,0 +1,123 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.lassen",
+  "generated_at": "2026-07-18T18:28:59.775408+00:00",
+  "source": {
+    "table_path": "data/datasets/lassen/data.parquet",
+    "system": "Lassen",
+    "descriptor": "dataset.job_runtime.lassen"
+  },
+  "characterization": {
+    "n_rows": 1467746,
+    "full_span": {
+      "start": "2018-08-22",
+      "end": "2020-11-18"
+    },
+    "healthy_span": {
+      "start": "2018-09-28",
+      "end": "2020-11-17",
+      "days": 782,
+      "rows": 1466981
+    },
+    "daily_volume": {
+      "median": 1300.5,
+      "min": 2,
+      "max": 22192,
+      "gap_floor": 65.0
+    },
+    "rate_per_day": 1875.9,
+    "gaps": [
+      {
+        "start": "2018-09-29",
+        "end": "2018-10-01",
+        "days": 3
+      },
+      {
+        "start": "2018-10-05",
+        "end": "2018-10-07",
+        "days": 3
+      },
+      {
+        "start": "2018-10-18",
+        "end": "2018-10-23",
+        "days": 6
+      },
+      {
+        "start": "2018-11-01",
+        "end": "2018-11-06",
+        "days": 6
+      },
+      {
+        "start": "2018-11-15",
+        "end": "2018-11-18",
+        "days": 4
+      },
+      {
+        "start": "2018-11-20",
+        "end": "2018-11-23",
+        "days": 4
+      }
+    ],
+    "columns": {
+      "queue": {
+        "cardinality": 14,
+        "missingness": 4e-06
+      },
+      "user": {
+        "cardinality": 589,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 589,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 321.0,
+      "p90": 21619.1,
+      "p99": 43223.6,
+      "max": 345501.069632
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2020-03-17",
+    "window_end": "2020-06-14",
+    "test_start": "2020-05-16",
+    "test_end": "2020-06-14",
+    "n_rows": 174542,
+    "rate_per_day": 1939.4,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "1f961b887ea83187480cb4d7e415e8f7a1bff418",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/lassen/data.parquet",
+        "sha256": "ebf01f3615ca3c2ca31cfcdb82b5fec788f09edf5d8cb4763515b699c3b9c3e2",
+        "size_bytes": 48307205,
+        "mtime_epoch": 1784399300.639721
+      }
+    ]
+  }
+}

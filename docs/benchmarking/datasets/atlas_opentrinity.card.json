@@ -1,0 +1,92 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.job_runtime.atlas_opentrinity",
+  "generated_at": "2026-07-18T18:30:45.008291+00:00",
+  "source": {
+    "table_path": "data/datasets/atlas_opentrinity/data.parquet",
+    "system": "Trinity",
+    "descriptor": "dataset.job_runtime.atlas_opentrinity"
+  },
+  "characterization": {
+    "n_rows": 21531,
+    "full_span": {
+      "start": "2016-02-02",
+      "end": "2016-04-22"
+    },
+    "healthy_span": {
+      "start": "2016-02-03",
+      "end": "2016-04-22",
+      "days": 80,
+      "rows": 21529
+    },
+    "daily_volume": {
+      "median": 117.5,
+      "min": 3,
+      "max": 4150,
+      "gap_floor": 5.9
+    },
+    "rate_per_day": 269.1,
+    "gaps": [],
+    "columns": {
+      "user": {
+        "cardinality": 85,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 86,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 4,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 823.0,
+      "p90": 14412.0,
+      "p99": 57681.0,
+      "max": 625077.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 30
+    },
+    "window_start": "2016-02-03",
+    "window_end": "2016-04-22",
+    "test_start": "2016-03-24",
+    "test_end": "2016-04-22",
+    "n_rows": 21529,
+    "rate_per_day": 239.2,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "healthy span is only 80d (< 90d requested); used the whole span. No missing blocks."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "1f961b887ea83187480cb4d7e415e8f7a1bff418",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/atlas_opentrinity/data.parquet",
+        "sha256": "db94ce0046a2dee799973229668c99183ee1134ec3fb8c0c4c73b6010019f101",
+        "size_bytes": 635536,
+        "mtime_epoch": 1784399443.0710793
+      }
+    ]
+  }
+}
