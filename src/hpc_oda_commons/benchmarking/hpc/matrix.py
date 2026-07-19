@@ -33,6 +33,11 @@ RUNTIME_MODELS: tuple[str, ...] = (
 # The model whose recipe reads the *embedded* parquet (requires a prior GPU embed pass).
 EMBEDDING_MODEL: str = "job_runtime_embedding_knn"
 
+# Models whose independent per-window fits are run in parallel across the cell's allocated
+# cores (via ``window_n_jobs``). MLP only: Random Forest already parallelizes inside each
+# fit (estimator ``n_jobs=-1``), so window-level threads would oversubscribe it.
+WINDOW_PARALLEL_MODEL_TAGS: frozenset[str] = frozenset({"mlp"})
+
 # Rolling split: 120 x 6h = 30 days test, 60 days training lookback → a 90-day slice.
 SPLIT: dict[str, object] = {
     "method": "rolling",
@@ -177,8 +182,22 @@ def _embedded_parquet(dataset: str) -> str:
     return f"data/embeddings/{dataset}/data.parquet"
 
 
-def build_recipe(dataset: str, model_key: str, table_path: str, output_dir: str) -> dict:
-    """Build a benchmark recipe payload (``oda.recipe.v0.1.0``) for one cell."""
+def build_recipe(
+    dataset: str,
+    model_key: str,
+    table_path: str,
+    output_dir: str,
+    *,
+    window_n_jobs: int | None = None,
+) -> dict:
+    """Build a benchmark recipe payload (``oda.recipe.v0.1.0``) for one cell.
+
+    ``window_n_jobs`` (when set) is added to the split so the model runs its independent
+    per-window fits across that many threads — used to spread MLP over the cell's cores.
+    """
+    split = dict(SPLIT)
+    if window_n_jobs is not None:
+        split["window_n_jobs"] = window_n_jobs
     return {
         "recipe_id": f"recipe.job_runtime.{dataset}_{_model_tag(model_key)}",
         "problem_domain": ["job-runtime-prediction"],
@@ -189,7 +208,7 @@ def build_recipe(dataset: str, model_key: str, table_path: str, output_dir: str)
             {"name": "mae", "target": "runtime_seconds"},
             {"name": "rmse", "target": "runtime_seconds"},
         ],
-        "split": dict(SPLIT),
+        "split": split,
         "run": {"output_dir": output_dir, "overwrite": True},
     }
 
@@ -358,6 +377,7 @@ def write_plan(plan: Plan, staging_dir: Path, site: SiteConfig) -> Path:
             f"job_runtime_{cell.model}",
             cell.table_path,
             output_dir=f"runs/{cell.dataset}/{cell.model}",
+            window_n_jobs=(cell.cpus if cell.model in WINDOW_PARALLEL_MODEL_TAGS else None),
         )
         (staging_dir / cell.recipe_path).write_text(
             yaml.safe_dump(recipe, sort_keys=False), encoding="utf-8"

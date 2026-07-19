@@ -152,6 +152,11 @@ text/id columns, so the largest datasets move to the big-memory partition.
 
 Embedding jobs run on the `gpu` partition (`fp16`, one GPU) with a per-tier walltime.
 
+**MLP cells use the whole allocation.** The generated MLP recipe sets `window_n_jobs` to the
+tier's CPU count, so its independent per-window fits run across all allocated cores (BLAS
+pinned to one thread per worker). Other models are unaffected: Random Forest already
+parallelizes inside each fit, and the rest run windows sequentially.
+
 ## Benchmark configuration
 
 The generated recipes encode the agreed methodology (see [`methodology.md`](methodology.md)):

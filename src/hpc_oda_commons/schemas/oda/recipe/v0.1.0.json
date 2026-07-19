@@ -49,7 +49,9 @@
         "seed": { "type": "integer" },
         "n_windows": { "type": "integer", "minimum": 1 },
         "test_window_hours": { "type": "integer", "minimum": 1 },
-        "training_lookback_days": { "type": "integer", "minimum": 1 }
+        "training_lookback_days": { "type": "integer", "minimum": 1 },
+        "window_n_jobs": { "type": "integer", "minimum": 1 },
+        "sims_block_bytes": { "type": "integer", "minimum": 1 }
       },
       "required": ["method"],
       "allOf": [
