@@ -5,6 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task={{cpus}}
+#SBATCH --mem={{mem}}
 #SBATCH --gres={{gres}}
 #SBATCH --job-name={{job_name}}
 #SBATCH --output={{log}}

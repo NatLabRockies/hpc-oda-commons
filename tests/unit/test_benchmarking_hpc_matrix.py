@@ -166,6 +166,7 @@ def test_write_plan_emits_valid_recipes_and_filled_scripts(tmp_path: Path) -> No
     embed_script = (staging / "scripts" / "embed__ds.sbatch").read_text(encoding="utf-8")
     assert "export HF_HOME=/scratch/bench/hf" in embed_script
     assert "export HF_HUB_OFFLINE=1" in embed_script
+    assert "#SBATCH --mem=64G" in embed_script  # light tier embed memory (was unset → OOM)
 
     plan_json = json.loads(plan_path.read_text(encoding="utf-8"))
     assert plan_json["n_cells"] == len(RUNTIME_MODELS)
