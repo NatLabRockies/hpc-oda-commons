@@ -53,15 +53,17 @@ class Tier:
     mem: str  # "0" = all memory on the node
     time: str  # benchmark walltime (Slurm D-HH:MM:SS or HH:MM:SS)
     embed_time: str  # embedding-job walltime
+    embed_mem: str  # embedding-job memory (GPU nodes are shared, so request explicitly)
 
 
 # Tiers keyed by rows in the 90-day benchmark window. Training-set size per rolling window
 # scales with this, and so does peak memory (one-hot + SVD of high-cardinality text/id
-# columns), which is why the largest datasets move to the big-memory partition.
+# columns), which is why the largest datasets move to the big-memory partition. embed_mem
+# scales with the embedded output (rows x embedding dim), which the embed builds in memory.
 TIERS: tuple[Tier, ...] = (
-    Tier("light", "cpu", 16, "0", "08:00:00", "02:00:00"),
-    Tier("heavy", "cpu", 52, "0", "1-00:00:00", "04:00:00"),
-    Tier("extreme", "bigmem", 64, "0", "2-00:00:00", "08:00:00"),
+    Tier("light", "cpu", 16, "0", "08:00:00", "02:00:00", "64G"),
+    Tier("heavy", "cpu", 52, "0", "1-00:00:00", "04:00:00", "128G"),
+    Tier("extreme", "bigmem", 64, "0", "2-00:00:00", "08:00:00", "256G"),
 )
 _LIGHT_MAX_ROWS = 300_000
 _HEAVY_MAX_ROWS = 2_000_000
@@ -148,6 +150,7 @@ class EmbedJob:
     output_path: str  # embedded parquet, relative to repo_dir
     partition: str
     time: str
+    mem: str
     script_path: str  # relative to the staging dir
     job_name: str
 
@@ -245,6 +248,7 @@ def build_plan(
                     output_path=_embedded_parquet(card.dataset),
                     partition=site.partition("gpu"),
                     time=tier.embed_time,
+                    mem=tier.embed_mem,
                     script_path=f"scripts/embed__{card.dataset}.sbatch",
                     job_name=f"e.{card.dataset}",
                 )
@@ -315,6 +319,7 @@ def _embed_script(job: EmbedJob, site: SiteConfig) -> str:
             "account": site.account,
             "partition": job.partition,
             "time": job.time,
+            "mem": job.mem,
             "cpus": 16,
             "gres": site.gpu_gres,
             "job_name": job.job_name,
