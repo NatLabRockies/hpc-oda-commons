@@ -173,6 +173,29 @@ def test_write_plan_emits_valid_recipes_and_filled_scripts(tmp_path: Path) -> No
     assert plan_json["n_embeds"] == 1
 
 
+def test_mlp_cells_run_windows_across_allocated_cores(tmp_path: Path) -> None:
+    import yaml
+
+    cfg = load_site_config(_write_site(tmp_path))
+    # light tier (16 cpus) and extreme tier (64 cpus) so window_n_jobs must track cpus.
+    plan = build_plan([_card("small", 1000), _card("big", 5_000_000)], cfg, plan_id="p1")
+    staging = tmp_path / "staging"
+    write_plan(plan, staging, cfg)
+
+    def _split(dataset: str, tag: str) -> dict:
+        payload = yaml.safe_load(
+            (staging / "recipes" / f"{dataset}__{tag}.yml").read_text(encoding="utf-8")
+        )
+        return payload["split"]
+
+    # MLP spreads its independent per-window fits over the cell's cores.
+    assert _split("small", "mlp")["window_n_jobs"] == 16  # light tier
+    assert _split("big", "mlp")["window_n_jobs"] == 64  # extreme tier
+    # Every other model runs windows sequentially (no window-level threads).
+    assert "window_n_jobs" not in _split("small", "xgboost")
+    assert "window_n_jobs" not in _split("big", "random_forest")
+
+
 # --- template rendering -------------------------------------------------------------
 
 
