@@ -21,6 +21,7 @@ from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
 from hpc_oda_commons.models.job_runtime_embedding_knn.backends import (
+    DEFAULT_SIMS_BLOCK_BYTES,
     make_topk,
     resolve_backend,
     resolve_device,
@@ -45,6 +46,11 @@ class JobRuntimeEmbeddingKnnConfig:
     weighting: str = "similarity"  # similarity | uniform
     normalize: bool = True  # L2-normalize so inner product == cosine
     log_target: bool = False
+    # Peak bytes for one dense similarity block; the query is streamed in blocks
+    # sized to this budget so per-window memory stays bounded on large corpora.
+    # Neighbor selection is unaffected by the value; similarity values match up to
+    # floating-point summation order (see known-issues #2).
+    sims_block_bytes: int = DEFAULT_SIMS_BLOCK_BYTES
 
 
 class JobRuntimeEmbeddingKnnModel:
@@ -85,7 +91,7 @@ class JobRuntimeEmbeddingKnnModel:
         backend = resolve_backend(cfg.backend, device)
         if backend == "numpy":
             device = "cpu"  # the numpy engine is always CPU; report it honestly
-        topk = make_topk(backend, device, cfg.dtype)
+        topk = make_topk(backend, device, cfg.dtype, sims_block_bytes=cfg.sims_block_bytes)
         if verbose:
             print(
                 f"[{self._log_prefix}][verbose] backend={backend} device={device} "

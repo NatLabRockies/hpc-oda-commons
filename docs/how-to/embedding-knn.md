@@ -131,6 +131,12 @@ CPU faster, so measure before committing to a device.
 - `normalize` — L2-normalize embeddings (default true).
 - `log_target` — predict in log1p-space and invert (default false).
 - `backend` / `device` / `dtype` — engine selection (see above).
+- `sims_block_bytes` — peak bytes for one dense similarity block (default 2 GiB).
+  Search streams the query in blocks sized to this budget, so per-window memory is
+  `block × N_train` instead of `N_test × N_train` — the difference between a bounded
+  footprint and an out-of-memory kill on large corpora. Neighbor selection is
+  unaffected; similarity values match up to floating-point summation order (the
+  reproducibility caveat in [known-issues](../known-issues.md)).
 - `n_windows`, `test_window_hours`, `training_lookback_days`,
   `submit_time_field`, `end_time_field` — the rolling schedule (shared with the
   other rolling models via `rolling_tabular.split`).
