@@ -16,6 +16,7 @@ from hpc_oda_commons.kernel.metrics import (
 )
 from hpc_oda_commons.models.job_power_uopc.model import JobPowerUopcModel
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
+from hpc_oda_commons.models.job_runtime_embedding_knn.backends import DEFAULT_SIMS_BLOCK_BYTES
 from hpc_oda_commons.models.job_runtime_embedding_knn.model import (
     JobRuntimeEmbeddingKnnConfig,
     JobRuntimeEmbeddingKnnModel,
@@ -332,6 +333,7 @@ def run_rolling_xgboost(
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
+            window_n_jobs=int(split.get("window_n_jobs", 1)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -361,6 +363,7 @@ def run_rolling_random_forest(
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
+            window_n_jobs=int(split.get("window_n_jobs", 1)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -390,6 +393,7 @@ def run_rolling_mlp(
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
+            window_n_jobs=int(split.get("window_n_jobs", 1)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -421,6 +425,7 @@ def run_rolling_embedding_knn(
             backend=str(split.get("backend", "auto")),
             device=str(split.get("device", "auto")),
             weighting=str(split.get("weighting", "similarity")),
+            sims_block_bytes=int(split.get("sims_block_bytes", DEFAULT_SIMS_BLOCK_BYTES)),
         )
     )
     return _run_rolling_model_evaluate(

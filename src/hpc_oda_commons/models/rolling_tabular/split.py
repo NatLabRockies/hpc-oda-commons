@@ -182,6 +182,11 @@ class DailyPreprocessingCache:
         self._store[day_key] = value
         return value, True
 
+    def get(self, day_key: str) -> Any:
+        """Return a previously-built artifact. Read-only, so safe to call from
+        worker threads once every day has been built."""
+        return self._store[day_key]
+
     def clear(self) -> None:
         self._store.clear()
 

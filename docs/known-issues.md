@@ -65,6 +65,21 @@ Options to evaluate, roughly in order of preference:
 Until one of these lands, treat reproducibility as **verified for the baseline and the
 data/split/metric pipeline, but not yet for the fitted-model metric values across machines.**
 
+### Related knobs under this caveat ([#113](https://github.com/NatLabRockies/hpc-oda-commons/issues/113))
+
+Two efficiency knobs on the rolling models share exactly this floating-point caveat and no
+other. Both preserve the **structure** of the evaluation bit-for-bit (which windows score,
+which neighbors are selected, refit bookkeeping); only the last-digit metric *values* can move,
+by the same BLAS summation-order mechanism above:
+
+- **Embedding kNN `sims_block_bytes`** streams the query in memory-bounded blocks. Different
+  block sizes select identical neighbors; similarity values differ only because BLAS uses a
+  different kernel per matmul shape. Default-on, so it needs no recipe change.
+- **Rolling-tabular `window_n_jobs`** runs the independent per-window fits across threads with
+  BLAS pinned to one thread per worker. Defaults to `1` (sequential, unchanged). `>1` matches
+  the sequential result up to the same cross-thread BLAS variance — not a new class of
+  non-determinism, just this one.
+
 ## Note — vectorized jobs-parquet ingest
 
 **Status:** informational

@@ -10,7 +10,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from hpc_oda_commons.datasets.synthetic import generate_tiny_embedded_runtime_dataset
-from hpc_oda_commons.models.job_runtime_embedding_knn.backends import resolve_backend
+from hpc_oda_commons.models.job_runtime_embedding_knn.backends import make_topk, resolve_backend
 from hpc_oda_commons.models.job_runtime_embedding_knn.model import (
     JobRuntimeEmbeddingKnnConfig,
     JobRuntimeEmbeddingKnnModel,
@@ -124,3 +124,40 @@ def test_resolve_backend_rejects_faiss_on_mps():
         resolve_backend("faiss", "mps")
     # auto on cpu resolves to a real engine
     assert resolve_backend("auto", "cpu") in {"torch", "numpy"}
+
+
+@pytest.mark.parametrize("backend", ["numpy"] + (["torch"] if _HAS_TORCH else []))
+def test_batched_topk_matches_unbatched(backend):
+    # Query-dimension batching selects exactly the same neighbors (each query row still
+    # sees the full corpus). The similarity *values* match up to floating-point
+    # summation order — BLAS uses a different kernel for a small vs large matmul shape,
+    # the same caveat documented for fitted models in known-issues #2.
+    rng = np.random.default_rng(0)
+    corpus = rng.standard_normal((200, 8)).astype(np.float32)
+    query = rng.standard_normal((50, 8)).astype(np.float32)
+    k = 5
+
+    full = make_topk(backend, "cpu", sims_block_bytes=10**12)  # whole query in one block
+    # 2400 bytes / (200 corpus rows * 4) == 3 query rows per block -> ~17 blocks.
+    blocked = make_topk(backend, "cpu", sims_block_bytes=200 * 4 * 3)
+
+    sims_full, idx_full = full(query, corpus, k)
+    sims_blk, idx_blk = blocked(query, corpus, k)
+
+    np.testing.assert_array_equal(idx_full, idx_blk)  # neighbor selection is exact
+    np.testing.assert_allclose(sims_full, sims_blk, rtol=1e-5, atol=1e-5)
+
+
+def test_sims_block_bytes_preserves_neighbor_selection(tmp_path):
+    # A 1-byte budget forces one query row per block; the model output must match the
+    # default single-block path up to floating-point rounding (same neighbors, same
+    # rows scored), so the memory-bounding fix does not change results meaningfully.
+    rows = _embedded_rows(tmp_path)
+    cfg = dict(n_windows=12, test_window_hours=6, training_lookback_days=30, k=3, backend="numpy")
+    default = JobRuntimeEmbeddingKnnModel(JobRuntimeEmbeddingKnnConfig(**cfg)).evaluate(rows)
+    streamed = JobRuntimeEmbeddingKnnModel(
+        JobRuntimeEmbeddingKnnConfig(sims_block_bytes=1, **cfg)
+    ).evaluate(rows)
+    assert default["mae"] == pytest.approx(streamed["mae"], rel=1e-5)
+    assert default["rmse"] == pytest.approx(streamed["rmse"], rel=1e-5)
+    assert default["summary"]["rows_scored"] == streamed["summary"]["rows_scored"]
