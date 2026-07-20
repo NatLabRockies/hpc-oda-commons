@@ -423,8 +423,8 @@ Controlled by `JobRuntimeTfidfKnnConfig`:
 | `k` | 5 | Number of nearest neighbors |
 | `n_hash_features` | 16384 | HashingVectorizer feature count |
 | `ngram_range` | (1, 1) | N-gram range for text vectorization |
-| `use_incremental_cache` | True | Reuse hash matrix across windows |
 | `log_target` | False | Predict in log-space |
+| `window_n_jobs` | 1 | Worker threads for the independent per-window fits (1 = sequential; results are identical regardless) |
 
 #### 7.3.2 How It Works
 
@@ -434,9 +434,9 @@ Controlled by `JobRuntimeTfidfKnnConfig`:
 4. **k-nearest neighbors**: Finds the k most similar training jobs by cosine distance.
 5. **Weighted prediction**: Predicts runtime as the similarity-weighted average of the neighbors' runtimes.
 
-#### 7.3.3 Incremental Cache
+#### 7.3.3 Precompute-and-slice + window parallelism
 
-The model maintains an incremental hash matrix cache across rolling windows. Between windows, only new/removed jobs are hashed -- the rest of the matrix is reused. This avoids re-vectorizing the full training set each window and provides significant speedup for rolling evaluation.
+`HashingVectorizer` is stateless, so the model hashes every row once up front into a single sparse matrix and each rolling window scores an index slice of it — there is no cross-window cache and each window's fit is independent. That makes the windows safe to run concurrently: set `window_n_jobs > 1` to spread the independent per-window fits across the cell's cores (BLAS pinned to one thread per worker so cores aren't oversubscribed). Results are assembled in split order and are identical for any `window_n_jobs` (see the tie-break caveat in `docs/known-issues.md`).
 
 ### 7.4 Random Forest Model (`model.job_runtime_random_forest`)
 

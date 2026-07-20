@@ -34,9 +34,10 @@ RUNTIME_MODELS: tuple[str, ...] = (
 EMBEDDING_MODEL: str = "job_runtime_embedding_knn"
 
 # Models whose independent per-window fits are run in parallel across the cell's allocated
-# cores (via ``window_n_jobs``). MLP only: Random Forest already parallelizes inside each
-# fit (estimator ``n_jobs=-1``), so window-level threads would oversubscribe it.
-WINDOW_PARALLEL_MODEL_TAGS: frozenset[str] = frozenset({"mlp"})
+# cores (via ``window_n_jobs``). MLP and TF-IDF kNN: both do serial single-threaded per-window
+# work that dominates on large corpora. Random Forest already parallelizes inside each fit
+# (estimator ``n_jobs=-1``), so window-level threads would oversubscribe it.
+WINDOW_PARALLEL_MODEL_TAGS: frozenset[str] = frozenset({"mlp", "tfidf_knn"})
 
 # Rolling split: 120 x 6h = 30 days test, 60 days training lookback → a 90-day slice.
 SPLIT: dict[str, object] = {

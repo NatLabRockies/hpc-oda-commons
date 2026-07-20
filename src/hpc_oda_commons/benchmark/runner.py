@@ -455,6 +455,7 @@ def run_rolling_tfidf_knn(
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
+            window_n_jobs=int(split.get("window_n_jobs", 1)),
         )
     )
     return _run_rolling_model_evaluate(

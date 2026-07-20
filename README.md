@@ -125,7 +125,7 @@ hpc-oda benchmark -v my_recipe.yml
 
 **MLP** (`model.job_runtime_mlp`) — Feed-forward neural network (sklearn `MLPRegressor`) with automatic categorical preprocessing (one-hot encoding + SVD) and rolling evaluation. Shares the `rolling_tabular` base with XGBoost and Random Forest.
 
-**TF-IDF + kNN** (`model.job_runtime_tfidf_knn`) — Text-similarity model that concatenates job metadata fields (user, account, partition, job name, submit line, working directory, script) into text, vectorizes with TF-IDF, and predicts runtime as the similarity-weighted average of the k nearest neighbors. Uses an incremental HashingVectorizer cache for efficient rolling evaluation.
+**TF-IDF + kNN** (`model.job_runtime_tfidf_knn`) — Text-similarity model that concatenates job metadata fields (user, account, partition, job name, submit line, working directory, script) into text, vectorizes with TF-IDF, and predicts runtime as the similarity-weighted average of the k nearest neighbors. The stateless HashingVectorizer runs once over all rows and each rolling window scores an index slice, so the independent windows can run in parallel across cores (`window_n_jobs`).
 
 **Embedding + kNN** (`model.job_runtime_embedding_knn`) — Embedding-space counterpart to TF-IDF + kNN: predicts runtime as the similarity-weighted average of the k nearest neighbors in a **precomputed dense embedding space**, using an exact dense top-k search. Model-agnostic — produce the `embedding` column with `hpc-oda embed` (any HuggingFace sentence-transformers model, or a dependency-free stub). See [Embedding-based kNN](docs/how-to/embedding-knn.md).
 

@@ -60,7 +60,7 @@ This enforces strict temporal separation -- the model never sees future data dur
 The rolling models use caching to avoid redundant computation across windows:
 
 - **Rolling tabular models** (`xgboost`, `random_forest`, `mlp`): Categorical feature preprocessing (one-hot encoding + SVD) is cached by day. The encoder and SVD are refit on the first split of each new day, then reused for remaining windows. This mirrors production behavior where preprocessing would be refreshed on a daily schedule. The three models share this preprocessing via the `rolling_tabular` package.
-- **TF-IDF + kNN**: The HashingVectorizer hash matrix is cached incrementally. Between windows, only new/removed jobs are hashed -- the rest of the matrix is reused. This avoids re-vectorizing the full training set each window.
+- **TF-IDF + kNN**: The stateless HashingVectorizer runs once over all rows, and each window scores an index slice of that single hash matrix. Because the windows are then independent, they can run concurrently across cores (`window_n_jobs`) without changing results.
 
 ## Metrics
 

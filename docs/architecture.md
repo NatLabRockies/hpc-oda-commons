@@ -36,8 +36,9 @@ Raw Input (slurmctld.log / jobs.parquet)
   - `job_runtime_random_forest/`, `job_runtime_mlp/` -- Random Forest and MLP regressors that
     also subclass `RollingTabularModel`, reusing the shared `rolling_tabular` preprocessing and
     splits and overriding only the regressor.
-  - `job_runtime_tfidf_knn/` -- TF-IDF + kNN with rolling evaluation (`evaluate()`),
-    HashingVectorizer with incremental cache (`vectorization.py`)
+  - `job_runtime_tfidf_knn/` -- TF-IDF + kNN with rolling evaluation (`evaluate()`); a
+    stateless HashingVectorizer is applied once, then windows score index slices in parallel
+    (`window_n_jobs`); text handling in `vectorization.py`
   - `job_runtime_embedding_knn/` -- kNN over a precomputed dense `embedding` column
     (`model.py`), with a selectable exact dense top-k backend (`backends.py`:
     numpy / torch / faiss). Reuses `rolling_tabular` split + `kernel.metrics`.
