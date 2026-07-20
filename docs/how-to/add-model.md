@@ -31,7 +31,7 @@ The toolkit ships seven models, each illustrating a different complexity level:
 | `model.job_runtime_xgboost` | `models/job_runtime_xgboost/` | Thin subclass of `RollingTabularModel` (`models/rolling_tabular/`) with OHE+SVD preprocessing and daily cache |
 | `model.job_runtime_random_forest` | `models/job_runtime_random_forest/` | Thin subclass of `RollingTabularModel` |
 | `model.job_runtime_mlp` | `models/job_runtime_mlp/` | Thin subclass of `RollingTabularModel` |
-| `model.job_runtime_tfidf_knn` | `models/job_runtime_tfidf_knn/` | `evaluate()` with TF-IDF vectorization and incremental hash cache |
+| `model.job_runtime_tfidf_knn` | `models/job_runtime_tfidf_knn/` | `evaluate()` with TF-IDF vectorization; hashes once, scores window slices in parallel (`window_n_jobs`) |
 | `model.job_runtime_embedding_knn` | `models/job_runtime_embedding_knn/` | `evaluate()` over a precomputed embedding column; selectable dense top-k backend (`backends.py`) |
 | `model.job_power_uopc` | `models/job_power_uopc/` | Per-user kNN job-power model on a fixed split |
 

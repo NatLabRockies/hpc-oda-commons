@@ -188,10 +188,12 @@ def test_mlp_cells_run_windows_across_allocated_cores(tmp_path: Path) -> None:
         )
         return payload["split"]
 
-    # MLP spreads its independent per-window fits over the cell's cores.
+    # MLP and TF-IDF kNN spread their independent per-window fits over the cell's cores.
     assert _split("small", "mlp")["window_n_jobs"] == 16  # light tier
     assert _split("big", "mlp")["window_n_jobs"] == 64  # extreme tier
-    # Every other model runs windows sequentially (no window-level threads).
+    assert _split("small", "tfidf_knn")["window_n_jobs"] == 16  # light tier
+    assert _split("big", "tfidf_knn")["window_n_jobs"] == 64  # extreme tier
+    # RF/XGBoost run windows sequentially (RF already parallelizes inside each fit).
     assert "window_n_jobs" not in _split("small", "xgboost")
     assert "window_n_jobs" not in _split("big", "random_forest")
 

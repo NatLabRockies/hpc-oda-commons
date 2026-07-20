@@ -65,10 +65,10 @@ Options to evaluate, roughly in order of preference:
 Until one of these lands, treat reproducibility as **verified for the baseline and the
 data/split/metric pipeline, but not yet for the fitted-model metric values across machines.**
 
-### Related knobs under this caveat ([#113](https://github.com/NatLabRockies/hpc-oda-commons/issues/113))
+### Related knobs under this caveat ([#113](https://github.com/NatLabRockies/hpc-oda-commons/issues/113), [#117](https://github.com/NatLabRockies/hpc-oda-commons/issues/117))
 
-Two efficiency knobs on the rolling models share exactly this floating-point caveat and no
-other. Both preserve the **structure** of the evaluation bit-for-bit (which windows score,
+Three efficiency knobs on the rolling models share exactly this floating-point caveat and no
+other. All preserve the **structure** of the evaluation bit-for-bit (which windows score,
 which neighbors are selected, refit bookkeeping); only the last-digit metric *values* can move,
 by the same BLAS summation-order mechanism above:
 
@@ -79,6 +79,12 @@ by the same BLAS summation-order mechanism above:
   BLAS pinned to one thread per worker. Defaults to `1` (sequential, unchanged). `>1` matches
   the sequential result up to the same cross-thread BLAS variance — not a new class of
   non-determinism, just this one.
+- **TF-IDF kNN precompute-and-slice + `window_n_jobs`** ([#117](https://github.com/NatLabRockies/hpc-oda-commons/issues/117))
+  hashes all rows once and slices per window (replacing the incremental cache), then runs the
+  independent windows across threads. Hashing is stateless, so the slice is identical to
+  re-hashing; the one edge is that reordering training rows to row-index order can flip a
+  **neighbor tie** when two training jobs sit at exactly equal cosine distance. Defaults to
+  `window_n_jobs=1`. Equivalence to the pre-#117 path is pinned by a golden-value test.
 
 ## Note — vectorized jobs-parquet ingest
 
