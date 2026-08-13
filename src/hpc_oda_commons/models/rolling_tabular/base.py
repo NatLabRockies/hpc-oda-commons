@@ -104,6 +104,12 @@ class RollingTabularConfig:
     # distinctly from any estimator-level ``n_jobs`` (e.g. Random Forest's) so the two
     # parallelism axes stay independent.
     window_n_jobs: int = 1
+    # Exponential time-decay rate for training sample weights. When > 0, training jobs
+    # are weighted by exp(-time_decay_rate * days_since_job_ended). Recent jobs get
+    # higher weight, older jobs get lower weight. This allows the model to prioritize
+    # current workload patterns over stale historical data. 0 = flat weighting (default).
+    # A rate of 0.05 gives: yesterday=1.0, 2wk=0.50, 1mo=0.22, 2mo=0.05.
+    time_decay_rate: float = 0.0
 
 
 class RollingTabularModel:
@@ -362,7 +368,19 @@ class RollingTabularModel:
             )
 
         model = self._new_regressor(x_train.shape[0])
-        model.fit(x_train, y_train)
+        # Apply time-decay sample weighting if configured
+        if self.config.time_decay_rate > 0:
+            split_epoch = split.split_epoch
+            end_field = self.config.end_time_field
+            weights = np.ones(len(train_rows), dtype=float)
+            for i, row in enumerate(train_rows):
+                end_ts = row.get(end_field)
+                if hasattr(end_ts, "timestamp"):
+                    days_ago = (split_epoch - end_ts.timestamp()) / 86400.0
+                    weights[i] = np.exp(-self.config.time_decay_rate * max(0.0, days_ago))
+            model.fit(x_train, y_train, sample_weight=weights)
+        else:
+            model.fit(x_train, y_train)
         pred = model.predict(x_test)
         y_pred = [float(v) for v in pred]
         y_true = [float(v) for v in y_test]

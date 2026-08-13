@@ -29,6 +29,7 @@ RUNTIME_MODELS: tuple[str, ...] = (
     "job_runtime_xgboost",
     "job_runtime_mlp",
     "job_runtime_embedding_knn",
+    "job_runtime_moe_xgboost",
 )
 # The model whose recipe reads the *embedded* parquet (requires a prior GPU embed pass).
 EMBEDDING_MODEL: str = "job_runtime_embedding_knn"
