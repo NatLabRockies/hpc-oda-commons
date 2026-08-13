@@ -1,0 +1,39 @@
+# UoPC paper reproduction through the HPC ODA Commons benchmark pipeline.
+# Full-data reference: MAPE 10.10%, R2 0.833.
+
+recipe_id: recipe.job_power.uopc_phase2_repro
+
+problem_domain:
+  - job-power-prediction
+
+schema_version: oda.job.v0.2.0
+
+dataset:
+  id: fugaku_uopc_phase2
+  table_path: data/fugaku/uopc_5months_phase2.parquet
+
+model:
+  id: model.job_power_uopc
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: avgpcon_per_node
+  - name: rmse
+    target: avgpcon_per_node
+  - name: mape
+    target: avgpcon_per_node
+  - name: r2
+    target: avgpcon_per_node
+
+split:
+  method: fixed
+  train_fraction: 0.8
+  seed: 42
+  test_start: "2024-02-01"
+  theta: 500
+  k: 5
+
+run:
+  output_dir: runs
+  overwrite: false
