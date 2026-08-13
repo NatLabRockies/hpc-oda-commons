@@ -90,3 +90,51 @@ def test_uopc_datetime_end_time_matches_string_representation() -> None:
     assert r_dt["mae"] == r_str["mae"]
     assert r_dt["rmse"] == r_str["rmse"]
     assert r_dt["summary"]["rows_scored"] == r_str["summary"]["rows_scored"]
+
+
+def test_uopc_paper_reproduction_smoke() -> None:
+    """Paper-reproduction mode uses date split, per-node target, and user history."""
+    rows = []
+
+    for idx in range(20):
+        month = 1 if idx < 10 else 2
+        day = (idx % 10) + 1
+
+        rows.append(
+            {
+                "usr": "alice",
+                "adt": f"2024-{month:02d}-{day:02d}T12:00:00Z",
+                "edt": f"2024-{month:02d}-{day:02d}T11:00:00Z",
+                "avgpcon": 100.0 + idx,
+                "nnuma": 2,
+                "cnumr": 64 + idx,
+                "nnumr": 2,
+                "freq_req": 2000,
+                "embedding": [float(idx), float(idx % 3)],
+            }
+        )
+
+    model = JobPowerUopcModel()
+
+    result = model.evaluate_paper_reproduction(
+        rows,
+        test_start="2024-02-01",
+        theta=5,
+        k=2,
+        metric_defs=[
+            {"name": "mae", "target": "avgpcon_per_node"},
+            {"name": "rmse", "target": "avgpcon_per_node"},
+            {"name": "mape", "target": "avgpcon_per_node"},
+            {"name": "r2", "target": "avgpcon_per_node"},
+        ],
+    )
+
+    assert result["summary"]["rows_test"] == 10
+    assert result["summary"]["rows_scored"] > 0
+    assert result["summary"]["theta"] == 5
+    assert result["summary"]["k"] == 2
+    assert result["summary"]["target"] == "avgpcon/nnuma"
+    assert result["summary"]["predictor"] == "KNeighborsClassifier"
+
+    for metric in ("mae", "rmse", "mape", "r2"):
+        assert math.isfinite(result[metric])

@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
 
@@ -248,6 +248,226 @@ class JobPowerUopcModel:
             # is therefore the configuration needed to reproduce the run, not a
             # fitted model (so save_model pickles this config rather than an estimator).
             result["_last_model"] = {"kind": "job_power_uopc", "config": cfg}
+        return result
+
+
+    def evaluate_paper_reproduction(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        test_start: str = "2024-02-01",
+        theta: int = 500,
+        k: int = 5,
+        metric_defs: list[dict[str, Any]] | None = None,
+        verbose: bool = False,
+        capture_artifacts: bool = False,
+    ) -> dict[str, Any]:
+        """Evaluate the verified Phase-1 reproduction of Antici et al. UoPC.
+
+        This path intentionally remains separate from ``evaluate_fixed`` so the
+        existing HPC ODA UoPC adaptation and its defaults are unchanged.
+
+        Reproduction protocol:
+        - target: avgpcon / nnuma
+        - features: embedding + globally z-scored (cnumr, nnumr, freq_req)
+        - test jobs: adt >= test_start
+        - history: same-user jobs with edt < query adt
+        - context: newest ``theta`` eligible jobs by completion time
+        - predictor: KNeighborsClassifier with rounded integer targets
+        """
+        resolved_metric_defs = metric_defs or [
+            {"name": "mape", "target": "avgpcon_per_node"},
+            {"name": "r2", "target": "avgpcon_per_node"},
+        ]
+
+        cutoff = datetime.fromisoformat(test_start).replace(
+            tzinfo=timezone.utc
+        ).timestamp()
+
+        users: list[str] = []
+        submits: list[float] = []
+        ends: list[float] = []
+        embeddings: list[np.ndarray] = []
+        numeric: list[list[float]] = []
+        targets: list[float] = []
+
+        for row in rows:
+            nnuma_raw = row.get("nnuma")
+            avgp_raw = row.get("avgpcon")
+            emb_raw = row.get("embedding")
+            adt_raw = row.get("adt")
+            edt_raw = row.get("edt")
+
+            if (
+                nnuma_raw in (None, 0)
+                or avgp_raw is None
+                or emb_raw is None
+                or adt_raw is None
+                or edt_raw is None
+            ):
+                continue
+
+            submit = _end_time_sort_key({"ts": adt_raw}, field="ts")
+            end = _end_time_sort_key({"ts": edt_raw}, field="ts")
+
+            try:
+                nnuma = float(nnuma_raw)
+                avgp = float(avgp_raw)
+                emb = np.asarray(emb_raw, dtype=np.float32)
+            except (TypeError, ValueError):
+                continue
+
+            target = avgp / nnuma
+
+            if (
+                not math.isfinite(submit)
+                or not math.isfinite(end)
+                or not math.isfinite(target)
+                or nnuma <= 0
+                or emb.ndim != 1
+                or emb.size == 0
+            ):
+                continue
+
+            users.append(str(row.get("usr") or ""))
+            submits.append(submit)
+            ends.append(end)
+            embeddings.append(emb)
+            numeric.append(
+                [
+                    _feature_float(row.get("cnumr")),
+                    _feature_float(row.get("nnumr")),
+                    _feature_float(row.get("freq_req")),
+                ]
+            )
+            targets.append(target)
+
+        if not targets:
+            raise ValueError("No usable rows for UoPC paper reproduction.")
+
+        user_arr = np.asarray(users)
+        submit_arr = np.asarray(submits, dtype=np.float64)
+        end_arr = np.asarray(ends, dtype=np.float64)
+        emb_arr = np.ascontiguousarray(np.vstack(embeddings), dtype=np.float32)
+        num_arr = np.asarray(numeric, dtype=np.float32)
+        target_arr = np.asarray(targets, dtype=np.float64)
+
+        # Match Phase 1 exactly: standardize numeric features globally over the
+        # complete usable five-month dataset, then append them to the supplied
+        # F-DATA embedding.
+        mu = num_arr.mean(axis=0)
+        sd = num_arr.std(axis=0)
+        sd[sd == 0] = 1.0
+        features = np.hstack(
+            [emb_arr, (num_arr - mu) / sd]
+        ).astype(np.float32)
+
+        # Pre-sort each user's rows by completion time once. For each query,
+        # binary-search the prefix completed strictly before query submission.
+        order = np.argsort(end_arr, kind="stable")
+        by_user: dict[str, list[int]] = {}
+        for idx in order:
+            by_user.setdefault(user_arr[idx], []).append(int(idx))
+
+        user_rows = {
+            user: np.asarray(indices, dtype=np.int64)
+            for user, indices in by_user.items()
+        }
+        user_ends = {
+            user: end_arr[indices]
+            for user, indices in user_rows.items()
+        }
+
+        test_idx = np.where(submit_arr >= cutoff)[0]
+        test_idx = test_idx[
+            np.argsort(submit_arr[test_idx], kind="stable")
+        ]
+
+        y_true: list[float] = []
+        y_pred: list[float] = []
+        rows_skipped = 0
+
+        iterator = tqdm(
+            test_idx,
+            desc="fixed/uopc-paper-repro",
+            unit="job",
+            disable=not verbose,
+        )
+
+        for j in iterator:
+            user = user_arr[j]
+            ends_for_user = user_ends.get(user)
+
+            if ends_for_user is None:
+                rows_skipped += 1
+                continue
+
+            # Strict paper history rule: completed BEFORE submission.
+            pos = int(
+                np.searchsorted(
+                    ends_for_user,
+                    submit_arr[j],
+                    side="left",
+                )
+            )
+
+            if pos < k:
+                rows_skipped += 1
+                continue
+
+            context = user_rows[user][max(0, pos - theta):pos]
+
+            # Match the authors' implementation used in Phase 1. Their KNN
+            # wraps KNeighborsClassifier, so continuous per-node power labels
+            # are rounded to integer classes before fitting.
+            model = KNeighborsClassifier(n_neighbors=k)
+            model.fit(
+                features[context],
+                np.rint(target_arr[context]).astype(np.int64),
+            )
+            pred = model.predict(features[j:j + 1])
+
+            y_true.append(float(target_arr[j]))
+            y_pred.append(float(pred[0]))
+
+        if not y_true:
+            raise ValueError(
+                "No test rows produced scored predictions in paper reproduction."
+            )
+
+        metrics = compute_regression_metrics_from_defs(
+            y_true,
+            y_pred,
+            resolved_metric_defs,
+        )
+
+        result: dict[str, Any] = {
+            **metrics,
+            "definitions": resolved_metric_defs,
+            "summary": {
+                "rows_total": len(target_arr),
+                "rows_test": len(test_idx),
+                "rows_scored": len(y_true),
+                "rows_skipped": rows_skipped,
+                "theta": theta,
+                "k": k,
+                "test_start": test_start,
+                "target": "avgpcon/nnuma",
+                "features": "emb+znum",
+                "predictor": "KNeighborsClassifier",
+            },
+        }
+
+        if capture_artifacts:
+            result["_y_true"] = y_true
+            result["_y_pred"] = y_pred
+            result["_last_model"] = {
+                "kind": "job_power_uopc_paper_reproduction",
+                "theta": theta,
+                "k": k,
+                "test_start": test_start,
+            }
+
         return result
 
     def _predict_one(
