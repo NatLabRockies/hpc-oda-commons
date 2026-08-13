@@ -101,13 +101,25 @@ def run_fixed_uopc(
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed chronological split benchmark with the UoPC kNN model."""
     model = JobPowerUopcModel()
-    eval_payload = model.evaluate_fixed(
-        rows,
-        split=split,
-        metric_defs=metric_defs,
-        verbose=verbose,
-        capture_artifacts=capture_artifacts,
-    )
+
+    if "test_start" in split:
+        eval_payload = model.evaluate_paper_reproduction(
+            rows,
+            test_start=str(split["test_start"]),
+            theta=int(split.get("theta", 500)),
+            k=int(split.get("k", 5)),
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
+    else:
+        eval_payload = model.evaluate_fixed(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
     requested = {str(m.get("name", "")) for m in metric_defs}
     artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
     metrics = _metrics_from_eval_payload(eval_payload, requested)
