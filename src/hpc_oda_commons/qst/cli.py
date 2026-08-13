@@ -879,7 +879,7 @@ def benchmark(
     result_payload: dict[str, Any] = {
         "schema_version": "oda.result.v0.1.0",
         "recipe_id": recipe_id,
-        "problem_domain": ["job-runtime-prediction"],
+        "problem_domain": list(recipe_payload.get("problem_domain", [])),
         "created_at": _now_utc_iso(),
         "metrics": metrics,
         "integrity": integrity,

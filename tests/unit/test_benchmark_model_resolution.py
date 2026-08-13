@@ -416,6 +416,7 @@ def test_benchmark_uopc_fixed_path(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
 
     assert result["model"]["id"] == "model.job_power_uopc"
+    assert result["problem_domain"] == ["job-power-prediction"]
     assert result["metrics"]["mae"] == 12.5
     assert result["metrics"]["rmse"] == 20.0
     assert metrics_payload["summary"]["rows_scored"] == 10
