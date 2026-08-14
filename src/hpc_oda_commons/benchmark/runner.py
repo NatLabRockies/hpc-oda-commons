@@ -334,6 +334,7 @@ def run_rolling_xgboost(
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -364,6 +365,7 @@ def run_rolling_random_forest(
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -394,6 +396,7 @@ def run_rolling_mlp(
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -426,6 +429,7 @@ def run_rolling_embedding_knn(
             device=str(split.get("device", "auto")),
             weighting=str(split.get("weighting", "similarity")),
             sims_block_bytes=int(split.get("sims_block_bytes", DEFAULT_SIMS_BLOCK_BYTES)),
+            log_target=bool(split.get("log_target", False)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -456,6 +460,7 @@ def run_rolling_tfidf_knn(
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
         )
     )
     return _run_rolling_model_evaluate(

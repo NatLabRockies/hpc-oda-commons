@@ -355,6 +355,15 @@ The model is controlled by `JobRuntimeXGBoostConfig`, a frozen dataclass with th
 | `max_depth` | 8 | Maximum tree depth |
 | `learning_rate` | 0.05 | Boosting learning rate |
 | `random_state` | 42 | Random seed for reproducibility |
+| `log_target` | `false` | Train on `log1p(runtime_seconds)` and invert with `expm1`. Metrics stay in seconds; only the training targets and raw predictions are transformed. Trades tail accuracy (MAE/RMSE) for typical-job accuracy — see the note below |
+
+**On `log_target`.** Runtime distributions are heavy-tailed (p99/p50 exceeds 1,000x on some
+systems), so under squared error a handful of very long jobs dominates the gradient. Training in
+log space makes each job contribute comparably. It is not a free win: on a 28k-row FRESCO slice,
+XGBoost's median absolute error improved from 6,033s to 2,381s (-61%) while MAE rose from
+16,771s to 18,784s (+12%) and RMSE from 32,532s to 40,372s (+24%), with underprediction rising
+from 41% to 60%. Enable it when the typical job matters more than the tail; leave it off when the
+leaderboard metric is MAE/RMSE. It is off by default for every model that offers it.
 
 #### 7.2.2 Feature Engineering Pipeline
 
