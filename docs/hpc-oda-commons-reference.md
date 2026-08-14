@@ -305,7 +305,7 @@ For sites that already have job data in Parquet format but with non-canonical co
 **Stage 4: Apply** (`ingest/jobs_parquet/apply.py`)
 - Reads the input Parquet in configurable batch sizes (default 50,000 rows)
 - Applies transformations column-at-a-time (vectorized over whole Arrow columns rather than literally per row), then derives computed fields
-- Supported transformations: `timestamp` (format parsing to a native Arrow `timestamp(us, tz=UTC)` column, not an ISO-8601 string), `duration` (unit conversion to seconds), `memory` (unit conversion to MB), `memory_slurm` (parses a SLURM memory string such as `160G`, `2366M`, or a bare `4096` into MiB), `hash_identifier` (SHA-256 with optional salt)
+- Supported transformations: `timestamp` (format parsing to a native Arrow `timestamp(us, tz=UTC)` column, not an ISO-8601 string), `duration` (unit conversion to seconds), `memory` (unit conversion to MB), `memory_slurm` (parses a SLURM memory string such as `160G`, `2366M`, a bare `4096`, or one carrying SLURM's per-node suffix — `0n`, `90000Mn` — into MiB; the per-CPU form `4Gc` is left null, since converting it needs the job's CPU count), `hash_identifier` (SHA-256 with optional salt)
 - Derived fields: `runtime_seconds` can be computed from `end_time - start_time`
 - Optional state filtering (e.g., keep only COMPLETED jobs)
 - Skips rows missing required fields
