@@ -4,30 +4,27 @@ from __future__ import annotations
 
 from typing import Any
 
-_DEFAULT_EXCLUDE = frozenset(
-    {
-        "job_id",
-        "runtime_seconds",
-        "start_time",
-        "end_time",
-        "submit_time",
-        "state",
-    }
-)
+from hpc_oda_commons.models.feature_policy import RUNTIME_PREDICTION_FEATURE_FIELDS
 
 
 def detect_text_columns(
     rows: list[dict[str, Any]],
     *,
-    exclude: frozenset[str] | None = None,
+    extra_fields: frozenset[str] | None = None,
 ) -> list[str]:
-    """Find string-valued columns in rows, excluding known non-text fields."""
+    """Find the string-valued columns this model may vectorize.
+
+    Restricted to the shared submission-time allowlist (plus ``extra_fields``).
+    The previous blocklist named ``state``, but canonical tables spell it
+    ``job_state``, so the job's final outcome was going straight into the
+    document — ``TIMEOUT`` is close to a statement of the target.
+    """
     if not rows:
         return []
-    excl = exclude if exclude is not None else _DEFAULT_EXCLUDE
+    allowed = RUNTIME_PREDICTION_FEATURE_FIELDS | frozenset(extra_fields or ())
     text_cols: list[str] = []
     for key in rows[0]:
-        if key in excl:
+        if key not in allowed:
             continue
         for row in rows:
             val = row.get(key)

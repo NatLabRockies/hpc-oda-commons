@@ -61,6 +61,9 @@ class JobRuntimeTfidfKnnConfig:
     # distinctly from any estimator-level ``n_jobs`` so the two parallelism axes stay
     # independent (the per-window kNN query always runs single-threaded).
     window_n_jobs: int = 1
+    # Dataset-specific columns to vectorize on top of the shared submission-time
+    # allowlist (``models/feature_policy.py``).
+    extra_feature_fields: frozenset[str] = frozenset()
 
 
 @dataclass
@@ -111,7 +114,7 @@ class JobRuntimeTfidfKnnModel:
         # Precompute once: stateless hashing over every row + the target array. Each
         # window then works on index slices of these, with no cross-window state, so the
         # per-window fits are independent and order-invariant.
-        text_columns = detect_text_columns(rows)
+        text_columns = detect_text_columns(rows, extra_fields=self.config.extra_feature_fields)
         hash_matrix = self._hash_rows(rows, text_columns)
         targets = self._target_array(rows)
 
