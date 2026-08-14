@@ -83,7 +83,10 @@ def _fetch_error_exit(exc: FetchError) -> typer.Exit:
         console.print(exc.instructions)
         return typer.Exit(2)
     if isinstance(exc, ChecksumMismatch):
-        console.print(f"[red]Checksum mismatch for {exc.filename} (expected {exc.expected}).[/red]")
+        console.print(
+            f"[red]Checksum mismatch for {exc.filename}: "
+            f"expected {exc.expected}, got {exc.actual}.[/red]"
+        )
         return typer.Exit(1)
     console.print(f"[red]Fetch failed: {exc}[/red]")
     return typer.Exit(1)

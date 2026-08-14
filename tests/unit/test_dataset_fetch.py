@@ -86,6 +86,41 @@ def test_checksum_mismatch_raises_and_cleans(tmp_path: Path) -> None:
     assert not (cache / "dataset.test.x" / "raw" / "a.bin").exists()
 
 
+def test_intercepted_html_page_is_named_not_reported_as_a_checksum_mismatch(
+    tmp_path: Path,
+) -> None:
+    """A block/landing page served as HTTP 200 must not masquerade as a stale checksum.
+
+    This is what a filtering appliance returns in place of the file: a small HTML
+    body, status 200, so the download "succeeds" and only fails checksum verification
+    — which reads as "the source changed" and invites re-pinning a correct sha256.
+    """
+    page = b"<!DOCTYPE html>\n<html>\n<head><title>Blocked</title></head>\n</html>\n"
+    res = _remote(tmp_path / "remote", "workload.swf.gz", page)
+    res["sha256"] = "0" * 64  # what the descriptor pins for the real file
+    desc = _descriptor({"kind": "http", "resources": [res]})
+    cache = tmp_path / "cache"
+
+    with pytest.raises(FetchError) as excinfo:
+        fetch_descriptor(desc, cache_dir=cache)
+    message = str(excinfo.value)
+    assert "HTML page" in message
+    assert "workload.swf.gz" in message
+    assert not isinstance(excinfo.value, ChecksumMismatch)
+    raw = cache / "dataset.test.x" / "raw"
+    assert not (raw / "workload.swf.gz").exists()
+    assert not (raw / "workload.swf.gz.part").exists()
+
+
+def test_html_resource_is_still_fetchable(tmp_path: Path) -> None:
+    """The guard keys on the payload, so a resource that really is a page still works."""
+    res = _remote(tmp_path / "remote", "index.html", b"<!DOCTYPE html><html></html>")
+    desc = _descriptor({"kind": "http", "resources": [res]})
+
+    result = fetch_descriptor(desc, cache_dir=tmp_path / "cache")
+    assert result.resources[0].path.exists()
+
+
 def test_size_guardrail_refuses_then_allows(tmp_path: Path) -> None:
     r1 = _remote(tmp_path / "remote", "a.bin", b"x" * 100)
     r2 = _remote(tmp_path / "remote", "b.bin", b"y" * 100)
