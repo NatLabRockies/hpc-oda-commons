@@ -6,7 +6,8 @@ description: >
   Standard Workload Format log for the CEA Curie system (TGCC/GENCI), cleaned "-cln"
   release from the Parallel Workloads Archive (312,826 jobs, 2011-2012). Runtime target
   = Run Time (seconds); requested walltime = Requested Time (seconds). A subset of jobs
-  carry the SWF "no limit" sentinel (2147483647) in Requested Time. Absolute UTC
+  carry the SWF "no limit" sentinel (2147483647) in Requested Time, which normalizes to
+  null. Absolute UTC
   submit/start/end reconstructed from the SWF UnixStartTime header.
 problem_domains: [job-runtime-prediction]
 systems: [Curie]

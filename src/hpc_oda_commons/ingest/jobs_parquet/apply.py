@@ -61,6 +61,24 @@ def _parse_timestamp(value: Any, fmt: str) -> datetime | None:
     return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
 
 
+# Schedulers export "no limit" / "not set" as the maximum value of the field's integer
+# width instead of as a null. SLURM's NO_VAL/INFINITE pair is (2**32-2, 2**32-1) — MIT
+# Supercloud carries 4294967295 in `timelimit` for 43.9% of its jobs — and signed exports
+# use INT32_MAX/INT64_MAX (2**31-1 appears in lassen's `time_limit` and pwa_cea_curie's
+# `req_time`). None of these are real walltimes: the smallest, 2**31-1 seconds, is 68
+# years, and multiplying it by a unit factor yields values like 8,165 years that models
+# would otherwise train on. Treat them as unknown (null).
+_DURATION_SENTINELS: tuple[float, ...] = (
+    float(2**31 - 1),
+    float(2**32 - 2),
+    float(2**32 - 1),
+    float(2**63 - 1),
+    float(2**64 - 2),
+    float(2**64 - 1),
+)
+_DURATION_SENTINEL_SET: frozenset[float] = frozenset(_DURATION_SENTINELS)
+
+
 def _duration_to_seconds(value: Any, unit: str) -> float | None:
     if value is None:
         return None
@@ -73,6 +91,8 @@ def _duration_to_seconds(value: Any, unit: str) -> float | None:
         try:
             base = float(text)
         except ValueError:
+            return None
+        if base in _DURATION_SENTINEL_SET:
             return None
         return base * {"seconds": 1.0, "minutes": 60.0, "hours": 3600.0}[unit]
     if unit == "hh:mm:ss":
@@ -280,7 +300,15 @@ def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Arr
             str(transform.get("unit", "seconds"))
         )
         if factor is not None and _is_numeric(col.type):
-            return pc.multiply(pc.cast(col, pa.float64()), factor)
+            raw = pc.cast(col, pa.float64())
+            # Same sentinel -> null rule as the element-wise helper, applied to the raw
+            # value before the unit factor so both paths agree exactly.
+            raw = pc.if_else(
+                pc.is_in(raw, value_set=pa.array(_DURATION_SENTINELS, type=pa.float64())),
+                pa.scalar(None, pa.float64()),
+                raw,
+            )
+            return pc.multiply(raw, factor)
     elif ttype == "memory":
         factor = _MEMORY_FACTORS.get(str(transform.get("unit", "mb")))
         if factor is not None and _is_numeric(col.type):

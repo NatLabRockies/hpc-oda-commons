@@ -6,7 +6,7 @@ description: >
   Per-job allocation history from LLNL's Lassen supercomputer (IBM CSM/LSF), 1,467,747 jobs,
   from the Livermore Archive for System Telemetry (LAST). Runtime target is derived
   (end_time - begin_time); requested walltime = time_limit (seconds; 2147483647 is the
-  "unlimited" sentinel); allocated nodes/CPUs/GPUs, queue, and exit status as features;
+  "unlimited" sentinel, normalized to null); allocated nodes/CPUs/GPUs, queue, and exit status as features;
   user/group already hashed. Timestamps are naive (microsecond) and treated as UTC.
   The file is git-LFS-tracked in GitHub but fetched over plain HTTPS via the LFS media URL
   (media.githubusercontent.com) -- no git-lfs tooling required.
