@@ -268,6 +268,80 @@ def test_benchmark_tfidf_knn_rolling_path(tmp_path: Path, monkeypatch: pytest.Mo
     assert metrics_payload["summary"]["windows_total"] == 2
 
 
+def test_benchmark_moe_xgboost_rolling_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """moe_xgboost + rolling dispatches to run_rolling_moe_xgboost, routing knobs and all."""
+
+    captured: dict[str, object] = {}
+
+    class FakeMoEModel:
+        def __init__(self, config: object) -> None:
+            captured["config"] = config
+
+        def evaluate(
+            self,
+            rows: list[dict[str, object]],
+            *,
+            verbose: bool = False,
+            metric_defs: list[dict[str, object]] | None = None,
+            capture_artifacts: bool = False,
+        ) -> dict[str, object]:
+            assert rows
+            _ = verbose
+            _ = metric_defs
+            _ = capture_artifacts
+            return {
+                "mae": 5.0,
+                "rmse": 6.0,
+                "windows": [{"status": "ok", "metrics": {"mae": 5.0, "rmse": 6.0}}],
+                "summary": {
+                    "windows_total": 2,
+                    "windows_scored": 1,
+                    "windows_skipped": 1,
+                    "rows_scored": 3,
+                    "n_windows": 2,
+                    "test_window_hours": 1,
+                    "training_lookback_days": 100,
+                    "moe_routing": {"windows": 1},
+                },
+            }
+
+    monkeypatch.setattr(runner, "MoEXGBoostModel", FakeMoEModel)
+    monkeypatch.chdir(tmp_path)
+
+    table_path = tmp_path / "jobs.parquet"
+    recipe_path = tmp_path / "moe_rolling.yml"
+    _write_dataset(table_path)
+    _write_recipe(
+        recipe_path,
+        model_id="model.job_runtime_moe_xgboost",
+        split_block="\n".join(
+            [
+                "  method: rolling",
+                "  n_windows: 2",
+                "  test_window_hours: 1",
+                "  time_decay_rate: 0.02",
+                "  min_expert_rows: 25",
+                "  n_wallclock_bins: 3",
+            ]
+        ),
+        table_path=table_path,
+    )
+
+    cli.benchmark(recipe_path)
+
+    bundle = _first_result_bundle(tmp_path / "runs")
+    result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
+
+    assert result["model"]["id"] == "model.job_runtime_moe_xgboost"
+    assert result["metrics"]["mae"] == 5.0
+    config = captured["config"]
+    assert config.time_decay_rate == 0.02
+    assert config.min_expert_rows == 25
+    assert config.n_wallclock_bins == 3
+
+
 def test_benchmark_mlp_rolling_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """mlp + rolling dispatches to run_rolling_mlp."""
 

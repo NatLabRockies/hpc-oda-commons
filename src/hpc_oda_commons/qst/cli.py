@@ -27,6 +27,7 @@ from hpc_oda_commons.benchmark.runner import (
     run_rolling_baseline,
     run_rolling_embedding_knn,
     run_rolling_mlp,
+    run_rolling_moe_xgboost,
     run_rolling_random_forest,
     run_rolling_tfidf_knn,
     run_rolling_xgboost,
@@ -839,6 +840,14 @@ def benchmark(
         )
     elif model_id == "model.job_runtime_mlp" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_mlp(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
+    elif model_id == "model.job_runtime_moe_xgboost" and split_method == "rolling":
+        metrics, metrics_payload, artifacts = run_rolling_moe_xgboost(
             rows,
             split=split,
             metric_defs=metric_defs,

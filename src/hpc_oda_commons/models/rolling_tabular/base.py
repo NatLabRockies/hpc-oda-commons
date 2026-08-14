@@ -10,6 +10,7 @@ models subclass ``RollingTabularModel`` and supply a regressor via
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import nullcontext
@@ -120,6 +121,11 @@ class RollingTabularConfig:
     # the training targets and the raw predictions are transformed. Mirrors the option
     # the TF-IDF and embedding kNN models already carry.
     log_target: bool = False
+    # Exponential decay applied to training sample weights: a job that ended ``d`` days
+    # before the split is weighted ``exp(-time_decay_rate * d)``, so recent behaviour
+    # counts for more than stale history. 0 disables it (flat weights). 0.05 gives a
+    # ~2 week half-life. Requires an estimator whose ``fit`` accepts ``sample_weight``.
+    time_decay_rate: float = 0.0
     # Dataset-specific columns to admit as features on top of the shared
     # submission-time allowlist (``models/feature_policy.py``). Everything outside
     # both sets is ignored, so a column that is only known once a job has run
@@ -167,6 +173,58 @@ class RollingTabularModel:
 
     def _new_regressor(self, n_train: int) -> Any:
         raise NotImplementedError("Subclasses must implement _new_regressor().")
+
+    def _fit_predict(
+        self,
+        x_train: Any,
+        y_train: Any,
+        x_test: Any,
+        *,
+        train_rows: list[dict[str, Any]],
+        test_rows: list[dict[str, Any]],
+        artifacts: Any,
+        sample_weight: Any | None = None,
+    ) -> tuple[Any, Any]:
+        """Fit this window's estimator and predict its test rows.
+
+        The seam a routing model overrides. Everything around it — the split grid,
+        the daily preprocessing, the metrics, the payload — stays shared, so a
+        mixture of experts scores exactly the rows a single estimator would, and its
+        numbers stay comparable with every other model on the leaderboard.
+        """
+        del train_rows, test_rows, artifacts  # only routing models need them
+        model = self._new_regressor(x_train.shape[0])
+        self._fit_estimator(model, x_train, y_train, sample_weight)
+        return model, model.predict(x_test)
+
+    def _fit_estimator(self, model: Any, x: Any, y: Any, sample_weight: Any | None) -> None:
+        """Fit one estimator, passing sample weights only when there are any."""
+        if sample_weight is None:
+            model.fit(x, y)
+            return
+        if "sample_weight" not in inspect.signature(model.fit).parameters:
+            raise ValueError(
+                f"time_decay_rate is set, but {type(model).__name__}.fit() does not accept "
+                "sample_weight, so the weighting cannot be applied. Set time_decay_rate=0 "
+                "for this model."
+            )
+        model.fit(x, y, sample_weight=sample_weight)
+
+    def _time_decay_weights(self, train_rows: list[dict[str, Any]], split: Any) -> Any | None:
+        """Exponential recency weights for a window's training rows, or None if disabled."""
+        rate = float(self.config.time_decay_rate)
+        if rate <= 0.0:
+            return None
+        end_field = self.config.end_time_field
+        weights = np.ones(len(train_rows), dtype=float)
+        for i, row in enumerate(train_rows):
+            end_ts = row.get(end_field)
+            stamp = getattr(end_ts, "timestamp", None)
+            if stamp is None:
+                continue
+            days_old = max(0.0, (split.split_epoch - stamp()) / 86400.0)
+            weights[i] = math.exp(-rate * days_old)
+        return weights
 
     def evaluate(
         self,
@@ -406,12 +464,18 @@ class RollingTabularModel:
                 was_refit=was_refit,
             )
 
-        model = self._new_regressor(x_train.shape[0])
         fit_targets = y_train
         if self.config.log_target:
             fit_targets = np.log1p(np.maximum(np.asarray(y_train, dtype=float), 0.0))
-        model.fit(x_train, fit_targets)
-        pred = model.predict(x_test)
+        model, pred = self._fit_predict(
+            x_train,
+            fit_targets,
+            x_test,
+            train_rows=train_rows,
+            test_rows=test_rows,
+            artifacts=artifacts,
+            sample_weight=self._time_decay_weights(train_rows, split),
+        )
         if self.config.log_target:
             # expm1 overflows to inf well before a plausible runtime; clamp the exponent
             # and keep predictions non-negative, so a wild extrapolation cannot poison

@@ -69,6 +69,7 @@ v0.1 models:
 - `model.job_runtime_xgboost` -- XGBoost with OHE+SVD preprocessing (rolling splits)
 - `model.job_runtime_tfidf_knn` -- TF-IDF text vectorization + kNN regression (rolling splits)
 - `model.job_runtime_embedding_knn` -- kNN over a precomputed dense embedding column (rolling splits; see `hpc-oda embed`)
+- `model.job_runtime_moe_xgboost` -- mixture of experts: one XGBoost per (user, wallclock bin), routed inside the shared rolling window (rolling splits)
 - `model.job_runtime_random_forest` -- Random Forest, uses the shared `rolling_tabular` OHE+SVD preprocessing (rolling splits)
 - `model.job_runtime_mlp` -- feed-forward neural network, uses the shared `rolling_tabular` preprocessing (rolling splits)
 - `model.job_power_uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split)

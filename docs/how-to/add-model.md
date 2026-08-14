@@ -35,7 +35,7 @@ The registry entry should include:
 
 ## Reference Implementations
 
-The toolkit ships seven models, each illustrating a different complexity level:
+The toolkit ships eight models, each illustrating a different complexity level:
 
 | Model | Package | Interface |
 |-------|---------|-----------|
@@ -45,6 +45,7 @@ The toolkit ships seven models, each illustrating a different complexity level:
 | `model.job_runtime_mlp` | `models/job_runtime_mlp/` | Thin subclass of `RollingTabularModel` |
 | `model.job_runtime_tfidf_knn` | `models/job_runtime_tfidf_knn/` | `evaluate()` with TF-IDF vectorization; hashes once, scores window slices in parallel (`window_n_jobs`) |
 | `model.job_runtime_embedding_knn` | `models/job_runtime_embedding_knn/` | `evaluate()` over a precomputed embedding column; selectable dense top-k backend (`backends.py`) |
+| `model.job_runtime_moe_xgboost` | `models/job_runtime_moe_xgboost/` | Subclass of `RollingTabularModel` that overrides the fit/predict seam to route each job to a per-(user, wallclock-bin) expert |
 | `model.job_power_uopc` | `models/job_power_uopc/` | Per-user kNN job-power model on a fixed split |
 
 For a minimal starting point, see `models/job_runtime_baseline/`. For a new

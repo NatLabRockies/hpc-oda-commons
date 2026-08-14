@@ -51,7 +51,7 @@ The codebase is organized into purpose-specific packages under `src/hpc_oda_comm
 |---------|---------|
 | `qst/` | **Quickstart Toolkit** -- CLI entry point built on Typer. All user-facing commands live here. |
 | `kernel/` | **Core artifact logic** -- ODA tables, manifests, result bundles, mapping specs, provenance, hashing, schema loading, and validation. This is the stable foundation other packages build on. |
-| `models/` | **Prediction models** -- Pluggable model implementations. Ships seven models: a deterministic baseline, three rolling-tabular runtime models (XGBoost, Random Forest, MLP), a TF-IDF + kNN runtime model, an embedding + kNN runtime model, and a per-user kNN power model. |
+| `models/` | **Prediction models** -- Pluggable model implementations. Ships eight models: a deterministic baseline, three rolling-tabular runtime models (XGBoost, Random Forest, MLP), a mixture-of-experts XGBoost runtime model, a TF-IDF + kNN runtime model, an embedding + kNN runtime model, and a per-user kNN power model. |
 | `models/rolling_tabular/` | **Shared rolling-tabular base** -- `RollingTabularModel` base class plus shared rolling split (`split.py`) and categorical preprocessing (`preprocessing.py`) reused by the XGBoost, Random Forest, and MLP models. |
 | `embeddings/` | **Embedding module** -- Serializes job rows to text and encodes them (`hpc-oda embed`), writing an embedded table + provenance manifest for the embedding + kNN model. Model-agnostic; heavy deps are the optional `embed` extra. |
 | `ingest/` | **Data adapters** -- Ingestion pipeline for transforming site-specific data into canonical format. Includes profiling, mapping suggestions, interactive wizard, and batch transformation. |
@@ -322,7 +322,7 @@ Each ingestion run produces a directory under `data/ingested/<adapter>/<run_id>/
 
 ## 7. Prediction Models
 
-HPC ODA Commons ships seven models: six for job runtime prediction (baseline, XGBoost, Random Forest, MLP, TF-IDF + kNN, Embedding + kNN) and one for job power prediction (per-user kNN). The runtime models operate on `rows`, a list of dictionaries conforming to the job schema, with `runtime_seconds` as the target field. The XGBoost, Random Forest, and MLP models are rolling-tabular models that share a common base class (`RollingTabularModel`); the shared rolling split (`split.py`) and categorical preprocessing now live in `models/rolling_tabular/`, so they are no longer XGBoost-only.
+HPC ODA Commons ships eight models: seven for job runtime prediction (baseline, XGBoost, Random Forest, MLP, MoE XGBoost, TF-IDF + kNN, Embedding + kNN) and one for job power prediction (per-user kNN). The runtime models operate on `rows`, a list of dictionaries conforming to the job schema, with `runtime_seconds` as the target field. The XGBoost, Random Forest, and MLP models are rolling-tabular models that share a common base class (`RollingTabularModel`); the shared rolling split (`split.py`) and categorical preprocessing now live in `models/rolling_tabular/`, so they are no longer XGBoost-only.
 
 ### 7.1 Baseline Model (`model.job_runtime_baseline`)
 
@@ -461,7 +461,20 @@ An alternate runtime prediction model using a feed-forward neural network (sciki
 
 The embedding-space counterpart to the TF-IDF + kNN model. Instead of vectorizing text internally, it consumes a **precomputed dense `embedding` column** (produced by `hpc-oda embed`) and predicts runtime as the similarity-weighted average of the *k* nearest neighbors in embedding space, under the same rolling-window evaluation. Search is an exact dense top-k with a selectable backend (`numpy` default, optional `torch`/`faiss`). Because it reuses the shared rolling split (`models/rolling_tabular/split.py`) and `kernel.metrics`, it is directly comparable to the other runtime models. Driven by the bundled `embedding_knn_rolling.yml` recipe. See [Embedding-based kNN](how-to/embedding-knn.md).
 
-### 7.7 Job Power Model (`model.job_power_uopc`)
+### 7.7 MoE XGBoost Model (`model.job_runtime_moe_xgboost`)
+
+A mixture of experts over the same rolling framework. Users request wallclock at the limit of the partition they submit to, so `requested_seconds` clusters on a handful of values that mark genuinely different job populations; this model fits one XGBoost per (user, wallclock-bin) rather than one across all of them.
+
+Per rolling window:
+
+1. **Bin edges are derived from the training rows** — the modal values of `requested_seconds` that each hold at least `min_cluster_fraction` of the window become the boundaries (falling back to quantiles when the distribution has no modes), so each system contributes its own partition limits instead of one site's numbers being hardcoded. `wallclock_bin_edges_hours` pins them explicitly when the layout is known.
+2. **Power users** — those at or above `power_user_percentile` by job count, again measured on training rows only — get an expert per (user, bin); everyone else shares a pooled expert per bin.
+3. **A fallback expert** is always fitted on the whole training window, and scores any test row whose bin has fewer than `min_expert_rows` training rows. A sparse bin therefore costs accuracy, never coverage.
+4. **Recency weighting** (`time_decay_rate`, default `0.05`) weights each training row by `exp(-rate * days_old)`.
+
+It subclasses `RollingTabularModel` and overrides only the fit/predict seam (`_fit_predict`), so the split grid, preprocessing, feature policy, metrics and payload are the shared ones — which is what makes its numbers comparable with the other models rather than merely adjacent to them. `summary.moe_routing` reports experts per window, the fraction of rows routed to an expert versus the fallback, the derived bin edges, and the power-user count. Cost scales with the number of experts fitted per window (roughly 3x a single XGBoost on a 28k-row slice). Driven by the bundled `moe_xgboost_rolling.yml` recipe.
+
+### 7.8 Job Power Model (`model.job_power_uopc`)
 
 A per-user kNN power-prediction model (UoPC-style) that predicts `maxpcon` (maximum job power) rather than runtime. Unlike the rolling runtime models, it uses a fixed train/test split. For each user, job history is ordered by end time and the most recent `theta` jobs form the training context; categorical job features (e.g., job name) are label-encoded per fit, and a `KNeighborsRegressor` predicts from the nearest neighbors. It operates on raw Fugaku-style columns (`usr`, `jnam`, `cnumr`, `nnumr`, `edt`, `maxpcon`) via field aliases, and is driven by the bundled `uopc_maxpcon.yml` recipe.
 
@@ -604,7 +617,7 @@ Each registry entry is a `RegistryEntry` dataclass with:
 
 ### 10.2 v0.1 Registry Contents
 
-The bundled registry snapshot contains 35 entries: one adapter, seven models, four recipes, and 23 datasets (registered via the `oda.registry.v0.2.0` `dataset` entry_type). A representative subset:
+The bundled registry snapshot contains 36 entries: one adapter, eight models, four recipes, and 23 datasets (registered via the `oda.registry.v0.2.0` `dataset` entry_type). A representative subset:
 
 | ID | Type | Description |
 |----|------|-------------|

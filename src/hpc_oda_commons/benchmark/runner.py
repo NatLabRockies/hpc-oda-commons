@@ -25,6 +25,10 @@ from hpc_oda_commons.models.job_runtime_mlp.model import (
     JobRuntimeMlpConfig,
     JobRuntimeMlpModel,
 )
+from hpc_oda_commons.models.job_runtime_moe_xgboost.model import (
+    MoEXGBoostConfig,
+    MoEXGBoostModel,
+)
 from hpc_oda_commons.models.job_runtime_random_forest.model import (
     JobRuntimeRandomForestConfig,
     JobRuntimeRandomForestModel,
@@ -461,6 +465,47 @@ def run_rolling_tfidf_knn(
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
             log_target=bool(split.get("log_target", False)),
+        )
+    )
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
+
+
+def run_rolling_moe_xgboost(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run a rolling benchmark with the User+Wallclock MoE XGBoost model."""
+    n_windows = int(split.get("n_windows", 1000))
+    test_window_hours = int(split.get("test_window_hours", 6))
+    training_lookback_days = int(split.get("training_lookback_days", 100))
+    defaults = MoEXGBoostConfig()
+    edges = split.get("wallclock_bin_edges_hours")
+    model = MoEXGBoostModel(
+        config=MoEXGBoostConfig(
+            n_windows=n_windows,
+            test_window_hours=test_window_hours,
+            training_lookback_days=training_lookback_days,
+            window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
+            time_decay_rate=float(split.get("time_decay_rate", defaults.time_decay_rate)),
+            power_user_percentile=float(
+                split.get("power_user_percentile", defaults.power_user_percentile)
+            ),
+            min_expert_rows=int(split.get("min_expert_rows", defaults.min_expert_rows)),
+            n_wallclock_bins=int(split.get("n_wallclock_bins", defaults.n_wallclock_bins)),
+            wallclock_bin_edges_hours=tuple(float(h) for h in edges) if edges else None,
+            estimator_n_jobs=int(split.get("estimator_n_jobs", defaults.estimator_n_jobs)),
         )
     )
     return _run_rolling_model_evaluate(
