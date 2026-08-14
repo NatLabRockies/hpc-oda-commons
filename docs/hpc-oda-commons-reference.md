@@ -538,7 +538,7 @@ The leaderboard system aggregates multiple result bundles into a sorted comparis
 
 Provenance tracking is woven throughout HPC ODA Commons. The `build_provenance()` function in `kernel/provenance.py` captures:
 
-```python
+```json
 {
     "schema_versions": {
         "input": "oda.job.v0.2.0",
