@@ -36,7 +36,7 @@ split:
   test_window_hours: 6
   training_lookback_days: 7
   # Routing knobs (all optional; these are the defaults).
-  # time_decay_rate: 0.05          # exp(-rate * days_old) weighting; 0 disables
+  # time_decay_rate: 0.0           # exp(-rate * days_old) recency weighting; 0.05 ~ 2wk half-life
   # power_user_percentile: 0.99    # job-count quantile above which a user gets experts
   # min_expert_rows: 100           # below this a bin uses the window-wide fallback
   # n_wallclock_bins: 5            # maximum bins derived per training window

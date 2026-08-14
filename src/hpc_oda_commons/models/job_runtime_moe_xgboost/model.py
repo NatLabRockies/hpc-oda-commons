@@ -80,9 +80,12 @@ class MoEXGBoostConfig(RollingTabularConfig):
     # partition layout; leave None to derive the edges from each training window.
     wallclock_bin_edges_hours: tuple[float, ...] | None = None
 
-    # Recency weighting is the point of this model's training scheme, so unlike the
-    # shared base it defaults to on. 0.05 is a ~2 week half-life.
-    time_decay_rate: float = 0.05
+    # Recency weighting is available (0.05 is a ~2 week half-life), but defaults OFF to
+    # match the shared base. A model whose defaults differ from the base on a dimension
+    # unrelated to what the model *is* makes every comparison against another model
+    # bundle two changes at once: routing and reweighting. Enable it from a recipe when
+    # you want it, and measure it as its own arm.
+    time_decay_rate: float = 0.0
 
 
 @dataclass(frozen=True)
