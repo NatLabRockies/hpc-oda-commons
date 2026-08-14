@@ -113,6 +113,13 @@ class RollingTabularConfig:
     # distinctly from any estimator-level ``n_jobs`` (e.g. Random Forest's) so the two
     # parallelism axes stay independent.
     window_n_jobs: int = 1
+    # Train on ``log1p(runtime_seconds)`` and invert with ``expm1`` before scoring.
+    # HPC runtime distributions are heavy-tailed (p99/p50 reaches ~1,200x), so under
+    # squared error a handful of very long jobs dominates the gradient; in log space
+    # each job contributes comparably. Metrics are always computed in seconds — only
+    # the training targets and the raw predictions are transformed. Mirrors the option
+    # the TF-IDF and embedding kNN models already carry.
+    log_target: bool = False
     # Dataset-specific columns to admit as features on top of the shared
     # submission-time allowlist (``models/feature_policy.py``). Everything outside
     # both sets is ignored, so a column that is only known once a job has run
@@ -400,8 +407,16 @@ class RollingTabularModel:
             )
 
         model = self._new_regressor(x_train.shape[0])
-        model.fit(x_train, y_train)
+        fit_targets = y_train
+        if self.config.log_target:
+            fit_targets = np.log1p(np.maximum(np.asarray(y_train, dtype=float), 0.0))
+        model.fit(x_train, fit_targets)
         pred = model.predict(x_test)
+        if self.config.log_target:
+            # expm1 overflows to inf well before a plausible runtime; clamp the exponent
+            # and keep predictions non-negative, so a wild extrapolation cannot poison
+            # the window's metrics with inf/NaN.
+            pred = np.maximum(np.expm1(np.clip(np.asarray(pred, dtype=float), None, 700.0)), 0.0)
         y_pred = [float(v) for v in pred]
         y_true = [float(v) for v in y_test]
         metrics = self._compute_regression_metrics(y_true, y_pred, resolved_metric_defs)
