@@ -360,7 +360,9 @@ The model is controlled by `JobRuntimeXGBoostConfig`, a frozen dataclass with th
 
 The XGBoost model implements an automated feature engineering pipeline that handles the heterogeneous, high-cardinality categorical features common in HPC job data:
 
-1. **Categorical Detection**: Scans all columns and identifies those with string or boolean values as categorical. Excludes the target field and timestamp fields.
+0. **Feature eligibility**: Before anything else, columns are filtered against `RUNTIME_PREDICTION_FEATURE_FIELDS` (`models/feature_policy.py`) — an allowlist of submission-time concepts (resource requests, partition/queue/QoS, user/account, job metadata). Because the job schema sets `additionalProperties: true`, any column a descriptor maps reaches the model, so anything only known after dispatch — `job_state`, `exit_code`, `allocated_cpus`, `num_*_alloc` — is ignored rather than silently used. `job_id` is ignored as a pure identifier. Dataset-specific columns are admitted per model via `extra_feature_fields`; with `-v` the models print both the eligible and the ignored columns, and a table with no eligible column fails immediately rather than scoring nothing. The TF-IDF kNN model applies the same allowlist when choosing text columns.
+
+1. **Categorical Detection**: Scans the eligible columns and identifies those with string or boolean values as categorical.
 
 2. **Categorical Profiling**: For each categorical column, computes cardinality, null rate, frequency distribution, and identifies infrequent categories.
 

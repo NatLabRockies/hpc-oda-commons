@@ -31,6 +31,11 @@ from hpc_oda_commons.models.job_runtime_xgboost.model import (
 # Expected values — determined once, then frozen. Any behavioral change in the
 # critical path (splits, metrics, preprocessing, model logic) will cause a
 # mismatch and fail the test.
+#
+# The XGBoost values below predate the submission-time feature allowlist, which
+# dropped `job_id` from the feature set; they need regenerating in the reference
+# environment (#2) before the xfail on that test can be lifted. The TF-IDF values
+# are unaffected — its text columns were already submission-time only.
 # --------------------------------------------------------------------------- #
 
 EXPECTED_BASELINE_MAE = 127.5
@@ -39,6 +44,11 @@ EXPECTED_XGBOOST_MAE = 40.480323791503906
 EXPECTED_XGBOOST_RMSE = 45.299687968515784
 EXPECTED_TFIDF_MAE = 149.27537525072694
 EXPECTED_TFIDF_RMSE = 152.78054891954585
+
+# The columns the tabular models are allowed to feed on (models/feature_policy.py).
+# Unlike the metric values below, this is exact on every platform.
+EXPECTED_XGBOOST_NUMERIC_COLUMNS = ["memory_requested", "num_cores_req"]
+EXPECTED_XGBOOST_CATEGORICAL_COLUMNS = ["account", "name", "partition", "qos", "user"]
 
 EXPECTED_WINDOWS_SCORED = 4
 EXPECTED_ROWS_SCORED = 16
@@ -89,7 +99,7 @@ def _regression_rows() -> list[dict[str, object]]:
                     "qos": "high" if j == 0 else "normal",
                     "user": users[hour % 3],
                     "name": names[j % 5],
-                    "requested_cpus": float((j % 4) + 1),
+                    "num_cores_req": float((j % 4) + 1),
                     "memory_requested": float(2048 + 128 * j + 32 * hour),
                     "runtime_seconds": runtime_seconds,
                 }
@@ -133,6 +143,33 @@ def test_xgboost_rolling_regression() -> None:
     assert summary["windows_scored"] == EXPECTED_WINDOWS_SCORED
     assert summary["rows_scored"] == EXPECTED_ROWS_SCORED
     assert summary["preprocessing_refits"] == EXPECTED_XGBOOST_PREPROCESSING_REFITS
+
+
+def test_xgboost_feature_columns_are_submission_time_only() -> None:
+    """The platform-independent half of the XGBoost regression: what feeds the model.
+
+    Unlike MAE/RMSE, the selected feature columns do not depend on the CPU/BLAS
+    build, so this stays an exact assertion everywhere — and it is the guard that
+    a post-hoc column (a `*_alloc`, a `job_state`) cannot quietly become a feature
+    again when a new dataset carries one.
+    """
+    model = JobRuntimeXGBoostModel(
+        JobRuntimeXGBoostConfig(
+            n_windows=4,
+            test_window_hours=1,
+            max_svd_components=8,
+            target_max_one_hot_width=64,
+            random_state=42,
+        )
+    )
+    payload = model.evaluate(_regression_rows())
+
+    scored = [w for w in payload["windows"] if w["status"] == "ok"]
+    assert scored, "expected at least one scored window"
+    for window in scored:
+        info = window["feature_info"]
+        assert info["numeric_columns"] == EXPECTED_XGBOOST_NUMERIC_COLUMNS
+        assert info["categorical_columns"] == EXPECTED_XGBOOST_CATEGORICAL_COLUMNS
 
 
 @pytest.mark.xfail(

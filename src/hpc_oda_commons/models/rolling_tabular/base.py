@@ -21,6 +21,10 @@ import numpy as np
 from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
+from hpc_oda_commons.models.feature_policy import (
+    RUNTIME_PREDICTION_FEATURE_FIELDS,
+    partition_feature_fields,
+)
 from hpc_oda_commons.models.rolling_tabular.preprocessing import (
     _build_one_hot_encoder,
     _normalize_category,
@@ -65,6 +69,11 @@ class _WindowResult:
     was_refit: bool
 
 
+# Rows in a canonical table share a schema; scan a bounded prefix to collect the
+# column names rather than walking millions of dicts.
+_FIELD_SCAN_ROWS = 1000
+
+
 def _blas_single_thread() -> Any:
     """Pin native BLAS/OpenMP pools to one thread for the duration of the block, so
     N window worker threads don't oversubscribe cores by each launching a
@@ -104,6 +113,11 @@ class RollingTabularConfig:
     # distinctly from any estimator-level ``n_jobs`` (e.g. Random Forest's) so the two
     # parallelism axes stay independent.
     window_n_jobs: int = 1
+    # Dataset-specific columns to admit as features on top of the shared
+    # submission-time allowlist (``models/feature_policy.py``). Everything outside
+    # both sets is ignored, so a column that is only known once a job has run
+    # cannot become a feature by virtue of being present in the table.
+    extra_feature_fields: frozenset[str] = frozenset()
 
 
 class RollingTabularModel:
@@ -125,6 +139,17 @@ class RollingTabularModel:
     def __init__(self, config: RollingTabularConfig | None = None) -> None:
         self.config = config or RollingTabularConfig()
         self.target_field = "runtime_seconds"
+
+    def allowed_feature_fields(self) -> frozenset[str]:
+        """Columns this model may use: the shared allowlist plus any configured extras."""
+        return RUNTIME_PREDICTION_FEATURE_FIELDS | frozenset(self.config.extra_feature_fields)
+
+    def feature_field_report(self, rows: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
+        """(usable, ignored) column names for ``rows`` under this model's policy."""
+        present: set[str] = set()
+        for row in rows[:_FIELD_SCAN_ROWS]:
+            present.update(row.keys())
+        return partition_feature_fields(present, extra=self.config.extra_feature_fields)
 
     @staticmethod
     def _check_dependencies() -> None:
@@ -167,12 +192,25 @@ class RollingTabularModel:
         # split indices that triggered each day's build — the sequential cache semantics.
         cache, refit_ids = self._precompute_daily_artifacts(rows, splits)
 
+        usable, ignored = self.feature_field_report(rows)
+        if not usable:
+            raise ValueError(
+                "no submission-time feature columns found in this table; "
+                f"columns present but ignored: {', '.join(ignored) or '(none)'}. "
+                "Map the request/context fields in the dataset descriptor, or admit "
+                "dataset-specific ones with RollingTabularConfig.extra_feature_fields."
+            )
         if verbose:
             print(
                 f"[{self._log_prefix}][verbose] starting rolling evaluation "
                 f"splits={len(splits)} "
                 f"n_windows={self.config.n_windows} "
                 f"training_lookback_days={self.config.training_lookback_days}"
+            )
+            print(f"[{self._log_prefix}][verbose] feature fields eligible: {', '.join(usable)}")
+            print(
+                f"[{self._log_prefix}][verbose] columns ignored (not submission-time features): "
+                f"{', '.join(ignored)}"
             )
 
         n_jobs = max(1, int(self.config.window_n_jobs))
@@ -473,6 +511,9 @@ class RollingTabularModel:
         categorical_columns: list[str] | None = None,
     ) -> dict[str, Any]:
         """Profile categorical fields, choose one-hot config, and select SVD components."""
+        if categorical_columns is None:
+            allowed = self.allowed_feature_fields()
+            categorical_columns = [c for c in detect_categorical_columns(rows) if c in allowed]
         payload = build_preprocessing_diagnostics(
             rows,
             explained_variance_target=self.config.explained_variance_target,
@@ -520,15 +561,10 @@ class RollingTabularModel:
     def _build_daily_preprocessing_artifacts(
         self, train_rows: list[dict[str, Any]]
     ) -> _DailyPreprocessingArtifacts:
-        excluded = {
-            self.target_field,
-            self.config.submit_time_field,
-            self.config.end_time_field,
-            "start_time",
-        }
+        allowed = self.allowed_feature_fields()
 
         categorical_candidates = detect_categorical_columns(train_rows)
-        categorical_columns = [c for c in categorical_candidates if c not in excluded]
+        categorical_columns = [c for c in categorical_candidates if c in allowed]
         profiles = profile_categorical_features(
             train_rows,
             categorical_columns=categorical_columns,
@@ -541,10 +577,14 @@ class RollingTabularModel:
             target_max_one_hot_width=self.config.target_max_one_hot_width,
         )
 
-        numeric_columns = self._detect_numeric_columns(
-            train_rows,
-            exclude=excluded | set(one_hot_config.columns),
-        )
+        numeric_columns = [
+            column
+            for column in self._detect_numeric_columns(
+                train_rows,
+                exclude=set(one_hot_config.columns),
+            )
+            if column in allowed
+        ]
 
         encoder: Any | None = None
         svd: Any | None = None

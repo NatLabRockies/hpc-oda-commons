@@ -8,6 +8,10 @@ helper used by TF-IDF kNN).
 
 from __future__ import annotations
 
+from hpc_oda_commons.models.feature_policy import (
+    RUNTIME_PREDICTION_FEATURE_FIELDS,
+    partition_feature_fields,
+)
 from hpc_oda_commons.models.rolling_tabular.preprocessing import (
     build_preprocessing_diagnostics,
     detect_categorical_columns,
@@ -23,11 +27,13 @@ from hpc_oda_commons.models.rolling_tabular.split import (
 )
 
 __all__ = [
+    "RUNTIME_PREDICTION_FEATURE_FIELDS",
     "DailyPreprocessingCache",
     "build_preprocessing_diagnostics",
     "build_rolling_splits",
     "detect_categorical_columns",
     "materialize_split_rows",
+    "partition_feature_fields",
     "profile_categorical_features",
     "select_one_hot_config",
     "select_svd_components",

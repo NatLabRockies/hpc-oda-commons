@@ -10,6 +10,18 @@ registry metadata and recipes.
 3. Add a recipe in `src/hpc_oda_commons/recipes/`.
 4. Add unit tests that exercise the model's public API (e.g., `fit()`/`predict()` for simple models, or `evaluate()` for rolling-window models).
 
+## Feature eligibility
+
+Runtime models may only use **submission-time** columns. The shared allowlist lives in
+`models/feature_policy.py` (`RUNTIME_PREDICTION_FEATURE_FIELDS`); `RollingTabularModel`
+and the TF-IDF kNN vectorizer both filter through it, and the embedding serializer enforces
+the same policy with its own `FORBIDDEN_FIELDS` guard. A model that picks its own columns
+must filter through the allowlist too — a normalized table can carry `job_state`,
+`exit_code`, or `*_alloc` columns, none of which exist when the job is queued.
+
+Admit a dataset-specific column with `extra_feature_fields` on the model config rather than
+by widening the shared allowlist, unless the field is genuinely cross-site.
+
 ## Required Metadata
 
 The registry entry should include:
