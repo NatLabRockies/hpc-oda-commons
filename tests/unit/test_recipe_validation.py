@@ -71,6 +71,17 @@ def test_validate_recipe_rolling_accepts_moe_routing_knobs() -> None:
     validate_recipe(payload)
 
 
+def test_validate_recipe_rolling_accepts_log_target() -> None:
+    """`split.log_target` has to be declared, or the recipe fails to load.
+
+    `split` is `additionalProperties: false`, so a model option the runners read
+    is unreachable from a recipe until the schema names it.
+    """
+    payload = _valid_rolling_recipe()
+    payload["split"] = {"method": "rolling", "n_windows": 24, "log_target": True}
+    validate_recipe(payload)
+
+
 def test_validate_recipe_rolling_requires_n_windows() -> None:
     payload = _valid_rolling_recipe()
     payload["split"] = {"method": "rolling"}
