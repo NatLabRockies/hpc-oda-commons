@@ -32,6 +32,24 @@ After you've downloaded the raw file(s) from the source below, there are two pat
    it and normalizes it exactly like an auto-fetched dataset. The mapping has to be built and
    verified against the real schema once, so this is a good contribution to open with a maintainer.
 
+## When a download fails checksum verification
+
+A checksum mismatch means the bytes on disk are not the bytes the descriptor pins. Before
+concluding that the source file changed and re-pinning the `sha256`, check what actually
+arrived — the fetcher now names the common case outright:
+
+- **An HTML page came back instead of the file.** A landing/login page, or a network appliance
+  answering on the source's behalf, is served with HTTP 200, so the download "succeeds" and the
+  file only fails verification afterwards. `datasets fetch`/`prepare` now stops with an explicit
+  "the server returned an HTML page" error instead of a checksum mismatch. Fetch the URL by hand
+  (`curl -sSL <url> | head -c 200`) and see what comes back.
+- **The source really was re-issued.** Confirm by downloading in a known-good environment and
+  hashing it yourself (`shasum -a 256 <file>`); only then update `sha256` + `bytes`, and re-check
+  row counts and date ranges before trusting the new file.
+
+If you already hold a verified copy, drop it at `<cache>/<dataset_id>/raw/<filename>` and re-run
+`prepare` — a cached file whose hash matches is used as-is, with no network access.
+
 ## Datasets
 
 ### Blue Waters workload (NCSA)
