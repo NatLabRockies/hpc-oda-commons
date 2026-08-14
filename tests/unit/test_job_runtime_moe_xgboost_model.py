@@ -12,6 +12,7 @@ from hpc_oda_commons.models.job_runtime_moe_xgboost.model import (
     UNKNOWN_BIN,
     MoEXGBoostConfig,
     MoEXGBoostModel,
+    _Routing,
 )
 from hpc_oda_commons.models.job_runtime_xgboost.model import (
     JobRuntimeXGBoostConfig,
@@ -121,7 +122,48 @@ def test_bin_edges_come_from_the_data() -> None:
     assert edges[-1] == math.inf
     # The 2h cluster is the dominant mode, so it becomes the first boundary.
     assert edges[0] == pytest.approx(SHORT_LIMIT)
-    assert len(edges) <= model.config.n_wallclock_bins
+    # k detected clusters become k edges plus one open bin above the largest.
+    assert len(edges) <= model.config.n_wallclock_bins + 1
+
+
+def test_largest_cluster_gets_its_own_bin() -> None:
+    """The biggest long-job cluster must not be merged into the catch-all.
+
+    Truncating the edge list dropped the largest detected mode, so on Kestrel the
+    48h cluster (10.6% of jobs) shared a bin with the 0.6% requesting *more* than
+    48h -- the one place the wallclock signal should be sharpest.
+    """
+    base = BASE
+    rows: list[dict[str, object]] = []
+    for i in range(600):
+        submit = base + timedelta(minutes=20 * i)
+        # a dominant short cluster, a large 48h cluster, and a few rare longer jobs
+        requested = LONG_LIMIT if i % 3 else SHORT_LIMIT
+        if i % 97 == 0:
+            requested = 96 * 3600.0
+        runtime = 300.0 + (i % 17) * 30.0
+        rows.append(
+            {
+                "job_id": i,
+                "submit_time": submit,
+                "end_time": submit + timedelta(seconds=runtime),
+                "runtime_seconds": runtime,
+                "requested_seconds": requested,
+                "partition": "p",
+                "user": f"user_{i % 4}",
+                "num_cores_req": 1 + (i % 4),
+            }
+        )
+
+    edges = _model()._wallclock_edges(rows)
+
+    assert LONG_LIMIT in edges, "the largest cluster needs its own boundary"
+    assert edges[-1] == math.inf
+    routing = _Routing(bin_edges=edges, power_users=frozenset())
+    # the 48h cluster and the rarer 96h jobs land in different bins
+    assert routing.bin_index({"requested_seconds": LONG_LIMIT}) != routing.bin_index(
+        {"requested_seconds": 96 * 3600.0}
+    )
 
 
 def test_explicit_bin_edges_override_the_derived_ones() -> None:
