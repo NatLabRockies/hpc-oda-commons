@@ -5,8 +5,14 @@ from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
-from hpc_oda_commons.ingest.jobs_parquet.apply import _duration_to_seconds, apply_mapping_spec
+from hpc_oda_commons.ingest.jobs_parquet.apply import (
+    _duration_to_seconds,
+    _memory_slurm_column,
+    _memory_slurm_to_mb,
+    apply_mapping_spec,
+)
 from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec, write_mapping_spec
 
 
@@ -584,6 +590,45 @@ def test_apply_memory_slurm_vectorized_values(tmp_path: Path) -> None:
     apply_mapping_spec(inp, mp, tmp_path / "out.parquet")
     out = pq.read_table(tmp_path / "out.parquet").to_pylist()
     assert [r["memory_mb"] for r in out] == [163840.0, 2048.0, 0.5, 4096.0]
+
+
+def test_apply_memory_slurm_per_node_suffix(tmp_path: Path) -> None:
+    """SLURM's per-node ``n`` suffix ('0n', '90000Mn') must parse, not null out.
+
+    nlr_eagle writes half its ``memory_req`` values as ``0n``; before this the
+    suffix failed the unit regex and the whole column came back null.
+    """
+    rows = [_row(1, 0, "0n"), _row(2, 1, "90000Mn"), _row(3, 2, "92000Mn"), _row(4, 3, "2Gn")]
+    inp = tmp_path / "in.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), inp)
+    mp = tmp_path / "map.yml"
+    write_mapping_spec(mp, _memory_slurm_mapping(), validate=True)
+
+    apply_mapping_spec(inp, mp, tmp_path / "out.parquet")
+    out = pq.read_table(tmp_path / "out.parquet").to_pylist()
+    assert [r["memory_mb"] for r in out] == [0.0, 90000.0, 92000.0, 2048.0]
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("0n", 0.0),
+        ("90000Mn", 90000.0),
+        ("92000Mn", 92000.0),
+        ("2Gn", 2048.0),
+        ("2GN", 2048.0),
+        ("  512Kn  ", 0.5),
+        ("4096", 4096.0),
+        # per-CPU values stay unparsed: converting them needs the job's CPU count
+        ("4Gc", None),
+        ("n", None),
+    ],
+)
+def test_memory_slurm_paths_agree_on_scope_suffix(raw: str, expected: float | None) -> None:
+    """The element-wise helper and the vectorized column path must agree."""
+    assert _memory_slurm_to_mb(raw) == expected
+    vectorized = _memory_slurm_column(pa.array([raw], type=pa.string())).to_pylist()[0]
+    assert vectorized == expected
 
 
 def test_apply_memory_slurm_malformed_becomes_null_not_crash(tmp_path: Path) -> None:

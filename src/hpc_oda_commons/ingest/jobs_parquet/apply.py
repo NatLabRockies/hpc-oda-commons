@@ -131,14 +131,23 @@ _SLURM_MEM_UNIT_TO_MIB: dict[str, float] = {
 }
 
 
+# SLURM's ``ReqMem`` carries an optional trailing allocation-scope suffix: ``n`` for
+# per-node (``90000Mn``, ``0n``) and ``c`` for per-CPU (``4Gc``). Only ``n`` is accepted
+# here — it is the amount requested per node, which is what the canonical MiB column
+# records, so the marker is redundant once parsed. A ``c`` value means something
+# different (memory x CPU count) and is left unparsed (null) rather than silently
+# recorded as if it were the per-node figure.
+_SLURM_MEM_RE = re.compile(r"^([\d.]+)([KMGTPkmgtp]?)[nN]?$")
+
+
 def _memory_slurm_to_mb(value: Any) -> float | None:
-    """Parse a SLURM memory string like '160G', '2366M', '4096' → MiB (float)."""
+    """Parse a SLURM memory string like '160G', '2366M', '90000Mn', '4096' → MiB (float)."""
     if value is None:
         return None
     raw = str(value).strip()
     if not raw:
         return None
-    m = re.match(r"^([\d.]+)([KMGTPkmgtp]?)$", raw)
+    m = _SLURM_MEM_RE.match(raw)
     if not m:
         return None
     num = float(m.group(1))
@@ -212,13 +221,14 @@ def _memory_slurm_column(col: pa.Array) -> pa.Array:
     """Vectorized equivalent of ``_memory_slurm_to_mb`` over a whole string column.
 
     Matches the element-wise helper on every well-formed input (incl. leading/
-    trailing dots, lowercase units, surrounding whitespace, and empty/non-matching
-    values → null). The one intentional difference: a malformed multi-dot value
+    trailing dots, lowercase units, the optional per-node ``n`` suffix, surrounding
+    whitespace, and empty/non-matching values → null). The one intentional
+    difference: a malformed multi-dot value
     like ``"1.2.3G"`` becomes null here, whereas the element-wise helper crashes
     with ValueError on it (a latent bug this path also fixes).
     """
     text = pc.utf8_trim_whitespace(pc.cast(col, pa.string()))
-    parts = pc.extract_regex(text, pattern=r"^(?P<num>[\d.]+)(?P<unit>[KMGTPkmgtp]?)$")
+    parts = pc.extract_regex(text, pattern=r"^(?P<num>[\d.]+)(?P<unit>[KMGTPkmgtp]?)[nN]?$")
     num = pc.struct_field(parts, "num")
     unit = pc.utf8_upper(pc.fill_null(pc.struct_field(parts, "unit"), ""))
     # float() accepts only values with <=1 dot and >=1 digit; null the rest so the
