@@ -56,6 +56,7 @@ This reference covers the v0.1 `hpc-oda` commands.
    - `model.job_runtime_mlp` + `split.method: rolling`
    - `model.job_runtime_tfidf_knn` + `split.method: rolling`
    - `model.job_runtime_embedding_knn` + `split.method: rolling` (needs an `embedding` column; see `hpc-oda embed`)
+   - `model.job_runtime_moe_xgboost` + `split.method: rolling`
    - `model.job_power_uopc` + `split.method: fixed`
    Result bundles include an `integrity` block with code hash and validation status.
    For rolling recipes, `split.n_windows` is required.

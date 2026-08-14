@@ -49,6 +49,28 @@ def test_validate_recipe_rolling_with_optional_lookback_ok() -> None:
     validate_recipe(payload)
 
 
+def test_validate_recipe_rolling_accepts_moe_routing_knobs() -> None:
+    """A bundled recipe must be able to set the knobs its model documents.
+
+    `split` is `additionalProperties: false`, so every model option a recipe may
+    carry has to be declared in the schema — otherwise the recipe fails to load
+    with "Additional properties are not allowed" and the option is unreachable.
+    """
+    payload = _valid_rolling_recipe()
+    payload["model"] = {"id": "model.job_runtime_moe_xgboost", "version": "0.1.0"}
+    payload["split"] = {
+        "method": "rolling",
+        "n_windows": 24,
+        "time_decay_rate": 0.05,
+        "power_user_percentile": 0.99,
+        "min_expert_rows": 100,
+        "n_wallclock_bins": 5,
+        "wallclock_bin_edges_hours": [2, 4, 24, 48],
+        "estimator_n_jobs": 1,
+    }
+    validate_recipe(payload)
+
+
 def test_validate_recipe_rolling_requires_n_windows() -> None:
     payload = _valid_rolling_recipe()
     payload["split"] = {"method": "rolling"}

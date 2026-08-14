@@ -10,6 +10,18 @@ registry metadata and recipes.
 3. Add a recipe in `src/hpc_oda_commons/recipes/`.
 4. Add unit tests that exercise the model's public API (e.g., `fit()`/`predict()` for simple models, or `evaluate()` for rolling-window models).
 
+## Feature eligibility
+
+Runtime models may only use **submission-time** columns. The shared allowlist lives in
+`models/feature_policy.py` (`RUNTIME_PREDICTION_FEATURE_FIELDS`); `RollingTabularModel`
+and the TF-IDF kNN vectorizer both filter through it, and the embedding serializer enforces
+the same policy with its own `FORBIDDEN_FIELDS` guard. A model that picks its own columns
+must filter through the allowlist too — a normalized table can carry `job_state`,
+`exit_code`, or `*_alloc` columns, none of which exist when the job is queued.
+
+Admit a dataset-specific column with `extra_feature_fields` on the model config rather than
+by widening the shared allowlist, unless the field is genuinely cross-site.
+
 ## Required Metadata
 
 The registry entry should include:
@@ -23,7 +35,7 @@ The registry entry should include:
 
 ## Reference Implementations
 
-The toolkit ships seven models, each illustrating a different complexity level:
+The toolkit ships eight models, each illustrating a different complexity level:
 
 | Model | Package | Interface |
 |-------|---------|-----------|
@@ -33,6 +45,7 @@ The toolkit ships seven models, each illustrating a different complexity level:
 | `model.job_runtime_mlp` | `models/job_runtime_mlp/` | Thin subclass of `RollingTabularModel` |
 | `model.job_runtime_tfidf_knn` | `models/job_runtime_tfidf_knn/` | `evaluate()` with TF-IDF vectorization; hashes once, scores window slices in parallel (`window_n_jobs`) |
 | `model.job_runtime_embedding_knn` | `models/job_runtime_embedding_knn/` | `evaluate()` over a precomputed embedding column; selectable dense top-k backend (`backends.py`) |
+| `model.job_runtime_moe_xgboost` | `models/job_runtime_moe_xgboost/` | Subclass of `RollingTabularModel` that overrides the fit/predict seam to route each job to a per-(user, wallclock-bin) expert |
 | `model.job_power_uopc` | `models/job_power_uopc/` | Per-user kNN job-power model on a fixed split |
 
 For a minimal starting point, see `models/job_runtime_baseline/`. For a new

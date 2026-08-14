@@ -338,6 +338,7 @@ def run_rolling_xgboost(
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -368,6 +369,7 @@ def run_rolling_random_forest(
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -398,6 +400,7 @@ def run_rolling_mlp(
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -430,6 +433,7 @@ def run_rolling_embedding_knn(
             device=str(split.get("device", "auto")),
             weighting=str(split.get("weighting", "similarity")),
             sims_block_bytes=int(split.get("sims_block_bytes", DEFAULT_SIMS_BLOCK_BYTES)),
+            log_target=bool(split.get("log_target", False)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -460,6 +464,7 @@ def run_rolling_tfidf_knn(
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -484,17 +489,23 @@ def run_rolling_moe_xgboost(
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
     training_lookback_days = int(split.get("training_lookback_days", 100))
-    time_decay_rate = float(split.get("time_decay_rate", 0.05))
-    power_user_percentile = float(split.get("power_user_percentile", 0.99))
-    estimator_n_jobs = int(split.get("estimator_n_jobs", 1))
+    defaults = MoEXGBoostConfig()
+    edges = split.get("wallclock_bin_edges_hours")
     model = MoEXGBoostModel(
         config=MoEXGBoostConfig(
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
-            time_decay_rate=time_decay_rate,
-            power_user_percentile=power_user_percentile,
-            estimator_n_jobs=estimator_n_jobs,
+            window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
+            time_decay_rate=float(split.get("time_decay_rate", defaults.time_decay_rate)),
+            power_user_percentile=float(
+                split.get("power_user_percentile", defaults.power_user_percentile)
+            ),
+            min_expert_rows=int(split.get("min_expert_rows", defaults.min_expert_rows)),
+            n_wallclock_bins=int(split.get("n_wallclock_bins", defaults.n_wallclock_bins)),
+            wallclock_bin_edges_hours=tuple(float(h) for h in edges) if edges else None,
+            estimator_n_jobs=int(split.get("estimator_n_jobs", defaults.estimator_n_jobs)),
         )
     )
     return _run_rolling_model_evaluate(

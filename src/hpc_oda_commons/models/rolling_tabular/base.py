@@ -10,6 +10,7 @@ models subclass ``RollingTabularModel`` and supply a regressor via
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import nullcontext
@@ -21,6 +22,10 @@ import numpy as np
 from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
+from hpc_oda_commons.models.feature_policy import (
+    RUNTIME_PREDICTION_FEATURE_FIELDS,
+    partition_feature_fields,
+)
 from hpc_oda_commons.models.rolling_tabular.preprocessing import (
     _build_one_hot_encoder,
     _normalize_category,
@@ -65,6 +70,11 @@ class _WindowResult:
     was_refit: bool
 
 
+# Rows in a canonical table share a schema; scan a bounded prefix to collect the
+# column names rather than walking millions of dicts.
+_FIELD_SCAN_ROWS = 1000
+
+
 def _blas_single_thread() -> Any:
     """Pin native BLAS/OpenMP pools to one thread for the duration of the block, so
     N window worker threads don't oversubscribe cores by each launching a
@@ -104,12 +114,23 @@ class RollingTabularConfig:
     # distinctly from any estimator-level ``n_jobs`` (e.g. Random Forest's) so the two
     # parallelism axes stay independent.
     window_n_jobs: int = 1
-    # Exponential time-decay rate for training sample weights. When > 0, training jobs
-    # are weighted by exp(-time_decay_rate * days_since_job_ended). Recent jobs get
-    # higher weight, older jobs get lower weight. This allows the model to prioritize
-    # current workload patterns over stale historical data. 0 = flat weighting (default).
-    # A rate of 0.05 gives: yesterday=1.0, 2wk=0.50, 1mo=0.22, 2mo=0.05.
+    # Train on ``log1p(runtime_seconds)`` and invert with ``expm1`` before scoring.
+    # HPC runtime distributions are heavy-tailed (p99/p50 reaches ~1,200x), so under
+    # squared error a handful of very long jobs dominates the gradient; in log space
+    # each job contributes comparably. Metrics are always computed in seconds — only
+    # the training targets and the raw predictions are transformed. Mirrors the option
+    # the TF-IDF and embedding kNN models already carry.
+    log_target: bool = False
+    # Exponential decay applied to training sample weights: a job that ended ``d`` days
+    # before the split is weighted ``exp(-time_decay_rate * d)``, so recent behaviour
+    # counts for more than stale history. 0 disables it (flat weights). 0.05 gives a
+    # ~2 week half-life. Requires an estimator whose ``fit`` accepts ``sample_weight``.
     time_decay_rate: float = 0.0
+    # Dataset-specific columns to admit as features on top of the shared
+    # submission-time allowlist (``models/feature_policy.py``). Everything outside
+    # both sets is ignored, so a column that is only known once a job has run
+    # cannot become a feature by virtue of being present in the table.
+    extra_feature_fields: frozenset[str] = frozenset()
 
 
 class RollingTabularModel:
@@ -132,6 +153,17 @@ class RollingTabularModel:
         self.config = config or RollingTabularConfig()
         self.target_field = "runtime_seconds"
 
+    def allowed_feature_fields(self) -> frozenset[str]:
+        """Columns this model may use: the shared allowlist plus any configured extras."""
+        return RUNTIME_PREDICTION_FEATURE_FIELDS | frozenset(self.config.extra_feature_fields)
+
+    def feature_field_report(self, rows: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
+        """(usable, ignored) column names for ``rows`` under this model's policy."""
+        present: set[str] = set()
+        for row in rows[:_FIELD_SCAN_ROWS]:
+            present.update(row.keys())
+        return partition_feature_fields(present, extra=self.config.extra_feature_fields)
+
     @staticmethod
     def _check_dependencies() -> None:
         if importlib.util.find_spec("sklearn") is None:
@@ -141,6 +173,58 @@ class RollingTabularModel:
 
     def _new_regressor(self, n_train: int) -> Any:
         raise NotImplementedError("Subclasses must implement _new_regressor().")
+
+    def _fit_predict(
+        self,
+        x_train: Any,
+        y_train: Any,
+        x_test: Any,
+        *,
+        train_rows: list[dict[str, Any]],
+        test_rows: list[dict[str, Any]],
+        artifacts: Any,
+        sample_weight: Any | None = None,
+    ) -> tuple[Any, Any]:
+        """Fit this window's estimator and predict its test rows.
+
+        The seam a routing model overrides. Everything around it — the split grid,
+        the daily preprocessing, the metrics, the payload — stays shared, so a
+        mixture of experts scores exactly the rows a single estimator would, and its
+        numbers stay comparable with every other model on the leaderboard.
+        """
+        del train_rows, test_rows, artifacts  # only routing models need them
+        model = self._new_regressor(x_train.shape[0])
+        self._fit_estimator(model, x_train, y_train, sample_weight)
+        return model, model.predict(x_test)
+
+    def _fit_estimator(self, model: Any, x: Any, y: Any, sample_weight: Any | None) -> None:
+        """Fit one estimator, passing sample weights only when there are any."""
+        if sample_weight is None:
+            model.fit(x, y)
+            return
+        if "sample_weight" not in inspect.signature(model.fit).parameters:
+            raise ValueError(
+                f"time_decay_rate is set, but {type(model).__name__}.fit() does not accept "
+                "sample_weight, so the weighting cannot be applied. Set time_decay_rate=0 "
+                "for this model."
+            )
+        model.fit(x, y, sample_weight=sample_weight)
+
+    def _time_decay_weights(self, train_rows: list[dict[str, Any]], split: Any) -> Any | None:
+        """Exponential recency weights for a window's training rows, or None if disabled."""
+        rate = float(self.config.time_decay_rate)
+        if rate <= 0.0:
+            return None
+        end_field = self.config.end_time_field
+        weights = np.ones(len(train_rows), dtype=float)
+        for i, row in enumerate(train_rows):
+            end_ts = row.get(end_field)
+            stamp = getattr(end_ts, "timestamp", None)
+            if stamp is None:
+                continue
+            days_old = max(0.0, (split.split_epoch - stamp()) / 86400.0)
+            weights[i] = math.exp(-rate * days_old)
+        return weights
 
     def evaluate(
         self,
@@ -173,12 +257,25 @@ class RollingTabularModel:
         # split indices that triggered each day's build — the sequential cache semantics.
         cache, refit_ids = self._precompute_daily_artifacts(rows, splits)
 
+        usable, ignored = self.feature_field_report(rows)
+        if not usable:
+            raise ValueError(
+                "no submission-time feature columns found in this table; "
+                f"columns present but ignored: {', '.join(ignored) or '(none)'}. "
+                "Map the request/context fields in the dataset descriptor, or admit "
+                "dataset-specific ones with RollingTabularConfig.extra_feature_fields."
+            )
         if verbose:
             print(
                 f"[{self._log_prefix}][verbose] starting rolling evaluation "
                 f"splits={len(splits)} "
                 f"n_windows={self.config.n_windows} "
                 f"training_lookback_days={self.config.training_lookback_days}"
+            )
+            print(f"[{self._log_prefix}][verbose] feature fields eligible: {', '.join(usable)}")
+            print(
+                f"[{self._log_prefix}][verbose] columns ignored (not submission-time features): "
+                f"{', '.join(ignored)}"
             )
 
         n_jobs = max(1, int(self.config.window_n_jobs))
@@ -367,21 +464,23 @@ class RollingTabularModel:
                 was_refit=was_refit,
             )
 
-        model = self._new_regressor(x_train.shape[0])
-        # Apply time-decay sample weighting if configured
-        if self.config.time_decay_rate > 0:
-            split_epoch = split.split_epoch
-            end_field = self.config.end_time_field
-            weights = np.ones(len(train_rows), dtype=float)
-            for i, row in enumerate(train_rows):
-                end_ts = row.get(end_field)
-                if hasattr(end_ts, "timestamp"):
-                    days_ago = (split_epoch - end_ts.timestamp()) / 86400.0
-                    weights[i] = np.exp(-self.config.time_decay_rate * max(0.0, days_ago))
-            model.fit(x_train, y_train, sample_weight=weights)
-        else:
-            model.fit(x_train, y_train)
-        pred = model.predict(x_test)
+        fit_targets = y_train
+        if self.config.log_target:
+            fit_targets = np.log1p(np.maximum(np.asarray(y_train, dtype=float), 0.0))
+        model, pred = self._fit_predict(
+            x_train,
+            fit_targets,
+            x_test,
+            train_rows=train_rows,
+            test_rows=test_rows,
+            artifacts=artifacts,
+            sample_weight=self._time_decay_weights(train_rows, split),
+        )
+        if self.config.log_target:
+            # expm1 overflows to inf well before a plausible runtime; clamp the exponent
+            # and keep predictions non-negative, so a wild extrapolation cannot poison
+            # the window's metrics with inf/NaN.
+            pred = np.maximum(np.expm1(np.clip(np.asarray(pred, dtype=float), None, 700.0)), 0.0)
         y_pred = [float(v) for v in pred]
         y_true = [float(v) for v in y_test]
         metrics = self._compute_regression_metrics(y_true, y_pred, resolved_metric_defs)
@@ -491,6 +590,9 @@ class RollingTabularModel:
         categorical_columns: list[str] | None = None,
     ) -> dict[str, Any]:
         """Profile categorical fields, choose one-hot config, and select SVD components."""
+        if categorical_columns is None:
+            allowed = self.allowed_feature_fields()
+            categorical_columns = [c for c in detect_categorical_columns(rows) if c in allowed]
         payload = build_preprocessing_diagnostics(
             rows,
             explained_variance_target=self.config.explained_variance_target,
@@ -538,15 +640,10 @@ class RollingTabularModel:
     def _build_daily_preprocessing_artifacts(
         self, train_rows: list[dict[str, Any]]
     ) -> _DailyPreprocessingArtifacts:
-        excluded = {
-            self.target_field,
-            self.config.submit_time_field,
-            self.config.end_time_field,
-            "start_time",
-        }
+        allowed = self.allowed_feature_fields()
 
         categorical_candidates = detect_categorical_columns(train_rows)
-        categorical_columns = [c for c in categorical_candidates if c not in excluded]
+        categorical_columns = [c for c in categorical_candidates if c in allowed]
         profiles = profile_categorical_features(
             train_rows,
             categorical_columns=categorical_columns,
@@ -559,10 +656,14 @@ class RollingTabularModel:
             target_max_one_hot_width=self.config.target_max_one_hot_width,
         )
 
-        numeric_columns = self._detect_numeric_columns(
-            train_rows,
-            exclude=excluded | set(one_hot_config.columns),
-        )
+        numeric_columns = [
+            column
+            for column in self._detect_numeric_columns(
+                train_rows,
+                exclude=set(one_hot_config.columns),
+            )
+            if column in allowed
+        ]
 
         encoder: Any | None = None
         svd: Any | None = None

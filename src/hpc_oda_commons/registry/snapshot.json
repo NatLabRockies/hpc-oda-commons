@@ -68,7 +68,7 @@
       "entry_type": "model",
       "name": "Job Runtime MoE XGBoost (Rolling)",
       "version": "0.1.0",
-      "description": "Mixture-of-Experts runtime prediction model. Routes jobs to specialized per-bin XGBoost models by user identity and wallclock cluster, with exponential time-decay sample weighting.",
+      "description": "Mixture-of-Experts runtime prediction. Routes each job to a per-(user, wallclock-bin) XGBoost expert inside the shared rolling window, with bin edges derived from each training window, a window-wide fallback expert for sparse bins, and exponential time-decay sample weighting.",
       "problem_domain": ["job-runtime-prediction"],
       "supported_sources": ["slurmctld"],
       "input_schema_version": "oda.job.v0.2.0",

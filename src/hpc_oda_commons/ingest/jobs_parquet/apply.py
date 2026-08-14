@@ -61,6 +61,24 @@ def _parse_timestamp(value: Any, fmt: str) -> datetime | None:
     return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
 
 
+# Schedulers export "no limit" / "not set" as the maximum value of the field's integer
+# width instead of as a null. SLURM's NO_VAL/INFINITE pair is (2**32-2, 2**32-1) — MIT
+# Supercloud carries 4294967295 in `timelimit` for 43.9% of its jobs — and signed exports
+# use INT32_MAX/INT64_MAX (2**31-1 appears in lassen's `time_limit` and pwa_cea_curie's
+# `req_time`). None of these are real walltimes: the smallest, 2**31-1 seconds, is 68
+# years, and multiplying it by a unit factor yields values like 8,165 years that models
+# would otherwise train on. Treat them as unknown (null).
+_DURATION_SENTINELS: tuple[float, ...] = (
+    float(2**31 - 1),
+    float(2**32 - 2),
+    float(2**32 - 1),
+    float(2**63 - 1),
+    float(2**64 - 2),
+    float(2**64 - 1),
+)
+_DURATION_SENTINEL_SET: frozenset[float] = frozenset(_DURATION_SENTINELS)
+
+
 def _duration_to_seconds(value: Any, unit: str) -> float | None:
     if value is None:
         return None
@@ -73,6 +91,8 @@ def _duration_to_seconds(value: Any, unit: str) -> float | None:
         try:
             base = float(text)
         except ValueError:
+            return None
+        if base in _DURATION_SENTINEL_SET:
             return None
         return base * {"seconds": 1.0, "minutes": 60.0, "hours": 3600.0}[unit]
     if unit == "hh:mm:ss":
@@ -131,14 +151,23 @@ _SLURM_MEM_UNIT_TO_MIB: dict[str, float] = {
 }
 
 
+# SLURM's ``ReqMem`` carries an optional trailing allocation-scope suffix: ``n`` for
+# per-node (``90000Mn``, ``0n``) and ``c`` for per-CPU (``4Gc``). Only ``n`` is accepted
+# here — it is the amount requested per node, which is what the canonical MiB column
+# records, so the marker is redundant once parsed. A ``c`` value means something
+# different (memory x CPU count) and is left unparsed (null) rather than silently
+# recorded as if it were the per-node figure.
+_SLURM_MEM_RE = re.compile(r"^([\d.]+)([KMGTPkmgtp]?)[nN]?$")
+
+
 def _memory_slurm_to_mb(value: Any) -> float | None:
-    """Parse a SLURM memory string like '160G', '2366M', '4096' → MiB (float)."""
+    """Parse a SLURM memory string like '160G', '2366M', '90000Mn', '4096' → MiB (float)."""
     if value is None:
         return None
     raw = str(value).strip()
     if not raw:
         return None
-    m = re.match(r"^([\d.]+)([KMGTPkmgtp]?)$", raw)
+    m = _SLURM_MEM_RE.match(raw)
     if not m:
         return None
     num = float(m.group(1))
@@ -212,13 +241,14 @@ def _memory_slurm_column(col: pa.Array) -> pa.Array:
     """Vectorized equivalent of ``_memory_slurm_to_mb`` over a whole string column.
 
     Matches the element-wise helper on every well-formed input (incl. leading/
-    trailing dots, lowercase units, surrounding whitespace, and empty/non-matching
-    values → null). The one intentional difference: a malformed multi-dot value
+    trailing dots, lowercase units, the optional per-node ``n`` suffix, surrounding
+    whitespace, and empty/non-matching values → null). The one intentional
+    difference: a malformed multi-dot value
     like ``"1.2.3G"`` becomes null here, whereas the element-wise helper crashes
     with ValueError on it (a latent bug this path also fixes).
     """
     text = pc.utf8_trim_whitespace(pc.cast(col, pa.string()))
-    parts = pc.extract_regex(text, pattern=r"^(?P<num>[\d.]+)(?P<unit>[KMGTPkmgtp]?)$")
+    parts = pc.extract_regex(text, pattern=r"^(?P<num>[\d.]+)(?P<unit>[KMGTPkmgtp]?)[nN]?$")
     num = pc.struct_field(parts, "num")
     unit = pc.utf8_upper(pc.fill_null(pc.struct_field(parts, "unit"), ""))
     # float() accepts only values with <=1 dot and >=1 digit; null the rest so the
@@ -270,7 +300,15 @@ def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Arr
             str(transform.get("unit", "seconds"))
         )
         if factor is not None and _is_numeric(col.type):
-            return pc.multiply(pc.cast(col, pa.float64()), factor)
+            raw = pc.cast(col, pa.float64())
+            # Same sentinel -> null rule as the element-wise helper, applied to the raw
+            # value before the unit factor so both paths agree exactly.
+            raw = pc.if_else(
+                pc.is_in(raw, value_set=pa.array(_DURATION_SENTINELS, type=pa.float64())),
+                pa.scalar(None, pa.float64()),
+                raw,
+            )
+            return pc.multiply(raw, factor)
     elif ttype == "memory":
         factor = _MEMORY_FACTORS.get(str(transform.get("unit", "mb")))
         if factor is not None and _is_numeric(col.type):

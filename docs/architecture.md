@@ -40,6 +40,9 @@ Raw Input (slurmctld.log / jobs.parquet)
     stateless HashingVectorizer is applied once, then windows score index slices in parallel
     (`window_n_jobs`); text handling in `vectorization.py`
   - `job_runtime_embedding_knn/` -- kNN over a precomputed dense `embedding` column
+  - `job_runtime_moe_xgboost/` -- mixture of experts: subclasses `RollingTabularModel` and
+    overrides only the fit/predict seam, routing each job to a per-(user, wallclock-bin)
+    expert with a window-wide fallback
     (`model.py`), with a selectable exact dense top-k backend (`backends.py`:
     numpy / torch / faiss). Reuses `rolling_tabular` split + `kernel.metrics`.
   - `job_power_uopc/` -- user-based online power prediction (UoPC), fixed chronological split,

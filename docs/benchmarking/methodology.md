@@ -17,6 +17,15 @@ Six runtime-prediction models: `job_runtime_baseline`, `job_runtime_tfidf_knn`,
 embedding model additionally requires a one-time `hpc-oda embed` pass per dataset (reused
 across runs).
 
+**Feature eligibility.** Every model sees only submission-time columns — the allowlist in
+`models/feature_policy.py`. This matters for comparability: before it existed, the tabular
+models fed on whatever the normalized table carried, including `job_state` (mapped by 21 of
+the 22 prepared datasets, and near-perfectly correlated with the target for `TIMEOUT` jobs),
+`exit_code`, and the `*_alloc` counts, and the TF-IDF model put `job_state` straight into its
+document text. **Any leaderboard number produced before that fix overstates accuracy by an
+amount that varies per dataset, so it is not comparable with numbers produced after it** —
+re-run rather than mix the two.
+
 ## Benchmark configuration
 
 Fixed rolling-window evaluation for every dataset:

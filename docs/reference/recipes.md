@@ -67,11 +67,12 @@ run:
 - `train_fraction` (float, required): fraction of data for training (e.g., `0.8`)
 - `seed` (int, required): random seed for reproducibility
 
-**`rolling`** -- Sliding windows that simulate production retraining. Used with the six rolling models (`model.job_runtime_baseline`, `model.job_runtime_xgboost`, `model.job_runtime_random_forest`, `model.job_runtime_tfidf_knn`, `model.job_runtime_mlp`, `model.job_runtime_embedding_knn`).
+**`rolling`** -- Sliding windows that simulate production retraining. Used with the seven rolling models (`model.job_runtime_baseline`, `model.job_runtime_xgboost`, `model.job_runtime_random_forest`, `model.job_runtime_tfidf_knn`, `model.job_runtime_mlp`, `model.job_runtime_embedding_knn`, `model.job_runtime_moe_xgboost`).
 - `n_windows` (int, required): number of windows to evaluate
 - `test_window_hours` (int, default `6`): duration of each test window in hours
 - `training_lookback_days` (int, default `100`): days of history per training window
 - `window_n_jobs` (int, default `1`): worker threads for the independent per-window fits of the fitted tabular models (`xgboost`, `random_forest`, `mlp`). `1` is sequential; `>1` runs windows concurrently with BLAS pinned per worker (results are unchanged except for the floating-point caveat in [known-issues](../known-issues.md)).
+- `log_target` (bool, default `false`): train on `log1p(runtime_seconds)` and invert with `expm1` before scoring. Supported by `xgboost`, `random_forest`, `mlp`, `tfidf_knn`, and `embedding_knn`. Metrics stay in seconds. Improves typical-job accuracy on heavy-tailed workloads at the cost of MAE/RMSE — see [the reference](../hpc-oda-commons-reference.md) for measured numbers.
 - `sims_block_bytes` (int, default `2147483648`): embedding-kNN only — peak bytes for one dense similarity block; the query is streamed in blocks of this budget so per-window memory stays bounded on large corpora.
 
 ### Validation Rules

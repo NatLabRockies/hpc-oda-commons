@@ -5,8 +5,14 @@ from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
-from hpc_oda_commons.ingest.jobs_parquet.apply import _duration_to_seconds, apply_mapping_spec
+from hpc_oda_commons.ingest.jobs_parquet.apply import (
+    _duration_to_seconds,
+    _memory_slurm_column,
+    _memory_slurm_to_mb,
+    apply_mapping_spec,
+)
 from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec, write_mapping_spec
 
 
@@ -586,6 +592,45 @@ def test_apply_memory_slurm_vectorized_values(tmp_path: Path) -> None:
     assert [r["memory_mb"] for r in out] == [163840.0, 2048.0, 0.5, 4096.0]
 
 
+def test_apply_memory_slurm_per_node_suffix(tmp_path: Path) -> None:
+    """SLURM's per-node ``n`` suffix ('0n', '90000Mn') must parse, not null out.
+
+    nlr_eagle writes half its ``memory_req`` values as ``0n``; before this the
+    suffix failed the unit regex and the whole column came back null.
+    """
+    rows = [_row(1, 0, "0n"), _row(2, 1, "90000Mn"), _row(3, 2, "92000Mn"), _row(4, 3, "2Gn")]
+    inp = tmp_path / "in.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), inp)
+    mp = tmp_path / "map.yml"
+    write_mapping_spec(mp, _memory_slurm_mapping(), validate=True)
+
+    apply_mapping_spec(inp, mp, tmp_path / "out.parquet")
+    out = pq.read_table(tmp_path / "out.parquet").to_pylist()
+    assert [r["memory_mb"] for r in out] == [0.0, 90000.0, 92000.0, 2048.0]
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("0n", 0.0),
+        ("90000Mn", 90000.0),
+        ("92000Mn", 92000.0),
+        ("2Gn", 2048.0),
+        ("2GN", 2048.0),
+        ("  512Kn  ", 0.5),
+        ("4096", 4096.0),
+        # per-CPU values stay unparsed: converting them needs the job's CPU count
+        ("4Gc", None),
+        ("n", None),
+    ],
+)
+def test_memory_slurm_paths_agree_on_scope_suffix(raw: str, expected: float | None) -> None:
+    """The element-wise helper and the vectorized column path must agree."""
+    assert _memory_slurm_to_mb(raw) == expected
+    vectorized = _memory_slurm_column(pa.array([raw], type=pa.string())).to_pylist()[0]
+    assert vectorized == expected
+
+
 def test_apply_memory_slurm_malformed_becomes_null_not_crash(tmp_path: Path) -> None:
     """Behavior change vs prior code: a malformed multi-dot SLURM memory value
     becomes null instead of crashing the whole ingest with ValueError."""
@@ -721,3 +766,63 @@ def test_duration_numeric_units_are_null_for_scheduler_sentinels() -> None:
     # has a handful of UNLIMITED walltime rows).
     for sentinel in ("UNLIMITED", "INVALID", "Partition_Limit", "", "  ", None):
         assert _duration_to_seconds(sentinel, "minutes") is None
+
+
+@pytest.mark.parametrize(
+    ("raw", "unit"),
+    [
+        (2**32 - 1, "minutes"),  # SLURM INFINITE — mit_supercloud `timelimit`
+        (2**32 - 2, "minutes"),  # SLURM NO_VAL
+        (2**31 - 1, "seconds"),  # INT32_MAX — lassen `time_limit`, pwa_cea_curie `req_time`
+        (2**63 - 1, "seconds"),  # INT64_MAX
+    ],
+)
+def test_duration_integer_max_sentinels_are_null(raw: int, unit: str) -> None:
+    """A max-int "no limit" marker must not be multiplied into a real duration.
+
+    Untreated, mit_supercloud's 4294967295 minutes became requested_seconds =
+    257,698,037,700 (~8,165 years) on 43.9% of its rows.
+    """
+    assert _duration_to_seconds(raw, unit) is None
+    assert _duration_to_seconds(str(raw), unit) is None
+
+
+def test_apply_duration_sentinels_null_on_the_vectorized_path(tmp_path: Path) -> None:
+    """The numeric fast path must apply the same sentinel rule as the helper."""
+    rows = [
+        {"JobID": 1, "Elapsed": 1440},
+        {"JobID": 2, "Elapsed": 2**32 - 1},
+        {"JobID": 3, "Elapsed": 2**31 - 1},
+        {"JobID": 4, "Elapsed": 60},
+    ]
+    for i, row in enumerate(rows):
+        row["StartTime"] = f"2026-01-01T0{i}:00:00Z"
+        row["EndTime"] = f"2026-01-01T0{i}:05:00Z"
+    inp = tmp_path / "in.parquet"
+    pq.write_table(pa.Table.from_pylist(rows), inp)
+    spec = new_mapping_spec(
+        kind="jobs_parquet",
+        output_schema_version="oda.job.v0.1.0",
+        fields={
+            "job_id": {"source": "JobID"},
+            "start_time": {
+                "source": "StartTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "end_time": {
+                "source": "EndTime",
+                "transform": {"type": "timestamp", "format": "iso8601"},
+            },
+            "runtime_seconds": {"derive": "end_time - start_time"},
+            "requested_seconds": {
+                "source": "Elapsed",
+                "transform": {"type": "duration", "unit": "minutes"},
+            },
+        },
+    )
+    mp = tmp_path / "map.yml"
+    write_mapping_spec(mp, spec, validate=True)
+
+    apply_mapping_spec(inp, mp, tmp_path / "out.parquet")
+    out = pq.read_table(tmp_path / "out.parquet").to_pylist()
+    assert [r["requested_seconds"] for r in out] == [86400.0, None, None, 3600.0]

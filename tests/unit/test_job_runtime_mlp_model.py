@@ -27,7 +27,7 @@ def test_mlp_evaluate_returns_requested_metrics() -> None:
             "end_time": _dt("2026-01-01T00:20:00Z"),
             "runtime_seconds": 840.0,
             "partition": "debug",
-            "allocated_cpus": 2,
+            "num_cores_req": 2,
         },
         {
             "job_id": 2,
@@ -35,7 +35,7 @@ def test_mlp_evaluate_returns_requested_metrics() -> None:
             "end_time": _dt("2026-01-01T01:30:00Z"),
             "runtime_seconds": 1080.0,
             "partition": "compute",
-            "allocated_cpus": 4,
+            "num_cores_req": 4,
         },
         {
             "job_id": 3,
@@ -43,7 +43,7 @@ def test_mlp_evaluate_returns_requested_metrics() -> None:
             "end_time": _dt("2026-01-01T02:33:00Z"),
             "runtime_seconds": 1020.0,
             "partition": "debug",
-            "allocated_cpus": 2,
+            "num_cores_req": 2,
         },
     ]
     metric_defs = [

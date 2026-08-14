@@ -1,6 +1,12 @@
-# Mixture-of-Experts XGBoost rolling model recipe for runtime prediction.
-# Routes jobs to per-bin XGBoost models by user identity and wallclock cluster,
-# with exponential time-decay sample weighting.
+# Mixture-of-Experts XGBoost rolling recipe for runtime prediction.
+# Routes each job to a per-(user, wallclock-bin) expert inside the shared rolling
+# window, with bin edges derived from each training window and a fallback expert
+# for sparse bins.
+#
+# Place ingested data at:
+#   data/ingested/jobs_parquet/fugaku_24_04/data.parquet
+#   data/ingested/jobs_parquet/fugaku_24_04/manifest.json
+# (relative to the repo root when running `hpc-oda benchmark`)
 
 recipe_id: recipe.job_runtime.moe_xgboost_rolling
 problem_domain:
@@ -8,9 +14,9 @@ problem_domain:
 schema_version: oda.job.v0.2.0
 
 dataset:
-  id: hpc_oda_commons/datasets/synthetic/job-runtime/tiny
-  table_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet
-  manifest_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/manifest.json
+  id: fugaku_24_04
+  table_path: data/ingested/jobs_parquet/fugaku_24_04/data.parquet
+  manifest_path: data/ingested/jobs_parquet/fugaku_24_04/manifest.json
 
 model:
   id: model.job_runtime_moe_xgboost
@@ -21,15 +27,20 @@ metrics:
     target: runtime_seconds
   - name: rmse
     target: runtime_seconds
+  - name: underprediction_ratio
+    target: runtime_seconds
 
 split:
   method: rolling
-  n_windows: 1000
+  n_windows: 20
   test_window_hours: 6
-  training_lookback_days: 100
-  time_decay_rate: 0.05
-  power_user_percentile: 0.99
-  estimator_n_jobs: 1
+  training_lookback_days: 7
+  # Routing knobs (all optional; these are the defaults).
+  # time_decay_rate: 0.05          # exp(-rate * days_old) weighting; 0 disables
+  # power_user_percentile: 0.99    # job-count quantile above which a user gets experts
+  # min_expert_rows: 100           # below this a bin uses the window-wide fallback
+  # n_wallclock_bins: 5            # maximum bins derived per training window
+  # wallclock_bin_edges_hours: []  # pin the edges instead of deriving them
 
 run:
   output_dir: runs

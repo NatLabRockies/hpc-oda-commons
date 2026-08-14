@@ -129,6 +129,8 @@ hpc-oda benchmark -v my_recipe.yml
 
 **Embedding + kNN** (`model.job_runtime_embedding_knn`) — Embedding-space counterpart to TF-IDF + kNN: predicts runtime as the similarity-weighted average of the k nearest neighbors in a **precomputed dense embedding space**, using an exact dense top-k search. Model-agnostic — produce the `embedding` column with `hpc-oda embed` (any HuggingFace sentence-transformers model, or a dependency-free stub). See [Embedding-based kNN](docs/how-to/embedding-knn.md).
 
+**MoE XGBoost** (`model.job_runtime_moe_xgboost`) — Mixture of experts: one XGBoost per (user, requested-wallclock bin), with the bin edges derived from each training window's own request distribution (they land on the system's partition limits), a window-wide fallback expert for sparse bins, and exponential recency weighting of training rows. Routing happens inside the shared rolling window, so it scores exactly the rows the other models score.
+
 **Job Power UoPC** (`model.job_power_uopc`) — Power-prediction model (domain `job-power-prediction`) using per-user online kNN regression on label-encoded job features (UoPC-style), with fixed evaluation.
 
 ---
@@ -238,7 +240,7 @@ All transformations are recorded in the manifest's transformation ledger.
 src/hpc_oda_commons/     Package implementation
   qst/                   CLI (Typer-based, entry point: hpc-oda)
   kernel/                Core: artifacts, provenance, validation, schemas
-  models/                Seven models: baseline, xgboost, random_forest, mlp,
+  models/                Eight models: baseline, xgboost, random_forest, mlp, moe_xgboost,
                          tfidf_knn, embedding_knn (runtime) + job_power_uopc (power),
                          plus a shared rolling_tabular base for the tabular rolling models
   embeddings/            Text serialization + encoders for `hpc-oda embed`

@@ -1,8 +1,9 @@
 """
 Mixture-of-Experts XGBoost model for job runtime prediction (v0.1).
 
-Routes jobs to specialized per-bin XGBoost models by user identity and
-wallclock cluster, with exponential time-decay sample weighting.
+Routes each job to a per-(user, wallclock-bin) XGBoost expert inside the shared
+rolling window, with data-derived bin edges, a window-wide fallback expert, and
+exponential time-decay sample weighting.
 """
 
 from __future__ import annotations
