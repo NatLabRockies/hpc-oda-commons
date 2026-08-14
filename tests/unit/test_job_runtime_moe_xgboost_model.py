@@ -185,7 +185,9 @@ def test_time_decay_changes_the_fit() -> None:
 
 def test_config_defaults() -> None:
     config = MoEXGBoostConfig()
-    assert config.time_decay_rate == 0.05
+    # Off by default, like the shared base: a differing default would confound every
+    # comparison between this model and any other.
+    assert config.time_decay_rate == 0.0
     assert config.power_user_percentile == 0.99
     assert config.min_expert_rows == 100
     assert config.n_wallclock_bins == 5

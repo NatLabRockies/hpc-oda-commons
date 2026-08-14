@@ -17,7 +17,7 @@ pip install -e ".[dev]"
 
 ## Workflow
 
-The typical workflow is: **ingest -> validate -> benchmark -> leaderboard**. Every command runs locally with no network required.
+The typical workflow is: **ingest -> validate -> train -> benchmark -> leaderboard**. Every command runs locally with no network required.
 
 ```bash
 # 1. Ingest data (pick one)
@@ -30,6 +30,9 @@ hpc-oda validate data/ingested/jobs_parquet/<run>/data.parquet
 # 2b. (optional) embed rows for the embedding-knn model
 hpc-oda embed data/ingested/jobs_parquet/<run>/data.parquet \
   --out data/ingested/jobs_parquet/<run>_embedded/data.parquet --model stub
+
+# 2c. (optional) train a model
+hpc-oda train --recipe my_recipe.yml
 
 # 3. Run a benchmark
 hpc-oda benchmark my_recipe.yml
@@ -46,6 +49,7 @@ hpc-oda leaderboard --runs runs --out leaderboard
 | `hpc-oda ingest slurmctld --path <log>` | Parse slurmctld logs to canonical Parquet | `data/ingested/slurmctld/<run>/` |
 | `hpc-oda validate <path>` | Validate artifacts against schemas | `*.quality.json` next to input |
 | `hpc-oda embed <parquet> --out <path> --model <stub\|hf-id>` | Serialize + encode rows into a dense `embedding` column | `<out>` + `<out>.manifest.json` |
+| `hpc-oda train --recipe <recipe.yml>` | Train a model from a benchmark recipe | `runs/train-<timestamp>/` or model cache |
 | `hpc-oda analyze --data <path>` | Quick baseline analysis with HTML report | `reports/analysis-<id>/` |
 | `hpc-oda benchmark <recipe.yml>` | Run a benchmark recipe | `runs/benchmark-<timestamp>/` |
 | `hpc-oda benchmark -v <recipe.yml>` | Benchmark with verbose progress | Same, with console output |
