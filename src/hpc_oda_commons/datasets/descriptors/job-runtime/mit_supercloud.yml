@@ -6,7 +6,8 @@ description: >
   Raw slurmdbd scheduler log from the MIT Supercloud Datacenter Challenge (202201 release),
   ~396k jobs spanning Jan–Oct 2021 (~9 months; 202201 is the release tag, not a data month),
   modern SLURM + GPU. Only the ~103 MB scheduler CSV is used; the ~2 TB node telemetry is excluded. Runtime target is derived (time_end - time_start);
-  requested walltime = timelimit (minutes; 4294967295 is the SLURM "unlimited" sentinel).
+  requested walltime = timelimit (minutes; 4294967295 is the SLURM "unlimited" sentinel,
+  normalized to null).
   Timestamps are Unix epoch seconds; state is a numeric SLURM state code.
 problem_domains: [job-runtime-prediction]
 systems: [Supercloud]
