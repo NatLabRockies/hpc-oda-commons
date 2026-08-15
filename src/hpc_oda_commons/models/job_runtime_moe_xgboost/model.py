@@ -72,8 +72,10 @@ class MoEXGBoostConfig(RollingTabularConfig):
     # A bin needs this many training rows before it gets its own expert; below it,
     # its test rows are scored by the window-wide fallback expert.
     min_expert_rows: int = 100
-    # How many wallclock bins to derive, and how large a share of the training window
-    # a requested-wallclock value must hold to count as a cluster rather than noise.
+    # How many wallclock clusters to detect, and how large a share of the training
+    # window a requested-wallclock value must hold to count as a cluster rather than
+    # noise. Each detected cluster becomes a bin, plus one open bin above the largest,
+    # so k clusters yield up to k+1 bins.
     n_wallclock_bins: int = 5
     min_cluster_fraction: float = 0.02
     # Explicit bin edges in hours (upper bounds, ascending). Set this to pin a known
@@ -199,10 +201,13 @@ class MoEXGBoostModel(RollingTabularModel):
             value for value, count in counts.most_common(cfg.n_wallclock_bins) if count >= floor
         )
         if len(modes) >= 2:
-            # Each mode is the top of a class ("everything that asked for <= 2h"), and
-            # the last bin catches whatever sits above the largest cluster. Keep at most
-            # n_wallclock_bins bins in total.
-            return (*modes[: cfg.n_wallclock_bins - 1], math.inf)
+            # Every detected mode becomes an edge, so each cluster sits at the top of its
+            # own bin (the test is ``value <= edge``), and the open bin above the largest
+            # mode holds only the stragglers beyond it. Truncating to
+            # ``n_wallclock_bins - 1`` edges instead would drop the *largest* mode and
+            # merge it into the catch-all: on Kestrel that buried the 48h cluster --
+            # 10.6% of all jobs -- together with the 0.6% requesting more than 48h.
+            return (*modes, math.inf)
 
         # No partition structure to find (continuous or single-valued requests):
         # fall back to quantiles so the bins at least split the population.
