@@ -329,6 +329,7 @@ def test_benchmark_moe_xgboost_rolling_path(
                 "  min_expert_rows: 25",
                 "  n_wallclock_bins: 3",
                 "  objective: reg:absoluteerror",
+                "  enable_power_users: false",
             ]
         ),
         table_path=table_path,
@@ -346,6 +347,7 @@ def test_benchmark_moe_xgboost_rolling_path(
     assert config.min_expert_rows == 25
     assert config.n_wallclock_bins == 3
     assert config.objective == "reg:absoluteerror"
+    assert config.enable_power_users is False
 
 
 def test_benchmark_mlp_rolling_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

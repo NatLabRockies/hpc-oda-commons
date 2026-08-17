@@ -55,6 +55,7 @@
         "sims_block_bytes": { "type": "integer", "minimum": 1 },
         "log_target": { "type": "boolean" },
         "time_decay_rate": { "type": "number", "minimum": 0.0 },
+        "enable_power_users": { "type": "boolean" },
         "power_user_percentile": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
         "min_expert_rows": { "type": "integer", "minimum": 1 },
         "n_wallclock_bins": { "type": "integer", "minimum": 2 },
