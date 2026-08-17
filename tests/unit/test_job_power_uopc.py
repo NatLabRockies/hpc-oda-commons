@@ -102,13 +102,14 @@ def test_uopc_paper_reproduction_smoke() -> None:
 
         rows.append(
             {
-                "usr": "alice",
-                "adt": f"2024-{month:02d}-{day:02d}T12:00:00Z",
-                "edt": f"2024-{month:02d}-{day:02d}T11:00:00Z",
+                "user": "alice",
+                "submit_time": f"2024-{month:02d}-{day:02d}T12:00:00Z",
+                "end_time": f"2024-{month:02d}-{day:02d}T11:00:00Z",
                 "avgpcon": 100.0 + idx,
+                "maxpcon": 120.0 + idx,
                 "nnuma": 2,
-                "cnumr": 64 + idx,
-                "nnumr": 2,
+                "num_cores_req": 64 + idx,
+                "num_nodes_req": 2,
                 "freq_req": 2000,
                 "embedding": [float(idx), float(idx % 3)],
             }
@@ -133,8 +134,13 @@ def test_uopc_paper_reproduction_smoke() -> None:
     assert result["summary"]["rows_scored"] > 0
     assert result["summary"]["theta"] == 5
     assert result["summary"]["k"] == 2
-    assert result["summary"]["target"] == "avgpcon/nnuma"
+    assert result["summary"]["targets"] == [
+        "avgpcon/nnuma",
+        "maxpcon/nnuma",
+    ]
+
     assert result["summary"]["predictor"] == "KNeighborsClassifier"
 
-    for metric in ("mae", "rmse", "mape", "r2"):
-        assert math.isfinite(result[metric])
+    for target in ("avgpcon_per_node", "maxpcon_per_node"):
+        for metric in ("mae", "rmse", "mape", "r2"):
+            assert math.isfinite(result[target][metric])

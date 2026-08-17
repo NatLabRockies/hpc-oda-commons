@@ -40,6 +40,50 @@ source:
       sha256: a5fb88d30448ccec00224c43abab62723e1f2bc31db93fc3985650fcc9dbf5b9
       bytes: 455688150
 
+    - filename: "23_12.parquet"
+      url: "https://zenodo.org/records/11467483/files/23_12.parquet"
+      sha256: a10f8e2103e00e247acf20e41428825f57d9a29afa94b3facb9186e765fd3967
+      bytes: 909941543
+
+    - filename: "24_01.parquet"
+      url: "https://zenodo.org/records/11467483/files/24_01.parquet"
+      sha256: 3c05e7b9d7c59be3b79c22e8a5bac1fec2298878002b2aeff7f8df11661cad4b
+      bytes: 1050727328
+
+    - filename: "24_02.parquet"
+      url: "https://zenodo.org/records/11467483/files/24_02.parquet"
+      sha256: f82c004b54dcd8f1d68addf6fd905d9eda409ebefaa6609f338e21a6a5464cc6
+      bytes: 800005340
+
+    - filename: "24_03.parquet"
+      url: "https://zenodo.org/records/11467483/files/24_03.parquet"
+      sha256: fa53a4a8e6f59fff40725000011ab55789409d7d397f147b22f98bcd9c2805ba
+      bytes: 529395339
+
+    - filename: "24_04.parquet"
+      url: "https://zenodo.org/records/11467483/files/24_04.parquet"
+      sha256: 7d56cab2d30e8faf3863e72a177c1da6393df960f93d5183e4fdcb56538cec1d
+      bytes: 568138934
+
+  slices:
+    default: runtime_clean
+    available:
+      runtime_clean:
+        description: "Clean Jul-Sep 2023 runtime benchmark window"
+        include:
+          - "23_07.parquet"
+          - "23_08.parquet"
+          - "23_09.parquet"
+
+      uopc_reproduction:
+        description: "Five-month Dec 2023-Apr 2024 UoPC reproduction window"
+        include:
+          - "23_12.parquet"
+          - "24_01.parquet"
+          - "24_02.parquet"
+          - "24_03.parquet"
+          - "24_04.parquet"
+
 decode:
   format: parquet
 
@@ -47,7 +91,12 @@ targets:
   - schema: oda.job.v0.2.0
     capabilities:
       - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
+      - { problem_domain: job-power-prediction, target_column: avgpcon }
+      - { problem_domain: job-power-prediction, target_column: maxpcon }
+    suitable_models:
+      - model.job_runtime_baseline
+      - model.job_runtime_xgboost
+      - model.job_power_uopc
     mapping:
       job_id: { from: jid }
       start_time: { from: sdt, type: timestamp, format: iso8601 }
@@ -64,5 +113,10 @@ targets:
       exit_code: { from: ec, type: integer }
       job_state: { from: "exit state" }
       pclass: { from: pclass }
+      avgpcon: { from: avgpcon, type: number }
+      maxpcon: { from: maxpcon, type: number }
+      nnuma: { from: nnuma, type: number }
+      freq_req: { from: freq_req, type: number }
+      embedding: { from: embedding }
     filter: { require_nonnull: [runtime_seconds] }
     output: { id: fdata_fugaku, path: data/datasets/fdata_fugaku/data.parquet }

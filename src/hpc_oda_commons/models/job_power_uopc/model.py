@@ -250,7 +250,6 @@ class JobPowerUopcModel:
             result["_last_model"] = {"kind": "job_power_uopc", "config": cfg}
         return result
 
-
     def evaluate_paper_reproduction(
         self,
         rows: list[dict[str, Any]],
@@ -268,7 +267,7 @@ class JobPowerUopcModel:
         existing HPC ODA UoPC adaptation and its defaults are unchanged.
 
         Reproduction protocol:
-        - target: avgpcon / nnuma
+        - targets: avgpcon / nnuma and maxpcon / nnuma
         - features: embedding + globally z-scored (cnumr, nnumr, freq_req)
         - test jobs: adt >= test_start
         - history: same-user jobs with edt < query adt
@@ -280,27 +279,28 @@ class JobPowerUopcModel:
             {"name": "r2", "target": "avgpcon_per_node"},
         ]
 
-        cutoff = datetime.fromisoformat(test_start).replace(
-            tzinfo=timezone.utc
-        ).timestamp()
+        cutoff = datetime.fromisoformat(test_start).replace(tzinfo=timezone.utc).timestamp()
 
         users: list[str] = []
         submits: list[float] = []
         ends: list[float] = []
         embeddings: list[np.ndarray] = []
         numeric: list[list[float]] = []
-        targets: list[float] = []
+        avg_targets: list[float] = []
+        max_targets: list[float] = []
 
         for row in rows:
             nnuma_raw = row.get("nnuma")
-            avgp_raw = row.get("avgpcon")
+            avgpcon_raw = row.get("avgpcon")
+            maxpcon_raw = row.get("maxpcon")
             emb_raw = row.get("embedding")
-            adt_raw = row.get("adt")
-            edt_raw = row.get("edt")
+            adt_raw = row.get("submit_time")
+            edt_raw = row.get("end_time")
 
             if (
                 nnuma_raw in (None, 0)
-                or avgp_raw is None
+                or avgpcon_raw is None
+                or maxpcon_raw is None
                 or emb_raw is None
                 or adt_raw is None
                 or edt_raw is None
@@ -312,37 +312,41 @@ class JobPowerUopcModel:
 
             try:
                 nnuma = float(nnuma_raw)
-                avgp = float(avgp_raw)
+                avgpcon = float(avgpcon_raw)
+                maxpcon = float(maxpcon_raw)
                 emb = np.asarray(emb_raw, dtype=np.float32)
             except (TypeError, ValueError):
                 continue
 
-            target = avgp / nnuma
+            avg_target = avgpcon / nnuma
+            max_target = maxpcon / nnuma
 
             if (
                 not math.isfinite(submit)
                 or not math.isfinite(end)
-                or not math.isfinite(target)
+                or not math.isfinite(avg_target)
+                or not math.isfinite(max_target)
                 or nnuma <= 0
                 or emb.ndim != 1
                 or emb.size == 0
             ):
                 continue
 
-            users.append(str(row.get("usr") or ""))
+            users.append(str(row.get("user") or ""))
             submits.append(submit)
             ends.append(end)
             embeddings.append(emb)
             numeric.append(
                 [
-                    _feature_float(row.get("cnumr")),
-                    _feature_float(row.get("nnumr")),
+                    _feature_float(row.get("num_cores_req")),
+                    _feature_float(row.get("num_nodes_req")),
                     _feature_float(row.get("freq_req")),
                 ]
             )
-            targets.append(target)
+            avg_targets.append(avg_target)
+            max_targets.append(max_target)
 
-        if not targets:
+        if not avg_targets:
             raise ValueError("No usable rows for UoPC paper reproduction.")
 
         user_arr = np.asarray(users)
@@ -350,7 +354,8 @@ class JobPowerUopcModel:
         end_arr = np.asarray(ends, dtype=np.float64)
         emb_arr = np.ascontiguousarray(np.vstack(embeddings), dtype=np.float32)
         num_arr = np.asarray(numeric, dtype=np.float32)
-        target_arr = np.asarray(targets, dtype=np.float64)
+        avg_target_arr = np.asarray(avg_targets, dtype=np.float64)
+        max_target_arr = np.asarray(max_targets, dtype=np.float64)
 
         # Match Phase 1 exactly: standardize numeric features globally over the
         # complete usable five-month dataset, then append them to the supplied
@@ -358,9 +363,7 @@ class JobPowerUopcModel:
         mu = num_arr.mean(axis=0)
         sd = num_arr.std(axis=0)
         sd[sd == 0] = 1.0
-        features = np.hstack(
-            [emb_arr, (num_arr - mu) / sd]
-        ).astype(np.float32)
+        features = np.hstack([emb_arr, (num_arr - mu) / sd]).astype(np.float32)
 
         # Pre-sort each user's rows by completion time once. For each query,
         # binary-search the prefix completed strictly before query submission.
@@ -369,22 +372,16 @@ class JobPowerUopcModel:
         for idx in order:
             by_user.setdefault(user_arr[idx], []).append(int(idx))
 
-        user_rows = {
-            user: np.asarray(indices, dtype=np.int64)
-            for user, indices in by_user.items()
-        }
-        user_ends = {
-            user: end_arr[indices]
-            for user, indices in user_rows.items()
-        }
+        user_rows = {user: np.asarray(indices, dtype=np.int64) for user, indices in by_user.items()}
+        user_ends = {user: end_arr[indices] for user, indices in user_rows.items()}
 
         test_idx = np.where(submit_arr >= cutoff)[0]
-        test_idx = test_idx[
-            np.argsort(submit_arr[test_idx], kind="stable")
-        ]
+        test_idx = test_idx[np.argsort(submit_arr[test_idx], kind="stable")]
 
-        y_true: list[float] = []
-        y_pred: list[float] = []
+        avg_y_true: list[float] = []
+        avg_y_pred: list[float] = []
+        max_y_true: list[float] = []
+        max_y_pred: list[float] = []
         rows_skipped = 0
 
         iterator = tqdm(
@@ -415,57 +412,92 @@ class JobPowerUopcModel:
                 rows_skipped += 1
                 continue
 
-            context = user_rows[user][max(0, pos - theta):pos]
+            context = user_rows[user][max(0, pos - theta) : pos]
 
             # Match the authors' implementation used in Phase 1. Their KNN
             # wraps KNeighborsClassifier, so continuous per-node power labels
-            # are rounded to integer classes before fitting.
-            model = KNeighborsClassifier(n_neighbors=k)
-            model.fit(
+            # are rounded to integer classes before fitting. Fit the two paper
+            # targets independently on the same eligible history context.
+            avg_model = KNeighborsClassifier(n_neighbors=k)
+            avg_model.fit(
                 features[context],
-                np.rint(target_arr[context]).astype(np.int64),
+                np.rint(avg_target_arr[context]).astype(np.int64),
             )
-            pred = model.predict(features[j:j + 1])
+            avg_pred = avg_model.predict(features[j : j + 1])
 
-            y_true.append(float(target_arr[j]))
-            y_pred.append(float(pred[0]))
-
-        if not y_true:
-            raise ValueError(
-                "No test rows produced scored predictions in paper reproduction."
+            max_model = KNeighborsClassifier(n_neighbors=k)
+            max_model.fit(
+                features[context],
+                np.rint(max_target_arr[context]).astype(np.int64),
             )
+            max_pred = max_model.predict(features[j : j + 1])
 
-        metrics = compute_regression_metrics_from_defs(
-            y_true,
-            y_pred,
-            resolved_metric_defs,
+            avg_y_true.append(float(avg_target_arr[j]))
+            avg_y_pred.append(float(avg_pred[0]))
+            max_y_true.append(float(max_target_arr[j]))
+            max_y_pred.append(float(max_pred[0]))
+
+        if not avg_y_true or not max_y_true:
+            raise ValueError("No test rows produced scored predictions in paper reproduction.")
+
+        avg_metric_defs = [
+            {**metric_def, "target": "avgpcon_per_node"} for metric_def in resolved_metric_defs
+        ]
+        max_metric_defs = [
+            {**metric_def, "target": "maxpcon_per_node"} for metric_def in resolved_metric_defs
+        ]
+
+        avg_metrics = compute_regression_metrics_from_defs(
+            avg_y_true,
+            avg_y_pred,
+            avg_metric_defs,
+        )
+        max_metrics = compute_regression_metrics_from_defs(
+            max_y_true,
+            max_y_pred,
+            max_metric_defs,
         )
 
         result: dict[str, Any] = {
-            **metrics,
-            "definitions": resolved_metric_defs,
+            "avgpcon_per_node": {
+                **avg_metrics,
+                "definitions": avg_metric_defs,
+            },
+            "maxpcon_per_node": {
+                **max_metrics,
+                "definitions": max_metric_defs,
+            },
             "summary": {
-                "rows_total": len(target_arr),
+                "rows_total": len(avg_target_arr),
                 "rows_test": len(test_idx),
-                "rows_scored": len(y_true),
+                "rows_scored": len(avg_y_true),
                 "rows_skipped": rows_skipped,
                 "theta": theta,
                 "k": k,
                 "test_start": test_start,
-                "target": "avgpcon/nnuma",
+                "targets": [
+                    "avgpcon/nnuma",
+                    "maxpcon/nnuma",
+                ],
                 "features": "emb+znum",
                 "predictor": "KNeighborsClassifier",
             },
         }
 
         if capture_artifacts:
-            result["_y_true"] = y_true
-            result["_y_pred"] = y_pred
+            result["_avgpcon_y_true"] = avg_y_true
+            result["_avgpcon_y_pred"] = avg_y_pred
+            result["_maxpcon_y_true"] = max_y_true
+            result["_maxpcon_y_pred"] = max_y_pred
             result["_last_model"] = {
                 "kind": "job_power_uopc_paper_reproduction",
                 "theta": theta,
                 "k": k,
                 "test_start": test_start,
+                "targets": [
+                    "avgpcon/nnuma",
+                    "maxpcon/nnuma",
+                ],
             }
 
         return result

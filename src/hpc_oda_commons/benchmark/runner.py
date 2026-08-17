@@ -120,10 +120,18 @@ def run_fixed_uopc(
             verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
+
     requested = {str(m.get("name", "")) for m in metric_defs}
     artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
-    metrics = _metrics_from_eval_payload(eval_payload, requested)
-    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
+
+    if "test_start" in split:
+        avg_payload = eval_payload["avgpcon_per_node"]
+        metrics = _metrics_from_eval_payload(avg_payload, requested)
+        metrics_payload: dict[str, Any] = eval_payload
+    else:
+        metrics = _metrics_from_eval_payload(eval_payload, requested)
+        metrics_payload = {**eval_payload, "definitions": metric_defs}
+
     return metrics, metrics_payload, artifacts
 
 

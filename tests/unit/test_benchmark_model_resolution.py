@@ -742,15 +742,27 @@ def test_benchmark_uopc_paper_reproduction_routing(
             FakeUopcModel.paper_called = True
 
             return {
-                "mae": 3.88,
-                "rmse": 12.53,
-                "mape": 0.0799,
-                "r2": 0.796,
+                "avgpcon_per_node": {
+                    "mae": 3.88,
+                    "rmse": 12.53,
+                    "mape": 0.0799,
+                    "r2": 0.796,
+                },
+                "maxpcon_per_node": {
+                    "mae": 4.21,
+                    "rmse": 13.10,
+                    "mape": 0.084,
+                    "r2": 0.781,
+                },
                 "summary": {
                     "rows_scored": 10,
                     "rows_skipped": 2,
                     "theta": 500,
                     "k": 5,
+                    "targets": [
+                        "avgpcon/nnuma",
+                        "maxpcon/nnuma",
+                    ],
                 },
             }
 

@@ -9,8 +9,8 @@ problem_domain:
 schema_version: oda.job.v0.2.0
 
 dataset:
-  id: fugaku_uopc_phase2
-  table_path: data/fugaku/uopc_5months_phase2.parquet
+  id: fdata_fugaku
+  table_path: data/datasets/fdata_fugaku/data.parquet
 
 model:
   id: model.job_power_uopc
