@@ -101,10 +101,12 @@ def test_benchmark_rolling_uses_xgboost_path(
     class FakeXGBModel:
         seen_n_windows: int | None = None
         seen_training_lookback_days: int | None = None
+        seen_objective: str | None = None
 
         def __init__(self, config: object) -> None:
             FakeXGBModel.seen_n_windows = int(config.n_windows)
             FakeXGBModel.seen_training_lookback_days = int(config.training_lookback_days)
+            FakeXGBModel.seen_objective = str(config.objective)
 
         def evaluate(
             self,
@@ -148,6 +150,7 @@ def test_benchmark_rolling_uses_xgboost_path(
                 "  method: rolling",
                 "  n_windows: 4",
                 "  training_lookback_days: 7",
+                "  objective: reg:absoluteerror",
             ]
         ),
         table_path=table_path,
@@ -161,6 +164,7 @@ def test_benchmark_rolling_uses_xgboost_path(
 
     assert FakeXGBModel.seen_n_windows == 4
     assert FakeXGBModel.seen_training_lookback_days == 7
+    assert FakeXGBModel.seen_objective == "reg:absoluteerror"
     assert result["model"]["id"] == "model.job_runtime_xgboost"
     assert result["metrics"]["mae"] == 1.25
     assert result["metrics"]["rmse"] == 2.5
@@ -324,6 +328,7 @@ def test_benchmark_moe_xgboost_rolling_path(
                 "  time_decay_rate: 0.02",
                 "  min_expert_rows: 25",
                 "  n_wallclock_bins: 3",
+                "  objective: reg:absoluteerror",
             ]
         ),
         table_path=table_path,
@@ -340,6 +345,7 @@ def test_benchmark_moe_xgboost_rolling_path(
     assert config.time_decay_rate == 0.02
     assert config.min_expert_rows == 25
     assert config.n_wallclock_bins == 3
+    assert config.objective == "reg:absoluteerror"
 
 
 def test_benchmark_mlp_rolling_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -135,3 +135,18 @@ def test_load_recipe_from_file(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     load_recipe(recipe_path, validate=True)
+
+
+def test_validate_recipe_rolling_accepts_objective() -> None:
+    """`split.objective` has to be declared, or the recipe fails to load.
+
+    `split` is `additionalProperties: false`; an undeclared model option is
+    unreachable from a recipe no matter what the runner does with it (#135).
+    """
+    payload = _valid_rolling_recipe()
+    payload["split"] = {
+        "method": "rolling",
+        "n_windows": 24,
+        "objective": "reg:absoluteerror",
+    }
+    validate_recipe(payload)

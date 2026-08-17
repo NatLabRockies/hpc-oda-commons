@@ -339,6 +339,7 @@ def run_rolling_xgboost(
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
             log_target=bool(split.get("log_target", False)),
+            objective=str(split.get("objective", JobRuntimeXGBoostConfig.objective)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -506,6 +507,7 @@ def run_rolling_moe_xgboost(
             n_wallclock_bins=int(split.get("n_wallclock_bins", defaults.n_wallclock_bins)),
             wallclock_bin_edges_hours=tuple(float(h) for h in edges) if edges else None,
             estimator_n_jobs=int(split.get("estimator_n_jobs", defaults.estimator_n_jobs)),
+            objective=str(split.get("objective", defaults.objective)),
         )
     )
     return _run_rolling_model_evaluate(

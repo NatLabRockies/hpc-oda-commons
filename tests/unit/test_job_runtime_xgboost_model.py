@@ -114,3 +114,15 @@ def test_build_split_plan_respects_training_lookback_override() -> None:
 
     assert wide[0]["train_row_count"] == 2
     assert narrow[0]["train_row_count"] == 1
+
+
+def test_objective_defaults_to_library_squared_error() -> None:
+    """The default must not move: every recorded benchmark number was fitted with it."""
+    assert JobRuntimeXGBoostConfig().objective == "reg:squarederror"
+
+
+def test_objective_reaches_the_regressor() -> None:
+    """A config field nobody passes to the estimator is a field that does nothing."""
+    model = JobRuntimeXGBoostModel(JobRuntimeXGBoostConfig(objective="reg:absoluteerror"))
+
+    assert model._new_regressor(100).get_params()["objective"] == "reg:absoluteerror"

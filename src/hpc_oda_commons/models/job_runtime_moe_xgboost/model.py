@@ -65,6 +65,9 @@ class MoEXGBoostConfig(RollingTabularConfig):
     min_child_weight: int = 5
     gamma: float = 0.1
     estimator_n_jobs: int = 1
+    # See JobRuntimeXGBoostConfig.objective -- same knob, same default, so the two
+    # models stay comparable unless a recipe changes both.
+    objective: str = "reg:squarederror"
 
     # --- Routing ---
     # Users at or above this quantile of job count get per-user experts.
@@ -158,6 +161,7 @@ class MoEXGBoostModel(RollingTabularModel):
         del n_train
         cfg: MoEXGBoostConfig = self.config  # type: ignore[assignment]
         return XGBRegressor(
+            objective=cfg.objective,
             n_estimators=cfg.n_estimators,
             max_depth=cfg.max_depth,
             learning_rate=cfg.learning_rate,

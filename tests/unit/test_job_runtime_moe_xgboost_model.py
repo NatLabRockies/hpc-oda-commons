@@ -234,8 +234,33 @@ def test_config_defaults() -> None:
     assert config.min_expert_rows == 100
     assert config.n_wallclock_bins == 5
     assert config.wallclock_bin_edges_hours is None
+    assert config.objective == "reg:squarederror"
 
 
 def test_empty_rows_raises() -> None:
     with pytest.raises(ValueError, match="non-empty"):
         MoEXGBoostModel().evaluate([])
+
+
+def test_objective_reaches_every_expert() -> None:
+    model = _model(objective="reg:absoluteerror")
+
+    assert model._new_regressor(100).get_params()["objective"] == "reg:absoluteerror"
+
+
+def test_absolute_error_objective_composes_with_time_decay() -> None:
+    """MAE-fitting experts must still accept the recency weights.
+
+    ``reg:absoluteerror`` uses adaptive leaf values rather than a closed-form Newton
+    step, so its handling of ``sample_weight`` is worth pinning: the pair is the
+    configuration this model would actually be run in.
+    """
+    rows = _rows()
+    payload = _model(objective="reg:absoluteerror", time_decay_rate=0.05).evaluate(
+        rows, capture_artifacts=True
+    )
+    squared = _model(time_decay_rate=0.05).evaluate(rows, capture_artifacts=True)
+
+    assert math.isfinite(payload["mae"])
+    assert payload["summary"]["rows_scored"] == squared["summary"]["rows_scored"]
+    assert payload["_y_pred"] != squared["_y_pred"]
