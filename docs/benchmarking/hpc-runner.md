@@ -84,6 +84,17 @@ Datasets whose card window is flagged unhealthy are skipped (override with
 hpc-oda bench-matrix slice           # slices every healthy dataset to its window
 ```
 
+Each dataset lands at `<out>/<dataset>/data.parquet` with a `slice.json` beside it recording
+the source table, the card window, the effective window, and the row count — windowed
+parquets are path-identical whatever window they hold, so the sidecar is what tells a recipe
+which one it got.
+
+Add `--extra-lookback-days N` when a recipe asks for more training history than the card
+window holds (`training_lookback_days` beyond the card's `train_days`). It moves the lower
+bound back by N days and leaves the test region untouched. The fleet matrix does not need it
+— `matrix.SPLIT` uses `training_lookback_days: 60`, which the 90-day card window already
+covers — but the bundled `kestrel_moe_best_rolling.yml` does, at `--extra-lookback-days 60`.
+
 Writes `.hpc_oda/bench-matrix/data/windows/<dataset>/data.parquet` from each card's
 canonical parquet. The slice keeps every job whose `[submit_time, end_time]` interval
 **overlaps** the window — long jobs submitted before `window_start` but ending inside it

@@ -20,7 +20,12 @@ from hpc_oda_commons.benchmarking.hpc.matrix import (
     tier_for_rows,
     write_plan,
 )
-from hpc_oda_commons.benchmarking.hpc.slice import slice_dataset, slice_to_window
+from hpc_oda_commons.benchmarking.hpc.slice import (
+    SliceError,
+    effective_start,
+    slice_dataset,
+    slice_to_window,
+)
 
 _UTC = datetime.timezone.utc
 
@@ -250,3 +255,49 @@ def test_slice_dataset_roundtrips_parquet(tmp_path: Path) -> None:
     assert n == 3
     assert out.exists()
     assert pq.read_table(out).num_rows == 3
+
+
+def test_extra_lookback_extends_only_the_lower_bound() -> None:
+    """More training history, same test region — the point of the option (#143)."""
+    table = _job_table()
+
+    plain = set(slice_to_window(table, "2025-01-01", "2025-03-31").column("job_id").to_pylist())
+    extended = set(
+        slice_to_window(table, "2025-01-01", "2025-03-31", extra_lookback_days=10)
+        .column("job_id")
+        .to_pylist()
+    )
+
+    # A job entirely before the card window becomes a legitimate training row...
+    assert "before_window" not in plain
+    assert "before_window" in extended
+    # ...and nothing new arrives at the top end.
+    assert "after_window" not in extended
+    assert extended - plain == {"before_window"}
+
+
+def test_effective_start_moves_back_by_whole_days() -> None:
+    assert effective_start("2025-03-29") == "2025-03-29"
+    # The extension this repo's reference recipe uses: card window minus 60 days.
+    assert effective_start("2025-03-29", 60) == "2025-01-28"
+    with pytest.raises(SliceError, match="must be >= 0"):
+        effective_start("2025-03-29", -1)
+
+
+def test_slice_dataset_records_which_window_it_wrote(tmp_path: Path) -> None:
+    """A windowed parquet is path-identical whatever window it holds; the sidecar says."""
+    import json
+
+    import pyarrow.parquet as pq
+
+    src = tmp_path / "canonical.parquet"
+    pq.write_table(_job_table(), src)
+    out = tmp_path / "windows" / "ds" / "data.parquet"
+
+    n = slice_dataset(src, out, "2025-01-01", "2025-03-31", extra_lookback_days=10)
+
+    provenance = json.loads((out.parent / "slice.json").read_text(encoding="utf-8"))
+    assert provenance["card_window"] == {"start": "2025-01-01", "end": "2025-03-31"}
+    assert provenance["effective_window"] == {"start": "2024-12-22", "end": "2025-03-31"}
+    assert provenance["extra_lookback_days"] == 10
+    assert provenance["rows"] == n == 4
