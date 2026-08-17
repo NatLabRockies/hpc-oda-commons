@@ -63,7 +63,8 @@
           "items": { "type": "number", "exclusiveMinimum": 0.0 },
           "minItems": 1
         },
-        "estimator_n_jobs": { "type": "integer", "minimum": -1 }
+        "estimator_n_jobs": { "type": "integer", "minimum": -1 },
+        "objective": { "type": "string", "minLength": 1 }
       },
       "required": ["method"],
       "allOf": [

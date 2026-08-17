@@ -26,6 +26,12 @@ class JobRuntimeXGBoostConfig(RollingTabularConfig):
     learning_rate: float = 0.05
     subsample: float = 0.8
     colsample_bytree: float = 0.8
+    # The loss the trees are fitted against. XGBoost's default squared error is not
+    # the metric this repo ranks on: runtimes are heavy-tailed (Kestrel's p99/p50 is
+    # ~1,200x), so under squared error a handful of very long jobs dominate the
+    # gradient. "reg:absoluteerror" fits MAE directly. Left at the library default so
+    # existing numbers stay reproducible; set it from a recipe to measure the change.
+    objective: str = "reg:squarederror"
 
 
 class JobRuntimeXGBoostModel(RollingTabularModel):
@@ -63,6 +69,7 @@ class JobRuntimeXGBoostModel(RollingTabularModel):
         _ = n_train  # XGBoost does not size-adapt; the seam is shared with subclasses
 
         return XGBRegressor(
+            objective=self.config.objective,
             n_estimators=self.config.n_estimators,
             max_depth=self.config.max_depth,
             learning_rate=self.config.learning_rate,
