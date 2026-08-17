@@ -1,0 +1,69 @@
+# The best job-runtime configuration measured to date, as a runnable recipe (#143).
+#
+# Reproduce it from a fresh clone:
+#
+#   1. hpc-oda datasets prepare \
+#        src/hpc_oda_commons/datasets/descriptors/job-runtime/nlr_kestrel.yml
+#      -> data/datasets/nlr_kestrel/data.parquet
+#
+#   2. hpc-oda bench-matrix slice --dataset nlr_kestrel \
+#        --extra-lookback-days 60 --out data/windows
+#      -> data/windows/nlr_kestrel/{data.parquet,slice.json}
+#
+#      The card window is 2025-03-29..2025-06-26 (60 training + 30 test days). This
+#      split asks for 120 days of lookback, so the slice is extended 60 days earlier,
+#      to 2025-01-28, or the earliest rolling windows would train on truncated
+#      history. The test region is unchanged. slice.json records what you got.
+#
+#   3. hpc-oda benchmark \
+#        src/hpc_oda_commons/recipes/job-runtime/kestrel_moe_best_rolling.yml -v
+#
+# Measured on that slice, 254,338 rows scored:
+#   MAE 11,527.4 | median AE 1,374.3 | RMSE 33,974.5   (macOS/arm64, xgboost 3.2.0)
+#
+# The configuration and the ranking reproduce exactly. The numbers reproduce only to
+# within environment variance -- fitted-model output depends on CPU architecture and
+# the BLAS/SIMD build, not just on code and data. See docs/known-issues.md (MAJOR, #2).
+
+recipe_id: recipe.job_runtime.kestrel_moe_best_rolling
+problem_domain:
+  - job-runtime-prediction
+schema_version: oda.job.v0.2.0
+
+dataset:
+  id: nlr_kestrel
+  table_path: data/windows/nlr_kestrel/data.parquet
+
+model:
+  id: model.job_runtime_moe_xgboost
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: runtime_seconds
+  - name: rmse
+    target: runtime_seconds
+
+split:
+  method: rolling
+  n_windows: 120
+  test_window_hours: 6
+  training_lookback_days: 120
+
+  # Route by requested wallclock alone. Per-user experts measured net harmful: on the
+  # rows they claimed, pooling was 3.0% better (#134). Off is only expressible since
+  # #141 -- power_user_percentile cannot select nobody.
+  enable_power_users: false
+
+  # Recency weighting, ~2-week half-life (#136). Worth -2.3% MAE here, and its gain
+  # concentrates in heavy users' rows even with no per-user experts.
+  time_decay_rate: 0.05
+
+  # Fit the metric we rank on. Runtimes are heavy-tailed (p99/p50 ~1,200x), so under
+  # squared error a handful of week-long jobs own the gradient. Worth -2.6% MAE and
+  # -25.5% median AE, at +8.8% RMSE (#138).
+  objective: reg:absoluteerror
+
+run:
+  output_dir: runs
+  overwrite: false

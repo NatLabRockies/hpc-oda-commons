@@ -10,6 +10,8 @@
 | `mlp_rolling.yml` | MLP | Rolling (20 windows, 6h, 7d) | Feed-forward neural network example |
 | `embedding_knn_rolling.yml` | Embedding + kNN | Rolling (20 windows, 6h, 7d) | Embedding-space kNN (needs an embedded dataset; see `hpc-oda embed`) |
 | `uopc_maxpcon.yml` | UoPC (power) | Fixed | Per-user online power prediction example |
+| `moe_xgboost_rolling.yml` | MoE XGBoost | Rolling (20 windows, 6h, 7d) | Mixture-of-experts routing example |
+| `kestrel_moe_best_rolling.yml` | MoE XGBoost | Rolling (120 windows, 6h, 120d) | The best measured configuration — see [Reproducing the reference result](#reproducing-the-reference-result) |
 
 Bundled recipes are shipped with the package at `src/hpc_oda_commons/recipes/job-runtime/`.
 
@@ -74,11 +76,41 @@ run:
 - `window_n_jobs` (int, default `1`): worker threads for the independent per-window fits of the fitted tabular models (`xgboost`, `random_forest`, `mlp`). `1` is sequential; `>1` runs windows concurrently with BLAS pinned per worker (results are unchanged except for the floating-point caveat in [known-issues](../known-issues.md)).
 - `log_target` (bool, default `false`): train on `log1p(runtime_seconds)` and invert with `expm1` before scoring. Supported by `xgboost`, `random_forest`, `mlp`, `tfidf_knn`, and `embedding_knn`. Metrics stay in seconds. Improves typical-job accuracy on heavy-tailed workloads at the cost of MAE/RMSE — see [the reference](../hpc-oda-commons-reference.md) for measured numbers.
 - `sims_block_bytes` (int, default `2147483648`): embedding-kNN only — peak bytes for one dense similarity block; the query is streamed in blocks of this budget so per-window memory stays bounded on large corpora.
+- `time_decay_rate` (float, default `0.0`): exponential recency weight on training rows, in units of 1/day — `0.05` is roughly a two-week half-life. Supported by the rolling tabular models; composes with `objective`.
+- `objective` (string, default `reg:squarederror`): XGBoost and MoE XGBoost only — the loss the trees are fitted against. `reg:absoluteerror` fits the metric the leaderboard ranks on; on heavy-tailed runtimes the two are not close. Trades RMSE for MAE and median AE.
+
+`model.job_runtime_moe_xgboost` adds routing knobs on top of those:
+
+- `enable_power_users` (bool, default `true`): whether the heaviest users get their own experts in addition to the wallclock bins. `false` routes every row by bin alone. There is no value of `power_user_percentile` that selects nobody, which is why this switch exists.
+- `power_user_percentile` (float, default `0.99`): quantile of per-user job count at or above which a user is a power user. Inert when `enable_power_users` is `false`.
+- `min_expert_rows` (int, default `100`): training rows a route needs before it gets its own expert; below it, its test rows fall back to the window-wide expert. Coverage never depends on routing.
+- `n_wallclock_bins` (int, default `5`): how many requested-wallclock clusters to detect per training window. Each detected cluster becomes a bin, plus one open bin above the largest, so k clusters yield up to k+1 bins.
+- `wallclock_bin_edges_hours` (list of floats, optional): pin the bin edges instead of deriving them per window.
+- `estimator_n_jobs` (int, default `1`): threads inside each expert's fit.
 
 ### Validation Rules
 - `metrics` must include at least `mae` and `rmse`
 - All metrics must target the same field (e.g., `runtime_seconds`)
 - For `rolling`, `n_windows` must be positive
+
+## Reproducing the reference result
+
+`kestrel_moe_best_rolling.yml` encodes the best job-runtime configuration measured to date. Three commands reproduce it from a fresh clone:
+
+```bash
+# 1. Prepare the canonical table -> data/datasets/nlr_kestrel/data.parquet
+hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/nlr_kestrel.yml
+
+# 2. Slice to the benchmark window -> data/windows/nlr_kestrel/{data.parquet,slice.json}
+hpc-oda bench-matrix slice --dataset nlr_kestrel --extra-lookback-days 60 --out data/windows
+
+# 3. Run it
+hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/kestrel_moe_best_rolling.yml -v
+```
+
+**Why `--extra-lookback-days 60`.** A dataset card sizes its window as `train_days` + `test_days` — 60 + 30 for `nlr_kestrel`, giving 2025-03-29..2025-06-26. This recipe asks for `training_lookback_days: 120`, so without the extension the earliest rolling windows would train on truncated history and quietly score differently. The option moves the *lower* bound back by the shortfall (`training_lookback_days − train_days`) and leaves the test region alone, so the run still scores exactly the rows the card window defines. The `slice.json` written beside the parquet records which window you got.
+
+**What reproduces.** The configuration and the ranking of arms reproduce exactly. The absolute numbers reproduce only to within environment variance: fitted-model output depends on CPU architecture and the BLAS/SIMD build, not only on code and data — see [known-issues](../known-issues.md) (MAJOR). On macOS/arm64 with xgboost 3.2.0 this recipe scores MAE 11,527.4, median AE 1,374.3, RMSE 33,974.5 over 254,338 rows.
 
 ## Custom Recipes
 

@@ -42,7 +42,7 @@ from hpc_oda_commons.benchmarking.hpc.orchestrate import (
     stage_commands,
     submit_plan,
 )
-from hpc_oda_commons.benchmarking.hpc.slice import SliceError, slice_dataset
+from hpc_oda_commons.benchmarking.hpc.slice import SliceError, effective_start, slice_dataset
 
 console = Console()
 
@@ -181,17 +181,31 @@ def bench_matrix_slice(
         bool,
         typer.Option("--include-unhealthy", help="Also slice datasets whose window is unhealthy."),
     ] = False,
+    extra_lookback_days: Annotated[
+        int,
+        typer.Option(
+            "--extra-lookback-days",
+            min=0,
+            help=(
+                "Extend the slice earlier by N days, leaving the test region alone. Set it "
+                "to training_lookback_days - the card's train_days when a recipe wants more "
+                "history than the card window holds."
+            ),
+        ),
+    ] = 0,
 ) -> None:
-    """Slice each dataset's canonical parquet to its 90-day benchmark window.
+    """Slice each dataset's canonical parquet to its benchmark window.
 
     Reads the canonical parquet named on each card and writes
-    ``<out>/<dataset>/data.parquet``. That tree rsyncs to ``<repo>/data/windows`` on the
-    cluster, where the generated recipes read it. Overlapping (long-running) jobs are kept
-    so the earliest rolling windows keep their training rows — see the slice module.
+    ``<out>/<dataset>/data.parquet``, plus a ``slice.json`` recording which window it
+    holds. That tree rsyncs to ``<repo>/data/windows`` on the cluster, where the generated
+    recipes read it. Overlapping (long-running) jobs are kept so the earliest rolling
+    windows keep their training rows — see the slice module.
     """
     cards = load_cards(cards_dir)
     table = Table(title="Slice to benchmark window")
     table.add_column("dataset")
+    table.add_column("window")
     table.add_column("rows", justify="right")
     table.add_column("status")
 
@@ -200,20 +214,27 @@ def bench_matrix_slice(
         if dataset and card.dataset != dataset:
             continue
         if not card.healthy and not include_unhealthy:
-            table.add_row(card.dataset, "-", "[yellow]skip (unhealthy)[/yellow]")
+            table.add_row(card.dataset, "-", "-", "[yellow]skip (unhealthy)[/yellow]")
             continue
         source = Path(card.source_table)
         if not source.exists():
-            table.add_row(card.dataset, "-", f"[red]missing source {source}[/red]")
+            table.add_row(card.dataset, "-", "-", f"[red]missing source {source}[/red]")
             continue
         dest = out / card.dataset / "data.parquet"
+        start = effective_start(card.window_start, extra_lookback_days)
         try:
-            n = slice_dataset(source, dest, card.window_start, card.window_end)
+            n = slice_dataset(
+                source,
+                dest,
+                card.window_start,
+                card.window_end,
+                extra_lookback_days=extra_lookback_days,
+            )
         except SliceError as exc:
-            table.add_row(card.dataset, "-", f"[red]{exc}[/red]")
+            table.add_row(card.dataset, "-", "-", f"[red]{exc}[/red]")
             continue
         sliced += 1
-        table.add_row(card.dataset, f"{n:,}", "[green]ok[/green]")
+        table.add_row(card.dataset, f"{start}..{card.window_end}", f"{n:,}", "[green]ok[/green]")
 
     console.print(table)
     console.print(f"[green]Sliced[/green] {sliced} datasets → [cyan]{out}[/cyan]")
