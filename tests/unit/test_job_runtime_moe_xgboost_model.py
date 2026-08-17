@@ -230,11 +230,50 @@ def test_config_defaults() -> None:
     # Off by default, like the shared base: a differing default would confound every
     # comparison between this model and any other.
     assert config.time_decay_rate == 0.0
+    assert config.enable_power_users is True
     assert config.power_user_percentile == 0.99
     assert config.min_expert_rows == 100
     assert config.n_wallclock_bins == 5
     assert config.wallclock_bin_edges_hours is None
     assert config.objective == "reg:squarederror"
+
+
+def test_power_users_can_be_switched_off() -> None:
+    """Bins-only routing: no per-user experts, and coverage is unaffected."""
+    rows = _rows()
+
+    payload = _model(enable_power_users=False).evaluate(rows)
+    routing = _model(enable_power_users=False)._build_daily_preprocessing_artifacts(rows).routing
+
+    assert routing.power_users == frozenset()
+    assert payload["summary"]["moe_routing"]["power_users_last"] == 0
+    assert payload["summary"]["rows_scored"] == _model().evaluate(rows)["summary"]["rows_scored"]
+
+
+def test_switching_off_power_users_changes_the_routing() -> None:
+    """The switch has to do something: heavy_user is a power user by default here."""
+    rows = _rows()
+
+    with_users = _model().evaluate(rows, capture_artifacts=True)
+    bins_only = _model(enable_power_users=False).evaluate(rows, capture_artifacts=True)
+
+    assert with_users["summary"]["moe_routing"]["power_users_last"] > 0
+    assert with_users["_y_pred"] != bins_only["_y_pred"]
+
+
+def test_percentile_alone_cannot_select_nobody() -> None:
+    """Why the switch exists (#141) rather than a sentinel percentile.
+
+    The threshold is a quantile of the job counts, so at 1.0 it is the largest
+    count and the busiest user still qualifies; above 1.0 numpy rejects it.
+    """
+    rows = _rows()
+
+    routing = _model(power_user_percentile=1.0)._build_daily_preprocessing_artifacts(rows).routing
+
+    assert routing.power_users == frozenset({"heavy_user"})
+    with pytest.raises(ValueError):
+        _model(power_user_percentile=1.5)._build_daily_preprocessing_artifacts(rows)
 
 
 def test_empty_rows_raises() -> None:

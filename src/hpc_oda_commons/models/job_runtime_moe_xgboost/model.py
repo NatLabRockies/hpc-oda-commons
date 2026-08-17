@@ -70,7 +70,15 @@ class MoEXGBoostConfig(RollingTabularConfig):
     objective: str = "reg:squarederror"
 
     # --- Routing ---
-    # Users at or above this quantile of job count get per-user experts.
+    # Whether the heaviest users get their own experts on top of the wallclock bins.
+    # Off routes every row by bin alone, which is the arrangement that measured best
+    # (#134), and makes power_user_percentile inert. On by default: no recipe-visible
+    # default moves, so every recorded number stays reproducible.
+    enable_power_users: bool = True
+    # Users at or above this quantile of job count get per-user experts. There is no
+    # value of this that selects nobody -- at 1.0 the threshold is the largest job
+    # count, so the busiest user still qualifies -- which is why the switch above
+    # exists rather than a sentinel percentile (#141).
     power_user_percentile: float = 0.99
     # A bin needs this many training rows before it gets its own expert; below it,
     # its test rows are scored by the window-wide fallback expert.
@@ -223,6 +231,8 @@ class MoEXGBoostModel(RollingTabularModel):
 
     def _power_users(self, train_rows: list[dict[str, Any]]) -> frozenset[str]:
         cfg: MoEXGBoostConfig = self.config  # type: ignore[assignment]
+        if not cfg.enable_power_users:
+            return frozenset()
         counts = Counter(
             row["user"] for row in train_rows if isinstance(row.get("user"), str) and row["user"]
         )

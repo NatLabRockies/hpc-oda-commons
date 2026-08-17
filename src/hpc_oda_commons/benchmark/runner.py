@@ -500,6 +500,7 @@ def run_rolling_moe_xgboost(
             window_n_jobs=int(split.get("window_n_jobs", 1)),
             log_target=bool(split.get("log_target", False)),
             time_decay_rate=float(split.get("time_decay_rate", defaults.time_decay_rate)),
+            enable_power_users=bool(split.get("enable_power_users", defaults.enable_power_users)),
             power_user_percentile=float(
                 split.get("power_user_percentile", defaults.power_user_percentile)
             ),

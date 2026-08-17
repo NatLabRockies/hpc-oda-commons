@@ -62,6 +62,7 @@ def test_validate_recipe_rolling_accepts_moe_routing_knobs() -> None:
         "method": "rolling",
         "n_windows": 24,
         "time_decay_rate": 0.05,
+        "enable_power_users": False,
         "power_user_percentile": 0.99,
         "min_expert_rows": 100,
         "n_wallclock_bins": 5,
