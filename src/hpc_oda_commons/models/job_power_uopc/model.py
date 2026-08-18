@@ -8,6 +8,7 @@ Adapted from https://github.com/francescoantici/UoPC:
 
 from __future__ import annotations
 
+import time
 import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -28,6 +29,19 @@ _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "nodes_requested": ("nodes_requested", "nnumr"),
     "end_time": ("end_time", "edt"),
 }
+
+@dataclass
+class _PaperPreparedData:
+    user_arr: np.ndarray
+    submit_arr: np.ndarray
+    end_arr: np.ndarray
+    features: np.ndarray
+    avg_target_arr: np.ndarray
+    max_target_arr: np.ndarray
+    order: np.ndarray
+    user_rows: dict[str, np.ndarray]
+    user_ends: dict[str, np.ndarray]
+    test_idx: np.ndarray
 
 
 @dataclass(frozen=True)
@@ -109,6 +123,63 @@ def _feature_float(raw: Any) -> float:
         return float(raw)
     except (TypeError, ValueError):
         return 0.0
+
+def _classifier_prediction_from_neighbor_targets(
+    neighbor_targets: np.ndarray,
+    k: int,
+) -> float:
+    """Reproduce uniform-weight KNeighborsClassifier voting from ordered neighbors."""
+    labels = np.rint(np.asarray(neighbor_targets[:k], dtype=np.float64)).astype(np.int64)
+    if labels.size < k:
+        raise ValueError(f"Need at least {k} neighbors, got {labels.size}.")
+    values, counts = np.unique(labels, return_counts=True)
+    return float(values[np.argmax(counts)])
+
+
+def _regressor_prediction_from_neighbor_targets(
+    neighbor_targets: np.ndarray,
+    k: int,
+) -> float:
+    """Reproduce uniform-weight KNeighborsRegressor prediction from ordered neighbors."""
+    values = np.asarray(neighbor_targets[:k], dtype=np.float64)
+    if values.size < k:
+        raise ValueError(f"Need at least {k} neighbors, got {values.size}.")
+    return float(np.mean(values))
+
+def _nearest_neighbor_indices_and_distances(
+    context_features: np.ndarray,
+    query_features: np.ndarray,
+    max_neighbors: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return nearest context-row indices and distances, ordered nearest first."""
+    if max_neighbors <= 0:
+        raise ValueError("max_neighbors must be positive.")
+
+    n_neighbors = min(max_neighbors, len(context_features))
+    if n_neighbors == 0:
+        return (
+            np.asarray([], dtype=np.int64),
+            np.asarray([], dtype=np.float64),
+        )
+
+    # Neighbor locations depend only on features, not on the prediction target.
+    # Fit once so avg/max power and multiple k values can reuse the same search.
+    model = KNeighborsRegressor(n_neighbors=n_neighbors)
+    model.fit(
+        context_features,
+        np.zeros(len(context_features), dtype=np.float64),
+    )
+
+    distances, indices = model.kneighbors(
+        query_features,
+        n_neighbors=n_neighbors,
+        return_distance=True,
+    )
+
+    return (
+        np.asarray(indices[0], dtype=np.int64),
+        np.asarray(distances[0], dtype=np.float64),
+    )
 
 
 class _LabelFeatureEncoder:
@@ -250,36 +321,19 @@ class JobPowerUopcModel:
             result["_last_model"] = {"kind": "job_power_uopc", "config": cfg}
         return result
 
-    def evaluate_paper_reproduction(
+
+
+    def _prepare_paper_data(
         self,
         rows: list[dict[str, Any]],
         *,
-        test_start: str = "2024-02-01",
-        theta: int = 500,
-        k: int = 5,
-        metric_defs: list[dict[str, Any]] | None = None,
-        verbose: bool = False,
-        capture_artifacts: bool = False,
-    ) -> dict[str, Any]:
-        """Evaluate the verified Phase-1 reproduction of Antici et al. UoPC.
-
-        This path intentionally remains separate from ``evaluate_fixed`` so the
-        existing HPC ODA UoPC adaptation and its defaults are unchanged.
-
-        Reproduction protocol:
-        - targets: avgpcon / nnuma and maxpcon / nnuma
-        - features: embedding + globally z-scored (cnumr, nnumr, freq_req)
-        - test jobs: adt >= test_start
-        - history: same-user jobs with edt < query adt
-        - context: newest ``theta`` eligible jobs by completion time
-        - predictor: KNeighborsClassifier with rounded integer targets
-        """
-        resolved_metric_defs = metric_defs or [
-            {"name": "mape", "target": "avgpcon_per_node"},
-            {"name": "r2", "target": "avgpcon_per_node"},
-        ]
-
-        cutoff = datetime.fromisoformat(test_start).replace(tzinfo=timezone.utc).timestamp()
+        test_start: str,
+    ) -> _PaperPreparedData:
+        cutoff = (
+            datetime.fromisoformat(test_start)
+            .replace(tzinfo=timezone.utc)
+            .timestamp()
+        )
 
         users: list[str] = []
         submits: list[float] = []
@@ -352,36 +406,122 @@ class JobPowerUopcModel:
         user_arr = np.asarray(users)
         submit_arr = np.asarray(submits, dtype=np.float64)
         end_arr = np.asarray(ends, dtype=np.float64)
-        emb_arr = np.ascontiguousarray(np.vstack(embeddings), dtype=np.float32)
+        emb_arr = np.ascontiguousarray(
+            np.vstack(embeddings),
+            dtype=np.float32,
+        )
         num_arr = np.asarray(numeric, dtype=np.float32)
         avg_target_arr = np.asarray(avg_targets, dtype=np.float64)
         max_target_arr = np.asarray(max_targets, dtype=np.float64)
 
-        # Match Phase 1 exactly: standardize numeric features globally over the
-        # complete usable five-month dataset, then append them to the supplied
-        # F-DATA embedding.
+        # Match Phase 1 exactly: standardize over the complete usable dataset.
         mu = num_arr.mean(axis=0)
         sd = num_arr.std(axis=0)
         sd[sd == 0] = 1.0
-        features = np.hstack([emb_arr, (num_arr - mu) / sd]).astype(np.float32)
 
-        # Pre-sort each user's rows by completion time once. For each query,
-        # binary-search the prefix completed strictly before query submission.
+        features = np.hstack(
+            [emb_arr, (num_arr - mu) / sd]
+        ).astype(np.float32)
+
+        # Pre-sort each user's rows by completion time.
         order = np.argsort(end_arr, kind="stable")
+
         by_user: dict[str, list[int]] = {}
         for idx in order:
             by_user.setdefault(user_arr[idx], []).append(int(idx))
 
-        user_rows = {user: np.asarray(indices, dtype=np.int64) for user, indices in by_user.items()}
-        user_ends = {user: end_arr[indices] for user, indices in user_rows.items()}
+        user_rows = {
+            user: np.asarray(indices, dtype=np.int64)
+            for user, indices in by_user.items()
+        }
+        user_ends = {
+            user: end_arr[indices]
+            for user, indices in user_rows.items()
+        }
 
         test_idx = np.where(submit_arr >= cutoff)[0]
-        test_idx = test_idx[np.argsort(submit_arr[test_idx], kind="stable")]
+        test_idx = test_idx[
+            np.argsort(submit_arr[test_idx], kind="stable")
+        ]
 
+        return _PaperPreparedData(
+            user_arr=user_arr,
+            submit_arr=submit_arr,
+            end_arr=end_arr,
+            features=features,
+            avg_target_arr=avg_target_arr,
+            max_target_arr=max_target_arr,
+            order=order,
+            user_rows=user_rows,
+            user_ends=user_ends,
+            test_idx=test_idx,
+        )
+
+
+    def evaluate_paper_reproduction(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        test_start: str = "2024-02-01",
+        theta: int = 500,
+        k: int = 5,
+        metric_defs: list[dict[str, Any]] | None = None,
+        verbose: bool = False,
+        capture_artifacts: bool = False,
+    ) -> dict[str, Any]:
+        """Evaluate the verified Phase-1 reproduction of Antici et al. UoPC.
+
+        This path intentionally remains separate from ``evaluate_fixed`` so the
+        existing HPC ODA UoPC adaptation and its defaults are unchanged.
+
+        Reproduction protocol:
+        - targets: avgpcon / nnuma and maxpcon / nnuma
+        - features: embedding + globally z-scored (cnumr, nnumr, freq_req)
+        - test jobs: adt >= test_start
+        - history: same-user jobs with edt < query adt
+        - context: newest ``theta`` eligible jobs by completion time
+        - predictor: KNeighborsClassifier with rounded integer targets
+        """
+        resolved_metric_defs = metric_defs or [
+            {"name": "mape", "target": "avgpcon_per_node"},
+            {"name": "r2", "target": "avgpcon_per_node"},
+        ]
+
+        avg_metric_defs = [
+            {**metric_def, "target": "avgpcon_per_node"}
+            for metric_def in resolved_metric_defs
+        ]
+
+        max_metric_defs = [
+            {**metric_def, "target": "maxpcon_per_node"}
+            for metric_def in resolved_metric_defs
+        ]
+
+        prepared = self._prepare_paper_data(
+            rows,
+            test_start=test_start,
+        )
+
+        user_arr = prepared.user_arr
+        submit_arr = prepared.submit_arr
+        end_arr = prepared.end_arr
+        features = prepared.features
+        avg_target_arr = prepared.avg_target_arr
+        max_target_arr = prepared.max_target_arr
+        order = prepared.order
+        user_rows = prepared.user_rows
+        user_ends = prepared.user_ends
+        test_idx = prepared.test_idx
+
+        
         avg_y_true: list[float] = []
         avg_y_pred: list[float] = []
         max_y_true: list[float] = []
         max_y_pred: list[float] = []
+        user_mean_avg_y_pred: list[float] = []
+        user_mean_max_y_pred: list[float] = []
+        global_mean_avg_y_pred: list[float] = []
+        global_mean_max_y_pred: list[float] = []
         rows_skipped = 0
 
         iterator = tqdm(
@@ -412,7 +552,30 @@ class JobPowerUopcModel:
                 rows_skipped += 1
                 continue
 
-            context = user_rows[user][max(0, pos - theta) : pos]
+            # All same-user jobs completed before this query.
+            user_history = user_rows[user][:pos]
+
+            # UoPC itself uses only the newest theta eligible jobs.
+            context = user_history[max(0, len(user_history) - theta) :]
+
+            # Trivial per-user baseline: mean over all eligible prior jobs for
+            # this user, with no future information.
+            user_mean_avg_pred = float(np.mean(avg_target_arr[user_history]))
+            user_mean_max_pred = float(np.mean(max_target_arr[user_history]))
+
+            # Trivial global baseline: mean over all jobs completed before this
+            # query's submission time, with no future information.
+            global_pos = int(
+                np.searchsorted(
+                end_arr[order],
+                submit_arr[j],
+                side="left",
+                )
+            )
+            global_history = order[:global_pos]
+
+            global_mean_avg_pred = float(np.mean(avg_target_arr[global_history]))
+            global_mean_max_pred = float(np.mean(max_target_arr[global_history]))
 
             # Match the authors' implementation used in Phase 1. Their KNN
             # wraps KNeighborsClassifier, so continuous per-node power labels
@@ -436,6 +599,10 @@ class JobPowerUopcModel:
             avg_y_pred.append(float(avg_pred[0]))
             max_y_true.append(float(max_target_arr[j]))
             max_y_pred.append(float(max_pred[0]))
+            user_mean_avg_y_pred.append(user_mean_avg_pred)
+            user_mean_max_y_pred.append(user_mean_max_pred)
+            global_mean_avg_y_pred.append(global_mean_avg_pred)
+            global_mean_max_y_pred.append(global_mean_max_pred)
 
         if not avg_y_true or not max_y_true:
             raise ValueError("No test rows produced scored predictions in paper reproduction.")
@@ -458,6 +625,28 @@ class JobPowerUopcModel:
             max_metric_defs,
         )
 
+        user_mean_avg_metrics = compute_regression_metrics_from_defs(
+            avg_y_true,
+            user_mean_avg_y_pred,
+            avg_metric_defs,
+        )
+        user_mean_max_metrics = compute_regression_metrics_from_defs(
+            max_y_true,
+            user_mean_max_y_pred,
+            max_metric_defs,
+        )
+
+        global_mean_avg_metrics = compute_regression_metrics_from_defs(
+            avg_y_true,
+            global_mean_avg_y_pred,
+            avg_metric_defs,
+        )
+        global_mean_max_metrics = compute_regression_metrics_from_defs(
+            max_y_true,
+            global_mean_max_y_pred,
+            max_metric_defs,
+        )
+
         result: dict[str, Any] = {
             "avgpcon_per_node": {
                 **avg_metrics,
@@ -466,6 +655,28 @@ class JobPowerUopcModel:
             "maxpcon_per_node": {
                 **max_metrics,
                 "definitions": max_metric_defs,
+            },
+            "baselines": {
+                "per_user_mean": {
+                    "avgpcon_per_node": {
+                        **user_mean_avg_metrics,
+                        "definitions": avg_metric_defs,
+                    },
+                    "maxpcon_per_node": {
+                        **user_mean_max_metrics,
+                        "definitions": max_metric_defs,
+                    },
+                },
+                "global_mean": {
+                    "avgpcon_per_node": {
+                        **global_mean_avg_metrics,
+                        "definitions": avg_metric_defs,
+                    },
+                    "maxpcon_per_node": {
+                        **global_mean_max_metrics,
+                        "definitions": max_metric_defs,
+                    },
+                },
             },
             "summary": {
                 "rows_total": len(avg_target_arr),
@@ -501,6 +712,350 @@ class JobPowerUopcModel:
             }
 
         return result
+
+    
+
+    def evaluate_paper_sensitivity(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        test_start: str = "2024-02-01",
+        theta_values: tuple[int, ...] = (
+            50,
+            100,
+            200,
+            500,
+            1000,
+            2000,
+            5000,
+        ),
+        k_values: tuple[int, ...] = (5, 10, 20, 50),
+        metric_defs: list[dict[str, Any]] | None = None,
+        verbose: bool = False,
+        capture_artifacts: bool = False,
+    ) -> dict[str, Any]:
+        """Evaluate UoPC theta/k sensitivity with reusable neighbor searches.
+
+        For each theta and query job, nearest neighbors are retrieved once up to
+        max(k_values). Those ordered neighbors are then reused for every k.
+
+        Classifier voting is the faithful UoPC prediction rule. A mean-based
+        regressor prediction is reported separately as an ablation.
+        """
+        if not theta_values:
+            raise ValueError("theta_values must not be empty.")
+        if not k_values:
+            raise ValueError("k_values must not be empty.")
+        if any(theta <= 0 for theta in theta_values):
+            raise ValueError(
+                "theta_values must contain only positive integers."
+            )
+        if any(k <= 0 for k in k_values):
+            raise ValueError(
+                "k_values must contain only positive integers."
+            )
+
+        theta_values = tuple(sorted(set(theta_values)))
+        k_values = tuple(sorted(set(k_values)))
+        max_k = max(k_values)
+
+        resolved_metric_defs = metric_defs or [
+            {"name": "mape", "target": "avgpcon_per_node"},
+            {"name": "r2", "target": "avgpcon_per_node"},
+        ]
+
+        avg_metric_defs = [
+            {**metric_def, "target": "avgpcon_per_node"}
+            for metric_def in resolved_metric_defs
+        ]
+
+        max_metric_defs = [
+            {**metric_def, "target": "maxpcon_per_node"}
+            for metric_def in resolved_metric_defs
+        ]
+
+        prepared = self._prepare_paper_data(
+            rows,
+            test_start=test_start,
+        )
+
+        user_arr = prepared.user_arr
+        submit_arr = prepared.submit_arr
+        features = prepared.features
+        avg_target_arr = prepared.avg_target_arr
+        max_target_arr = prepared.max_target_arr
+        user_rows = prepared.user_rows
+        user_ends = prepared.user_ends
+        test_idx = prepared.test_idx
+
+        # One history count per test job. This is independent of theta and k
+        # and can later be used for cold-start/coverage analysis.
+        history_counts: list[int] = []
+
+        # Results are accumulated independently for every theta/k pair because
+        # coverage differs with k: a job with 7 prior jobs is valid for k=5
+        # but not for k=10, 20, or 50.
+        accumulators: dict[
+            tuple[int, int],
+            dict[str, dict[str, list[float]]],
+        ] = {}
+
+        for theta in theta_values:
+            for k in k_values:
+                accumulators[(theta, k)] = {
+                    "classifier": {
+                        "avg_true": [],
+                        "avg_pred": [],
+                        "max_true": [],
+                        "max_pred": [],
+                    },
+                    "regressor": {
+                        "avg_true": [],
+                        "avg_pred": [],
+                        "max_true": [],
+                        "max_pred": [],
+                    },
+                }
+
+        theta_timings: dict[int, float] = {}
+        total_start = time.perf_counter()
+
+        # Process one theta at a time. For each query, retrieve up to max_k
+        # neighbors once and reuse them for all requested k values.
+        for theta in theta_values:
+            theta_start = time.perf_counter()
+
+            iterator = tqdm(
+                test_idx,
+                desc=f"uopc-sensitivity/theta={theta}",
+                unit="job",
+                disable=not verbose,
+            )
+
+            for j in iterator:
+                user = user_arr[j]
+                ends_for_user = user_ends.get(user)
+
+                if ends_for_user is None:
+                    if theta == theta_values[0]:
+                        history_counts.append(0)
+                    continue
+
+                pos = int(
+                    np.searchsorted(
+                        ends_for_user,
+                        submit_arr[j],
+                        side="left",
+                    )
+                )
+
+                if theta == theta_values[0]:
+                    history_counts.append(pos)
+
+                if pos == 0:
+                    continue
+
+                user_history = user_rows[user][:pos]
+                context = user_history[
+                    max(0, len(user_history) - theta) :
+                ]
+
+                if len(context) == 0:
+                    continue
+
+                neighbor_indices, _neighbor_distances = (
+                    _nearest_neighbor_indices_and_distances(
+                        features[context],
+                        features[j].reshape(1, -1),
+                        max_neighbors=max_k,
+                    )
+                )
+
+                if len(neighbor_indices) == 0:
+                    continue
+
+                # kneighbors() indices are relative to context.
+                neighbor_rows = context[neighbor_indices]
+
+                avg_neighbor_targets = avg_target_arr[neighbor_rows]
+                max_neighbor_targets = max_target_arr[neighbor_rows]
+
+                for k in k_values:
+                    if len(neighbor_rows) < k:
+                        continue
+
+                    bucket = accumulators[(theta, k)]
+
+                    avg_classifier_pred = (
+                        _classifier_prediction_from_neighbor_targets(
+                            avg_neighbor_targets,
+                            k,
+                        )
+                    )
+                    max_classifier_pred = (
+                        _classifier_prediction_from_neighbor_targets(
+                            max_neighbor_targets,
+                            k,
+                        )
+                    )
+
+                    avg_regressor_pred = (
+                        _regressor_prediction_from_neighbor_targets(
+                            avg_neighbor_targets,
+                            k,
+                        )
+                    )
+                    max_regressor_pred = (
+                        _regressor_prediction_from_neighbor_targets(
+                            max_neighbor_targets,
+                            k,
+                        )
+                    )
+
+                    avg_true = float(avg_target_arr[j])
+                    max_true = float(max_target_arr[j])
+
+                    bucket["classifier"]["avg_true"].append(avg_true)
+                    bucket["classifier"]["avg_pred"].append(
+                        avg_classifier_pred
+                    )
+                    bucket["classifier"]["max_true"].append(max_true)
+                    bucket["classifier"]["max_pred"].append(
+                        max_classifier_pred
+                    )
+
+                    bucket["regressor"]["avg_true"].append(avg_true)
+                    bucket["regressor"]["avg_pred"].append(
+                        avg_regressor_pred
+                    )
+                    bucket["regressor"]["max_true"].append(max_true)
+                    bucket["regressor"]["max_pred"].append(
+                        max_regressor_pred
+                    )
+
+            theta_timings[theta] = time.perf_counter() - theta_start
+
+        total_seconds = time.perf_counter() - total_start
+
+        results: dict[str, Any] = {}
+
+        for theta in theta_values:
+            theta_result: dict[str, Any] = {}
+
+            for k in k_values:
+                bucket = accumulators[(theta, k)]
+                configuration: dict[str, Any] = {}
+
+                for predictor in ("classifier", "regressor"):
+                    values = bucket[predictor]
+
+                    avg_true = values["avg_true"]
+                    avg_pred = values["avg_pred"]
+                    max_true = values["max_true"]
+                    max_pred = values["max_pred"]
+
+                    predictor_result: dict[str, Any] = {
+                        "rows_scored": len(avg_true),
+                        "coverage": (
+                            len(avg_true) / len(test_idx)
+                            if len(test_idx)
+                            else 0.0
+                        ),
+                    }
+
+                    if avg_true:
+                        predictor_result["avgpcon_per_node"] = (
+                            compute_regression_metrics_from_defs(
+                                avg_true,
+                                avg_pred,
+                                avg_metric_defs,
+                            )
+                        )
+                        predictor_result["maxpcon_per_node"] = (
+                            compute_regression_metrics_from_defs(
+                                max_true,
+                                max_pred,
+                                max_metric_defs,
+                            )
+                        )
+                    else:
+                        predictor_result["avgpcon_per_node"] = {}
+                        predictor_result["maxpcon_per_node"] = {}
+
+                    configuration[predictor] = predictor_result
+
+                theta_result[str(k)] = configuration
+
+            results[str(theta)] = theta_result
+
+        history_arr = np.asarray(history_counts, dtype=np.int64)
+
+        cold_start = {
+            "rows_test": int(len(test_idx)),
+            "history_count_min": (
+                int(history_arr.min()) if history_arr.size else 0
+            ),
+            "history_count_max": (
+                int(history_arr.max()) if history_arr.size else 0
+            ),
+            "history_count_mean": (
+                float(history_arr.mean()) if history_arr.size else 0.0
+            ),
+            "history_count_median": (
+                float(np.median(history_arr))
+                if history_arr.size
+                else 0.0
+            ),
+            "rows_with_0_history": int(
+                np.sum(history_arr == 0)
+            ),
+            "rows_with_lt_5_history": int(
+                np.sum(history_arr < 5)
+            ),
+            "rows_with_lt_10_history": int(
+                np.sum(history_arr < 10)
+            ),
+            "rows_with_lt_20_history": int(
+                np.sum(history_arr < 20)
+            ),
+            "rows_with_lt_50_history": int(
+                np.sum(history_arr < 50)
+            ),
+        }
+
+        result: dict[str, Any] = {
+            "summary": {
+                "rows_total": len(rows),
+                "rows_test": int(len(test_idx)),
+                "theta_values": list(theta_values),
+                "k_values": list(k_values),
+                "max_neighbors": max_k,
+                "test_start": test_start,
+                "primary_predictor": "KNeighborsClassifier",
+                "ablation_predictor": "KNeighborsRegressor",
+                "targets": [
+                    "avgpcon/nnuma",
+                    "maxpcon/nnuma",
+                ],
+                "features": "emb+znum",
+                "history_rule": "same user with edt < query adt",
+            },
+            "results": results,
+            "cold_start": cold_start,
+            "timing": {
+                "total_seconds": total_seconds,
+                "theta_seconds": {
+                    str(theta): seconds
+                    for theta, seconds in theta_timings.items()
+                },
+            },
+        }
+
+        if capture_artifacts:
+            result["_history_counts"] = history_counts
+
+        return result
+
 
     def _predict_one(
         self,

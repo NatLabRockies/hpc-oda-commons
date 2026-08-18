@@ -102,3 +102,45 @@ def test_load_recipe_from_file(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     load_recipe(recipe_path, validate=True)
+
+
+def test_validate_recipe_uopc_sensitivity_parameters_ok() -> None:
+    payload = _valid_recipe()
+    payload["split"]["test_start"] = "2024-02-01"
+    payload["split"]["theta_values"] = [
+        50,
+        100,
+        200,
+        500,
+        1000,
+        2000,
+        5000,
+    ]
+    payload["split"]["k_values"] = [5, 10, 20, 50]
+
+    validate_recipe(payload)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("theta_values", []),
+        ("k_values", []),
+        ("theta_values", [0, 50]),
+        ("k_values", [0, 5]),
+        ("theta_values", [50, 50]),
+        ("k_values", [5, 5]),
+    ],
+)
+def test_validate_recipe_rejects_invalid_uopc_sensitivity_parameters(
+    field: str,
+    value: list[int],
+) -> None:
+    payload = _valid_recipe()
+    payload["split"]["test_start"] = "2024-02-01"
+    payload["split"]["theta_values"] = [50, 100]
+    payload["split"]["k_values"] = [5, 10]
+    payload["split"][field] = value
+
+    with pytest.raises(SchemaValidationError):
+        validate_recipe(payload)

@@ -1,0 +1,38 @@
+# UoPC paper sensitivity analysis through the HPC ODA Commons benchmark pipeline.
+
+recipe_id: recipe.job_power.uopc_phase2_sensitivity_smoke
+
+problem_domain:
+  - job-power-prediction
+
+schema_version: oda.job.v0.2.0
+
+dataset:
+  id: fdata_fugaku
+  table_path: data/datasets/fdata_fugaku/data.parquet
+
+model:
+  id: model.job_power_uopc
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: avgpcon_per_node
+  - name: rmse
+    target: avgpcon_per_node
+  - name: mape
+    target: avgpcon_per_node
+  - name: r2
+    target: avgpcon_per_node
+
+split:
+  method: fixed
+  train_fraction: 0.8
+  seed: 42
+  test_start: "2024-02-01"
+  theta_values: [50]
+  k_values: [5, 10]
+  
+run:
+  output_dir: runs
+  overwrite: false
