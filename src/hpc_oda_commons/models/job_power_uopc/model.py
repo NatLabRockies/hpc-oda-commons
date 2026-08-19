@@ -32,9 +32,14 @@ _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
 
 @dataclass
 class _PaperPreparedData:
+    job_id_arr: np.ndarray
     user_arr: np.ndarray
     submit_arr: np.ndarray
     end_arr: np.ndarray
+    num_cores_req_arr: np.ndarray
+    num_nodes_req_arr: np.ndarray
+    nnuma_arr: np.ndarray
+    freq_req_arr: np.ndarray
     features: np.ndarray
     avg_target_arr: np.ndarray
     max_target_arr: np.ndarray
@@ -335,9 +340,16 @@ class JobPowerUopcModel:
             .timestamp()
         )
 
+        job_ids: list[Any] = []
         users: list[str] = []
         submits: list[float] = []
         ends: list[float] = []
+
+        num_cores_req_values: list[float] = []
+        num_nodes_req_values: list[float] = []
+        nnuma_values: list[float] = []
+        freq_req_values: list[float] = []
+
         embeddings: list[np.ndarray] = []
         numeric: list[list[float]] = []
         avg_targets: list[float] = []
@@ -386,6 +398,18 @@ class JobPowerUopcModel:
             ):
                 continue
 
+            job_ids.append(row.get("job_id"))
+            num_cores_req_values.append(
+                _feature_float(row.get("num_cores_req"))
+            )
+            num_nodes_req_values.append(
+                _feature_float(row.get("num_nodes_req"))
+            )
+            nnuma_values.append(nnuma)
+            freq_req_values.append(
+                _feature_float(row.get("freq_req"))
+            )
+
             users.append(str(row.get("user") or ""))
             submits.append(submit)
             ends.append(end)
@@ -403,9 +427,28 @@ class JobPowerUopcModel:
         if not avg_targets:
             raise ValueError("No usable rows for UoPC paper reproduction.")
 
+        job_id_arr = np.asarray(job_ids)
         user_arr = np.asarray(users)
         submit_arr = np.asarray(submits, dtype=np.float64)
         end_arr = np.asarray(ends, dtype=np.float64)
+
+        num_cores_req_arr = np.asarray(
+            num_cores_req_values,
+            dtype=np.float64,
+        )
+        num_nodes_req_arr = np.asarray(
+            num_nodes_req_values,
+            dtype=np.float64,
+        )
+        nnuma_arr = np.asarray(
+            nnuma_values,
+            dtype=np.float64,
+        )
+        freq_req_arr = np.asarray(
+            freq_req_values,
+            dtype=np.float64,
+        )
+
         emb_arr = np.ascontiguousarray(
             np.vstack(embeddings),
             dtype=np.float32,
@@ -445,9 +488,14 @@ class JobPowerUopcModel:
         ]
 
         return _PaperPreparedData(
+            job_id_arr=job_id_arr,
             user_arr=user_arr,
             submit_arr=submit_arr,
             end_arr=end_arr,
+            num_cores_req_arr=num_cores_req_arr,
+            num_nodes_req_arr=num_nodes_req_arr,
+            nnuma_arr=nnuma_arr,
+            freq_req_arr=freq_req_arr,
             features=features,
             avg_target_arr=avg_target_arr,
             max_target_arr=max_target_arr,
@@ -502,9 +550,14 @@ class JobPowerUopcModel:
             test_start=test_start,
         )
 
+        job_id_arr = prepared.job_id_arr
         user_arr = prepared.user_arr
         submit_arr = prepared.submit_arr
         end_arr = prepared.end_arr
+        num_cores_req_arr = prepared.num_cores_req_arr
+        num_nodes_req_arr = prepared.num_nodes_req_arr
+        nnuma_arr = prepared.nnuma_arr
+        freq_req_arr = prepared.freq_req_arr
         features = prepared.features
         avg_target_arr = prepared.avg_target_arr
         max_target_arr = prepared.max_target_arr
@@ -522,6 +575,7 @@ class JobPowerUopcModel:
         user_mean_max_y_pred: list[float] = []
         global_mean_avg_y_pred: list[float] = []
         global_mean_max_y_pred: list[float] = []
+        per_job_records: list[dict[str, Any]] = []
         rows_skipped = 0
 
         iterator = tqdm(
@@ -557,6 +611,9 @@ class JobPowerUopcModel:
 
             # UoPC itself uses only the newest theta eligible jobs.
             context = user_history[max(0, len(user_history) - theta) :]
+
+            history_size = len(user_history)
+            context_size = len(context)
 
             # Trivial per-user baseline: mean over all eligible prior jobs for
             # this user, with no future information.
@@ -603,6 +660,34 @@ class JobPowerUopcModel:
             user_mean_max_y_pred.append(user_mean_max_pred)
             global_mean_avg_y_pred.append(global_mean_avg_pred)
             global_mean_max_y_pred.append(global_mean_max_pred)
+
+            if capture_artifacts:
+                per_job_records.append(
+                    {
+                        "job_id": (
+                            job_id_arr[j].item()
+                            if isinstance(job_id_arr[j], np.generic)
+                            else job_id_arr[j]
+                        ),
+                        "user": str(user_arr[j]),
+                        "submit_time": float(submit_arr[j]),
+                        "end_time": float(end_arr[j]),
+                        "history_size": int(history_size),
+                        "context_size": int(context_size),
+                        "num_cores_req": float(num_cores_req_arr[j]),
+                        "num_nodes_req": float(num_nodes_req_arr[j]),
+                        "nnuma": float(nnuma_arr[j]),
+                        "freq_req": float(freq_req_arr[j]),
+                        "avgpcon_per_node_true": float(avg_target_arr[j]),
+                        "avgpcon_per_node_pred": float(avg_pred[0]),
+                        "maxpcon_per_node_true": float(max_target_arr[j]),
+                        "maxpcon_per_node_pred": float(max_pred[0]),
+                        "per_user_mean_avg_pred": user_mean_avg_pred,
+                        "per_user_mean_max_pred": user_mean_max_pred,
+                        "global_mean_avg_pred": global_mean_avg_pred,
+                        "global_mean_max_pred": global_mean_max_pred,
+                    }
+                )
 
         if not avg_y_true or not max_y_true:
             raise ValueError("No test rows produced scored predictions in paper reproduction.")
@@ -700,6 +785,7 @@ class JobPowerUopcModel:
             result["_avgpcon_y_pred"] = avg_y_pred
             result["_maxpcon_y_true"] = max_y_true
             result["_maxpcon_y_pred"] = max_y_pred
+            result["_per_job_records"] = per_job_records
             result["_last_model"] = {
                 "kind": "job_power_uopc_paper_reproduction",
                 "theta": theta,

@@ -37,3 +37,5 @@ split:
 run:
   output_dir: runs
   overwrite: false
+  extras:
+    save_predictions: true
