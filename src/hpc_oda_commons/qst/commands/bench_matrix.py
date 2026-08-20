@@ -10,6 +10,7 @@ See docs/benchmarking/hpc-runner.md.
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -48,6 +49,10 @@ from hpc_oda_commons.benchmarking.hpc.slice import SliceError, effective_start, 
 console = Console()
 
 _STAGING_ROOT = Path(".hpc_oda/bench-matrix")
+# Plan ids minted by `bench-matrix plan` when --plan-id is not given: `%Y%m%d-%H%M%S`.
+# Lexicographic order over this shape is chronological order, which is what makes
+# "newest" cheap to compute.
+_TIMESTAMP_PLAN_ID = re.compile(r"^\d{8}-\d{6}$")
 
 
 def _load_site(site: Path) -> SiteConfig:
@@ -59,7 +64,18 @@ def _load_site(site: Path) -> SiteConfig:
 
 
 def _resolve_plan_dir(plan_dir: Path | None) -> Path:
-    """Return the plan dir, defaulting to the newest timestamped dir under the staging root."""
+    """Return the plan dir, defaulting to the newest *timestamped* plan in the staging root.
+
+    Only timestamp-named plans are eligible to be the default. A plan named with
+    ``--plan-id`` has to be selected explicitly, because it was named deliberately and
+    nothing about its name says when it was built.
+
+    The previous version sorted every plan dir together and took the last, which is why
+    this is worth spelling out: digits sort before letters, so a single named plan
+    (``test-plan``, ``fleet-01``) shadowed *every* timestamped plan permanently, however
+    much newer. `submit` reads this, so the failure mode was launching a stale matrix whose
+    results look perfectly plausible (#147).
+    """
     if plan_dir is not None:
         if not (plan_dir / "plan.json").exists():
             console.print(
@@ -67,18 +83,33 @@ def _resolve_plan_dir(plan_dir: Path | None) -> Path:
             )
             raise typer.Exit(1)
         return plan_dir
-    candidates = sorted(p for p in _STAGING_ROOT.glob("*/plan.json"))
+    found = [p.parent for p in _STAGING_ROOT.glob("*/plan.json")]
+    candidates = sorted(d for d in found if _TIMESTAMP_PLAN_ID.match(d.name))
     if not candidates:
+        named = sorted(d.name for d in found)
+        hint = (
+            f" Named plans are not auto-selected; pass --plan-dir to use one of: {', '.join(named)}."
+            if named
+            else ""
+        )
         console.print(
-            f"[red]No plans found under {_STAGING_ROOT}. Run `bench-matrix plan` first.[/red]"
+            f"[red]No timestamped plans under {_STAGING_ROOT}. "
+            f"Run `bench-matrix plan` first.{hint}[/red]"
         )
         raise typer.Exit(1)
-    return candidates[-1].parent
+    return candidates[-1]
 
 
 def _load_plan_dir(plan_dir: Path | None) -> tuple[LoadedPlan, Path]:
+    """Resolve + load a plan, announcing which one. Every plan-consuming command goes
+    through here, so the echo means you never act on a defaulted plan without seeing it."""
     resolved = _resolve_plan_dir(plan_dir)
-    return load_plan(resolved / "plan.json"), resolved
+    plan = load_plan(resolved / "plan.json")
+    console.print(
+        f"[dim]Using plan[/dim] [cyan]{plan.plan_id}[/cyan] "
+        f"[dim]({len(plan.cells)} cells, {len(plan.embeds)} embeds) from {resolved}[/dim]"
+    )
+    return plan, resolved
 
 
 def bench_matrix_plan(
