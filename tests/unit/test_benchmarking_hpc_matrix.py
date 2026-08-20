@@ -13,10 +13,15 @@ from hpc_oda_commons.benchmark.recipes import load_recipe
 from hpc_oda_commons.benchmarking.hpc.config import SiteConfigError, load_site_config
 from hpc_oda_commons.benchmarking.hpc.matrix import (
     EMBEDDING_MODEL,
+    MODEL_SPLIT_OVERRIDES,
     RUNTIME_MODELS,
+    SPLIT,
     Card,
     build_plan,
+    build_recipe,
+    load_cards,
     render_template,
+    slice_extension_for,
     tier_for_rows,
     write_plan,
 )
@@ -103,12 +108,13 @@ def test_tier_for_rows_boundaries(rows: int, expected: str) -> None:
 # --- planning -----------------------------------------------------------------------
 
 
-def _card(name: str, rows: int, healthy: bool = True) -> Card:
+def _card(name: str, rows: int, healthy: bool = True, train_days: int = 60) -> Card:
     return Card(
         dataset=name,
         window_rows=rows,
         window_start="2025-01-01",
         window_end="2025-03-31",
+        train_days=train_days,
         healthy=healthy,
         system=name,
         source_table=f"data/datasets/{name}/data.parquet",
@@ -201,6 +207,96 @@ def test_mlp_cells_run_windows_across_allocated_cores(tmp_path: Path) -> None:
     # RF/XGBoost run windows sequentially (RF already parallelizes inside each fit).
     assert "window_n_jobs" not in _split("small", "xgboost")
     assert "window_n_jobs" not in _split("big", "random_forest")
+
+
+# --- per-model split overrides (#145) -----------------------------------------------
+
+
+def _split_of(model_key: str) -> dict:
+    return build_recipe("ds", model_key, "data/windows/ds/data.parquet", "runs/ds")["split"]
+
+
+def test_both_xgboost_variants_fit_absolute_error() -> None:
+    """If only the MoE fitted absolute error, its margin would bundle an objective effect.
+
+    The leaderboard's headline comparison is MoE vs plain XGBoost; that has to be about
+    routing and recency, not about which loss the trees were fitted to (#138, #145).
+    """
+    assert _split_of("job_runtime_xgboost")["objective"] == "reg:absoluteerror"
+    assert _split_of("job_runtime_moe_xgboost")["objective"] == "reg:absoluteerror"
+
+
+def test_moe_cells_carry_the_best_measured_routing() -> None:
+    split = _split_of("job_runtime_moe_xgboost")
+
+    assert split["enable_power_users"] is False
+    assert split["time_decay_rate"] == 0.05
+
+
+def test_models_without_overrides_keep_the_shared_split() -> None:
+    """An override must not leak into models that were never measured with it."""
+    for model_key in ("job_runtime_baseline", "job_runtime_mlp", "job_runtime_random_forest"):
+        assert _split_of(model_key) == dict(SPLIT)
+
+
+def test_overrides_do_not_mutate_the_shared_split() -> None:
+    """``build_recipe`` copies before layering; a leak here would poison later cells."""
+    _split_of("job_runtime_moe_xgboost")
+
+    assert "objective" not in SPLIT
+    assert "enable_power_users" not in SPLIT
+
+
+def test_every_overridden_model_is_actually_in_the_fleet() -> None:
+    """An override for a model the planner never emits is dead configuration."""
+    assert set(MODEL_SPLIT_OVERRIDES) <= set(RUNTIME_MODELS)
+
+
+def test_moe_is_in_the_fleet(tmp_path: Path) -> None:
+    cfg = load_site_config(_write_site(tmp_path))
+    plan = build_plan([_card("small", 1000)], cfg, plan_id="p1")
+
+    assert "job_runtime_moe_xgboost" in RUNTIME_MODELS
+    assert "moe_xgboost" in {cell.model for cell in plan.cells}
+
+
+# --- derived slice extension (#145) -------------------------------------------------
+
+
+def test_slice_extension_covers_the_split_shortfall() -> None:
+    """The split asks for more history than the card window holds; the slice makes it up."""
+    lookback = int(SPLIT["training_lookback_days"])
+
+    assert slice_extension_for(_card("d", 10, train_days=60)) == lookback - 60
+    # A card already wider than the split needs no extension -- and must not get a negative one.
+    assert slice_extension_for(_card("d", 10, train_days=lookback + 30)) == 0
+
+
+def test_slice_extension_for_a_card_with_no_stated_rule() -> None:
+    """Unknown ``train_days`` extends by the full lookback: wider than needed, never narrower."""
+    assert slice_extension_for(_card("d", 10, train_days=0)) == int(SPLIT["training_lookback_days"])
+
+
+def test_card_carries_the_window_rule_train_days(tmp_path: Path) -> None:
+    (tmp_path / "ds.card.json").write_text(
+        json.dumps(
+            {
+                "benchmark_window": {
+                    "n_rows": 100,
+                    "window_start": "2025-03-29",
+                    "window_end": "2025-06-26",
+                    "healthy": True,
+                    "rule": {"anchor": 0.8, "train_days": 60, "test_days": 30},
+                },
+                "source": {"system": "ds", "table_path": "data/datasets/ds/data.parquet"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    (card,) = load_cards(tmp_path)
+
+    assert card.train_days == 60
 
 
 # --- template rendering -------------------------------------------------------------

@@ -34,15 +34,28 @@ Fixed rolling-window evaluation for every dataset:
 |---|---|---|
 | `n_windows` | 120 | number of rolling test windows |
 | `test_window_hours` | 6 | → 120 × 6h = **30 days of test coverage** |
-| `training_lookback_days` | 60 | **60 days of training** per window |
+| `training_lookback_days` | 120 | **120 days of training** per window |
 
-So each dataset contributes a **90-day (3-month) slice**: 60 days train + 30 days test.
+Each dataset card still *defines* a **90-day (3-month) window**: 60 days train + 30 days test,
+and that window is what gets scored. The split asks for 120 days of lookback, more history
+than the card window holds, so the slice is extended 60 days earlier than `window_start`
+(`training_lookback_days − train_days`) and the earliest rolling windows get their full
+lookback. The test region is untouched, so the scored population is exactly the card's.
+
+`bench-matrix slice` derives that extension per dataset rather than taking it as a flag, so
+the slice cannot silently disagree with the split (#143, #145). Each slice carries a
+`slice.json` recording the window it actually holds.
+
+> **Changed in #145**, from 60 days. The earlier value made the lookback exactly equal to the
+> card's `train_days`, which needed no slice extension but left the fleet inconsistent with
+> the ablation runs and the published reference recipe, both at 120. Numbers produced at 60
+> are not comparable with numbers produced at 120.
 
 **No capping or subsampling of training data.** Each window trains on *all* jobs in its
-60-day lookback. Rationale: this is the first pass and must be rigorous and interpretable;
+120-day lookback. Rationale: this is the first pass and must be rigorous and interpretable;
 capping/sampling would change results in ways we have not measured, so it is out of scope
-here. Consequence: high-rate machines produce large per-window training sets (e.g.
-`nlr_kestrel` ≈ 660k rows/window) and are multi-hour per model — this benchmark is an **HPC
+here. Consequence: high-rate machines produce large per-window training sets and are
+multi-hour per model — this benchmark is an **HPC
 job** (runner: later phase). Three months is the *minimum* we're confident in; future passes
 should use more.
 

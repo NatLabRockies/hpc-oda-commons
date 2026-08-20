@@ -27,6 +27,7 @@ RUNTIME_MODELS: tuple[str, ...] = (
     "job_runtime_tfidf_knn",
     "job_runtime_random_forest",
     "job_runtime_xgboost",
+    "job_runtime_moe_xgboost",
     "job_runtime_mlp",
     "job_runtime_embedding_knn",
 )
@@ -39,12 +40,37 @@ EMBEDDING_MODEL: str = "job_runtime_embedding_knn"
 # (estimator ``n_jobs=-1``), so window-level threads would oversubscribe it.
 WINDOW_PARALLEL_MODEL_TAGS: frozenset[str] = frozenset({"mlp", "tfidf_knn"})
 
-# Rolling split: 120 x 6h = 30 days test, 60 days training lookback → a 90-day slice.
+# Rolling split: 120 x 6h = 30 days test, 120 days training lookback.
+#
+# The lookback exceeds the cards' ``train_days`` (60), so the earliest rolling windows would
+# train on truncated history unless the slice reaches further back than the card window. That
+# shortfall is derived per dataset by ``bench-matrix slice`` rather than passed by hand -- see
+# ``Card.train_days`` -- so the slice and this split cannot drift apart (#143, #145).
 SPLIT: dict[str, object] = {
     "method": "rolling",
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 60,
+    "training_lookback_days": 120,
+}
+
+# Per-model split keys layered onto SPLIT by ``build_recipe``. Any model not named here runs
+# the shared defaults. This is a table rather than branching inside ``build_recipe`` so that
+# "which configuration did cell X run?" stays answerable by reading one place.
+MODEL_SPLIT_OVERRIDES: dict[str, dict[str, object]] = {
+    # Fit the metric the leaderboard ranks on. Runtimes are heavy-tailed (Kestrel p99/p50
+    # ~1,200x), so under squared error a handful of week-long jobs own the gradient (#138).
+    # Applied to BOTH XGBoost variants deliberately: if only the MoE fitted absolute error,
+    # its margin over plain XGBoost would bundle a -2.6% effect that has nothing to do with
+    # the mixture.
+    "job_runtime_xgboost": {"objective": "reg:absoluteerror"},
+    "job_runtime_moe_xgboost": {
+        "objective": "reg:absoluteerror",
+        # Route by requested wallclock alone. Per-user experts measured net harmful: on the
+        # rows they claimed, pooling was 3.0% better (#134). Expressible since #141.
+        "enable_power_users": False,
+        # Recency weighting, ~2-week half-life (#136).
+        "time_decay_rate": 0.05,
+    },
 }
 INPUT_SCHEMA = "oda.job.v0.2.0"
 
@@ -84,6 +110,17 @@ def tier_for_rows(window_rows: int) -> Tier:
     return TIERS[2]
 
 
+def slice_extension_for(card: Card) -> int:
+    """Days a card's slice must reach back beyond its window for ``SPLIT`` to be satisfiable.
+
+    The card sizes its window as ``train_days`` + ``test_days``. When the benchmark split
+    asks for a longer lookback than ``train_days``, the earliest rolling windows would train
+    on truncated history unless the slice starts earlier. Returns that shortfall (0 when the
+    card window already covers the split).
+    """
+    return max(0, int(SPLIT["training_lookback_days"]) - card.train_days)  # type: ignore[call-overload]
+
+
 def _model_tag(model_key: str) -> str:
     """Short, filename-safe tag for a model (``job_runtime_xgboost`` → ``xgboost``)."""
     return model_key.removeprefix("job_runtime_")
@@ -97,6 +134,7 @@ class Card:
     window_rows: int
     window_start: str
     window_end: str
+    train_days: int  # the card rule's training span; 0 when the card does not state one
     healthy: bool
     system: str
     source_table: str  # canonical prepared parquet path (relative to repo root)
@@ -122,6 +160,9 @@ def _parse_card(path: Path) -> Card:
         window_rows=int(window.get("n_rows", 0)),
         window_start=str(window.get("window_start", "")),
         window_end=str(window.get("window_end", "")),
+        # A card with no stated rule reports 0, which makes the derived slice extension the
+        # full lookback -- wider than needed, never narrower.
+        train_days=int((window.get("rule") or {}).get("train_days", 0)),
         healthy=bool(window.get("healthy", False)),
         system=str(source.get("system", "")),
         source_table=str(source.get("table_path", "")),
@@ -195,8 +236,12 @@ def build_recipe(
 
     ``window_n_jobs`` (when set) is added to the split so the model runs its independent
     per-window fits across that many threads — used to spread MLP over the cell's cores.
+
+    Any ``MODEL_SPLIT_OVERRIDES`` entry for ``model_key`` is layered on top of the shared
+    ``SPLIT``, so a model can carry the configuration it was actually measured in.
     """
     split = dict(SPLIT)
+    split.update(MODEL_SPLIT_OVERRIDES.get(model_key, {}))
     if window_n_jobs is not None:
         split["window_n_jobs"] = window_n_jobs
     return {
