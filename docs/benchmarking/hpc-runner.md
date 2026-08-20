@@ -89,11 +89,16 @@ the source table, the card window, the effective window, and the row count — w
 parquets are path-identical whatever window they hold, so the sidecar is what tells a recipe
 which one it got.
 
-Add `--extra-lookback-days N` when a recipe asks for more training history than the card
-window holds (`training_lookback_days` beyond the card's `train_days`). It moves the lower
-bound back by N days and leaves the test region untouched. The fleet matrix does not need it
-— `matrix.SPLIT` uses `training_lookback_days: 60`, which the 90-day card window already
-covers — but the bundled `kestrel_moe_best_rolling.yml` does, at `--extra-lookback-days 60`.
+Each dataset is extended back by default by exactly the shortfall its card leaves against
+`matrix.SPLIT`'s `training_lookback_days` — `training_lookback_days - card.train_days`,
+which is 120 − 60 = 60 days for every current card. You do not pass anything for the fleet
+run; `--extra-lookback-days N` overrides the derived value when you want a different window.
+The lower bound moves back by that many days and the test region is untouched, so the run
+still scores exactly the rows the card window defines.
+
+Deriving this rather than requiring the flag is deliberate. A slice narrower than the split
+asks for is invisible in the results — the earliest rolling windows simply train on less
+history and score differently, with nothing in the output saying so (#143, #145).
 
 Writes `.hpc_oda/bench-matrix/data/windows/<dataset>/data.parquet` from each card's
 canonical parquet. The slice keeps every job whose `[submit_time, end_time]` interval
@@ -171,6 +176,17 @@ parallelizes inside each fit, and the rest run windows sequentially.
 ## Benchmark configuration
 
 The generated recipes encode the agreed methodology (see [`methodology.md`](methodology.md)):
-rolling split, `n_windows=120`, `test_window_hours=6`, `training_lookback_days=60` — a
-90-day slice of 60 days train + 30 days test, with no capping or sampling. Metrics: `mae`,
-`rmse` on `runtime_seconds`.
+rolling split, `n_windows=120`, `test_window_hours=6`, `training_lookback_days=120` — the
+card's 90-day window (60 days train + 30 days test) extended 60 days earlier so the earliest
+windows have their full lookback, with no capping or sampling. Metrics: `mae`, `rmse` on
+`runtime_seconds`.
+
+Two models carry extra split keys, from `matrix.MODEL_SPLIT_OVERRIDES`:
+
+| model | overrides | why |
+| --- | --- | --- |
+| `job_runtime_xgboost` | `objective: reg:absoluteerror` | fit the metric the leaderboard ranks on (#138) |
+| `job_runtime_moe_xgboost` | `objective: reg:absoluteerror`, `enable_power_users: false`, `time_decay_rate: 0.05` | the best measured configuration (#134/#136/#141) |
+
+Both XGBoost variants fit absolute error deliberately: if only the MoE did, its margin over
+plain XGBoost would bundle an objective effect that has nothing to do with the mixture.

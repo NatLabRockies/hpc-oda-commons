@@ -28,6 +28,7 @@ from hpc_oda_commons.benchmarking.hpc.matrix import (
     RUNTIME_MODELS,
     build_plan,
     load_cards,
+    slice_extension_for,
     tier_for_rows,
     write_plan,
 )
@@ -182,17 +183,18 @@ def bench_matrix_slice(
         typer.Option("--include-unhealthy", help="Also slice datasets whose window is unhealthy."),
     ] = False,
     extra_lookback_days: Annotated[
-        int,
+        int | None,
         typer.Option(
             "--extra-lookback-days",
             min=0,
             help=(
-                "Extend the slice earlier by N days, leaving the test region alone. Set it "
-                "to training_lookback_days - the card's train_days when a recipe wants more "
-                "history than the card window holds."
+                "Extend the slice earlier by N days, leaving the test region alone. "
+                "Defaults to the shortfall the benchmark split implies for each dataset "
+                "(training_lookback_days - the card's train_days). Pass a value only to "
+                "override that."
             ),
         ),
-    ] = 0,
+    ] = None,
 ) -> None:
     """Slice each dataset's canonical parquet to its benchmark window.
 
@@ -201,6 +203,11 @@ def bench_matrix_slice(
     holds. That tree rsyncs to ``<repo>/data/windows`` on the cluster, where the generated
     recipes read it. Overlapping (long-running) jobs are kept so the earliest rolling
     windows keep their training rows — see the slice module.
+
+    By default each dataset is extended back by exactly the shortfall its card leaves against
+    the benchmark split's ``training_lookback_days``, so a slice always holds the history the
+    generated recipes ask for. Deriving it rather than passing it by hand is deliberate: a
+    slice silently narrower than the split is invisible in the results (#143, #145).
     """
     cards = load_cards(cards_dir)
     table = Table(title="Slice to benchmark window")
@@ -221,14 +228,17 @@ def bench_matrix_slice(
             table.add_row(card.dataset, "-", "-", f"[red]missing source {source}[/red]")
             continue
         dest = out / card.dataset / "data.parquet"
-        start = effective_start(card.window_start, extra_lookback_days)
+        extension = (
+            extra_lookback_days if extra_lookback_days is not None else slice_extension_for(card)
+        )
+        start = effective_start(card.window_start, extension)
         try:
             n = slice_dataset(
                 source,
                 dest,
                 card.window_start,
                 card.window_end,
-                extra_lookback_days=extra_lookback_days,
+                extra_lookback_days=extension,
             )
         except SliceError as exc:
             table.add_row(card.dataset, "-", "-", f"[red]{exc}[/red]")
