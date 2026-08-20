@@ -19,7 +19,10 @@ DEFAULT_SITE_CONFIG_PATH = Path(".hpc_oda/hpc-site.yml")
 
 # Keys that must be present and non-empty in the site config.
 _REQUIRED_KEYS = ("host", "user", "account", "remote_base", "env_prefix", "partitions")
-_REQUIRED_PARTITIONS = ("cpu", "bigmem", "gpu")
+# ``bigmem`` is intentionally absent: the matrix no longer schedules anything there, so
+# requiring it would force sites to name a partition that never gets used. A site may still
+# configure one; it is simply not required.
+_REQUIRED_PARTITIONS = ("cpu", "gpu")
 
 
 class SiteConfigError(ValueError):
@@ -144,7 +147,7 @@ def _build(raw: dict[str, Any], cfg_path: Path) -> SiteConfig:
         account=str(raw["account"]),
         remote_base=str(raw["remote_base"]).rstrip("/"),
         env_prefix=str(raw["env_prefix"]).rstrip("/"),
-        partitions={k: str(partitions[k]) for k in _REQUIRED_PARTITIONS},
+        partitions={k: str(v) for k, v in partitions.items() if v},
         gpu_gres=str(raw.get("gpu_gres", "gpu:1")),
         conda_module=str(raw.get("conda_module", "")),
         gpu_host=str(raw.get("gpu_host", "")),

@@ -20,9 +20,11 @@ env_prefix: /path/to/project/oda-bench/env   # conda env prefix (has bin/python,
 # --- Slurm ---
 account: your-slurm-account
 partitions:
-  cpu: your-cpu-partition          # most benchmark cells
-  bigmem: your-bigmem-partition    # the heaviest dataset (large per-window training set)
+  cpu: your-cpu-partition          # every benchmark cell
   gpu: your-gpu-partition          # embedding jobs
+  # No bigmem entry: the matrix runs every cell on the ordinary CPU partition. A dataset
+  # whose slice will not fit one node is skipped and reported rather than moved to a
+  # bigger node -- see docs/benchmarking/hpc-runner.md.
 gpu_gres: "gpu:1"                  # GRES for one GPU, e.g. "gpu:h100:1"
 
 # --- Embedding ---
