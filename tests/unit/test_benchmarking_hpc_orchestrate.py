@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+import pytest
+import typer
 
 from hpc_oda_commons.benchmarking.hpc.config import SiteConfig
 from hpc_oda_commons.benchmarking.hpc.orchestrate import (
@@ -20,6 +24,7 @@ from hpc_oda_commons.benchmarking.hpc.orchestrate import (
     stage_commands,
     submit_plan,
 )
+from hpc_oda_commons.qst.commands import bench_matrix
 
 
 def _site() -> SiteConfig:
@@ -177,3 +182,69 @@ def test_parse_sacct_maps_jobid_to_state() -> None:
     assert parsed["101"]["state"] == "COMPLETED"
     assert parsed["101"]["elapsed"] == "00:05:12"
     assert parsed["102"]["state"] == "FAILED"
+
+
+# --- default plan resolution (#147) -------------------------------------------------
+
+
+def _plan_dir(root: Path, name: str, n_cells: int = 1) -> Path:
+    d = root / name
+    d.mkdir(parents=True)
+    (d / "plan.json").write_text(
+        json.dumps(
+            {
+                "plan_id": name,
+                "repo_dir": "/repo",
+                "staging_remote": f"/repo/.hpc_oda/bench-matrix/{name}",
+                "cells": [{"dataset": "d", "model": "m"}] * n_cells,
+                "embeds": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return d
+
+
+def test_named_plan_does_not_shadow_a_newer_timestamped_plan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The bug: digits sort before letters, so any named plan won every comparison.
+
+    Staging roots accumulate named plans, and `submit` defaults through this helper, so
+    the observable failure was launching a stale matrix that produces plausible numbers.
+    """
+    monkeypatch.setattr(bench_matrix, "_STAGING_ROOT", tmp_path)
+    _plan_dir(tmp_path, "test-plan")
+    _plan_dir(tmp_path, "fleet-01")
+    newest = _plan_dir(tmp_path, "20260820-123449")
+
+    assert bench_matrix._resolve_plan_dir(None) == newest
+
+
+def test_newest_timestamped_plan_wins(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(bench_matrix, "_STAGING_ROOT", tmp_path)
+    _plan_dir(tmp_path, "20260718-180141")
+    _plan_dir(tmp_path, "20260820-122728")
+    newest = _plan_dir(tmp_path, "20260820-123449")
+
+    assert bench_matrix._resolve_plan_dir(None) == newest
+
+
+def test_a_named_plan_must_be_asked_for_by_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Named plans are never auto-selected — but the error has to say they are there."""
+    monkeypatch.setattr(bench_matrix, "_STAGING_ROOT", tmp_path)
+    named = _plan_dir(tmp_path, "fleet-01")
+
+    with pytest.raises(typer.Exit):
+        bench_matrix._resolve_plan_dir(None)
+    # ...and naming it explicitly still works.
+    assert bench_matrix._resolve_plan_dir(named) == named
+
+
+def test_resolve_rejects_a_directory_without_a_plan(tmp_path: Path) -> None:
+    (tmp_path / "empty").mkdir()
+
+    with pytest.raises(typer.Exit):
+        bench_matrix._resolve_plan_dir(tmp_path / "empty")
