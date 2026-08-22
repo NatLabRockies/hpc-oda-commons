@@ -30,7 +30,7 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | `pm100` | Marconi100 | 231,238 | Zenodo | + per-job power |
 | `fdata_fugaku` | Fugaku (ARM) | 2,576,793 | Zenodo | Jul–Sep 2023 (clean quarter) |
 | `adastra_mi250` | Adastra (MI250) | 15,285 | Zenodo | 15 days |
-| `ccin2p3_2024` | CC-IN2P3 | 15,737,082 | Zenodo | Sep–Dec 2024 |
+| `ccin2p3_2024` | CC-IN2P3 | 15,737,082 | Zenodo | Sep–Dec 2024; not in the benchmark roster |
 | `nrel_eagle` | Eagle (OEDI 5860) | 11,014,796 | OEDI/https | |
 | `pwa_kit_fh2` | ForHLR II (KIT) | 114,355 | PWA/SWF | |
 | `pwa_cea_curie` | CEA Curie | 312,826 | PWA/SWF | |
@@ -59,6 +59,11 @@ All strict-validate against `oda.job.v0.2.0`.
 > sources with overlapping years. For benchmarks/aggregates use **only `nlr_eagle`** (more
 > recent, longer span) to avoid double-counting one machine. See
 > [`../benchmarking/methodology.md`](../benchmarking/methodology.md).
+
+> **Note — `ccin2p3_2024` is registered but not benchmarked.** Its 13.9M-row slice exceeds
+> what one node holds, and would dominate the matrix at 55% of all sliced rows. It remains
+> ingestable and strict-validates like any other registered dataset; it just carries no
+> benchmark card. See [`../benchmarking/methodology.md`](../benchmarking/methodology.md).
 
 ## Remaining runtime datasets
 
