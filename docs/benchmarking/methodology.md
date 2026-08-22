@@ -86,7 +86,7 @@ Exemplar: [`fresco_stampede1`](datasets/fresco_stampede1.md) — healthy span 20
 
 ## Dataset roster
 
-Base: the 23 registered runtime datasets, filtered for this benchmark.
+Base: the 24 registered runtime datasets, filtered for this benchmark.
 
 **Deduplication — `nlr_eagle` only.** `nlr_eagle` and `nrel_eagle` are the **same physical
 machine** (NREL's Eagle), ingested from two sources (NLR home-lab export vs. NREL's OEDI
@@ -105,8 +105,14 @@ fundamentally unsuitable. Under this:
 - **Excluded — too short / unsuitable:** `adastra_mi250` (a deliberately-published ~15-day
   sample; measured ~24 days — shorter than the 30-day test period, and unhealthy) and `ic2`
   (3,599 rows total; cloud tasks, not a machine time-series).
-- **Re-curate to 3 months** (data is available; a small curation task): `ccin2p3_2024`
-  (currently Dec-2024 only → pull ~3 months from its 12 monthly files), `fdata_fugaku`
+- **Excluded — exceeds single-node capacity:** `ccin2p3_2024`. Its slice is 13,933,157 rows,
+  above `MAX_NODE_ROWS` (8M), and 55% of every sliced row in the matrix — more than the next
+  four datasets combined. The 90-day window costs it little (a single year of data, so the
+  window keeps 89% of the dataset) where most datasets shed 90%+. Measured on a
+  250 GB / 104-core node: ~110 GB peak for a **single** window worker, >24 h serial per cell.
+  It previously needed big-memory nodes, which the matrix no longer uses. Like `nrel_eagle`,
+  it stays registered as valid data; only the benchmark card is withdrawn.
+- **Re-curate to 3 months** (data is available; a small curation task): `fdata_fugaku`
   (currently 2024-04 only → 3 consecutive monthly files).
 - **Qualify as-is:** the remaining datasets. Some are *thin* (`atlas_mustang`, `pwa_kit_fh2` —
   sparse rolling windows) or *short* (`atlas_opentrinity` — a healthy 80-day span < the 90-day
@@ -148,6 +154,6 @@ Knobs (defaults are the agreed methodology): `--anchor 0.80`, `--train-days 60`,
 ## Open items / next phases
 
 - Prepare + characterize the remaining datasets (surfaces per-dataset health); re-curate
-  `ccin2p3` / `fdata_fugaku`.
+  `fdata_fugaku`.
 - Benchmark-matrix runner that consumes the cards' windows.
 - HPC runner (scheduler + GPU for the `embed` step and the heavy datasets).
