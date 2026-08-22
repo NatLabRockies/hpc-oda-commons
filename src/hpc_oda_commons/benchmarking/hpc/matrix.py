@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 from hpc_oda_commons.benchmarking.hpc.config import SiteConfig
@@ -34,11 +34,14 @@ RUNTIME_MODELS: tuple[str, ...] = (
 # The model whose recipe reads the *embedded* parquet (requires a prior GPU embed pass).
 EMBEDDING_MODEL: str = "job_runtime_embedding_knn"
 
-# Models whose independent per-window fits are run in parallel across the cell's allocated
-# cores (via ``window_n_jobs``). MLP and TF-IDF kNN: both do serial single-threaded per-window
-# work that dominates on large corpora. Random Forest already parallelizes inside each fit
-# (estimator ``n_jobs=-1``), so window-level threads would oversubscribe it.
-WINDOW_PARALLEL_MODEL_TAGS: frozenset[str] = frozenset({"mlp", "tfidf_knn"})
+# Models that run their independent per-window fits concurrently (via ``window_n_jobs``).
+# MLP and TF-IDF kNN both do serial single-threaded per-window work that dominates on large
+# corpora. MoE XGBoost joins them on measurement: window-parallel beat estimator-parallel
+# 7:52 vs 11:36 on a 532k-row slice at equal cores, with the two arms' MAE agreeing to 0.02%
+# (float summation order under threading -- see docs/known-issues.md #2). Random Forest
+# already parallelizes inside each fit (``n_jobs=-1``), so window threads would oversubscribe
+# it.
+WINDOW_PARALLEL_MODEL_TAGS: frozenset[str] = frozenset({"mlp", "tfidf_knn", "moe_xgboost"})
 
 # Rolling split: 120 x 6h = 30 days test, 120 days training lookback.
 #
@@ -75,39 +78,84 @@ MODEL_SPLIT_OVERRIDES: dict[str, dict[str, object]] = {
 INPUT_SCHEMA = "oda.job.v0.2.0"
 
 
+# --- MEMORY NOTE ---------------------------------------------------------------------
+# Window workers are a memory knob, not a speed knob: each concurrent fit holds its own
+# preprocessed training set, so peak memory is roughly (rows held) + workers x (per-window
+# cost). Cores are free here (exclusive nodes); memory is the fixed resource.
+#
+# Two measurements on a 250 GB / 104-core node bound the range:
+#   * 532k-row slice, 52 workers  -> 14.5 GB peak. Small data is cheap at any worker count.
+#   * 13.9M-row slice, 1 worker   -> 110 GB peak (20.6 GB of it just holding the rows as
+#     Python objects). Per-window cost ~90 GB, so 3 concurrent windows would exhaust the
+#     node.
+#
+# Those two points come from different datasets with different column cardinalities, so
+# they bound the behaviour rather than fitting a curve -- the values below are chosen
+# conservatively within those bounds, not interpolated. An OOM costs the whole cell; an
+# unused worker slot costs nothing.
+_LIGHT_WORKERS = 32
+_HEAVY_WORKERS = 16
+_EXTREME_WORKERS = 4
+
+# Slices larger than this are not attempted. At 13.9M rows the per-window cost alone is
+# ~90 GB, which leaves no room for concurrency, and the cell needs >24h serially -- a cell
+# that can only run one window at a time for a day is not a benchmark we can schedule at
+# scale. Such datasets are skipped and reported rather than moved to a bigger node.
+MAX_NODE_ROWS = 8_000_000
+
+
 @dataclass(frozen=True)
 class Tier:
-    """A resource tier: which partition/cores/walltime a dataset's cells get."""
+    """A resource tier: the walltime and window-worker count a dataset's cells get.
+
+    Deliberately no core count. Benchmark partitions are allocated whole
+    (``OverSubscribe=EXCLUSIVE``), so a cell holds every core on its node no matter what
+    ``--cpus-per-task`` says; asking for fewer only left cores idle. The scarce resource is
+    **memory**, and what consumes it is concurrent per-window fits — hence ``window_workers``
+    rather than cores.
+    """
 
     name: str
-    partition_kind: str  # "cpu" or "bigmem" — resolved to a real partition via SiteConfig
-    cpus: int
+    partition_kind: str  # resolved to a real partition via SiteConfig
+    window_workers: int  # ``window_n_jobs`` for window-parallel models; memory-bounded
     mem: str  # "0" = all memory on the node
     time: str  # benchmark walltime (Slurm D-HH:MM:SS or HH:MM:SS)
     embed_time: str  # embedding-job walltime
     embed_mem: str  # embedding-job memory (GPU nodes are shared, so request explicitly)
 
 
-# Tiers keyed by rows in the 90-day benchmark window. Training-set size per rolling window
-# scales with this, and so does peak memory (one-hot + SVD of high-cardinality text/id
-# columns), which is why the largest datasets move to the big-memory partition. embed_mem
-# scales with the embedded output (rows x embedding dim), which the embed builds in memory.
+# Tiers keyed by rows in the slice a cell actually loads. Training-set size per rolling
+# window scales with that, and so does peak memory (one-hot + SVD of high-cardinality
+# text/id columns, times the number of windows fitted concurrently). embed_mem scales with
+# the embedded output (rows x embedding dim), which the embed builds in memory.
+#
+# Everything runs on the ordinary CPU partition. The big-memory partition is deliberately
+# unused: it is a small pool, and a benchmark cell that only fits there is a cell whose
+# memory profile we do not understand well enough to run at scale. Datasets that cannot fit
+# an ordinary node are skipped and reported, not quietly moved somewhere bigger.
+#
+# ``window_workers`` is set from measurement, not from the core count -- see MEMORY NOTE.
 TIERS: tuple[Tier, ...] = (
-    Tier("light", "cpu", 16, "0", "08:00:00", "02:00:00", "64G"),
-    Tier("heavy", "cpu", 52, "0", "1-00:00:00", "04:00:00", "128G"),
-    Tier("extreme", "bigmem", 64, "0", "2-00:00:00", "08:00:00", "256G"),
+    Tier("light", "cpu", _LIGHT_WORKERS, "0", "08:00:00", "02:00:00", "64G"),
+    Tier("heavy", "cpu", _HEAVY_WORKERS, "0", "1-00:00:00", "04:00:00", "128G"),
+    Tier("extreme", "cpu", _EXTREME_WORKERS, "0", "2-00:00:00", "08:00:00", "256G"),
 )
 _LIGHT_MAX_ROWS = 300_000
 _HEAVY_MAX_ROWS = 2_000_000
 
 
 def tier_for_rows(window_rows: int) -> Tier:
-    """Pick the resource tier for a dataset from its 90-day-window row count."""
+    """Pick the resource tier for a dataset from the row count of the slice it loads."""
     if window_rows < _LIGHT_MAX_ROWS:
         return TIERS[0]
     if window_rows < _HEAVY_MAX_ROWS:
         return TIERS[1]
     return TIERS[2]
+
+
+def fits_a_node(window_rows: int) -> bool:
+    """Whether a dataset's slice is small enough to benchmark on one ordinary node."""
+    return window_rows <= MAX_NODE_ROWS
 
 
 def slice_extension_for(card: Card) -> int:
@@ -131,7 +179,7 @@ class Card:
     """The slice of a dataset card the planner needs."""
 
     dataset: str  # short name (card filename stem), e.g. "nlr_kestrel"
-    window_rows: int
+    window_rows: int  # rows in the card's own window (submit-based)
     window_start: str
     window_end: str
     train_days: int  # the card rule's training span; 0 when the card does not state one
@@ -139,16 +187,46 @@ class Card:
     system: str
     source_table: str  # canonical prepared parquet path (relative to repo root)
     card_path: Path
+    sliced_rows: int | None = None  # rows in the slice on disk, from its slice.json
+
+    @property
+    def effective_rows(self) -> int:
+        """Rows a cell will actually load: the slice on disk if we have it, else the card's.
+
+        These diverge whenever the split needs more history than the card window holds --
+        which, since #145, is always. Sizing from the card would under-provision every cell
+        by the width of the lookback extension.
+        """
+        return self.sliced_rows if self.sliced_rows is not None else self.window_rows
 
 
-def load_cards(cards_dir: Path) -> list[Card]:
-    """Load and parse every ``*.card.json`` under ``cards_dir`` (sorted by dataset name)."""
+def load_cards(cards_dir: Path, windows_dir: Path | None = None) -> list[Card]:
+    """Load every ``*.card.json`` under ``cards_dir`` (sorted by dataset name).
+
+    When ``windows_dir`` is given, each card is annotated with the row count from the
+    matching ``<dataset>/slice.json``, so resource sizing follows the data a cell loads
+    rather than the card's own (narrower) window. Missing sidecars are not an error --
+    the card's count is then the best available estimate.
+    """
     cards: list[Card] = []
     for path in sorted(cards_dir.glob("*.card.json")):
-        cards.append(_parse_card(path))
+        card = _parse_card(path)
+        if windows_dir is not None:
+            card = replace(card, sliced_rows=_sliced_rows(windows_dir, card.dataset))
+        cards.append(card)
     if not cards:
         raise FileNotFoundError(f"no *.card.json files found under {cards_dir}")
     return cards
+
+
+def _sliced_rows(windows_dir: Path, dataset: str) -> int | None:
+    sidecar = windows_dir / dataset / "slice.json"
+    if not sidecar.exists():
+        return None
+    try:
+        return int(json.loads(sidecar.read_text(encoding="utf-8"))["rows"])
+    except (ValueError, KeyError, OSError):
+        return None
 
 
 def _parse_card(path: Path) -> Card:
@@ -179,7 +257,7 @@ class Cell:
     model_id: str  # "model.job_runtime_xgboost"
     tier: str
     partition: str
-    cpus: int
+    window_workers: int  # window_n_jobs for window-parallel models (memory-bounded)
     time: str
     table_path: str  # parquet the recipe reads, relative to repo_dir on the cluster
     recipe_path: str  # relative to the staging dir
@@ -280,7 +358,18 @@ def build_plan(
         if not card.healthy and not include_unhealthy:
             plan.skipped.append({"dataset": card.dataset, "reason": "window flagged unhealthy"})
             continue
-        tier = tier_for_rows(card.window_rows)
+        if not fits_a_node(card.effective_rows):
+            plan.skipped.append(
+                {
+                    "dataset": card.dataset,
+                    "reason": (
+                        f"slice of {card.effective_rows:,} rows exceeds what one node can "
+                        f"hold ({MAX_NODE_ROWS:,}); big-memory nodes are not used"
+                    ),
+                }
+            )
+            continue
+        tier = tier_for_rows(card.effective_rows)
         partition = site.partition(tier.partition_kind)
         window_pq = _window_parquet(card.dataset)
 
@@ -295,7 +384,7 @@ def build_plan(
                     model_id=f"model.{model_key}",
                     tier=tier.name,
                     partition=partition,
-                    cpus=tier.cpus,
+                    window_workers=tier.window_workers,
                     time=tier.time,
                     table_path=table_path,
                     recipe_path=f"recipes/{card.dataset}__{tag}.yml",
@@ -355,7 +444,6 @@ def _bench_script(cell: Cell, site: SiteConfig, staging_remote: str) -> str:
             "account": site.account,
             "partition": cell.partition,
             "time": cell.time,
-            "cpus": cell.cpus,
             "mem": _mem_for(cell),
             "job_name": cell.job_name,
             "log": f"{site.repo_dir}/logs/{cell.job_name}.%j.out",
@@ -423,7 +511,9 @@ def write_plan(plan: Plan, staging_dir: Path, site: SiteConfig) -> Path:
             f"job_runtime_{cell.model}",
             cell.table_path,
             output_dir=f"runs/{cell.dataset}/{cell.model}",
-            window_n_jobs=(cell.cpus if cell.model in WINDOW_PARALLEL_MODEL_TAGS else None),
+            window_n_jobs=(
+                cell.window_workers if cell.model in WINDOW_PARALLEL_MODEL_TAGS else None
+            ),
         )
         (staging_dir / cell.recipe_path).write_text(
             yaml.safe_dump(recipe, sort_keys=False), encoding="utf-8"

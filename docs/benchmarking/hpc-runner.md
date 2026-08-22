@@ -33,7 +33,7 @@ gitignored — so real hostnames, accounts, users, and paths stay off the repo.
    ```
 
    Set your ssh alias, username, Slurm account, `remote_base`, conda env prefix, and the
-   `cpu` / `bigmem` / `gpu` partition names. The loader rejects leftover `your-…` /
+   `cpu` / `gpu` partition names. The loader rejects leftover `your-…` /
    `/path/to/…` placeholders so a half-filled config can't be run by accident.
 
 2. **Provision the cluster env** under `remote_base/env` (a conda env with this package
@@ -56,7 +56,7 @@ gitignored — so real hostnames, accounts, users, and paths stay off the repo.
 ## Pipeline
 
 ```
-plan ─▶ slice ─▶ stage (rsync) ─▶ embed (GPU) ─▶ benchmark (CPU/bigmem) ─▶ collect ─▶ aggregate
+plan ─▶ slice ─▶ stage (rsync) ─▶ embed (GPU) ─▶ benchmark (CPU) ─▶ collect ─▶ aggregate
 └──────── local, this repo ───────┘└──────────────── on the cluster ─────────────────┘
 ```
 
@@ -156,22 +156,50 @@ pulls them back and `aggregate` builds the leaderboard (equivalently, `hpc-oda a
 
 ## Resource tiers
 
-Each dataset's cells get a tier from its 90-day-window row count (`plan.json` records the
-choice). Peak memory tracks training-set size because of one-hot + SVD of high-cardinality
-text/id columns, so the largest datasets move to the big-memory partition.
+Each dataset's cells get a tier from the row count of the **slice they load** — read from
+each `slice.json`, not from the card's own narrower window (`plan.json` records the choice).
+Every tier runs on the ordinary `cpu` partition; cells take the whole node, so the tier sets
+walltime and the window-worker budget, not cores.
 
-| Tier      | Window rows        | Partition | CPUs | Walltime   |
-| --------- | ------------------ | --------- | ---- | ---------- |
-| `light`   | < 300 k            | `cpu`     | 16   | 8h         |
-| `heavy`   | 300 k – 2 M        | `cpu`     | 52   | 1 day      |
-| `extreme` | ≥ 2 M              | `bigmem`  | 64   | 2 days     |
+| Tier      | Rows loaded   | Partition | Window workers | Walltime |
+| --------- | ------------- | --------- | -------------- | -------- |
+| `light`   | < 300 k       | `cpu`     | 32             | 8h       |
+| `heavy`   | 300 k – 2 M   | `cpu`     | 16             | 1 day    |
+| `extreme` | 2 M – 8 M     | `cpu`     | 4              | 2 days   |
+| —         | > 8 M         | *skipped* | —              | —        |
+
+Worker counts fall as datasets grow because each concurrent fit holds its own preprocessed
+training set. Two measurements on a 250 GB / 104-core node bound the choice: a 532k-row
+slice peaked at 14.5 GB with 52 workers, while a 13.9M-row slice peaked at **110 GB with a
+single worker** — 20.6 GB of that just holding the rows as Python objects, leaving a
+per-window cost near 90 GB. Those points come from different datasets with different column
+cardinalities, so they bound the behaviour rather than fitting a curve; the table is
+conservative within them.
+
+**Slices above `MAX_NODE_ROWS` are skipped, not relocated.** At 13.9M rows a cell has no
+room for concurrency and needs more than a day of serial work. `plan` reports each skip with
+its reason. Raising the limit is a deliberate act, and should follow a measurement.
 
 Embedding jobs run on the `gpu` partition (`fp16`, one GPU) with a per-tier walltime.
 
-**MLP cells use the whole allocation.** The generated MLP recipe sets `window_n_jobs` to the
-tier's CPU count, so its independent per-window fits run across all allocated cores (BLAS
-pinned to one thread per worker). Other models are unaffected: Random Forest already
-parallelizes inside each fit, and the rest run windows sequentially.
+### Cores are free; workers are not
+
+Benchmark partitions are allocated whole (`OverSubscribe=EXCLUSIVE`), so a cell holds every
+core on its node regardless of `--cpus-per-task`. The scripts therefore request
+`--exclusive`, omit a core count entirely, and read the real one at runtime
+(`OMP_NUM_THREADS=${SLURM_CPUS_ON_NODE:-1}`). Asking for fewer cores never bought anything —
+it just left them idle.
+
+`window_n_jobs` is sized separately, because concurrent per-window fits cost **memory**, not
+cores: each holds its own preprocessed training set. That is why the bigger tiers get
+*fewer* workers, not more. `mlp`, `tfidf_knn`, and `moe_xgboost` are window-parallel (BLAS
+pinned to one thread per worker); Random Forest already parallelizes inside each fit, and
+the rest run windows sequentially.
+
+MoE XGBoost was added to that set on measurement: window-parallel finished a 532k-row slice
+in 7:52 against 11:36 for estimator-parallel at equal cores, with the two arms' MAE agreeing
+to 0.02% — float summation order under threading, per [`known-issues.md`](../known-issues.md)
+(#2), not a behavioural difference.
 
 ## Benchmark configuration
 

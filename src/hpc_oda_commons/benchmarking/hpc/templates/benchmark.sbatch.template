@@ -4,13 +4,18 @@
 #SBATCH --time={{time}}
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task={{cpus}}
+#SBATCH --exclusive
 #SBATCH --mem={{mem}}
 #SBATCH --job-name={{job_name}}
 #SBATCH --output={{log}}
 # Benchmark cell: model={{model_id}} dataset={{dataset_id}} window={{window}} tier={{tier}}
 set -euo pipefail
 export HPC_ODA_OFFLINE=1
-export OMP_NUM_THREADS={{cpus}}
+# The cell has the node to itself, so take however many cores it actually has rather
+# than a count baked in at plan time. Asking for fewer buys nothing under an exclusive
+# partition -- the node is allocated whole either way. Models that parallelise across
+# windows cap their own worker count in the recipe (window_n_jobs), because workers cost
+# memory rather than cores, and memory is the fixed resource here.
+export OMP_NUM_THREADS=${SLURM_CPUS_ON_NODE:-1}
 cd {{workdir}}
 {{hpc_oda}} benchmark {{recipe}}

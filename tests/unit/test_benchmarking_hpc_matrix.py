@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pyarrow as pa
@@ -13,9 +14,11 @@ from hpc_oda_commons.benchmark.recipes import load_recipe
 from hpc_oda_commons.benchmarking.hpc.config import SiteConfigError, load_site_config
 from hpc_oda_commons.benchmarking.hpc.matrix import (
     EMBEDDING_MODEL,
+    MAX_NODE_ROWS,
     MODEL_SPLIT_OVERRIDES,
     RUNTIME_MODELS,
     SPLIT,
+    TIERS,
     Card,
     build_plan,
     build_recipe,
@@ -82,10 +85,19 @@ def test_load_site_config_rejects_placeholders(tmp_path: Path) -> None:
         load_site_config(_write_site(tmp_path, text))
 
 
-def test_load_site_config_requires_all_partitions(tmp_path: Path) -> None:
-    text = _VALID_SITE.replace("  bigmem: bigmem\n", "")
-    with pytest.raises(SiteConfigError, match="bigmem"):
+def test_load_site_config_requires_the_partitions_it_schedules_on(tmp_path: Path) -> None:
+    text = _VALID_SITE.replace("  cpu: standard\n", "")
+    with pytest.raises(SiteConfigError, match="cpu"):
         load_site_config(_write_site(tmp_path, text))
+
+
+def test_bigmem_is_not_a_required_partition(tmp_path: Path) -> None:
+    """Nothing is scheduled there any more, so a site must not be made to name one."""
+    text = _VALID_SITE.replace("  bigmem: bigmem\n", "")
+
+    cfg = load_site_config(_write_site(tmp_path, text))
+
+    assert cfg.partition("cpu") == "standard"
 
 
 # --- tiers --------------------------------------------------------------------------
@@ -130,7 +142,8 @@ def test_build_plan_cell_and_embed_counts(tmp_path: Path) -> None:
     assert len(plan.cells) == 2 * len(RUNTIME_MODELS)
     assert len(plan.embeds) == 2  # one embed job per dataset
     big_cells = [c for c in plan.cells if c.dataset == "big"]
-    assert {c.partition for c in big_cells} == {"bigmem"}  # extreme tier → bigmem
+    # Even the extreme tier runs on the ordinary CPU partition now.
+    assert {c.partition for c in big_cells} == {"standard"}
 
 
 def test_build_plan_embedding_cells_read_embedded_parquet(tmp_path: Path) -> None:
@@ -184,11 +197,11 @@ def test_write_plan_emits_valid_recipes_and_filled_scripts(tmp_path: Path) -> No
     assert plan_json["n_embeds"] == 1
 
 
-def test_mlp_cells_run_windows_across_allocated_cores(tmp_path: Path) -> None:
+def test_window_parallel_cells_get_the_tier_worker_count(tmp_path: Path) -> None:
     import yaml
 
     cfg = load_site_config(_write_site(tmp_path))
-    # light tier (16 cpus) and extreme tier (64 cpus) so window_n_jobs must track cpus.
+    # light tier and extreme tier, so window_n_jobs must track the tier's worker budget.
     plan = build_plan([_card("small", 1000), _card("big", 5_000_000)], cfg, plan_id="p1")
     staging = tmp_path / "staging"
     write_plan(plan, staging, cfg)
@@ -199,14 +212,101 @@ def test_mlp_cells_run_windows_across_allocated_cores(tmp_path: Path) -> None:
         )
         return payload["split"]
 
-    # MLP and TF-IDF kNN spread their independent per-window fits over the cell's cores.
-    assert _split("small", "mlp")["window_n_jobs"] == 16  # light tier
-    assert _split("big", "mlp")["window_n_jobs"] == 64  # extreme tier
-    assert _split("small", "tfidf_knn")["window_n_jobs"] == 16  # light tier
-    assert _split("big", "tfidf_knn")["window_n_jobs"] == 64  # extreme tier
+    light, extreme = TIERS[0].window_workers, TIERS[2].window_workers
+    # Workers are a memory budget, so the bigger tier gets *fewer*, not more.
+    assert extreme < light
+    for tag in ("mlp", "tfidf_knn", "moe_xgboost"):
+        assert _split("small", tag)["window_n_jobs"] == light
+        assert _split("big", tag)["window_n_jobs"] == extreme
     # RF/XGBoost run windows sequentially (RF already parallelizes inside each fit).
     assert "window_n_jobs" not in _split("small", "xgboost")
     assert "window_n_jobs" not in _split("big", "random_forest")
+
+
+# --- node-sized cells (#145) --------------------------------------------------------
+
+
+def test_cells_are_sized_from_the_slice_they_load_not_the_card(tmp_path: Path) -> None:
+    """The card window and the slice on disk diverge by the lookback extension.
+
+    Sizing from the card would under-provision every cell by that width -- e.g. a dataset
+    whose card says 1.6M rows but whose slice holds 2.4M.
+    """
+    cfg = load_site_config(_write_site(tmp_path))
+    card = _card("ds", 1_000)  # card says "light"
+    card = replace(card, sliced_rows=5_000_000)  # the slice on disk says otherwise
+
+    plan = build_plan([card], cfg, plan_id="p1")
+
+    assert {c.tier for c in plan.cells} == {"extreme"}
+
+
+def test_load_cards_reads_the_slice_sidecar(tmp_path: Path) -> None:
+    cards_dir, windows_dir = tmp_path / "cards", tmp_path / "windows"
+    cards_dir.mkdir()
+    (cards_dir / "ds.card.json").write_text(
+        json.dumps(
+            {
+                "benchmark_window": {
+                    "n_rows": 100,
+                    "window_start": "2025-03-29",
+                    "window_end": "2025-06-26",
+                    "healthy": True,
+                    "rule": {"train_days": 60, "test_days": 30},
+                },
+                "source": {"system": "ds", "table_path": "data/datasets/ds/data.parquet"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (windows_dir / "ds").mkdir(parents=True)
+    (windows_dir / "ds" / "slice.json").write_text(json.dumps({"rows": 4242}), encoding="utf-8")
+
+    (with_slice,) = load_cards(cards_dir, windows_dir)
+    (without,) = load_cards(cards_dir)
+
+    assert with_slice.sliced_rows == 4242
+    assert with_slice.effective_rows == 4242
+    # No sidecar: fall back to the card rather than failing.
+    assert without.sliced_rows is None
+    assert without.effective_rows == 100
+
+
+def test_a_slice_too_big_for_one_node_is_skipped_with_a_reason(tmp_path: Path) -> None:
+    """Big-memory nodes are not used, so an outsized dataset is reported, not relocated."""
+    cfg = load_site_config(_write_site(tmp_path))
+    card = replace(_card("huge", 1_000), sliced_rows=MAX_NODE_ROWS + 1)
+
+    plan = build_plan([card, _card("ok", 1_000)], cfg, plan_id="p1")
+
+    assert {c.dataset for c in plan.cells} == {"ok"}
+    (skipped,) = plan.skipped
+    assert skipped["dataset"] == "huge"
+    assert "exceeds what one node can hold" in skipped["reason"]
+
+
+def test_no_cell_is_scheduled_on_a_big_memory_partition(tmp_path: Path) -> None:
+    cfg = load_site_config(_write_site(tmp_path))
+    cards = [_card("a", 1_000), _card("b", 1_000_000), _card("c", 5_000_000)]
+
+    plan = build_plan(cards, cfg, plan_id="p1")
+
+    assert {t.partition_kind for t in TIERS} == {"cpu"}
+    assert {c.partition for c in plan.cells} == {"standard"}
+
+
+def test_bench_script_takes_the_whole_node_and_reads_its_core_count(tmp_path: Path) -> None:
+    """Cores are free under an exclusive partition; a baked-in count only wastes them."""
+    cfg = load_site_config(_write_site(tmp_path))
+    plan = build_plan([_card("ds", 1000)], cfg, plan_id="p1")
+    staging = tmp_path / "staging"
+    write_plan(plan, staging, cfg)
+
+    script = (staging / plan.cells[0].script_path).read_text(encoding="utf-8")
+
+    assert "--exclusive" in script
+    assert "--cpus-per-task" not in script
+    assert "OMP_NUM_THREADS=${SLURM_CPUS_ON_NODE:-1}" in script
 
 
 # --- per-model split overrides (#145) -----------------------------------------------

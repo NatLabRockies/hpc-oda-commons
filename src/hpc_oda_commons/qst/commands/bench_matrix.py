@@ -135,6 +135,16 @@ def bench_matrix_plan(
             "--include-unhealthy", help="Include datasets whose window is flagged unhealthy."
         ),
     ] = False,
+    windows_dir: Annotated[
+        Path,
+        typer.Option(
+            "--windows-dir",
+            help=(
+                "Sliced windows dir, read for each slice.json so cells are sized from the "
+                "rows they actually load rather than the card's narrower window."
+            ),
+        ),
+    ] = Path(".hpc_oda/bench-matrix/data/windows"),
 ) -> None:
     """Generate the benchmark-matrix plan (recipes + sbatch scripts + plan.json)."""
     try:
@@ -143,7 +153,13 @@ def bench_matrix_plan(
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
 
-    cards = load_cards(cards_dir)
+    cards = load_cards(cards_dir, windows_dir if windows_dir.exists() else None)
+    if not windows_dir.exists():
+        console.print(
+            f"[yellow]No slices under {windows_dir}[/yellow] — sizing cells from the cards' "
+            "own windows, which under-counts the rows a cell loads. Run "
+            "[cyan]bench-matrix slice[/cyan] first for accurate sizing."
+        )
     pid = plan_id or datetime.now().strftime("%Y%m%d-%H%M%S")
     plan = build_plan(cards, cfg, plan_id=pid, include_unhealthy=include_unhealthy)
 
@@ -153,9 +169,10 @@ def bench_matrix_plan(
     # --- summary ---
     table = Table(title=f"Benchmark matrix — plan {pid}")
     table.add_column("dataset")
-    table.add_column("window rows", justify="right")
+    table.add_column("rows loaded", justify="right")
     table.add_column("tier")
     table.add_column("partition")
+    table.add_column("workers", justify="right")
     table.add_column("models", justify="right")
     by_dataset: dict[str, int] = {}
     for cell in plan.cells:
@@ -163,12 +180,13 @@ def bench_matrix_plan(
     card_by_name = {c.dataset: c for c in cards}
     for dataset in sorted(by_dataset):
         card = card_by_name[dataset]
-        tier = tier_for_rows(card.window_rows)
+        tier = tier_for_rows(card.effective_rows)
         table.add_row(
             dataset,
-            f"{card.window_rows:,}",
+            f"{card.effective_rows:,}",
             tier.name,
             _partition_for(plan, dataset),
+            str(tier.window_workers),
             str(by_dataset[dataset]),
         )
     console.print(table)
@@ -180,9 +198,11 @@ def bench_matrix_plan(
         f"+ {len(plan.embeds)} embedding jobs."
     )
     if plan.skipped:
-        names = ", ".join(s["dataset"] for s in plan.skipped)
-        console.print(f"[yellow]Skipped {len(plan.skipped)}[/yellow] (unhealthy window): {names}")
-        console.print("  Re-run with [cyan]--include-unhealthy[/cyan] to include them.")
+        console.print(f"[yellow]Skipped {len(plan.skipped)}[/yellow]:")
+        for entry in plan.skipped:
+            console.print(f"  [yellow]{entry['dataset']}[/yellow] — {entry['reason']}")
+        if any("unhealthy" in e["reason"] for e in plan.skipped):
+            console.print("  Re-run with [cyan]--include-unhealthy[/cyan] to include those.")
     console.print(f"Staging dir: [cyan]{staging_dir}[/cyan]")
     console.print(f"Plan manifest: [cyan]{plan_path}[/cyan]")
 
