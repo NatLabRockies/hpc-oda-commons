@@ -1,35 +1,35 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.fdata_fugaku",
-  "generated_at": "2026-07-18T19:53:42.870105+00:00",
+  "generated_at": "2026-08-22T15:07:29.924791+00:00",
   "source": {
     "table_path": "data/datasets/fdata_fugaku/data.parquet",
     "system": "Fugaku",
     "descriptor": "dataset.job_runtime.fdata_fugaku"
   },
   "characterization": {
-    "n_rows": 2576793,
+    "n_rows": 5793789,
     "full_span": {
-      "start": "2023-06-30",
+      "start": "2023-02-28",
       "end": "2023-09-30"
     },
     "healthy_span": {
-      "start": "2023-06-30",
+      "start": "2023-03-01",
       "end": "2023-09-30",
-      "days": 93,
-      "rows": 2576793
+      "days": 214,
+      "rows": 5793568
     },
     "daily_volume": {
-      "median": 25087.0,
+      "median": 20222.0,
       "min": 2583,
       "max": 113432,
-      "gap_floor": 1254.4
+      "gap_floor": 1011.1
     },
-    "rate_per_day": 27707.5,
+    "rate_per_day": 27072.7,
     "gaps": [],
     "columns": {
       "user": {
-        "cardinality": 826,
+        "cardinality": 1161,
         "missingness": 0.0
       },
       "job_state": {
@@ -39,10 +39,10 @@
     },
     "runtime_seconds": {
       "min": 1.0,
-      "median": 2065.0,
-      "p90": 39923.0,
-      "p99": 158888.1,
-      "max": 259175.0
+      "median": 1680.0,
+      "p90": 31002.2,
+      "p99": 141545.5,
+      "max": 259201.0
     }
   },
   "benchmark_window": {
@@ -51,12 +51,12 @@
       "train_days": 60,
       "test_days": 30
     },
-    "window_start": "2023-06-30",
-    "window_end": "2023-09-27",
-    "test_start": "2023-08-29",
-    "test_end": "2023-09-27",
-    "n_rows": 2453969,
-    "rate_per_day": 27266.3,
+    "window_start": "2023-05-21",
+    "window_end": "2023-08-18",
+    "test_start": "2023-07-20",
+    "test_end": "2023-08-18",
+    "n_rows": 3311884,
+    "rate_per_day": 36798.7,
     "gaps_in_window": [],
     "healthy": true,
     "rationale": "window END at 80% of healthy span; clear of all missing blocks."
@@ -73,15 +73,15 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "a79f56da07bdff876a5c47ba3d082b18a12fab77",
+      "git_commit": "49e3f26367484d06d29b05263f5fa78519c3764b",
       "source_hash": null
     },
     "inputs": [
       {
         "path": "data/datasets/fdata_fugaku/data.parquet",
-        "sha256": "e127f180acd9cb1768a4f0fa2e367a98ee203f37a54fbd821cb132f2a603e583",
-        "size_bytes": 60349120,
-        "mtime_epoch": 1784404352.1837244
+        "sha256": "1592976399098dc801f743413857617dbf7b0c70127e6f5ec924b521f02f7718",
+        "size_bytes": 142972847,
+        "mtime_epoch": 1787411048.7850702
       }
     ]
   }

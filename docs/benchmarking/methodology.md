@@ -106,8 +106,12 @@ fundamentally unsuitable. Under this:
   sample; measured ~24 days — shorter than the 30-day test period, and unhealthy) and `ic2`
   (3,599 rows total; cloud tasks, not a machine time-series).
 - **Re-curate to 3 months** (data is available; a small curation task): `ccin2p3_2024`
-  (currently Dec-2024 only → pull ~3 months from its 12 monthly files), `fdata_fugaku`
-  (currently 2024-04 only → 3 consecutive monthly files).
+  (currently Dec-2024 only → pull ~3 months from its 12 monthly files).
+- **Re-curated (#153):** `fdata_fugaku` went from 3 monthly files (2023-07..09) to 7
+  (2023-03..09). Its window had started on the first day of the ingested span, so the
+  slice's 60-day lookback extension returned nothing and every rolling window trained on
+  less history than the split asks for. The longer span moves the anchored window to
+  2023-05-21..2023-08-18 with 81 days behind it, so the extension is now fully backed.
 - **Qualify as-is:** the remaining datasets. Some are *thin* (`atlas_mustang`, `pwa_kit_fh2` —
   sparse rolling windows) or *short* (`atlas_opentrinity` — a healthy 80-day span < the 90-day
   target, included with an 80-day window and reduced early-window lookback); all flagged on
@@ -148,6 +152,6 @@ Knobs (defaults are the agreed methodology): `--anchor 0.80`, `--train-days 60`,
 ## Open items / next phases
 
 - Prepare + characterize the remaining datasets (surfaces per-dataset health); re-curate
-  `ccin2p3` / `fdata_fugaku`.
+  `ccin2p3`.
 - Benchmark-matrix runner that consumes the cards' windows.
 - HPC runner (scheduler + GPU for the `embed` step and the heavy datasets).

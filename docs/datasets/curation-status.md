@@ -28,7 +28,7 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | Dataset | System | Rows kept | Source | Notes |
 |---|---|---|---|---|
 | `pm100` | Marconi100 | 231,238 | Zenodo | + per-job power |
-| `fdata_fugaku` | Fugaku (ARM) | 2,576,793 | Zenodo | Jul–Sep 2023 (clean quarter) |
+| `fdata_fugaku` | Fugaku (ARM) | 5,793,789 | Zenodo | Mar–Sep 2023 (7 months, no missing blocks) |
 | `adastra_mi250` | Adastra (MI250) | 15,285 | Zenodo | 15 days |
 | `ccin2p3_2024` | CC-IN2P3 | 15,737,082 | Zenodo | Sep–Dec 2024 |
 | `nrel_eagle` | Eagle (OEDI 5860) | 11,014,796 | OEDI/https | |
@@ -52,7 +52,7 @@ the public-dataset-ingestion RFC ([`../design/public-dataset-ingestion.md`](../d
 | `alcf_djc_aurora` | Aurora (Argonne) | 927,999 | ALCF (manual) | PBS, 2025-2026, real walltime |
 | `alcf_djc_theta` | Theta (Argonne) | 540,391 | ALCF (manual) | Cobalt/PBS, 2017-2023 (KNL), real walltime |
 
-~78M jobs across SLURM / LSF / PBS / Torque / SWF and cloud, 1996–2026, x86 / ARM / GPU, home-lab included.
+~81M jobs across SLURM / LSF / PBS / Torque / SWF and cloud, 1996–2026, x86 / ARM / GPU, home-lab included.
 All strict-validate against `oda.job.v0.2.0`.
 
 > **Note — `nrel_eagle` and `nlr_eagle` are the same machine** (NREL's Eagle), from two

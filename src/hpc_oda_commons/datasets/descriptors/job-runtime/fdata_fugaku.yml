@@ -1,15 +1,17 @@
 dataset_id: dataset.job_runtime.fdata_fugaku
 schema_version: oda.dataset.v0.1.0
-name: F-DATA (Fugaku Jobs, Jul–Sep 2023)
-version: 1.1.0
+name: F-DATA (Fugaku Jobs, Mar–Sep 2023)
+version: 1.2.0
 description: >
   Fujitsu/Fugaku job records from F-DATA (RIKEN R-CCS / University of Bologna).
-  This descriptor curates a gap-free three-month slice (2023-07 through 2023-09) as the
-  premium runtime slice — an outage-free 90-day window for the rolling benchmark. Fugaku
-  takes periodic ~3-day maintenance outages, so this quarter was chosen by scanning for an
-  outage-free period (the recent Jan–Apr 2024 had two 3-day full outages and no clean 90-day
-  window). The full dataset spans Mar 2021 - Apr 2024 (38 monthly parquet files, ~24M jobs,
-  ~28 GB). Runtime-prediction target = duration (seconds).
+  This descriptor curates a seven-month slice (2023-03 through 2023-09). The benchmark's
+  rolling split trains on a 120-day lookback, so the card window needs ~60 days of history
+  behind it; the previous three-month curation (2023-07..09) put the window on the first day
+  of the ingested span, leaving every rolling window short of history. Seven months puts the
+  80%-anchored window far enough in to be backed by real history. Fugaku takes periodic
+  ~3-day maintenance outages, so the window rule health-gates and shifts the window off any
+  missing block. The full dataset spans Mar 2021 - Apr 2024 (38 monthly parquet files, ~24M
+  jobs, ~28 GB). Runtime-prediction target = duration (seconds).
   Rich per-job power/perf counters (econ, avg/min/max pcon, flops, mbwidth) are
   available for a later power phase.
 problem_domains: [job-runtime-prediction, job-power-prediction]
@@ -19,14 +21,30 @@ citation: { doi: "10.5281/zenodo.11467483", url: "https://zenodo.org/records/114
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [fugaku, a64fx, fujitsu, arm, power]
 size:
-  default_bytes: 2601266499
+  default_bytes: 5870701335
   full_bytes: 28000000000
-  rows_hint: "Jul-Sep 2023 (3 clean months); ~24M full"
+  rows_hint: "Mar-Sep 2023 (7 months); ~24M full"
 
 source:
   kind: zenodo
   record: "11467483"
   resources:
+    - filename: "23_03.parquet"
+      url: "https://zenodo.org/records/11467483/files/23_03.parquet"
+      sha256: 88a4327084d0ae355d43c76f836f68f6ee954f9202e6ea37da45c16e01826aa9
+      bytes: 728247174
+    - filename: "23_04.parquet"
+      url: "https://zenodo.org/records/11467483/files/23_04.parquet"
+      sha256: 7213182439a75bd58607efb850e81dbadbe24be2144921338eccb0a4cb37d593
+      bytes: 575431429
+    - filename: "23_05.parquet"
+      url: "https://zenodo.org/records/11467483/files/23_05.parquet"
+      sha256: be9750b2aaceca9d4c443182403c89ef6fcf49a72522ee41cbfb653cdebca67d
+      bytes: 635235337
+    - filename: "23_06.parquet"
+      url: "https://zenodo.org/records/11467483/files/23_06.parquet"
+      sha256: 463f50142045ae79dfe502be1123239850a0f4ab10675b0679c23cd076eb8812
+      bytes: 1330520896
     - filename: "23_07.parquet"
       url: "https://zenodo.org/records/11467483/files/23_07.parquet"
       sha256: eaed73c23bae77d51901bd946d7c7f1c80b17403305dab72f8e9435acb87a31f
