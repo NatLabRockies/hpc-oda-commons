@@ -11,6 +11,9 @@
 #SBATCH --output={{log}}
 # Embed dataset={{dataset_id}} window={{window}} with model={{model}} on GPU (reused by embedding_knn)
 set -euo pipefail
+# The env is the only source of truth for what this job imports (see the benchmark
+# template): never fall back to the submitting user's ~/.local site-packages.
+export PYTHONNOUSERSITE=1
 # Load the embedding model from the pre-staged shared cache — compute nodes have no internet.
 export HF_HOME={{hf_home}}
 export HF_HUB_OFFLINE=1
