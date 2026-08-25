@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
@@ -172,6 +173,39 @@ def slice_extension_for(card: Card) -> int:
 def _model_tag(model_key: str) -> str:
     """Short, filename-safe tag for a model (``job_runtime_xgboost`` → ``xgboost``)."""
     return model_key.removeprefix("job_runtime_")
+
+
+class ModelSelectionError(ValueError):
+    """Raised when a requested exclusion names no model in the matrix."""
+
+
+def select_models(exclude: Sequence[str] = ()) -> tuple[str, ...]:
+    """``RUNTIME_MODELS`` minus ``exclude``, preserving the roster's order.
+
+    Names may be full model keys (``job_runtime_mlp``) or the short tags that appear in
+    plan output and ``submit --only-model`` (``mlp``). Whether a model belongs to the
+    benchmark and whether it earns its wall-clock in a *given run* are different
+    questions; this answers the second without editing ``RUNTIME_MODELS``, which answers
+    the first.
+
+    An unknown name is an error rather than a no-op: a typo'd exclusion that quietly
+    planned the full matrix is exactly the surprise this exists to prevent (#156).
+    """
+    by_name = {m: m for m in RUNTIME_MODELS}
+    by_name.update({_model_tag(m): m for m in RUNTIME_MODELS})
+
+    unknown = sorted({name for name in exclude if name not in by_name})
+    if unknown:
+        raise ModelSelectionError(
+            f"unknown model(s) to exclude: {', '.join(unknown)}. "
+            f"Known models: {', '.join(sorted(by_name))}."
+        )
+
+    dropped = {by_name[name] for name in exclude}
+    kept = tuple(m for m in RUNTIME_MODELS if m not in dropped)
+    if not kept:
+        raise ModelSelectionError("every model was excluded — nothing left to plan.")
+    return kept
 
 
 @dataclass

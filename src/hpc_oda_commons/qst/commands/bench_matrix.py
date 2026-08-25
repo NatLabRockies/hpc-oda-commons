@@ -27,8 +27,10 @@ from hpc_oda_commons.benchmarking.hpc.config import (
 )
 from hpc_oda_commons.benchmarking.hpc.matrix import (
     RUNTIME_MODELS,
+    ModelSelectionError,
     build_plan,
     load_cards,
+    select_models,
     slice_extension_for,
     tier_for_rows,
     write_plan,
@@ -129,6 +131,16 @@ def bench_matrix_plan(
         str | None,
         typer.Option("--plan-id", help="Plan id (default: timestamp). Names the staging subdir."),
     ] = None,
+    exclude_model: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--exclude-model",
+            help=(
+                "Leave a model out of the matrix (repeatable). Full key "
+                "(job_runtime_mlp) or short tag (mlp)."
+            ),
+        ),
+    ] = None,
     include_unhealthy: Annotated[
         bool,
         typer.Option(
@@ -153,6 +165,12 @@ def bench_matrix_plan(
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
 
+    try:
+        models = select_models(exclude_model or [])
+    except ModelSelectionError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
     cards = load_cards(cards_dir, windows_dir if windows_dir.exists() else None)
     if not windows_dir.exists():
         console.print(
@@ -161,7 +179,7 @@ def bench_matrix_plan(
             "[cyan]bench-matrix slice[/cyan] first for accurate sizing."
         )
     pid = plan_id or datetime.now().strftime("%Y%m%d-%H%M%S")
-    plan = build_plan(cards, cfg, plan_id=pid, include_unhealthy=include_unhealthy)
+    plan = build_plan(cards, cfg, plan_id=pid, include_unhealthy=include_unhealthy, models=models)
 
     staging_dir = out / pid
     plan_path = write_plan(plan, staging_dir, cfg)
@@ -194,9 +212,12 @@ def bench_matrix_plan(
     n_datasets = len(by_dataset)
     console.print(
         f"[green]Planned[/green] {len(plan.cells)} benchmark cells "
-        f"({n_datasets} datasets x {len(RUNTIME_MODELS)} models) "
+        f"({n_datasets} datasets x {len(plan.models)} models) "
         f"+ {len(plan.embeds)} embedding jobs."
     )
+    left_out = [m for m in RUNTIME_MODELS if m not in plan.models]
+    if left_out:
+        console.print(f"[yellow]Excluded {len(left_out)} model(s)[/yellow]: {', '.join(left_out)}")
     if plan.skipped:
         console.print(f"[yellow]Skipped {len(plan.skipped)}[/yellow]:")
         for entry in plan.skipped:

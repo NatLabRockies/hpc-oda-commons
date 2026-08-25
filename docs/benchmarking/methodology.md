@@ -26,6 +26,14 @@ document text. **Any leaderboard number produced before that fix overstates accu
 amount that varies per dataset, so it is not comparable with numbers produced after it** —
 re-run rather than mix the two.
 
+**MLP is excluded from the fleet run** (`--exclude-model mlp`). `job_runtime_mlp` remains a
+registered, in-scope model — it is simply not worth its wall-clock at this scale. It has
+measured clearly uncompetitive on every dataset we have run it on, and it owns the matrix's
+long tail: in the last full run its cells were the only ones killed at the walltime wall
+(three of them after 14+ hours) while every other model on the same dataset finished inside
+two. Excluding it is a *per-run* decision expressed on the command line, not a change to the
+roster in `RUNTIME_MODELS` (#156); a future run that wants it back passes no flag.
+
 ## Benchmark configuration
 
 Fixed rolling-window evaluation for every dataset:

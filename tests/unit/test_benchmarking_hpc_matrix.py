@@ -20,10 +20,12 @@ from hpc_oda_commons.benchmarking.hpc.matrix import (
     SPLIT,
     TIERS,
     Card,
+    ModelSelectionError,
     build_plan,
     build_recipe,
     load_cards,
     render_template,
+    select_models,
     slice_extension_for,
     tier_for_rows,
     write_plan,
@@ -497,3 +499,58 @@ def test_slice_dataset_records_which_window_it_wrote(tmp_path: Path) -> None:
     assert provenance["effective_window"] == {"start": "2024-12-22", "end": "2025-03-31"}
     assert provenance["extra_lookback_days"] == 10
     assert provenance["rows"] == n == 4
+
+
+# --- model selection (#156) ---------------------------------------------------------
+
+
+def test_no_exclusions_plans_the_whole_roster() -> None:
+    assert select_models() == RUNTIME_MODELS
+
+
+def test_a_model_can_be_excluded_by_key_or_by_tag() -> None:
+    """Both spellings appear in the tooling -- plan output uses tags, the roster uses keys."""
+    assert select_models(["job_runtime_mlp"]) == select_models(["mlp"])
+    assert "job_runtime_mlp" not in select_models(["mlp"])
+
+
+def test_exclusion_preserves_roster_order_and_drops_only_what_was_named() -> None:
+    kept = select_models(["mlp", "job_runtime_baseline"])
+
+    assert kept == tuple(
+        m for m in RUNTIME_MODELS if m not in {"job_runtime_mlp", "job_runtime_baseline"}
+    )
+
+
+def test_an_unknown_exclusion_is_an_error_not_a_silent_no_op() -> None:
+    """A typo that quietly planned the full matrix is the surprise this option prevents."""
+    with pytest.raises(ModelSelectionError, match="job_runtime_mpl"):
+        select_models(["job_runtime_mpl"])
+
+
+def test_excluding_everything_is_an_error() -> None:
+    with pytest.raises(ModelSelectionError, match="nothing left to plan"):
+        select_models(list(RUNTIME_MODELS))
+
+
+def test_excluding_the_embedding_model_drops_the_embed_jobs(tmp_path: Path) -> None:
+    """Nothing but ``embedding_knn`` consumes an embedded parquet, so the GPU pass is moot."""
+    cfg = load_site_config(_write_site(tmp_path))
+    models = select_models(["embedding_knn"])
+
+    plan = build_plan([_card("ds", 1000)], cfg, plan_id="p1", models=models)
+
+    assert plan.embeds == []
+    assert not any(c.needs_embed for c in plan.cells)
+
+
+def test_an_excluded_model_gets_no_cells_recipes_or_scripts(tmp_path: Path) -> None:
+    cfg = load_site_config(_write_site(tmp_path))
+    plan = build_plan([_card("ds", 1000)], cfg, plan_id="p1", models=select_models(["mlp"]))
+    staging = tmp_path / "staging"
+    write_plan(plan, staging, cfg)
+
+    assert len(plan.cells) == len(RUNTIME_MODELS) - 1
+    assert "mlp" not in {c.model for c in plan.cells}
+    assert not list(staging.glob("recipes/*__mlp.yml"))
+    assert not list(staging.glob("scripts/*__mlp.sbatch"))
