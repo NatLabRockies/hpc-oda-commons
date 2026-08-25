@@ -86,6 +86,28 @@ by the same BLAS summation-order mechanism above:
   **neighbor tie** when two training jobs sit at exactly equal cosine distance. Defaults to
   `window_n_jobs=1`. Equivalence to the pre-#117 path is pinned by a golden-value test.
 
+### Resolved under this caveat — randomized SVD non-convergence ([#159](https://github.com/NatLabRockies/hpc-oda-commons/issues/159))
+
+The same compiled-BLAS sensitivity produced an outright **failure**, not just a value shift.
+`TruncatedSVD` in the rolling-tabular daily preprocessing raised `LinAlgError: SVD did not
+converge` on a 130,777 x 98 one-hot matrix, killing the `random_forest`, `xgboost`, and
+`moe_xgboost` cells of one dataset while the same three models completed on every other
+dataset. Measured on the cluster: deterministic across repeats, unaffected by thread count
+(16/52/104), no NaN or inf in the input, and `scipy.linalg.svd` succeeded on the same matrix
+under both the `gesdd` and `gesvd` drivers — so the fault was scikit-learn's *randomized* SVD
+path, not LAPACK's dense one.
+
+Cause: `power_iteration_normalizer="auto"` resolves to `"LU"` at the default `n_iter=5`. LU
+is cheaper but numerically weaker, and on some BLAS builds it does not converge here. Fixed
+by requesting `"QR"` explicitly at both construction sites. Where LU *does* converge the two
+agree to ~1e-13 explained-variance ratio, so the fix repaired the failing case without
+perturbing results already computed.
+
+Worth noting as a pattern: a numeric caveat that had only ever moved last digits turned out
+to be able to take a model out entirely. When a cell dies in compiled numerics, the compiled
+BLAS is a first-class suspect, and "does it reproduce on a different machine?" is a
+diagnostic, not just a curiosity.
+
 ## Note — vectorized jobs-parquet ingest
 
 **Status:** informational

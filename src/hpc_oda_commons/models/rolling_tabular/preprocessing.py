@@ -331,6 +331,20 @@ class DimensionalityReductionPlan:
         }
 
 
+# scikit-learn's randomized SVD normalizes its power iterations with LU by default
+# (``power_iteration_normalizer="auto"`` resolves to ``"LU"`` at the default ``n_iter=5``).
+# LU is cheaper but numerically weaker, and on some compiled BLAS builds it fails outright:
+# a 130k x 98 one-hot matrix raised ``LinAlgError: SVD did not converge`` deterministically
+# on the cluster while succeeding under a different BLAS, with no NaN/inf in the input and
+# with ``scipy.linalg.svd`` succeeding on the same matrix (#159).
+#
+# QR is the stable alternative sklearn provides for exactly this case. It costs nothing
+# measurable here -- these matrices are ~100 columns wide -- and where LU does converge the
+# two agree to ~1e-13 explained-variance ratio, far inside the cross-BLAS variance already
+# documented in docs/known-issues.md (#2).
+_POWER_ITERATION_NORMALIZER = "QR"
+
+
 def select_svd_components(
     encoded_matrix: Any,
     *,
@@ -369,7 +383,11 @@ def select_svd_components(
         )
 
     evaluated = min(feasible, max(1, int(max_svd_components)))
-    svd = TruncatedSVD(n_components=evaluated, random_state=random_state)
+    svd = TruncatedSVD(
+        n_components=evaluated,
+        random_state=random_state,
+        power_iteration_normalizer=_POWER_ITERATION_NORMALIZER,
+    )
     svd.fit(encoded_matrix)
 
     ratios = [float(value) for value in svd.explained_variance_ratio_]

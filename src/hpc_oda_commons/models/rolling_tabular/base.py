@@ -27,6 +27,7 @@ from hpc_oda_commons.models.feature_policy import (
     partition_feature_fields,
 )
 from hpc_oda_commons.models.rolling_tabular.preprocessing import (
+    _POWER_ITERATION_NORMALIZER,
     _build_one_hot_encoder,
     _normalize_category,
     build_preprocessing_diagnostics,
@@ -689,7 +690,10 @@ class RollingTabularModel:
                 from sklearn.decomposition import TruncatedSVD
 
                 svd = TruncatedSVD(
-                    n_components=svd_components, random_state=self.config.random_state
+                    n_components=svd_components,
+                    random_state=self.config.random_state,
+                    # Same stable normalizer the component count was chosen under (#159).
+                    power_iteration_normalizer=_POWER_ITERATION_NORMALIZER,
                 )
                 svd.fit(encoded_train)
 
