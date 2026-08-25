@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
+from sklearn.decomposition import TruncatedSVD
+
+from hpc_oda_commons.models.job_runtime_xgboost.model import JobRuntimeXGBoostModel
 from hpc_oda_commons.models.rolling_tabular.preprocessing import (
+    _POWER_ITERATION_NORMALIZER,
     analyze_one_hot_encoding,
     build_preprocessing_diagnostics,
     profile_categorical_features,
@@ -81,6 +86,42 @@ def test_select_svd_components_for_target_coverage() -> None:
     assert plan.evaluated_components > 0
     assert 1 <= plan.selected_components <= plan.evaluated_components
     assert plan.achieved_coverage >= 0.90 or plan.selected_components == plan.evaluated_components
+
+
+def test_svd_uses_the_stable_power_iteration_normalizer() -> None:
+    """LU is sklearn's default and it fails outright on some BLAS builds (#159).
+
+    The instability is not portably reproducible -- it depends on the compiled BLAS -- so
+    this pins the request rather than the symptom: if the default ever comes back, a
+    130k-row one-hot matrix starts raising ``LinAlgError: SVD did not converge`` on the
+    cluster again and three models lose the affected dataset.
+    """
+    rows = _sample_rows()
+    profiles = profile_categorical_features(rows)
+    config = select_one_hot_config(
+        profiles,
+        infrequent_fraction=0.02,
+        min_frequency_floor=2,
+        target_max_one_hot_width=128,
+    )
+    _analysis, encoded = analyze_one_hot_encoding(rows, config)
+
+    with patch("sklearn.decomposition.TruncatedSVD", wraps=TruncatedSVD) as spy:
+        select_svd_components(encoded, target_coverage=0.90, max_svd_components=64)
+
+    assert spy.call_args.kwargs["power_iteration_normalizer"] == "QR"
+
+
+def test_daily_artifacts_fit_the_svd_with_the_same_normalizer() -> None:
+    """The component count and the fitted transform must agree on the numerics (#159)."""
+    assert _POWER_ITERATION_NORMALIZER == "QR"
+
+    rows = _sample_rows()
+    model = JobRuntimeXGBoostModel()
+    artifacts = model._build_daily_preprocessing_artifacts(rows)
+
+    assert artifacts.svd is not None
+    assert artifacts.svd.power_iteration_normalizer == "QR"
 
 
 def test_build_and_write_preprocessing_diagnostics(tmp_path: Path) -> None:
