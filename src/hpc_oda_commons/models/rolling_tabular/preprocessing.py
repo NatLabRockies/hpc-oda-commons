@@ -331,18 +331,23 @@ class DimensionalityReductionPlan:
         }
 
 
-# scikit-learn's randomized SVD normalizes its power iterations with LU by default
-# (``power_iteration_normalizer="auto"`` resolves to ``"LU"`` at the default ``n_iter=5``).
-# LU is cheaper but numerically weaker, and on some compiled BLAS builds it fails outright:
-# a 130k x 98 one-hot matrix raised ``LinAlgError: SVD did not converge`` deterministically
-# on the cluster while succeeding under a different BLAS, with no NaN/inf in the input and
-# with ``scipy.linalg.svd`` succeeding on the same matrix (#159).
+# scikit-learn's randomized SVD is ill-conditioned enough on some compiled BLAS builds to
+# fail outright: a 130k x 98 one-hot matrix raised ``LinAlgError: SVD did not converge``
+# deterministically on the cluster while succeeding under a different BLAS, with no NaN/inf
+# in the input and with ``scipy.linalg.svd`` succeeding on the same matrix (#159).
 #
-# QR is the stable alternative sklearn provides for exactly this case. It costs nothing
-# measurable here -- these matrices are ~100 columns wide -- and where LU does converge the
-# two agree to ~1e-13 explained-variance ratio, far inside the cross-BLAS variance already
-# documented in docs/known-issues.md (#2).
-_POWER_ITERATION_NORMALIZER = "QR"
+# The range finder projects onto ``n_components + n_oversamples`` random vectors; raising
+# the oversampling from sklearn's default of 10 gives a better-conditioned basis and clears
+# the failure. Where the default converges, the two agree to ~8e-14 explained-variance
+# ratio -- far inside the cross-BLAS variance already documented in docs/known-issues.md
+# (#2) -- so this does not perturb results computed before it.
+#
+# ``power_iteration_normalizer="QR"`` fixes the same case and is the more targeted remedy,
+# but it is unusable here: sklearn's parameter constraint carries an upstream typo listing
+# ``"OR"``, so on supported older versions ``"QR"`` is rejected while ``"OR"`` validates and
+# then matches no branch, silently skipping power iteration. ``n_oversamples`` is a plain
+# int with no such hazard (#162).
+_SVD_N_OVERSAMPLES = 20
 
 
 def select_svd_components(
@@ -386,7 +391,7 @@ def select_svd_components(
     svd = TruncatedSVD(
         n_components=evaluated,
         random_state=random_state,
-        power_iteration_normalizer=_POWER_ITERATION_NORMALIZER,
+        n_oversamples=_SVD_N_OVERSAMPLES,
     )
     svd.fit(encoded_matrix)
 

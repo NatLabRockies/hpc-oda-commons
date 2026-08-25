@@ -97,16 +97,26 @@ dataset. Measured on the cluster: deterministic across repeats, unaffected by th
 under both the `gesdd` and `gesvd` drivers — so the fault was scikit-learn's *randomized* SVD
 path, not LAPACK's dense one.
 
-Cause: `power_iteration_normalizer="auto"` resolves to `"LU"` at the default `n_iter=5`. LU
-is cheaper but numerically weaker, and on some BLAS builds it does not converge here. Fixed
-by requesting `"QR"` explicitly at both construction sites. Where LU *does* converge the two
-agree to ~1e-13 explained-variance ratio, so the fix repaired the failing case without
-perturbing results already computed.
+Cause: the randomized range finder was too ill-conditioned on this matrix under that BLAS.
+Fixed by raising `n_oversamples` from sklearn's default of 10 to 20 at both construction
+sites, which projects onto more random vectors and gives a better-conditioned basis. Where
+the default *does* converge the two agree to ~8e-14 explained-variance ratio, so the fix
+repaired the failing case without perturbing results already computed.
 
-Worth noting as a pattern: a numeric caveat that had only ever moved last digits turned out
-to be able to take a model out entirely. When a cell dies in compiled numerics, the compiled
-BLAS is a first-class suspect, and "does it reproduce on a different machine?" is a
-diagnostic, not just a curiosity.
+`power_iteration_normalizer="QR"` fixes the same case and is the more targeted remedy — the
+default `"auto"` resolves to the numerically weaker `"LU"` at `n_iter=5`. It is unusable
+here, and the attempt to use it broke CI ([#162](https://github.com/NatLabRockies/hpc-oda-commons/issues/162)):
+scikit-learn's parameter constraint carries an upstream typo listing `"OR"`, so on supported
+older releases `"QR"` is rejected outright, while `"OR"` validates and then matches no branch
+in `randomized_range_finder` — silently skipping power iteration. There is no spelling of
+that parameter that is both accepted and correct across the versions this project supports.
+
+Two patterns worth carrying forward. First, a numeric caveat that had only ever moved last
+digits turned out to be able to take a model out entirely; when a cell dies inside compiled
+numerics, the BLAS build is a first-class suspect and "does it reproduce on another machine?"
+is a diagnostic, not a curiosity. Second, a fix that passes the full local gate can still be
+version-specific — the gate exercises one resolved dependency set, and CI's older Python leg
+resolves another.
 
 ## Note — vectorized jobs-parquet ingest
 

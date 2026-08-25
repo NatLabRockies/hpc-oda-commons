@@ -8,7 +8,7 @@ from sklearn.decomposition import TruncatedSVD
 
 from hpc_oda_commons.models.job_runtime_xgboost.model import JobRuntimeXGBoostModel
 from hpc_oda_commons.models.rolling_tabular.preprocessing import (
-    _POWER_ITERATION_NORMALIZER,
+    _SVD_N_OVERSAMPLES,
     analyze_one_hot_encoding,
     build_preprocessing_diagnostics,
     profile_categorical_features,
@@ -88,8 +88,8 @@ def test_select_svd_components_for_target_coverage() -> None:
     assert plan.achieved_coverage >= 0.90 or plan.selected_components == plan.evaluated_components
 
 
-def test_svd_uses_the_stable_power_iteration_normalizer() -> None:
-    """LU is sklearn's default and it fails outright on some BLAS builds (#159).
+def test_svd_oversamples_beyond_the_sklearn_default() -> None:
+    """The default conditioning fails outright on some BLAS builds (#159).
 
     The instability is not portably reproducible -- it depends on the compiled BLAS -- so
     this pins the request rather than the symptom: if the default ever comes back, a
@@ -109,19 +109,41 @@ def test_svd_uses_the_stable_power_iteration_normalizer() -> None:
     with patch("sklearn.decomposition.TruncatedSVD", wraps=TruncatedSVD) as spy:
         select_svd_components(encoded, target_coverage=0.90, max_svd_components=64)
 
-    assert spy.call_args.kwargs["power_iteration_normalizer"] == "QR"
+    assert spy.call_args.kwargs["n_oversamples"] == _SVD_N_OVERSAMPLES
+    assert _SVD_N_OVERSAMPLES > 10  # sklearn's default, which is what fails
 
 
-def test_daily_artifacts_fit_the_svd_with_the_same_normalizer() -> None:
+def test_daily_artifacts_fit_the_svd_with_the_same_conditioning() -> None:
     """The component count and the fitted transform must agree on the numerics (#159)."""
-    assert _POWER_ITERATION_NORMALIZER == "QR"
-
     rows = _sample_rows()
     model = JobRuntimeXGBoostModel()
     artifacts = model._build_daily_preprocessing_artifacts(rows)
 
     assert artifacts.svd is not None
-    assert artifacts.svd.power_iteration_normalizer == "QR"
+    assert artifacts.svd.n_oversamples == _SVD_N_OVERSAMPLES
+
+
+def test_svd_parameters_are_accepted_by_the_installed_sklearn() -> None:
+    """Guard the #162 class of bug: a value this sklearn's constraints reject.
+
+    ``power_iteration_normalizer="QR"`` passed on a developer machine and broke CI, because
+    older supported sklearn releases carry an upstream typo in the constraint. Constructing
+    and fitting through the real code path is what catches that, on whatever version is
+    installed.
+    """
+    rows = _sample_rows()
+    profiles = profile_categorical_features(rows)
+    config = select_one_hot_config(
+        profiles,
+        infrequent_fraction=0.02,
+        min_frequency_floor=2,
+        target_max_one_hot_width=128,
+    )
+    _analysis, encoded = analyze_one_hot_encoding(rows, config)
+
+    plan = select_svd_components(encoded, target_coverage=0.90, max_svd_components=64)
+
+    assert plan.selected_components > 0
 
 
 def test_build_and_write_preprocessing_diagnostics(tmp_path: Path) -> None:
