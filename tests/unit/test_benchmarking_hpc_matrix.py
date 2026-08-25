@@ -295,6 +295,24 @@ def test_no_cell_is_scheduled_on_a_big_memory_partition(tmp_path: Path) -> None:
     assert {c.partition for c in plan.cells} == {"standard"}
 
 
+def test_every_script_ignores_the_submitting_user_site_packages(tmp_path: Path) -> None:
+    """The env is the only source of truth for imports, whoever types sbatch (#155).
+
+    Without this, a package present in one user's ~/.local shadows the env's copy, so the
+    same plan runs different library versions per submitter -- and a package missing from
+    the shared env fails only for whoever lacks a home copy.
+    """
+    cfg = load_site_config(_write_site(tmp_path))
+    plan = build_plan([_card("ds", 1000)], cfg, plan_id="p1")
+    staging = tmp_path / "staging"
+    write_plan(plan, staging, cfg)
+
+    scripts = sorted(staging.glob("scripts/*.sbatch"))
+    assert scripts  # guard: an empty glob would pass the loop vacuously
+    for script in scripts:
+        assert "export PYTHONNOUSERSITE=1" in script.read_text(encoding="utf-8"), script.name
+
+
 def test_bench_script_takes_the_whole_node_and_reads_its_core_count(tmp_path: Path) -> None:
     """Cores are free under an exclusive partition; a baked-in count only wastes them."""
     cfg = load_site_config(_write_site(tmp_path))

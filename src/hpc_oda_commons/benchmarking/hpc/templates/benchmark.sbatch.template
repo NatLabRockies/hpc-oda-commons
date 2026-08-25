@@ -11,6 +11,10 @@
 # Benchmark cell: model={{model_id}} dataset={{dataset_id}} window={{window}} tier={{tier}}
 set -euo pipefail
 export HPC_ODA_OFFLINE=1
+# The env above is the only source of truth for what this job imports. Without this,
+# a package in the submitting user's ~/.local would shadow the env's copy, so the same
+# plan could run different library versions depending on who typed sbatch.
+export PYTHONNOUSERSITE=1
 # The cell has the node to itself, so take however many cores it actually has rather
 # than a count baked in at plan time. Asking for fewer buys nothing under an exclusive
 # partition -- the node is allocated whole either way. Models that parallelise across
