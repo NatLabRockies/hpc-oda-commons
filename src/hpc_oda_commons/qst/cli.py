@@ -32,6 +32,7 @@ from hpc_oda_commons.benchmark.runner import (
     run_rolling_tfidf_knn,
     run_rolling_xgboost,
 )
+from hpc_oda_commons.benchmark.table_rows import table_to_rows
 from hpc_oda_commons.datasets.synthetic import (
     generate_tiny_runtime_dataset,
 )
@@ -760,7 +761,7 @@ def benchmark(
             "(ISO-string timestamps); v0.2 requires native Arrow timestamp columns. "
             "Re-ingest the data with the current version."
         )
-    rows = table.to_pylist()
+    rows = table_to_rows(table)
 
     split = _normalize_split(recipe_payload)
 
