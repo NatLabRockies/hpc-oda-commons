@@ -1,0 +1,103 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 988236,
+  "feature_fields": [
+    "name",
+    "num_cores_req",
+    "num_nodes_req",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 2808.727106683019,
+    "rmse": 12603.381396722061,
+    "signatures": 140675,
+    "group_sizes": {
+      "min": 1,
+      "median": 1.0,
+      "max": 138912,
+      "singleton_row_share": 0.12450872058900911
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 2808.727106683019,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_nodes_req",
+      "floor_mae_without": 2808.727106683019,
+      "cost": 0.0
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 2828.7057747339704,
+      "cost": 19.978668050951455
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 3421.015746238753,
+      "cost": 612.2886395557339
+    },
+    {
+      "feature": "name",
+      "floor_mae_without": 4865.795547824609,
+      "cost": 2057.0684411415896
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 8998.164381787346,
+        "coverage": 0.5352496772026115,
+        "rows": 988236
+      },
+      "10d": {
+        "mae": 7969.818489207031,
+        "coverage": 0.671878984372154,
+        "rows": 988236
+      },
+      "30d": {
+        "mae": 7396.328441283256,
+        "coverage": 0.7348487608223137,
+        "rows": 988236
+      },
+      "60d": {
+        "mae": 7400.969284158845,
+        "coverage": 0.7389439364686168,
+        "rows": 988236
+      },
+      "120d": {
+        "mae": 7409.921483329893,
+        "coverage": 0.7400944713610919,
+        "rows": 988236
+      },
+      "all": {
+        "mae": 7411.0430403264,
+        "coverage": 0.7401157213459133,
+        "rows": 988236
+      }
+    },
+    "best_lookback": "30d",
+    "backoff_order": [
+      "num_cores_req",
+      "num_nodes_req",
+      "user",
+      "requested_seconds",
+      "name"
+    ],
+    "backoff_at_best": {
+      "mae": 7395.782914708632,
+      "coverage": 0.7348487608223137,
+      "rows": 988236
+    }
+  },
+  "dataset_id": "fdata_fugaku",
+  "generated_at": "2026-08-26T22:44:22.152298Z"
+}

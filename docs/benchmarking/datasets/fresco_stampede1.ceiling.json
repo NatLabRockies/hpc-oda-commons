@@ -1,0 +1,96 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 103064,
+  "feature_fields": [
+    "account",
+    "queue",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 7718.7767309632845,
+    "rmse": 21891.401372409393,
+    "signatures": 4574,
+    "group_sizes": {
+      "min": 1,
+      "median": 4.0,
+      "max": 4857,
+      "singleton_row_share": 0.010255763409143833
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "account",
+      "floor_mae_without": 7745.981681285415,
+      "cost": 27.20495032213057
+    },
+    {
+      "feature": "queue",
+      "floor_mae_without": 7778.131791896298,
+      "cost": 59.35506093301319
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 8265.590274004502,
+      "cost": 546.8135430412176
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 9392.740316696421,
+      "cost": 1673.9635857331368
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 13529.563737095397,
+        "coverage": 0.6418342001086703,
+        "rows": 103064
+      },
+      "10d": {
+        "mae": 10863.265514631685,
+        "coverage": 0.803316385934953,
+        "rows": 103064
+      },
+      "30d": {
+        "mae": 10922.176448614453,
+        "coverage": 0.8651129395327175,
+        "rows": 103064
+      },
+      "60d": {
+        "mae": 11004.173634828845,
+        "coverage": 0.8909803617169914,
+        "rows": 103064
+      },
+      "120d": {
+        "mae": 10847.386240588372,
+        "coverage": 0.913529457424513,
+        "rows": 103064
+      },
+      "all": {
+        "mae": 10912.810671039355,
+        "coverage": 0.916178296980517,
+        "rows": 103064
+      }
+    },
+    "best_lookback": "120d",
+    "backoff_order": [
+      "account",
+      "queue",
+      "user",
+      "requested_seconds"
+    ],
+    "backoff_at_best": {
+      "mae": 11023.569136652954,
+      "coverage": 0.913529457424513,
+      "rows": 103064
+    }
+  },
+  "dataset_id": "fresco_stampede1",
+  "generated_at": "2026-08-26T22:46:08.514624Z"
+}

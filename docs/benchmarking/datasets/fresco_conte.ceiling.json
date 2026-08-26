@@ -1,0 +1,96 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 57030,
+  "feature_fields": [
+    "account",
+    "queue",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 5515.036068735753,
+    "rmse": 35177.538887576105,
+    "signatures": 858,
+    "group_sizes": {
+      "min": 1,
+      "median": 4.0,
+      "max": 5342,
+      "singleton_row_share": 0.0034893915483079083
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "account",
+      "floor_mae_without": 5515.036068735753,
+      "cost": 0.0
+    },
+    {
+      "feature": "queue",
+      "floor_mae_without": 5615.914781693846,
+      "cost": 100.87871295809236
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 6478.2356128353495,
+      "cost": 963.1995440995961
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 7231.649886024899,
+      "cost": 1716.613817289146
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 9199.934201297563,
+        "coverage": 0.8148167631071366,
+        "rows": 57030
+      },
+      "10d": {
+        "mae": 8415.819516044186,
+        "coverage": 0.9267227774855339,
+        "rows": 57030
+      },
+      "30d": {
+        "mae": 7845.275355076275,
+        "coverage": 0.9530247238295634,
+        "rows": 57030
+      },
+      "60d": {
+        "mae": 8096.544345081536,
+        "coverage": 0.9596528143082588,
+        "rows": 57030
+      },
+      "120d": {
+        "mae": 7672.916088023847,
+        "coverage": 0.9729089952656497,
+        "rows": 57030
+      },
+      "all": {
+        "mae": 7690.697483780466,
+        "coverage": 0.9733298264071542,
+        "rows": 57030
+      }
+    },
+    "best_lookback": "120d",
+    "backoff_order": [
+      "account",
+      "queue",
+      "user",
+      "requested_seconds"
+    ],
+    "backoff_at_best": {
+      "mae": 7766.692048044889,
+      "coverage": 0.9729089952656497,
+      "rows": 57030
+    }
+  },
+  "dataset_id": "fresco_conte",
+  "generated_at": "2026-08-26T22:45:05.461017Z"
+}

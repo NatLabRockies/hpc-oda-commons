@@ -1,0 +1,131 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 4967,
+  "feature_fields": [
+    "account",
+    "award_category",
+    "machine",
+    "num_cores_req",
+    "num_nodes_req",
+    "queue",
+    "requested_seconds",
+    "science_field",
+    "user"
+  ],
+  "floor": {
+    "mae": 779.2918200120797,
+    "rmse": 3326.545788204184,
+    "signatures": 523,
+    "group_sizes": {
+      "min": 1,
+      "median": 3.0,
+      "max": 438,
+      "singleton_row_share": 0.03543386349909402
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "award_category",
+      "floor_mae_without": 779.2918200120797,
+      "cost": 0.0
+    },
+    {
+      "feature": "machine",
+      "floor_mae_without": 779.2918200120797,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 779.2918200120797,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_nodes_req",
+      "floor_mae_without": 779.2918200120797,
+      "cost": 0.0
+    },
+    {
+      "feature": "science_field",
+      "floor_mae_without": 779.2918200120797,
+      "cost": 0.0
+    },
+    {
+      "feature": "queue",
+      "floor_mae_without": 791.4180853633984,
+      "cost": 12.126265351318693
+    },
+    {
+      "feature": "account",
+      "floor_mae_without": 791.6440628145762,
+      "cost": 12.352242802496448
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 810.1260318099456,
+      "cost": 30.83421179786592
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 1013.481383128649,
+      "cost": 234.18956311656927
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 2365.5179011475743,
+        "coverage": 0.6055969398026978,
+        "rows": 4967
+      },
+      "10d": {
+        "mae": 1618.1915029192674,
+        "coverage": 0.8055164082947454,
+        "rows": 4967
+      },
+      "30d": {
+        "mae": 1505.0220897926306,
+        "coverage": 0.8359170525468089,
+        "rows": 4967
+      },
+      "60d": {
+        "mae": 1487.707362593115,
+        "coverage": 0.8570565733843366,
+        "rows": 4967
+      },
+      "120d": {
+        "mae": 1481.4916519025571,
+        "coverage": 0.869538957116972,
+        "rows": 4967
+      },
+      "all": {
+        "mae": 1466.3779323535337,
+        "coverage": 0.8703442721964969,
+        "rows": 4967
+      }
+    },
+    "best_lookback": "all",
+    "backoff_order": [
+      "award_category",
+      "machine",
+      "num_cores_req",
+      "num_nodes_req",
+      "science_field",
+      "queue",
+      "account",
+      "user",
+      "requested_seconds"
+    ],
+    "backoff_at_best": {
+      "mae": 1466.3779323535337,
+      "coverage": 0.8703442721964969,
+      "rows": 4967
+    }
+  },
+  "dataset_id": "alcf_djc_theta",
+  "generated_at": "2026-08-26T22:39:48.572304Z"
+}
