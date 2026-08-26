@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Annotated
@@ -12,9 +13,11 @@ from rich.console import Console
 from rich.table import Table
 
 from hpc_oda_commons.benchmarking import (
+    CeilingError,
     CharacterizeError,
     build_card,
     characterize_table,
+    compute_ceiling,
     select_window,
     write_card,
 )
@@ -327,3 +330,81 @@ def datasets_characterize(
     )
     console.print(f"  card: {json_path}")
     console.print(f"        {md_path}")
+
+
+def datasets_ceiling(
+    table_path: Annotated[
+        Path,
+        typer.Argument(exists=True, readable=True, help="Windowed oda.job parquet to analyse."),
+    ],
+    out: Annotated[
+        Path | None,
+        typer.Option("--out", help="Write the analysis JSON here (default: beside the table)."),
+    ] = None,
+    n_windows: Annotated[int, typer.Option("--n-windows")] = 120,
+    test_window_hours: Annotated[int, typer.Option("--test-window-hours")] = 6,
+    training_lookback_days: Annotated[int, typer.Option("--training-lookback-days")] = 120,
+    dataset_id: Annotated[
+        str | None, typer.Option("--dataset-id", help="Label recorded on the analysis.")
+    ] = None,
+) -> None:
+    """Compute the minimum error any submit-time predictor could achieve on this table.
+
+    Jobs with identical submit-time features cannot be told apart, so the best possible
+    prediction per signature is its group median (for MAE) or mean (for RMSE). That bound
+    calibrates every model score: an MAE means little without knowing how much accuracy was
+    available. Also measures causal memorization -- predicting from same-signature jobs that
+    finished earlier -- across a range of lookbacks, which is a deployable strategy rather
+    than a bound. See docs/benchmarking/methodology.md.
+    """
+    from datetime import datetime, timezone
+
+    from hpc_oda_commons.kernel.validate import validate_json
+    from hpc_oda_commons.models.feature_policy import RUNTIME_PREDICTION_FEATURE_FIELDS
+
+    stem = dataset_id.split(".")[-1] if dataset_id else table_path.parent.name
+    table = pq.read_table(table_path)
+    try:
+        result = compute_ceiling(
+            table,
+            feature_fields=sorted(RUNTIME_PREDICTION_FEATURE_FIELDS),
+            n_windows=n_windows,
+            test_window_hours=test_window_hours,
+            training_lookback_days=training_lookback_days,
+        )
+    except CeilingError as exc:
+        console.print(f"[red]Cannot analyse {table_path}: {exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    result["dataset_id"] = dataset_id or stem
+    result["generated_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    validate_json(result, "oda.ceiling.v0.1.0")
+
+    out_path = out or table_path.with_name("ceiling.json")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+
+    fl, sizes = result["floor"], result["floor"]["group_sizes"]
+    console.print(f"[bold]{result['dataset_id']}[/bold]: {result['scored_rows']:,} scored rows")
+    console.print(
+        f"  floor  MAE [green]{fl['mae']:,.0f}[/green]  RMSE [green]{fl['rmse']:,.0f}[/green]  "
+        f"over {fl['signatures']:,} signatures"
+    )
+    console.print(
+        f"  groups min {sizes['min']} / median {sizes['median']:,.0f} / max {sizes['max']:,}"
+        f" · {sizes['singleton_row_share'] * 100:.1f}% of rows are alone in their group"
+    )
+    if sizes["singleton_row_share"] > 0.10:
+        console.print(
+            "  [yellow]note:[/yellow] many rows are alone in their signature, so the floor is "
+            "loose here - it cannot constrain rows it has no peers for."
+        )
+    cm = result.get("causal_memorization", {})
+    if cm:
+        best = cm["best_lookback"]
+        s = cm["sweep"][best]
+        console.print(
+            f"  causal memorization best at [cyan]{best}[/cyan]: MAE {s['mae']:,.0f} "
+            f"(coverage {s['coverage'] * 100:.0f}%)"
+        )
+    console.print(f"  → {out_path}")

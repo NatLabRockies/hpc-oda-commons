@@ -1,0 +1,84 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://hpc-oda-commons.org/schemas/oda/ceiling/v0.1.0.json",
+    "title": "ODA Ceiling Analysis Schema v0.1.0",
+    "description": "The minimum error any predictor restricted to submit-time features could achieve on a dataset's scored rows, plus a measured causal strategy for comparison. Calibrates leaderboard metrics: an MAE is uninterpretable without knowing how much accuracy was available.",
+    "type": "object",
+    "additionalProperties": true,
+    "required": ["schema_version", "split", "scored_rows", "feature_fields", "floor"],
+    "properties": {
+        "schema_version": {"const": "oda.ceiling.v0.1.0"},
+        "dataset_id": {"type": "string"},
+        "generated_at": {"type": "string"},
+        "split": {
+            "type": "object",
+            "description": "Rolling-window configuration the scored population comes from.",
+            "required": ["n_windows", "test_window_hours", "training_lookback_days"],
+            "properties": {
+                "n_windows": {"type": "integer", "minimum": 1},
+                "test_window_hours": {"type": "integer", "minimum": 1},
+                "training_lookback_days": {"type": "integer", "minimum": 1}
+            }
+        },
+        "scored_rows": {"type": "integer", "minimum": 0},
+        "feature_fields": {"type": "array", "items": {"type": "string"}},
+        "floor": {
+            "type": "object",
+            "description": "Exact minimum error over all functions of the feature signature. Not an estimate: a group of one contributes zero error because a function mapping that signature to that value exists.",
+            "required": ["mae", "rmse", "signatures", "group_sizes"],
+            "properties": {
+                "mae": {"type": "number", "minimum": 0,
+                        "description": "Minimised by the per-signature MEDIAN."},
+                "rmse": {"type": "number", "minimum": 0,
+                         "description": "Minimised by the per-signature MEAN."},
+                "signatures": {"type": "integer", "minimum": 0},
+                "group_sizes": {
+                    "type": "object",
+                    "description": "Required context: floors are monotone in the fineness of the grouping and reach zero when every row is its own group, so a bound cannot be judged tight without this.",
+                    "required": ["min", "median", "max", "singleton_row_share"],
+                    "properties": {
+                        "min": {"type": "integer"},
+                        "median": {"type": "number"},
+                        "max": {"type": "integer"},
+                        "singleton_row_share": {"type": "number", "minimum": 0, "maximum": 1}
+                    }
+                }
+            }
+        },
+        "feature_cost": {
+            "type": "array",
+            "description": "Per feature, how far the floor rises without it. Ascending order is the backoff order.",
+            "items": {
+                "type": "object",
+                "required": ["feature", "cost"],
+                "properties": {
+                    "feature": {"type": "string"},
+                    "floor_mae_without": {"type": ["number", "null"]},
+                    "cost": {"type": "number"}
+                }
+            }
+        },
+        "causal_memorization": {
+            "type": "object",
+            "description": "A measured strategy, NOT a bound: predict from same-signature jobs that finished strictly earlier.",
+            "properties": {
+                "sweep": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "required": ["mae", "coverage", "rows"],
+                        "properties": {
+                            "mae": {"type": "number"},
+                            "coverage": {"type": "number", "minimum": 0, "maximum": 1,
+                                         "description": "Share of scored rows whose signature was seen in the lookback. A memorization score is uninterpretable without it."},
+                            "rows": {"type": "integer"}
+                        }
+                    }
+                },
+                "best_lookback": {"type": "string"},
+                "backoff_order": {"type": "array", "items": {"type": "string"}},
+                "backoff_at_best": {"type": "object"}
+            }
+        }
+    }
+}

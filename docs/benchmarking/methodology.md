@@ -131,6 +131,41 @@ several — **re-included `mit_supercloud`** (its "~1 month" hint was wrong — 
 Jan–Oct 2021, healthy) and **kept `atlas_opentrinity`** on an 80-day window (the 90-day target
 is soft, and 80 healthy days are worth keeping).
 
+## Calibrating the numbers: the error ceiling
+
+A leaderboard MAE is uninterpretable alone. 11,731 on one machine and 4,006 on another says
+nothing about how much accuracy was *available* on either. `hpc-oda datasets ceiling` computes
+that bound.
+
+**The claim.** Two jobs whose submit-time features are identical cannot be told apart by any
+predictor restricted to those features. So for the feature signature `Z` and metric `M`, the
+minimum achievable error over the scored rows is `min_f (1/N) Σ M(y_i, f(z_i))`, which
+decomposes per group and has a closed form. **The minimising statistic depends on the metric** —
+the median for MAE, the mean for RMSE. Pairing them wrongly costs 17% and 12% respectively on
+`nlr_kestrel`, so they are computed as a pair.
+
+This is exact, not an estimate. A signature appearing once contributes zero error, correctly:
+a function mapping it to that value exists and is a legitimate predictor. That is what makes
+it a bound. It also means floors are **monotone in the fineness of `Z`** and reach zero when
+every row is its own group, so the analysis reports the group-size distribution alongside —
+without it a floor cannot be judged tight or vacuous.
+
+**Reproducibility.** Unlike every fitted-model metric in this repo, the ceiling is exactly
+reproducible across machines: no fitting, no BLAS, no thread-order summation. It is not
+subject to the caveat in [`known-issues.md`](../known-issues.md).
+
+**What it revealed.** Across the 20 benchmark datasets the best model captures a median **75%**
+of the available headroom, and the ordering inverts the raw leaderboard — `pwa_hpc2n` looks
+mediocre at MAE 5,821 but has captured 94%, while `nlr_kestrel` sits last at 51%. Alongside the
+bound, the tool measures *causal memorization* — predict from same-signature jobs that finished
+earlier — which is a deployable strategy rather than a bound, and which beats all six fitted
+models on 9 of 20 datasets (#171). Sweeping its lookback also showed the fixed
+`training_lookback_days: 120` is optimal for only 6 of 20 datasets (#170).
+
+**Deliberately not included:** leave-one-out. It is neither the floor (the optimal function has
+no "leave out" in its definition) nor achievable (a row's peers include jobs that ran *after*
+it, so it is not causal), so it answers neither question.
+
 ## The dataset card
 
 `hpc-oda datasets characterize <parquet>` emits, per dataset, into `docs/benchmarking/datasets/`:

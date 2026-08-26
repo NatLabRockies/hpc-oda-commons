@@ -9,6 +9,11 @@ See ``docs/benchmarking/methodology.md`` for the agreed methodology.
 """
 
 from hpc_oda_commons.benchmarking.cards import build_card, render_card_markdown, write_card
+from hpc_oda_commons.benchmarking.ceiling import (
+    CEILING_SCHEMA_VERSION,
+    CeilingError,
+    compute_ceiling,
+)
 from hpc_oda_commons.benchmarking.characterize import (
     CARD_SCHEMA_VERSION,
     CharacterizeError,
@@ -18,6 +23,9 @@ from hpc_oda_commons.benchmarking.characterize import (
 
 __all__ = [
     "CARD_SCHEMA_VERSION",
+    "CEILING_SCHEMA_VERSION",
+    "CeilingError",
+    "compute_ceiling",
     "CharacterizeError",
     "characterize_table",
     "select_window",
