@@ -73,6 +73,7 @@ from hpc_oda_commons.qst.commands.bench_matrix import (
 )
 from hpc_oda_commons.qst.commands.browse import browse
 from hpc_oda_commons.qst.commands.datasets import (
+    datasets_ceiling,
     datasets_characterize,
     datasets_fetch,
     datasets_prepare,
@@ -102,6 +103,7 @@ app.add_typer(datasets_app, name="datasets")
 datasets_app.command("fetch")(datasets_fetch)
 datasets_app.command("prepare")(datasets_prepare)
 datasets_app.command("characterize")(datasets_characterize)
+datasets_app.command("ceiling")(datasets_ceiling)
 bench_matrix_app = typer.Typer(
     add_completion=False, help="Plan the full model x dataset benchmark for an HPC cluster."
 )
