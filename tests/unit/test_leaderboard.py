@@ -1,17 +1,22 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
 from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
 from hpc_oda_commons.tools.report import render_leaderboard_html
-from tests.conftest import load_json
 
 
-def _make_bundle(bundle_dir: Path) -> None:
+def _make_bundle(
+    bundle_dir: Path,
+    *,
+    model: str = "model.job_runtime_baseline",
+    dataset: str = "synthetic_job_runtime_tiny",
+    created_at: str = "2026-02-05T00:00:00Z",
+    mae: float = 1.0,
+) -> None:
     metrics = {
-        "mae": 1.0,
+        "mae": mae,
         "rmse": 2.0,
         "definitions": [
             {"name": "mae", "target": "runtime_seconds"},
@@ -22,16 +27,16 @@ def _make_bundle(bundle_dir: Path) -> None:
         "schema_version": "oda.result.v0.1.0",
         "recipe_id": "recipe.job_runtime.baseline_tiny",
         "problem_domain": ["job-runtime-prediction"],
-        "created_at": "2026-02-05T00:00:00Z",
-        "metrics": {"mae": 1.0, "rmse": 2.0},
+        "created_at": created_at,
+        "metrics": {"mae": mae, "rmse": 2.0},
         "provenance": {
             "schema_versions": {"input": "oda.job.v0.1.0", "result": "oda.result.v0.1.0"},
             "environment": {"python": "3.12.0", "packages": []},
             "code": {"package_version": "0.1.0", "git_commit": None},
         },
-        "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+        "model": {"id": model, "version": "0.1.0"},
         "dataset": {
-            "id": "synthetic_job_runtime_tiny",
+            "id": dataset,
             "schema_version": "oda.job.v0.1.0",
             "hash": "abc12345",
         },
@@ -85,22 +90,67 @@ def test_build_leaderboard_skips_invalid_bundle(tmp_path: Path) -> None:
 
 
 def test_build_leaderboard_orders_by_created_at(tmp_path: Path) -> None:
+    """Distinct cells, so ordering is what is under test rather than deduplication."""
     older = tmp_path / "runs" / "run-older"
     newer = tmp_path / "runs" / "run-newer"
 
-    _make_bundle(older)
-    _make_bundle(newer)
-
-    # Overwrite created_at to force ordering
-    result_path = older / "result.json"
-    result = load_json(result_path)
-    result["created_at"] = "2026-01-01T00:00:00Z"
-    result_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-    result_path = newer / "result.json"
-    result = load_json(result_path)
-    result["created_at"] = "2026-02-01T00:00:00Z"
-    result_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _make_bundle(older, model="model.job_runtime_baseline", created_at="2026-01-01T00:00:00Z")
+    _make_bundle(newer, model="model.job_runtime_xgboost", created_at="2026-02-01T00:00:00Z")
 
     leaderboard = build_leaderboard(tmp_path / "runs")
+
     assert [e["bundle_dir"] for e in leaderboard["entries"]] == [str(older), str(newer)]
+
+
+# --- one entry per cell (#166) --------------------------------------------------------
+
+
+def test_a_rerun_cell_is_counted_once(tmp_path: Path) -> None:
+    """Re-running a cell is the normal repair path; it must not double-weight the model.
+
+    ``overwrite: true`` in a recipe governs the timestamped directory, not the previous
+    result, so both bundles survive on disk.
+    """
+    first = tmp_path / "runs" / "ds" / "baseline" / "benchmark-1"
+    second = tmp_path / "runs" / "ds" / "baseline" / "benchmark-2"
+    _make_bundle(first, created_at="2026-01-01T00:00:00Z", mae=99.0)
+    _make_bundle(second, created_at="2026-02-01T00:00:00Z", mae=1.0)
+
+    leaderboard = build_leaderboard(tmp_path / "runs")
+
+    assert len(leaderboard["entries"]) == 1
+    assert leaderboard["entries"][0]["bundle_dir"] == str(second)  # the newer run wins
+    assert [s["bundle_dir"] for s in leaderboard["superseded"]] == [str(first)]
+
+
+def test_superseded_bundles_are_named_not_silently_dropped(tmp_path: Path) -> None:
+    _make_bundle(tmp_path / "runs" / "a", created_at="2026-01-01T00:00:00Z")
+    _make_bundle(tmp_path / "runs" / "b", created_at="2026-02-01T00:00:00Z")
+
+    leaderboard = build_leaderboard(tmp_path / "runs")
+
+    assert len(leaderboard["superseded"]) == 1
+    assert leaderboard["superseded"][0]["created_at"] == "2026-01-01T00:00:00Z"
+
+
+def test_different_cells_are_never_merged(tmp_path: Path) -> None:
+    """Same model on two datasets, and two models on one dataset, are four distinct cells."""
+    _make_bundle(tmp_path / "runs" / "1", dataset="ds_a", model="model.job_runtime_baseline")
+    _make_bundle(tmp_path / "runs" / "2", dataset="ds_b", model="model.job_runtime_baseline")
+    _make_bundle(tmp_path / "runs" / "3", dataset="ds_a", model="model.job_runtime_xgboost")
+    _make_bundle(tmp_path / "runs" / "4", dataset="ds_b", model="model.job_runtime_xgboost")
+
+    leaderboard = build_leaderboard(tmp_path / "runs")
+
+    assert len(leaderboard["entries"]) == 4
+    assert leaderboard["superseded"] == []
+
+
+def test_a_clean_runs_dir_is_unchanged(tmp_path: Path) -> None:
+    """No duplicates means the behaviour is exactly as before the fix."""
+    _make_bundle(tmp_path / "runs" / "only", dataset="ds", model="model.job_runtime_baseline")
+
+    leaderboard = build_leaderboard(tmp_path / "runs")
+
+    assert len(leaderboard["entries"]) == 1
+    assert leaderboard["superseded"] == []

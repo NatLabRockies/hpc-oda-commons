@@ -512,4 +512,15 @@ def bench_matrix_aggregate(
     out_dir.mkdir(parents=True, exist_ok=True)
     json_path = write_leaderboard(leaderboard, out_dir)
     n = len(leaderboard.get("entries", []))
-    console.print(f"[green]Aggregated[/green] {n} result bundles → [cyan]{json_path}[/cyan]")
+    superseded = leaderboard.get("superseded", [])
+    console.print(f"[green]Aggregated[/green] {n} benchmark cells → [cyan]{json_path}[/cyan]")
+    if superseded:
+        # Say what was narrowed rather than narrowing silently (#166).
+        console.print(
+            f"[yellow]Superseded {len(superseded)}[/yellow] older bundle(s) for cells that "
+            "were run more than once; the newest of each was kept:"
+        )
+        for entry in superseded[:10]:
+            console.print(f"  {entry['created_at']}  {entry['bundle_dir']}")
+        if len(superseded) > 10:
+            console.print(f"  ... and {len(superseded) - 10} more")
