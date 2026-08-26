@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import datetime as dt
+import json
+
 import pytest
 
 from hpc_oda_commons.models.rolling_tabular.split import (
@@ -185,3 +188,56 @@ def test_rolling_splits_anchor_to_latest_submit_not_late_end_time() -> None:
     assert splits[-1].split_time_iso == "2024-04-30T14:00:00Z"
     assert splits[-1].test_row_count >= 1
     assert any(split.test_row_count > 0 for split in splits)
+
+
+# --- serialized payload size (#167) -------------------------------------------------
+
+
+def _rows_ending_hourly(n: int) -> list[dict]:
+    """n rows, one per hour, so a lookback window covers most of them."""
+    start = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+    return [
+        {
+            "submit_time": start + dt.timedelta(hours=i),
+            "end_time": start + dt.timedelta(hours=i, minutes=30),
+        }
+        for i in range(n)
+    ]
+
+
+def test_serialized_window_carries_counts_not_index_lists() -> None:
+    """Indices are the expansion of a deterministic function of recorded inputs (#167)."""
+    splits = build_rolling_splits(
+        _rows_ending_hourly(50), n_windows=3, test_window_hours=1, training_lookback_days=120
+    )
+
+    payload = splits[-1].to_dict()
+
+    assert "train_row_indices" not in payload
+    assert "test_row_indices" not in payload
+    assert payload["train_row_count"] == len(splits[-1].train_row_indices)
+    assert payload["test_row_count"] == len(splits[-1].test_row_indices)
+
+
+def test_serialized_window_size_does_not_grow_with_the_training_set() -> None:
+    """The regression that produced a 7.3 GB metrics.json per cell (#167).
+
+    Serializing the indices made each window's payload scale with the lookback, so the
+    file grew with the dataset while carrying the same handful of numbers.
+    """
+    small = build_rolling_splits(
+        _rows_ending_hourly(50), n_windows=1, test_window_hours=1, training_lookback_days=120
+    )
+    large = build_rolling_splits(
+        _rows_ending_hourly(5_000), n_windows=1, test_window_hours=1, training_lookback_days=120
+    )
+
+    # guard: the two really do differ in training-set size, or this proves nothing
+    assert large[-1].train_row_count > 50 * small[-1].train_row_count
+
+    small_len = len(json.dumps(small[-1].to_dict()))
+    large_len = len(json.dumps(large[-1].to_dict()))
+
+    # A 58x bigger training set may only widen the digits of train_row_count. Before the
+    # fix this difference was the training set itself, one integer per row.
+    assert large_len - small_len < 32, (small_len, large_len)

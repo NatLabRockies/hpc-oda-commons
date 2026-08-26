@@ -42,14 +42,23 @@ class RollingSplit:
     test_row_count: int
 
     def to_dict(self) -> dict[str, Any]:
+        """Serializable window description -- counts, not the index lists.
+
+        The indices stay on the dataclass because the models slice rows with them, but
+        they are deliberately **not** persisted. They are the expansion of a deterministic
+        function of values the bundle already records (``n_windows``,
+        ``test_window_hours``, ``training_lookback_days``, and the table hash), so writing
+        them stores no information and costs the whole training set per window: a 120-window
+        run over a multi-million-row slice produced a 7.3 GB ``metrics.json`` per cell, and
+        121 GB across one fleet run (#167). That made ``collect`` a many-hour transfer and
+        ``aggregate`` -- which json.loads each bundle to read one MAE -- memory-hostile.
+        """
         return {
             "split_time": self.split_time_iso,
             "split_end_time": self.split_end_time_iso,
             "split_epoch": self.split_epoch,
             "day_key": self.day_key,
             "refresh_preprocessing": self.refresh_preprocessing,
-            "train_row_indices": list(self.train_row_indices),
-            "test_row_indices": list(self.test_row_indices),
             "train_row_count": self.train_row_count,
             "test_row_count": self.test_row_count,
         }
