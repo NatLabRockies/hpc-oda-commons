@@ -1,0 +1,110 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 121886,
+  "feature_fields": [
+    "account",
+    "num_gpus_req",
+    "num_nodes_req",
+    "queue",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 2382.9112121162398,
+    "rmse": 15343.960222176016,
+    "signatures": 3870,
+    "group_sizes": {
+      "min": 1,
+      "median": 2.0,
+      "max": 50755,
+      "singleton_row_share": 0.0126511658434931
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "num_gpus_req",
+      "floor_mae_without": 2382.9112121162398,
+      "cost": 0.0
+    },
+    {
+      "feature": "account",
+      "floor_mae_without": 2392.552393219894,
+      "cost": 9.641181103654162
+    },
+    {
+      "feature": "num_nodes_req",
+      "floor_mae_without": 2419.421639893015,
+      "cost": 36.51042777677503
+    },
+    {
+      "feature": "queue",
+      "floor_mae_without": 2427.492378123821,
+      "cost": 44.58116600758103
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 2535.2116896116045,
+      "cost": 152.3004774953647
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 2809.3662684803835,
+      "cost": 426.45505636414373
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 3879.5247321267416,
+        "coverage": 0.7498564232151355,
+        "rows": 121886
+      },
+      "10d": {
+        "mae": 3507.793979620301,
+        "coverage": 0.9140180168354036,
+        "rows": 121886
+      },
+      "30d": {
+        "mae": 4023.9863437966624,
+        "coverage": 0.9341269711041466,
+        "rows": 121886
+      },
+      "60d": {
+        "mae": 3851.808681883071,
+        "coverage": 0.93817993863118,
+        "rows": 121886
+      },
+      "120d": {
+        "mae": 3556.0334205733225,
+        "coverage": 0.9471801519452603,
+        "rows": 121886
+      },
+      "all": {
+        "mae": 3555.3462702853485,
+        "coverage": 0.9474098748010436,
+        "rows": 121886
+      }
+    },
+    "best_lookback": "10d",
+    "backoff_order": [
+      "num_gpus_req",
+      "account",
+      "num_nodes_req",
+      "queue",
+      "user",
+      "requested_seconds"
+    ],
+    "backoff_at_best": {
+      "mae": 3489.4624403130792,
+      "coverage": 0.9140180168354036,
+      "rows": 121886
+    }
+  },
+  "dataset_id": "fresco_anvil",
+  "generated_at": "2026-08-26T22:44:40.576334Z"
+}

@@ -1,0 +1,103 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 9963,
+  "feature_fields": [
+    "account",
+    "num_nodes_req",
+    "num_tasks_req",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 1644.2910769848438,
+    "rmse": 10183.470508994656,
+    "signatures": 734,
+    "group_sizes": {
+      "min": 1,
+      "median": 2.0,
+      "max": 2062,
+      "singleton_row_share": 0.02880658436213992
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "account",
+      "floor_mae_without": 1644.2910769848438,
+      "cost": 0.0
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 1644.2910769848438,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_nodes_req",
+      "floor_mae_without": 1657.3372478169226,
+      "cost": 13.046170832078815
+    },
+    {
+      "feature": "num_tasks_req",
+      "floor_mae_without": 1701.2025494329018,
+      "cost": 56.91147244805802
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 2311.2676904546825,
+      "cost": 666.9766134698386
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 4681.419301415236,
+        "coverage": 0.36224028906955735,
+        "rows": 9963
+      },
+      "10d": {
+        "mae": 2631.448710227843,
+        "coverage": 0.5570611261668172,
+        "rows": 9963
+      },
+      "30d": {
+        "mae": 2624.3299708923014,
+        "coverage": 0.6917595101876944,
+        "rows": 9963
+      },
+      "60d": {
+        "mae": 2800.2748168222424,
+        "coverage": 0.7177556960754793,
+        "rows": 9963
+      },
+      "120d": {
+        "mae": 2785.0261969286357,
+        "coverage": 0.7249824350095353,
+        "rows": 9963
+      },
+      "all": {
+        "mae": 2785.0261969286357,
+        "coverage": 0.7249824350095353,
+        "rows": 9963
+      }
+    },
+    "best_lookback": "30d",
+    "backoff_order": [
+      "account",
+      "user",
+      "num_nodes_req",
+      "num_tasks_req",
+      "requested_seconds"
+    ],
+    "backoff_at_best": {
+      "mae": 3140.1631536685736,
+      "coverage": 0.6917595101876944,
+      "rows": 9963
+    }
+  },
+  "dataset_id": "atlas_opentrinity",
+  "generated_at": "2026-08-26T22:39:56.353253Z"
+}

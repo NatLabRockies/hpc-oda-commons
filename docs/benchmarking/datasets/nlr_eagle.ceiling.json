@@ -1,0 +1,131 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 328566,
+  "feature_fields": [
+    "account",
+    "num_cores_req",
+    "num_gpus_req",
+    "num_nodes_req",
+    "partition",
+    "qos",
+    "requested_memory_mib",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 2776.167549289945,
+    "rmse": 16898.49722481763,
+    "signatures": 2699,
+    "group_sizes": {
+      "min": 1,
+      "median": 3.0,
+      "max": 141740,
+      "singleton_row_share": 0.0027726545047265998
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "num_nodes_req",
+      "floor_mae_without": 2776.167549289945,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_gpus_req",
+      "floor_mae_without": 2776.338011236707,
+      "cost": 0.17046194676231607
+    },
+    {
+      "feature": "requested_memory_mib",
+      "floor_mae_without": 2789.1093235453454,
+      "cost": 12.94177425540056
+    },
+    {
+      "feature": "qos",
+      "floor_mae_without": 2791.7611834456397,
+      "cost": 15.593634155694872
+    },
+    {
+      "feature": "partition",
+      "floor_mae_without": 2794.41673210253,
+      "cost": 18.24918281258533
+    },
+    {
+      "feature": "account",
+      "floor_mae_without": 2801.2519341623906,
+      "cost": 25.084384872445753
+    },
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 2822.781319430495,
+      "cost": 46.61377014055006
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 2926.514484152347,
+      "cost": 150.34693486240212
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 2997.654739078298,
+      "cost": 221.48718978835313
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 7463.935834809445,
+        "coverage": 0.607062203636408,
+        "rows": 328566
+      },
+      "10d": {
+        "mae": 5276.861196837165,
+        "coverage": 0.8116908018480306,
+        "rows": 328566
+      },
+      "30d": {
+        "mae": 6350.245433185418,
+        "coverage": 0.8536427993158148,
+        "rows": 328566
+      },
+      "60d": {
+        "mae": 6401.194985178016,
+        "coverage": 0.8709543896812209,
+        "rows": 328566
+      },
+      "120d": {
+        "mae": 6890.69184882185,
+        "coverage": 0.8941004242678792,
+        "rows": 328566
+      },
+      "all": {
+        "mae": 7331.30602831699,
+        "coverage": 0.8995757321207916,
+        "rows": 328566
+      }
+    },
+    "best_lookback": "10d",
+    "backoff_order": [
+      "num_nodes_req",
+      "num_gpus_req",
+      "requested_memory_mib",
+      "qos",
+      "partition",
+      "account",
+      "num_cores_req",
+      "requested_seconds",
+      "user"
+    ],
+    "backoff_at_best": {
+      "mae": 5290.576826269304,
+      "coverage": 0.8116908018480306,
+      "rows": 328566
+    }
+  },
+  "dataset_id": "nlr_eagle",
+  "generated_at": "2026-08-26T22:47:14.047308Z"
+}

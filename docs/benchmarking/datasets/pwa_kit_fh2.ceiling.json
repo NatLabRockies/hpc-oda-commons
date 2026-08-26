@@ -1,0 +1,103 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 6739,
+  "feature_fields": [
+    "num_cores_req",
+    "partition",
+    "queue",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 8391.255527526338,
+    "rmse": 25526.968093645126,
+    "signatures": 450,
+    "group_sizes": {
+      "min": 1,
+      "median": 3.0,
+      "max": 1064,
+      "singleton_row_share": 0.018548746104763317
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "partition",
+      "floor_mae_without": 8391.255527526338,
+      "cost": 0.0
+    },
+    {
+      "feature": "queue",
+      "floor_mae_without": 8391.255527526338,
+      "cost": 0.0
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 9624.283128060542,
+      "cost": 1233.0276005342039
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 10132.19795221843,
+      "cost": 1740.9424246920917
+    },
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 10645.956224959193,
+      "cost": 2254.700697432854
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 16814.168645199585,
+        "coverage": 0.6070633625166939,
+        "rows": 6739
+      },
+      "10d": {
+        "mae": 13521.4852351981,
+        "coverage": 0.7864668348419647,
+        "rows": 6739
+      },
+      "30d": {
+        "mae": 12984.028268289063,
+        "coverage": 0.8376613740911114,
+        "rows": 6739
+      },
+      "60d": {
+        "mae": 12740.547410595043,
+        "coverage": 0.8539842706633032,
+        "rows": 6739
+      },
+      "120d": {
+        "mae": 12830.680887372013,
+        "coverage": 0.8600682593856656,
+        "rows": 6739
+      },
+      "all": {
+        "mae": 12838.049933224514,
+        "coverage": 0.8600682593856656,
+        "rows": 6739
+      }
+    },
+    "best_lookback": "60d",
+    "backoff_order": [
+      "partition",
+      "queue",
+      "user",
+      "requested_seconds",
+      "num_cores_req"
+    ],
+    "backoff_at_best": {
+      "mae": 12609.99918385517,
+      "coverage": 0.8539842706633032,
+      "rows": 6739
+    }
+  },
+  "dataset_id": "pwa_kit_fh2",
+  "generated_at": "2026-08-26T22:49:16.823143Z"
+}

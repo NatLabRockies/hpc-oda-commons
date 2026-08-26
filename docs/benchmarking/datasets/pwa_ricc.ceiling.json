@@ -1,0 +1,96 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 117639,
+  "feature_fields": [
+    "num_cores_req",
+    "queue",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 4446.263475548075,
+    "rmse": 19869.880233749333,
+    "signatures": 770,
+    "group_sizes": {
+      "min": 1,
+      "median": 3.0,
+      "max": 37081,
+      "singleton_row_share": 0.0022271525599503565
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "queue",
+      "floor_mae_without": 4446.300130058909,
+      "cost": 0.036654510834523535
+    },
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 4497.12673518136,
+      "cost": 50.86325963328545
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 5052.815817883525,
+      "cost": 606.5523423354498
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 6569.114315830634,
+      "cost": 2122.850840282559
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 7807.811576092962,
+        "coverage": 0.6946675847295539,
+        "rows": 117639
+      },
+      "10d": {
+        "mae": 5562.949430035957,
+        "coverage": 0.7947449400283919,
+        "rows": 117639
+      },
+      "30d": {
+        "mae": 5455.463634508964,
+        "coverage": 0.8041210822941371,
+        "rows": 117639
+      },
+      "60d": {
+        "mae": 5539.877009325139,
+        "coverage": 0.8603439335594488,
+        "rows": 117639
+      },
+      "120d": {
+        "mae": 5697.967055993336,
+        "coverage": 0.9303462287166671,
+        "rows": 117639
+      },
+      "all": {
+        "mae": 5698.040649784511,
+        "coverage": 0.9303462287166671,
+        "rows": 117639
+      }
+    },
+    "best_lookback": "30d",
+    "backoff_order": [
+      "queue",
+      "num_cores_req",
+      "requested_seconds",
+      "user"
+    ],
+    "backoff_at_best": {
+      "mae": 5965.0647361844285,
+      "coverage": 0.8041210822941371,
+      "rows": 117639
+    }
+  },
+  "dataset_id": "pwa_ricc",
+  "generated_at": "2026-08-26T22:51:37.621681Z"
+}

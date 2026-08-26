@@ -1,0 +1,96 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 45255,
+  "feature_fields": [
+    "num_cores_req",
+    "partition",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 3683.354369682908,
+    "rmse": 10841.026175908499,
+    "signatures": 2553,
+    "group_sizes": {
+      "min": 1,
+      "median": 3.0,
+      "max": 3166,
+      "singleton_row_share": 0.01838470887194785
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "partition",
+      "floor_mae_without": 3712.1386587117445,
+      "cost": 28.78428902883661
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 4131.238139432107,
+      "cost": 447.8837697491995
+    },
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 4210.385460170147,
+      "cost": 527.031090487239
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 4930.220130372334,
+      "cost": 1246.8657606894262
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 6257.882388686333,
+        "coverage": 0.6851176665561817,
+        "rows": 45255
+      },
+      "10d": {
+        "mae": 5072.3583029499505,
+        "coverage": 0.8071152358855375,
+        "rows": 45255
+      },
+      "30d": {
+        "mae": 5330.022317975914,
+        "coverage": 0.8344492321290465,
+        "rows": 45255
+      },
+      "60d": {
+        "mae": 5209.0052811844,
+        "coverage": 0.8433985195006076,
+        "rows": 45255
+      },
+      "120d": {
+        "mae": 5185.271273892387,
+        "coverage": 0.8549994475748536,
+        "rows": 45255
+      },
+      "all": {
+        "mae": 5193.6616175008285,
+        "coverage": 0.8551320296099878,
+        "rows": 45255
+      }
+    },
+    "best_lookback": "10d",
+    "backoff_order": [
+      "partition",
+      "requested_seconds",
+      "num_cores_req",
+      "user"
+    ],
+    "backoff_at_best": {
+      "mae": 5265.934161971053,
+      "coverage": 0.8071152358855375,
+      "rows": 45255
+    }
+  },
+  "dataset_id": "pwa_cea_curie",
+  "generated_at": "2026-08-26T22:49:11.411831Z"
+}

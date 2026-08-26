@@ -1,0 +1,96 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 11586,
+  "feature_fields": [
+    "num_cores_req",
+    "queue",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 784.0222682547902,
+    "rmse": 4549.166664013524,
+    "signatures": 766,
+    "group_sizes": {
+      "min": 1,
+      "median": 2.0,
+      "max": 1030,
+      "singleton_row_share": 0.025375453133091662
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "queue",
+      "floor_mae_without": 820.0237355428966,
+      "cost": 36.00146728810637
+    },
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 848.509925772484,
+      "cost": 64.48765751769383
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 1000.3528396340411,
+      "cost": 216.33057137925084
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 1076.297773174521,
+      "cost": 292.2755049197307
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 2386.744001380977,
+        "coverage": 0.6849646124633177,
+        "rows": 11586
+      },
+      "10d": {
+        "mae": 1798.524555498015,
+        "coverage": 0.8339375107888831,
+        "rows": 11586
+      },
+      "30d": {
+        "mae": 1738.3792076644227,
+        "coverage": 0.86078025202831,
+        "rows": 11586
+      },
+      "60d": {
+        "mae": 1701.3821422406352,
+        "coverage": 0.8736406007250129,
+        "rows": 11586
+      },
+      "120d": {
+        "mae": 1670.6083203866735,
+        "coverage": 0.8835663732090454,
+        "rows": 11586
+      },
+      "all": {
+        "mae": 1682.9215432418437,
+        "coverage": 0.8836526842741239,
+        "rows": 11586
+      }
+    },
+    "best_lookback": "120d",
+    "backoff_order": [
+      "queue",
+      "num_cores_req",
+      "requested_seconds",
+      "user"
+    ],
+    "backoff_at_best": {
+      "mae": 1652.048808907302,
+      "coverage": 0.8835663732090454,
+      "rows": 11586
+    }
+  },
+  "dataset_id": "pwa_sdsc_blue",
+  "generated_at": "2026-08-26T22:51:42.610884Z"
+}

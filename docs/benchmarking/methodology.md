@@ -162,6 +162,9 @@ earlier — which is a deployable strategy rather than a bound, and which beats 
 models on 9 of 20 datasets (#171). Sweeping its lookback also showed the fixed
 `training_lookback_days: 120` is optimal for only 6 of 20 datasets (#170).
 
+Per-dataset results are tracked as `datasets/<dataset>.ceiling.json`, with a cross-dataset
+summary in [`ceilings.md`](ceilings.md).
+
 **Deliberately not included:** leave-one-out. It is neither the floor (the optimal function has
 no "leave out" in its definition) nor achievable (a row's peers include jobs that ran *after*
 it, so it is not causal), so it answers neither question.

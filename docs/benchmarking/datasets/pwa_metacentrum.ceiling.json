@@ -1,0 +1,96 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 308435,
+  "feature_fields": [
+    "num_cores_req",
+    "partition",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 9795.52889911975,
+    "rmse": 76720.79705024592,
+    "signatures": 1790,
+    "group_sizes": {
+      "min": 1,
+      "median": 2.0,
+      "max": 66077,
+      "singleton_row_share": 0.0022338580251916934
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "partition",
+      "floor_mae_without": 9795.52889911975,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 10079.459338272245,
+      "cost": 283.9304391524947
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 10857.834914973982,
+      "cost": 1062.306015854232
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 11209.165334673433,
+      "cost": 1413.6364355536825
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 13708.071793084442,
+        "coverage": 0.8187851573265031,
+        "rows": 308435
+      },
+      "10d": {
+        "mae": 12834.625224115292,
+        "coverage": 0.903104381798434,
+        "rows": 308435
+      },
+      "30d": {
+        "mae": 12232.944899249436,
+        "coverage": 0.9300987242044515,
+        "rows": 308435
+      },
+      "60d": {
+        "mae": 11967.99223823496,
+        "coverage": 0.9373125618039457,
+        "rows": 308435
+      },
+      "120d": {
+        "mae": 11925.769068037025,
+        "coverage": 0.9452104981600662,
+        "rows": 308435
+      },
+      "all": {
+        "mae": 12065.495916481592,
+        "coverage": 0.949606886378005,
+        "rows": 308435
+      }
+    },
+    "best_lookback": "120d",
+    "backoff_order": [
+      "partition",
+      "num_cores_req",
+      "requested_seconds",
+      "user"
+    ],
+    "backoff_at_best": {
+      "mae": 11981.486121873328,
+      "coverage": 0.9452104981600662,
+      "rows": 308435
+    }
+  },
+  "dataset_id": "pwa_metacentrum",
+  "generated_at": "2026-08-26T22:51:26.018023Z"
+}

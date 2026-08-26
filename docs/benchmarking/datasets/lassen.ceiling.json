@@ -1,0 +1,110 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 77876,
+  "feature_fields": [
+    "account",
+    "job_type",
+    "num_gpus_req",
+    "queue",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 1939.8243014192435,
+    "rmse": 5711.599846031659,
+    "signatures": 719,
+    "group_sizes": {
+      "min": 1,
+      "median": 6.0,
+      "max": 28287,
+      "singleton_row_share": 0.001964661769993323
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "account",
+      "floor_mae_without": 1939.8243014192433,
+      "cost": -2.2737367544323206e-13
+    },
+    {
+      "feature": "num_gpus_req",
+      "floor_mae_without": 1939.8243014192435,
+      "cost": 0.0
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 1939.8243014192435,
+      "cost": 0.0
+    },
+    {
+      "feature": "queue",
+      "floor_mae_without": 1955.7903675375471,
+      "cost": 15.966066118303615
+    },
+    {
+      "feature": "job_type",
+      "floor_mae_without": 1968.661174083094,
+      "cost": 28.8368726638505
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 2250.805962020237,
+      "cost": 310.98166060099356
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 3665.05405942201,
+        "coverage": 0.5019775026965946,
+        "rows": 77876
+      },
+      "10d": {
+        "mae": 3505.3305554222948,
+        "coverage": 0.7887025527762084,
+        "rows": 77876
+      },
+      "30d": {
+        "mae": 4208.4985485136185,
+        "coverage": 0.8164903179413426,
+        "rows": 77876
+      },
+      "60d": {
+        "mae": 4371.030309326733,
+        "coverage": 0.8444963788586984,
+        "rows": 77876
+      },
+      "120d": {
+        "mae": 4391.1751921200175,
+        "coverage": 0.8515332066361909,
+        "rows": 77876
+      },
+      "all": {
+        "mae": 4364.322901761896,
+        "coverage": 0.8515974112691972,
+        "rows": 77876
+      }
+    },
+    "best_lookback": "10d",
+    "backoff_order": [
+      "account",
+      "num_gpus_req",
+      "user",
+      "queue",
+      "job_type",
+      "requested_seconds"
+    ],
+    "backoff_at_best": {
+      "mae": 3362.3531686465603,
+      "coverage": 0.7887025527762084,
+      "rows": 77876
+    }
+  },
+  "dataset_id": "lassen",
+  "generated_at": "2026-08-26T22:46:21.560633Z"
+}

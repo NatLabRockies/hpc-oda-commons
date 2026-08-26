@@ -1,0 +1,96 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 8457,
+  "feature_fields": [
+    "num_cores_req",
+    "partition",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 4632.081116235072,
+    "rmse": 21872.269347993366,
+    "signatures": 461,
+    "group_sizes": {
+      "min": 1,
+      "median": 3.0,
+      "max": 1040,
+      "singleton_row_share": 0.014780655078633085
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "partition",
+      "floor_mae_without": 4632.081116235072,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 4685.731583303772,
+      "cost": 53.65046706869998
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 4718.76516495211,
+      "cost": 86.68404871703842
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 7485.248669741043,
+      "cost": 2853.1675535059712
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 9882.899668913326,
+        "coverage": 0.6280004729809625,
+        "rows": 8457
+      },
+      "10d": {
+        "mae": 6790.198356391155,
+        "coverage": 0.7624453115762091,
+        "rows": 8457
+      },
+      "30d": {
+        "mae": 6888.9700248315,
+        "coverage": 0.7829017382050373,
+        "rows": 8457
+      },
+      "60d": {
+        "mae": 7123.881991249852,
+        "coverage": 0.791651886011588,
+        "rows": 8457
+      },
+      "120d": {
+        "mae": 6591.090753222183,
+        "coverage": 0.8097434078278349,
+        "rows": 8457
+      },
+      "all": {
+        "mae": 6511.538547948445,
+        "coverage": 0.8123448031216743,
+        "rows": 8457
+      }
+    },
+    "best_lookback": "all",
+    "backoff_order": [
+      "partition",
+      "num_cores_req",
+      "user",
+      "requested_seconds"
+    ],
+    "backoff_at_best": {
+      "mae": 6073.262622679437,
+      "coverage": 0.8123448031216743,
+      "rows": 8457
+    }
+  },
+  "dataset_id": "pwa_hpc2n",
+  "generated_at": "2026-08-26T22:49:14.059074Z"
+}

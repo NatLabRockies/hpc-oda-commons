@@ -1,0 +1,103 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 120,
+    "test_window_hours": 6,
+    "training_lookback_days": 120
+  },
+  "scored_rows": 32278,
+  "feature_fields": [
+    "constraints",
+    "num_cores_req",
+    "partition",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 20078.766590247225,
+    "rmse": 60873.94647209764,
+    "signatures": 913,
+    "group_sizes": {
+      "min": 1,
+      "median": 4.0,
+      "max": 7122,
+      "singleton_row_share": 0.007714232604250573
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "constraints",
+      "floor_mae_without": 20095.255344197285,
+      "cost": 16.488753950059618
+    },
+    {
+      "feature": "partition",
+      "floor_mae_without": 20297.297540120206,
+      "cost": 218.53094987298027
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 21147.63894912944,
+      "cost": 1068.872358882214
+    },
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 21174.161410248467,
+      "cost": 1095.394820001242
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 24945.287192515025,
+      "cost": 4866.520602267799
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 29683.738304727678,
+        "coverage": 0.7056199268851849,
+        "rows": 32278
+      },
+      "10d": {
+        "mae": 33718.94341347048,
+        "coverage": 0.8419356837474441,
+        "rows": 32278
+      },
+      "30d": {
+        "mae": 32875.38245864056,
+        "coverage": 0.8759526612553442,
+        "rows": 32278
+      },
+      "60d": {
+        "mae": 33178.86761881157,
+        "coverage": 0.8942003841625875,
+        "rows": 32278
+      },
+      "120d": {
+        "mae": 33041.63142078196,
+        "coverage": 0.9123551645083339,
+        "rows": 32278
+      },
+      "all": {
+        "mae": 33001.23774707231,
+        "coverage": 0.9124790879236632,
+        "rows": 32278
+      }
+    },
+    "best_lookback": "1d",
+    "backoff_order": [
+      "constraints",
+      "partition",
+      "requested_seconds",
+      "num_cores_req",
+      "user"
+    ],
+    "backoff_at_best": {
+      "mae": 30520.287719189542,
+      "coverage": 0.7056199268851849,
+      "rows": 32278
+    }
+  },
+  "dataset_id": "mit_supercloud",
+  "generated_at": "2026-08-26T22:46:29.483325Z"
+}
