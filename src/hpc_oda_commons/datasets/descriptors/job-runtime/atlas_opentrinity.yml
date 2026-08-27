@@ -4,7 +4,8 @@ name: Atlas OpenTrinity (LANL)
 version: 1.0.0
 description: >
   LANL Trinity (OpenTrinity) SLURM trace from the Atlas repository, formatted release
-  (~25k jobs, 2017). The runtime-prediction target is derived (end_time - start_time);
+  (~25k jobs, Feb-Apr 2016; 21,531 after dropping rows with no runtime). The
+  runtime-prediction target is derived (end_time - start_time);
   requested walltime = wallclock_limit (a pandas timedelta string). No job identifier
   column, so job_id is a synthesized row-index surrogate. Timestamps carry -06:00/-07:00
   offsets and are normalized to UTC. Citation required (USENIX ATC'18).
@@ -17,7 +18,7 @@ tags: [atlas, lanl, trinity, slurm]
 size:
   default_bytes: 284486
   full_bytes: 284486
-  rows_hint: "~25k jobs (2017)"
+  rows_hint: "~25k jobs (Feb-Apr 2016); 21,531 prepared"
 
 source:
   kind: http
