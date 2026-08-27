@@ -57,8 +57,11 @@ def _cell_key(entry: dict[str, Any]) -> tuple[Any, ...]:
     """
     dataset = (entry.get("dataset") or {}).get("id")
     model = (entry.get("model") or {}).get("id")
+    # The recipe id is part of the identity, not a fallback. Since #170 the benchmark runs
+    # each model at several training lookbacks, and those are different cells -- keying on
+    # (dataset, model) alone would silently keep one arm of three and discard the rest.
     if dataset and model:
-        return ("cell", dataset, model)
+        return ("cell", dataset, model, entry.get("recipe_id"))
     if entry.get("recipe_id"):
         return ("recipe", entry["recipe_id"])
     return ("bundle", entry.get("bundle_dir"))

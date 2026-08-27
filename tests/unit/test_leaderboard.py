@@ -14,6 +14,7 @@ def _make_bundle(
     dataset: str = "synthetic_job_runtime_tiny",
     created_at: str = "2026-02-05T00:00:00Z",
     mae: float = 1.0,
+    recipe_id: str = "recipe.job_runtime.baseline_tiny",
 ) -> None:
     metrics = {
         "mae": mae,
@@ -25,7 +26,7 @@ def _make_bundle(
     }
     result = {
         "schema_version": "oda.result.v0.1.0",
-        "recipe_id": "recipe.job_runtime.baseline_tiny",
+        "recipe_id": recipe_id,
         "problem_domain": ["job-runtime-prediction"],
         "created_at": created_at,
         "metrics": {"mae": mae, "rmse": 2.0},
@@ -154,3 +155,38 @@ def test_a_clean_runs_dir_is_unchanged(tmp_path: Path) -> None:
 
     assert len(leaderboard["entries"]) == 1
     assert leaderboard["superseded"] == []
+
+
+def test_lookback_arms_of_one_model_are_separate_cells(tmp_path: Path) -> None:
+    """Since #170 a model runs at several lookbacks; those are different cells.
+
+    Keying on (dataset, model) alone would keep one arm of three and silently discard the
+    rest -- turning a 420-cell run into a 140-cell leaderboard.
+    """
+    for i, (arm, mae) in enumerate((("lb10d", 1.0), ("lb30d", 2.0), ("lb120d", 3.0))):
+        _make_bundle(
+            tmp_path / "runs" / "ds" / "xgboost" / arm,
+            created_at=f"2026-02-0{i + 1}T00:00:00Z",
+            mae=mae,
+            recipe_id=f"recipe.job_runtime.ds_xgboost_{arm}",
+        )
+
+    leaderboard = build_leaderboard(tmp_path / "runs")
+
+    assert len(leaderboard["entries"]) == 3
+    assert leaderboard["superseded"] == []
+
+
+def test_the_same_arm_run_twice_is_still_deduplicated(tmp_path: Path) -> None:
+    """Adding the arm to the key must not disable the #166 fix."""
+    for i, ts in enumerate(("2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z")):
+        _make_bundle(
+            tmp_path / "runs" / "ds" / "xgboost" / f"run{i}",
+            created_at=ts,
+            recipe_id="recipe.job_runtime.ds_xgboost_lb10d",
+        )
+
+    leaderboard = build_leaderboard(tmp_path / "runs")
+
+    assert len(leaderboard["entries"]) == 1
+    assert len(leaderboard["superseded"]) == 1

@@ -82,7 +82,7 @@ multi-hour per model — this benchmark is an **HPC
 job** (runner: later phase). Three months is the *minimum* we're confident in; future passes
 should use more.
 
-### Training lookback: per dataset, not fixed (#170)
+### Training lookback: a benchmark axis, not a fixed parameter (#170)
 
 `training_lookback_days` was 120 for every dataset. Measured, that is the best value for only
 **6 of 20**: twelve want *less* history and two want more. The cost of getting it wrong is not
@@ -90,10 +90,20 @@ marginal — on `lassen`, XGBoost scores **3,304 at a 10-day lookback against 4,
 25% swing, and at 10 days it would have beaten the random forest that won that dataset in the
 fleet. **The fixed parameter did not just cost accuracy; it decided which model won.**
 
-The value is chosen per dataset by the model-free lookback sweep in
-[`ceilings.md`](ceilings.md), recorded on the dataset card as `training_lookback_days`, and
-read by the planner. A card without one falls back to the shared default, so a new dataset
-works before any ceiling analysis exists.
+**Every model runs at every lookback** — `{10d, 30d, 120d}` — so the comparison is about the
+model rather than about a parameter we picked. Cost is ~1.6x, not 3x: a short lookback trains
+on proportionally less history, so a 10-day arm costs roughly a fifth of a 120-day one.
+
+An earlier design set the value per dataset from the memorization sweep. The full sweep
+showed why that is unsafe: the proxy is exact where the effect is large (`lassen` and
+`nlr_eagle` both 10d, worth 21% and 18%) and wrong where it is small — on `mit_supercloud` it
+picked 1d, which is XGBoost's *worst* arm there (38,410 against 32,301 at 30d). Running the
+axis avoids having to trust it at all.
+
+**Choosing a winner per cell is an analysis step, deliberately.** Reporting each model's best
+arm by test MAE would select on the test set — a noisier model gets three draws at the same
+target. The honest selection tunes on the first 60 windows and scores on the last 60, computed
+downstream from the per-window metrics every run already emits, so it costs no extra compute.
 
 **The sweep is a proxy and was validated as one.** It optimises *memorization*, not a fitted
 model, so using it to set a model's training window is an inference. Checked on two datasets

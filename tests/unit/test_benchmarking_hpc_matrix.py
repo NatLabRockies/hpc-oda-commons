@@ -15,6 +15,7 @@ from hpc_oda_commons.benchmark.recipes import load_recipe
 from hpc_oda_commons.benchmarking.hpc.config import SiteConfigError, load_site_config
 from hpc_oda_commons.benchmarking.hpc.matrix import (
     EMBEDDING_MODEL,
+    LOOKBACK_ARMS,
     MAX_NODE_ROWS,
     MODEL_SPLIT_OVERRIDES,
     RUNTIME_MODELS,
@@ -143,7 +144,7 @@ def test_build_plan_cell_and_embed_counts(tmp_path: Path) -> None:
     cards = [_card("small", 1000), _card("big", 5_000_000)]
     plan = build_plan(cards, cfg, plan_id="p1")
 
-    assert len(plan.cells) == 2 * len(RUNTIME_MODELS)
+    assert len(plan.cells) == 2 * len(RUNTIME_MODELS) * len(LOOKBACK_ARMS)
     assert len(plan.embeds) == 2  # one embed job per dataset
     big_cells = [c for c in plan.cells if c.dataset == "big"]
     # Even the extreme tier runs on the ordinary CPU partition now.
@@ -180,7 +181,7 @@ def test_write_plan_emits_valid_recipes_and_filled_scripts(tmp_path: Path) -> No
 
     # every recipe validates against the recipe schema
     recipes = sorted(staging.glob("recipes/*.yml"))
-    assert len(recipes) == len(RUNTIME_MODELS)
+    assert len(recipes) == len(RUNTIME_MODELS) * len(LOOKBACK_ARMS)
     for r in recipes:
         load_recipe(r, validate=True)
 
@@ -197,7 +198,7 @@ def test_write_plan_emits_valid_recipes_and_filled_scripts(tmp_path: Path) -> No
     assert "#SBATCH --mem=64G" in embed_script  # light tier embed memory (was unset → OOM)
 
     plan_json = json.loads(plan_path.read_text(encoding="utf-8"))
-    assert plan_json["n_cells"] == len(RUNTIME_MODELS)
+    assert plan_json["n_cells"] == len(RUNTIME_MODELS) * len(LOOKBACK_ARMS)
     assert plan_json["n_embeds"] == 1
 
 
@@ -212,7 +213,7 @@ def test_window_parallel_cells_get_the_tier_worker_count(tmp_path: Path) -> None
 
     def _split(dataset: str, tag: str) -> dict:
         payload = yaml.safe_load(
-            (staging / "recipes" / f"{dataset}__{tag}.yml").read_text(encoding="utf-8")
+            (staging / "recipes" / f"{dataset}__{tag}__lb120d.yml").read_text(encoding="utf-8")
         )
         return payload["split"]
 
@@ -426,46 +427,54 @@ def test_the_slice_extension_does_not_depend_on_the_lookback() -> None:
         assert slice_extension_for(card) == before
 
 
-def test_a_card_may_state_its_own_training_lookback(tmp_path: Path) -> None:
-    """Per-dataset lookback (#170): the best value differs sharply between machines."""
-    payload = _card_payload(train_days=60)
-    payload["training_lookback_days"] = 10
-    path = tmp_path / "ds.card.json"
-    path.write_text(json.dumps(payload), encoding="utf-8")
+def test_every_model_runs_at_every_lookback(tmp_path: Path) -> None:
+    """The lookback is a benchmark axis, not a fixed parameter (#170).
 
-    (card,) = load_cards(tmp_path)
-
-    assert card.training_lookback_days == 10
-
-
-def test_a_card_without_one_falls_back_to_the_shared_default(tmp_path: Path) -> None:
-    """A new dataset must work without a ceiling analysis having been run for it."""
-    path = tmp_path / "ds.card.json"
-    path.write_text(json.dumps(_card_payload(train_days=60)), encoding="utf-8")
-
-    (card,) = load_cards(tmp_path)
-
-    assert card.training_lookback_days == int(SPLIT["training_lookback_days"])
-
-
-def test_the_cards_lookback_reaches_the_generated_recipe(tmp_path: Path) -> None:
+    Fixed at 120 days it was best for only 6 of 20 datasets, and on lassen XGBoost at 10 days
+    beat every model the fleet ran at 120 -- the parameter decided the dataset, not the model.
+    """
     cfg = load_site_config(_write_site(tmp_path))
-    card = replace(_card("ds", 1_000), training_lookback_days=10)
 
-    plan = build_plan([card], cfg, plan_id="p1")
+    plan = build_plan([_card("ds", 1_000)], cfg, plan_id="p1")
+
+    for tag in {c.model for c in plan.cells}:
+        arms = sorted(c.training_lookback_days for c in plan.cells if c.model == tag)
+        assert arms == sorted(LOOKBACK_ARMS), tag
+
+
+def test_each_arm_gets_its_own_recipe_script_and_output(tmp_path: Path) -> None:
+    """Arms must not collide: same model, same dataset, different lookback."""
+    cfg = load_site_config(_write_site(tmp_path))
+    plan = build_plan([_card("ds", 1_000)], cfg, plan_id="p1")
+
+    xgb = [c for c in plan.cells if c.model == "xgboost"]
+
+    assert len({c.recipe_path for c in xgb}) == len(LOOKBACK_ARMS)
+    assert len({c.script_path for c in xgb}) == len(LOOKBACK_ARMS)
+    assert len({c.job_name for c in xgb}) == len(LOOKBACK_ARMS)
+
+
+def test_each_arms_lookback_reaches_its_recipe_and_output_dir(tmp_path: Path) -> None:
+    cfg = load_site_config(_write_site(tmp_path))
+    plan = build_plan([_card("ds", 1_000)], cfg, plan_id="p1")
     staging = tmp_path / "staging"
     write_plan(plan, staging, cfg)
 
-    recipe = load_recipe(next(staging.glob("recipes/ds__xgboost.yml")), validate=True)
-    assert recipe["split"]["training_lookback_days"] == 10
+    for arm in LOOKBACK_ARMS:
+        recipe = load_recipe(staging / "recipes" / f"ds__xgboost__lb{arm}d.yml", validate=True)
+        assert recipe["split"]["training_lookback_days"] == arm
+        # separate output dirs, or the arms would overwrite one another
+        assert recipe["run"]["output_dir"].endswith(f"/lb{arm}d")
 
 
-def test_card_carries_the_window_rule_train_days(tmp_path: Path) -> None:
-    (tmp_path / "ds.card.json").write_text(json.dumps(_card_payload()), encoding="utf-8")
+def test_the_arms_can_be_narrowed(tmp_path: Path) -> None:
+    """A single-arm plan reproduces the pre-axis shape, for a targeted re-run."""
+    cfg = load_site_config(_write_site(tmp_path))
 
-    (card,) = load_cards(tmp_path)
+    plan = build_plan([_card("ds", 1_000)], cfg, plan_id="p1", lookbacks=(120,))
 
-    assert card.train_days == 60
+    assert len(plan.cells) == len(RUNTIME_MODELS)
+    assert {c.training_lookback_days for c in plan.cells} == {120}
 
 
 # --- template rendering -------------------------------------------------------------
@@ -617,7 +626,7 @@ def test_an_excluded_model_gets_no_cells_recipes_or_scripts(tmp_path: Path) -> N
     staging = tmp_path / "staging"
     write_plan(plan, staging, cfg)
 
-    assert len(plan.cells) == len(RUNTIME_MODELS) - 1
+    assert len(plan.cells) == (len(RUNTIME_MODELS) - 1) * len(LOOKBACK_ARMS)
     assert "mlp" not in {c.model for c in plan.cells}
-    assert not list(staging.glob("recipes/*__mlp.yml"))
-    assert not list(staging.glob("scripts/*__mlp.sbatch"))
+    assert not list(staging.glob("recipes/*__mlp__*.yml"))
+    assert not list(staging.glob("scripts/*__mlp__*.sbatch"))
