@@ -701,3 +701,27 @@ def test_the_recipe_carries_the_cards_window_count() -> None:
     """The plan and the recipe must not be able to disagree about the evaluation length."""
     recipe = build_recipe("ds", "job_runtime_xgboost", "t.parquet", "runs/ds", n_windows=360)
     assert recipe["split"]["n_windows"] == 360
+
+
+def test_the_extreme_tier_is_not_throttled_below_the_heavy_one() -> None:
+    """Worker count is a memory knob, and the measurements do not justify cutting it (#191).
+
+    The extreme tier's old count of 4 was extrapolated from a 13.9M-row slice that exceeds
+    MAX_NODE_ROWS and is never planned. Measured on the fleet, a window-parallel cell peaks at
+    29.3 GiB with 16 workers against a 240 GiB node; the real ceiling belongs to
+    embedding_knn, which does not use window workers at all. Throttling bought a timeout to
+    avoid an OOM that does not happen.
+    """
+    extreme = TIERS[-1]
+    assert extreme.name == "extreme"
+    assert extreme.window_workers >= TIERS[1].window_workers
+    # The tiers still differ where the row count genuinely predicts something.
+    assert extreme.time != TIERS[1].time
+    assert extreme.embed_mem != TIERS[1].embed_mem
+
+
+def test_a_wider_slice_does_not_quietly_cost_a_dataset_its_workers() -> None:
+    """The #191 re-slice grew every window ~1.2-1.5x, moving datasets across a tier edge."""
+    before = tier_for_rows(2_400_000)
+    after = tier_for_rows(2_900_000)
+    assert after.window_workers == before.window_workers
