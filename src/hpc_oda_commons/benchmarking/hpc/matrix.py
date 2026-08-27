@@ -67,6 +67,22 @@ WINDOW_PARALLEL_MODEL_TAGS: frozenset[str] = frozenset({"mlp", "tfidf_knn", "moe
 # matter how much extra history sits in the file.
 SLICE_HISTORY_DAYS: int = 120
 
+# The benchmark sweeps the training lookback rather than fixing it. Measured, the fixed 120
+# days was best for only 6 of 20 datasets, and the cost of the wrong value is not marginal:
+# on lassen, XGBoost scores 3,346 at 10 days against 4,233 at 120 -- and at 10 days it beats
+# every model the fleet ran at 120, which is to say the parameter, not the model, decided
+# that dataset (#170).
+#
+# So every model competes at every lookback and the comparison is about the model. Cost is
+# ~1.6x, not 3x: a short lookback trains on proportionally less history, so a 10d arm costs
+# roughly a fifth of a 120d one.
+#
+# Choosing a winner per cell is left to analysis, deliberately. Picking each model's best arm
+# by test MAE would be selecting on the test set -- a noisier model gets three draws at the
+# same target -- so the honest selection (tune on early windows, score on late ones) is done
+# downstream from the per-window metrics these runs already emit.
+LOOKBACK_ARMS: tuple[int, ...] = (10, 30, 120)
+
 SPLIT: dict[str, object] = {
     "method": "rolling",
     "n_windows": 120,
@@ -247,10 +263,6 @@ class Card:
     source_table: str  # canonical prepared parquet path (relative to repo root)
     card_path: Path
     sliced_rows: int | None = None  # rows in the slice on disk, from its slice.json
-    # How much history this dataset's models train on. Chosen per dataset because the best
-    # value differs sharply between machines (#170); falls back to the shared default when
-    # the card does not state one, so a new dataset works without a ceiling analysis.
-    training_lookback_days: int = int(SPLIT["training_lookback_days"])  # type: ignore[arg-type]
 
     @property
     def effective_rows(self) -> int:
@@ -308,9 +320,6 @@ def _parse_card(path: Path) -> Card:
         system=str(source.get("system", "")),
         source_table=str(source.get("table_path", "")),
         card_path=path,
-        training_lookback_days=int(
-            payload.get("training_lookback_days") or SPLIT["training_lookback_days"]  # type: ignore[arg-type]
-        ),
     )
 
 
@@ -356,6 +365,7 @@ class Plan:
     remote_base: str
     repo_dir: str
     models: list[str]
+    lookbacks: list[int]
     cells: list[Cell] = field(default_factory=list)
     embeds: list[EmbedJob] = field(default_factory=list)
     skipped: list[dict[str, str]] = field(default_factory=list)
@@ -413,6 +423,7 @@ def build_plan(
     *,
     plan_id: str,
     models: tuple[str, ...] = RUNTIME_MODELS,
+    lookbacks: tuple[int, ...] = LOOKBACK_ARMS,
     include_unhealthy: bool = False,
 ) -> Plan:
     """Build the in-memory plan (no files written)."""
@@ -422,6 +433,7 @@ def build_plan(
         remote_base=site.remote_base,
         repo_dir=site.repo_dir,
         models=list(models),
+        lookbacks=list(lookbacks),
     )
     embed_wanted = EMBEDDING_MODEL in models
     for card in cards:
@@ -447,23 +459,25 @@ def build_plan(
             tag = _model_tag(model_key)
             needs_embed = model_key == EMBEDDING_MODEL
             table_path = _embedded_parquet(card.dataset) if needs_embed else window_pq
-            plan.cells.append(
-                Cell(
-                    dataset=card.dataset,
-                    model=tag,
-                    model_id=f"model.{model_key}",
-                    tier=tier.name,
-                    partition=partition,
-                    window_workers=tier.window_workers,
-                    time=tier.time,
-                    table_path=table_path,
-                    recipe_path=f"recipes/{card.dataset}__{tag}.yml",
-                    script_path=f"scripts/bench__{card.dataset}__{tag}.sbatch",
-                    needs_embed=needs_embed,
-                    job_name=f"b.{card.dataset}.{tag}",
-                    training_lookback_days=card.training_lookback_days,
+            for lookback in lookbacks:
+                stem = f"{card.dataset}__{tag}__lb{lookback}d"
+                plan.cells.append(
+                    Cell(
+                        dataset=card.dataset,
+                        model=tag,
+                        model_id=f"model.{model_key}",
+                        tier=tier.name,
+                        partition=partition,
+                        window_workers=tier.window_workers,
+                        time=tier.time,
+                        table_path=table_path,
+                        recipe_path=f"recipes/{stem}.yml",
+                        script_path=f"scripts/bench__{stem}.sbatch",
+                        needs_embed=needs_embed,
+                        job_name=f"b.{card.dataset}.{tag}.lb{lookback}d",
+                        training_lookback_days=lookback,
+                    )
                 )
-            )
 
         if embed_wanted:
             plan.embeds.append(
@@ -581,7 +595,7 @@ def write_plan(plan: Plan, staging_dir: Path, site: SiteConfig) -> Path:
             cell.dataset,
             f"job_runtime_{cell.model}",
             cell.table_path,
-            output_dir=f"runs/{cell.dataset}/{cell.model}",
+            output_dir=f"runs/{cell.dataset}/{cell.model}/lb{cell.training_lookback_days}d",
             window_n_jobs=(
                 cell.window_workers if cell.model in WINDOW_PARALLEL_MODEL_TAGS else None
             ),
@@ -604,6 +618,7 @@ def write_plan(plan: Plan, staging_dir: Path, site: SiteConfig) -> Path:
         "repo_dir": plan.repo_dir,
         "staging_remote": staging_remote,
         "models": plan.models,
+        "lookbacks": plan.lookbacks,
         "n_cells": len(plan.cells),
         "n_embeds": len(plan.embeds),
         "cells": [asdict(c) for c in plan.cells],

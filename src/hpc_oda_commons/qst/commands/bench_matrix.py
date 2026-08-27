@@ -213,7 +213,8 @@ def bench_matrix_plan(
     n_datasets = len(by_dataset)
     console.print(
         f"[green]Planned[/green] {len(plan.cells)} benchmark cells "
-        f"({n_datasets} datasets x {len(plan.models)} models) "
+        f"({n_datasets} datasets x {len(plan.models)} models "
+        f"x {len(plan.lookbacks)} lookbacks {plan.lookbacks}) "
         f"+ {len(plan.embeds)} embedding jobs."
     )
     left_out = [m for m in RUNTIME_MODELS if m not in plan.models]
