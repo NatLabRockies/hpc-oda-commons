@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import shlex
 import subprocess
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -90,6 +91,105 @@ def sbatch_command(
         parts.append(f"--time={time}")
     parts.append(script_remote)
     return ssh_command(site, " ".join(parts), label=label)
+
+
+# One SSH round-trip costs a second or two. At 440 cells that is the difference between a
+# submit that finishes inside an interactive window and one that gets killed partway (#189),
+# so cells are submitted in batches: a single remote shell runs many ``sbatch`` calls and
+# reports one ``name<TAB>result`` line each.
+DEFAULT_SUBMIT_CHUNK = 50
+
+
+def _sbatch_fragment(
+    job_name: str,
+    script_remote: str,
+    *,
+    dependency: str | None,
+    partition: str | None,
+    time: str | None,
+) -> str:
+    """One ``sbatch`` inside a batched remote shell, reporting ``name<TAB>result``.
+
+    ``sbatch``'s stderr is folded onto the same line deliberately. A batch must report a
+    per-job outcome -- a failure that only showed up as a non-zero exit for the whole batch
+    would leave the caller unable to say *which* job did not start.
+    """
+    parts = ["sbatch", "--parsable"]
+    if dependency:
+        parts.append(f"--dependency={shlex.quote(dependency)}")
+    if partition:
+        parts.append(f"--partition={shlex.quote(partition)}")
+    if time:
+        parts.append(f"--time={shlex.quote(time)}")
+    parts.append(shlex.quote(script_remote))
+    return (
+        f"printf '%s\\t' {shlex.quote(job_name)}; "
+        f"{' '.join(parts)} 2>&1 | tr -d '\\n'; printf '\\n'"
+    )
+
+
+def sbatch_batch_command(
+    site: SiteConfig,
+    jobs: Sequence[tuple[str, str, str | None]],
+    *,
+    partition: str | None = None,
+    time: str | None = None,
+) -> Command:
+    """One SSH that submits every job in ``jobs`` -- ``(job_name, script_remote, dependency)``."""
+    remote = "; ".join(
+        _sbatch_fragment(name, script, dependency=dep, partition=partition, time=time)
+        for name, script, dep in jobs
+    )
+    return ssh_command(site, remote, label=f"submit {len(jobs)} job(s)")
+
+
+def parse_sbatch_batch(output: str) -> dict[str, str]:
+    """``name<TAB>result`` lines → ``{job_name: jobid}``.
+
+    A result that is not a job id is an error message from ``sbatch``; it is raised rather
+    than stored, because a manifest entry holding an error where a job id belongs would be
+    read downstream as a job that exists.
+    """
+    jobids: dict[str, str] = {}
+    failures: list[str] = []
+    for line in output.splitlines():
+        if "\t" not in line:
+            continue
+        name, _, result = line.partition("\t")
+        result = result.strip()
+        # sbatch --parsable prints "<jobid>" or "<jobid>;<cluster>".
+        head = result.split(";", 1)[0]
+        if head.isdigit():
+            jobids[name] = head
+        else:
+            failures.append(f"{name}: {result or 'no output'}")
+    if failures:
+        raise OrchestrationError(
+            "sbatch failed for "
+            + f"{len(failures)} job(s): "
+            + "; ".join(failures[:5])
+            + (f"; ... and {len(failures) - 5} more" if len(failures) > 5 else "")
+        )
+    return jobids
+
+
+def sacct_names_command(site: SiteConfig, *, since: str) -> Command:
+    """Every job name this account has run since ``since`` -- the input to ``--resume``."""
+    remote = (
+        f"sacct -X --starttime {shlex.quote(since)} --parsable2 --noheader "
+        "--format=JobName%100,State"
+    )
+    return ssh_command(site, remote, label=f"sacct job names since {since}")
+
+
+def parse_sacct_names(output: str) -> set[str]:
+    """Job names from ``sacct --parsable2 --noheader --format=JobName,State``."""
+    names: set[str] = set()
+    for line in output.splitlines():
+        name = line.split("|", 1)[0].strip()
+        if name:
+            names.add(name)
+    return names
 
 
 def remote_mkdirs_command(site: SiteConfig, *, extra: list[str] | None = None) -> Command:
@@ -213,6 +313,26 @@ def _filter_cells(plan: LoadedPlan, *, only: str | None, only_model: str | None)
     return cells
 
 
+def _submit_batch(
+    site: SiteConfig,
+    jobs: list[tuple[str, str, str | None]],
+    *,
+    execute: bool,
+    partition: str | None,
+    time: str | None,
+    echo,
+) -> dict[str, str]:
+    """Submit a batch and return ``{job_name: jobid}``; placeholders under dry-run."""
+    if not execute:
+        for name, script, dep in jobs:
+            suffix = f" (after {dep})" if dep else ""
+            echo(f"[dry-run] submit {name}{suffix}\n          sbatch --parsable {script}")
+        return {name: f"<{name}>" for name, _script, _dep in jobs}
+    cmd = sbatch_batch_command(site, jobs, partition=partition, time=time)
+    res = run_command(cmd, execute=True, echo=echo)
+    return parse_sbatch_batch(res.stdout or "")
+
+
 def submit_plan(
     plan: LoadedPlan,
     site: SiteConfig,
@@ -222,6 +342,9 @@ def submit_plan(
     only_model: str | None = None,
     partition: str | None = None,
     time: str | None = None,
+    chunk_size: int = DEFAULT_SUBMIT_CHUNK,
+    skip_job_names: Collection[str] = (),
+    on_progress=None,
     echo=print,
 ) -> dict:
     """Submit embeds (for datasets with an included embedding_knn cell), then cells.
@@ -229,23 +352,50 @@ def submit_plan(
     ``embedding_knn`` cells depend on their dataset's embed job (``afterok``). Returns a
     submission manifest. Under dry-run, jobids are placeholders so dependency wiring is
     still visible.
+
+    Cells go out in batches of ``chunk_size``, one SSH per batch rather than one per cell,
+    and ``on_progress`` is called with the manifest-so-far after each batch. At 440 cells the
+    old one-SSH-per-cell loop ran long enough to be killed partway, and because the manifest
+    was written only at the end it then recorded nothing at all (#189). Both halves matter:
+    the batching makes the interruption unlikely, the callback makes it survivable.
+
+    ``skip_job_names`` drops cells that already have a job -- what ``submit --resume`` passes
+    after diffing the plan against ``sacct``.
     """
     cells = _filter_cells(plan, only=only, only_model=only_model)
+    if skip_job_names:
+        skip = set(skip_job_names)
+        kept = [c for c in cells if c["job_name"] not in skip]
+        if len(kept) != len(cells):
+            echo(f"[resume] skipping {len(cells) - len(kept)} cell(s) that already have a job")
+        cells = kept
     datasets_needing_embed = {c["dataset"] for c in cells if c.get("needs_embed")}
     embeds = [e for e in plan.embeds if e["dataset"] in datasets_needing_embed]
 
     embed_jobids: dict[str, str] = {}
-    for e in embeds:
-        script = f"{plan.staging_remote}/{e['script_path']}"
-        cmd = sbatch_command(
-            site, script, partition=partition, time=time, label=f"submit embed {e['dataset']}"
+    if embeds:
+        jobs = [
+            (f"embed:{e['dataset']}", f"{plan.staging_remote}/{e['script_path']}", None)
+            for e in embeds
+        ]
+        by_name = _submit_batch(
+            site, jobs, execute=execute, partition=partition, time=time, echo=echo
         )
-        res = run_command(cmd, execute=execute, echo=echo)
-        embed_jobids[e["dataset"]] = (
-            _parse_jobid(res.stdout) if execute else f"<embed:{e['dataset']}>"
-        )
+        embed_jobids = {
+            e["dataset"]: by_name[f"embed:{e['dataset']}"]
+            for e in embeds
+            if f"embed:{e['dataset']}" in by_name
+        }
 
-    submitted_cells: list[dict] = []
+    manifest: dict = {
+        "plan_id": plan.plan_id,
+        "host": site.host,
+        "executed": execute,
+        "embeds": embed_jobids,
+        "cells": [],
+    }
+
+    pending: list[dict] = []
     for c in cells:
         dep = None
         if c.get("needs_embed"):
@@ -254,34 +404,32 @@ def submit_plan(
                 echo(f"[warn] no embed job for {c['dataset']}; skipping {c['job_name']}")
                 continue
             dep = f"afterok:{ej}"
-        script = f"{plan.staging_remote}/{c['script_path']}"
-        cmd = sbatch_command(
-            site,
-            script,
-            dependency=dep,
-            partition=partition,
-            time=time,
-            label=f"submit {c['job_name']}",
-        )
-        res = run_command(cmd, execute=execute, echo=echo)
-        jobid = _parse_jobid(res.stdout) if execute else f"<{c['job_name']}>"
-        submitted_cells.append(
-            {
-                "dataset": c["dataset"],
-                "model": c["model"],
-                "job_name": c["job_name"],
-                "jobid": jobid,
-                "dependency": dep,
-            }
-        )
+        pending.append({**c, "_dependency": dep})
 
-    return {
-        "plan_id": plan.plan_id,
-        "host": site.host,
-        "executed": execute,
-        "embeds": embed_jobids,
-        "cells": submitted_cells,
-    }
+    for i in range(0, len(pending), max(1, chunk_size)):
+        batch = pending[i : i + max(1, chunk_size)]
+        jobs = [
+            (c["job_name"], f"{plan.staging_remote}/{c['script_path']}", c["_dependency"])
+            for c in batch
+        ]
+        by_name = _submit_batch(
+            site, jobs, execute=execute, partition=partition, time=time, echo=echo
+        )
+        for c in batch:
+            manifest["cells"].append(
+                {
+                    "dataset": c["dataset"],
+                    "model": c["model"],
+                    "job_name": c["job_name"],
+                    "jobid": by_name.get(c["job_name"], f"<{c['job_name']}>"),
+                    "dependency": c["_dependency"],
+                }
+            )
+        if on_progress is not None:
+            # Hand over a copy: the caller persists this, and the next batch mutates ours.
+            on_progress({**manifest, "cells": list(manifest["cells"])})
+
+    return manifest
 
 
 def parse_sacct(output: str) -> dict[str, dict[str, str]]:
