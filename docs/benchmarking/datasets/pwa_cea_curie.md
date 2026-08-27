@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.pwa_cea_curie`
 
-*Generated 2026-07-18T18:39:01.852495+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:59:06.787203+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Curie  ·  **Descriptor:** `dataset.job_runtime.pwa_cea_curie`
 
@@ -22,12 +22,12 @@
 
 ## Benchmark window
 
-- **Window:** 2012-05-26 → 2012-08-23 (60d train + 30d test)
-- **Test period:** 2012-07-25 → 2012-08-23
-- **Rows in window:** 123,688 (1,374 jobs/day)
+- **Window:** 2012-04-03 → 2012-08-30 (60d train + 90d test)
+- **Test period:** 2012-06-02 → 2012-08-30
+- **Rows in window:** 185,870 (1,239 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
 
 ---
-*Provenance: git `4aacd474f835e7e91f9bd91bb250b0d9843620d3`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.alcf_djc_aurora`
 
-*Generated 2026-07-18T18:54:44.917808+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:58:38.309780+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Aurora  ·  **Descriptor:** `dataset.job_runtime.alcf_djc_aurora`
 
@@ -26,12 +26,12 @@
 
 ## Benchmark window
 
-- **Window:** 2025-12-25 → 2026-03-24 (60d train + 30d test)
-- **Test period:** 2026-02-23 → 2026-03-24
-- **Rows in window:** 83,718 (930 jobs/day)
+- **Window:** 2025-10-26 → 2026-03-24 (60d train + 90d test)
+- **Test period:** 2025-12-25 → 2026-03-24
+- **Rows in window:** 158,194 (1,054 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
 
 ---
-*Provenance: git `3071c4dd863b48e8b27e6870cdb937244d5b1347`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

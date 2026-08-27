@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.atlas_opentrinity`
 
-*Generated 2026-07-18T18:30:45.008291+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:58:44.631702+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Trinity  ·  **Descriptor:** `dataset.job_runtime.atlas_opentrinity`
 
@@ -21,12 +21,12 @@
 
 ## Benchmark window
 
-- **Window:** 2016-02-03 → 2016-04-22 (60d train + 30d test)
+- **Window:** 2016-02-03 → 2016-04-22 (50d train + 30d test)
 - **Test period:** 2016-03-24 → 2016-04-22
-- **Rows in window:** 21,529 (239 jobs/day)
+- **Rows in window:** 21,529 (269 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
-- **Rationale:** healthy span is only 80d (< 90d requested); used the whole span. No missing blocks.
+- **Rationale:** window END at 80% of healthy span; clear of all missing blocks. Source affords 80d, short of the 120d history + 90d evaluation requested, so this card runs 50d + 30d.
 
 ---
-*Provenance: git `1f961b887ea83187480cb4d7e415e8f7a1bff418`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.fdata_fugaku`
 
-*Generated 2026-08-22T15:07:29.924791+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:58:50.439335+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Fugaku  ·  **Descriptor:** `dataset.job_runtime.fdata_fugaku`
 
@@ -20,12 +20,12 @@
 
 ## Benchmark window
 
-- **Window:** 2023-05-21 → 2023-08-18 (60d train + 30d test)
-- **Test period:** 2023-07-20 → 2023-08-18
-- **Rows in window:** 3,311,884 (36,798 jobs/day)
+- **Window:** 2023-04-30 → 2023-09-26 (60d train + 90d test)
+- **Test period:** 2023-06-29 → 2023-09-26
+- **Rows in window:** 4,351,251 (29,008 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
 
 ---
-*Provenance: git `49e3f26367484d06d29b05263f5fa78519c3764b`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

@@ -273,7 +273,14 @@ def datasets_characterize(
         typer.Option("--anchor", help="Place the window END at this fraction of the healthy span."),
     ] = 0.80,
     train_days: Annotated[int, typer.Option("--train-days", help="Training lookback (days).")] = 60,
-    test_days: Annotated[int, typer.Option("--test-days", help="Test coverage (days).")] = 30,
+    test_days: Annotated[int, typer.Option("--test-days", help="Test coverage (days).")] = 90,
+    history_days: Annotated[
+        int,
+        typer.Option(
+            "--history-days",
+            help="History the earliest scored window must see (the lookback budget).",
+        ),
+    ] = 120,
     gap_min_days: Annotated[
         int,
         typer.Option(
@@ -302,6 +309,7 @@ def datasets_characterize(
             anchor=anchor,
             train_days=train_days,
             test_days=test_days,
+            history_days=history_days,
             gap_min_days=gap_min_days,
         )
     except CharacterizeError as exc:

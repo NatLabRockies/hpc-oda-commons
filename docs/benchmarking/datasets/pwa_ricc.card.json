@@ -1,9 +1,9 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.pwa_ricc",
-  "generated_at": "2026-07-18T18:37:43.129791+00:00",
+  "generated_at": "2026-08-27T12:59:13.284601+00:00",
   "source": {
-    "table_path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/pwa_ricc/data.parquet",
+    "table_path": "data/datasets/pwa_ricc/data.parquet",
     "system": "RICC",
     "descriptor": "dataset.job_runtime.pwa_ricc"
   },
@@ -53,17 +53,24 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 30,
+      "history_days": 120,
+      "requested": {
+        "history_days": 120,
+        "test_days": 90,
+        "train_days": 60
+      },
+      "shortfall": true
     },
-    "window_start": "2010-06-02",
-    "window_end": "2010-08-30",
-    "test_start": "2010-08-01",
-    "test_end": "2010-08-30",
-    "n_rows": 239589,
-    "rate_per_day": 2662.1,
+    "window_start": "2010-07-02",
+    "window_end": "2010-09-29",
+    "test_start": "2010-08-31",
+    "test_end": "2010-09-29",
+    "n_rows": 350982,
+    "rate_per_day": 3899.8,
     "gaps_in_window": [],
     "healthy": true,
-    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks. Source affords 150d, short of the 120d history + 90d evaluation requested, so this card runs 120d + 30d."
   },
   "decisions": [],
   "provenance": {
@@ -77,12 +84,12 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "4aacd474f835e7e91f9bd91bb250b0d9843620d3",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [
       {
-        "path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/pwa_ricc/data.parquet",
+        "path": "data/datasets/pwa_ricc/data.parquet",
         "sha256": "3a8fb1352dcc582b58f9a8b3d4021dd57535468f426bff4ac923ebe0b6bb0010",
         "size_bytes": 9720984,
         "mtime_epoch": 1784399849.31859

@@ -82,11 +82,22 @@
                 "rule": {
                     "type": "object",
                     "additionalProperties": true,
-                    "required": ["anchor", "train_days", "test_days"],
+                    "required": ["anchor", "train_days", "test_days", "history_days"],
                     "properties": {
                         "anchor": {"type": "number", "minimum": 0, "maximum": 1},
                         "train_days": {"type": "integer", "minimum": 1},
-                        "test_days": {"type": "integer", "minimum": 1}
+                        "test_days": {"type": "integer", "minimum": 1},
+                        "history_days": {"type": "integer", "minimum": 1},
+                        "shortfall": {"type": "boolean"},
+                        "requested": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "properties": {
+                                "train_days": {"type": "integer", "minimum": 1},
+                                "test_days": {"type": "integer", "minimum": 1},
+                                "history_days": {"type": "integer", "minimum": 1}
+                            }
+                        }
                     }
                 },
                 "window_start": {"type": "string"},

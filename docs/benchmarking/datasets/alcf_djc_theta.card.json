@@ -1,7 +1,7 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.alcf_djc_theta",
-  "generated_at": "2026-07-18T18:55:10.203439+00:00",
+  "generated_at": "2026-08-27T12:58:41.425075+00:00",
   "source": {
     "table_path": "data/datasets/alcf_djc_theta/data.parquet",
     "system": "Theta",
@@ -88,14 +88,15 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 90,
+      "history_days": 120
     },
-    "window_start": "2022-06-13",
+    "window_start": "2022-04-14",
     "window_end": "2022-09-10",
-    "test_start": "2022-08-12",
+    "test_start": "2022-06-13",
     "test_end": "2022-09-10",
-    "n_rows": 15472,
-    "rate_per_day": 171.9,
+    "n_rows": 24709,
+    "rate_per_day": 164.7,
     "gaps_in_window": [],
     "healthy": true,
     "rationale": "window END at 80% of healthy span; clear of all missing blocks."
@@ -112,7 +113,7 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "3071c4dd863b48e8b27e6870cdb937244d5b1347",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [

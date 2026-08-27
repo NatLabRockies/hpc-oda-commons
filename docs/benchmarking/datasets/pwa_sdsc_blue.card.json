@@ -1,9 +1,9 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.pwa_sdsc_blue",
-  "generated_at": "2026-07-18T18:38:32.787896+00:00",
+  "generated_at": "2026-08-27T12:59:14.814489+00:00",
   "source": {
-    "table_path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/pwa_sdsc_blue/data.parquet",
+    "table_path": "data/datasets/pwa_sdsc_blue/data.parquet",
     "system": "Blue Horizon",
     "descriptor": "dataset.job_runtime.pwa_sdsc_blue"
   },
@@ -64,14 +64,15 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 90,
+      "history_days": 120
     },
-    "window_start": "2002-03-20",
+    "window_start": "2002-01-19",
     "window_end": "2002-06-17",
-    "test_start": "2002-05-19",
+    "test_start": "2002-03-20",
     "test_end": "2002-06-17",
-    "n_rows": 33222,
-    "rate_per_day": 369.1,
+    "n_rows": 51738,
+    "rate_per_day": 344.9,
     "gaps_in_window": [],
     "healthy": true,
     "rationale": "window END at 80% of healthy span; clear of all missing blocks."
@@ -88,12 +89,12 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "4aacd474f835e7e91f9bd91bb250b0d9843620d3",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [
       {
-        "path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/pwa_sdsc_blue/data.parquet",
+        "path": "data/datasets/pwa_sdsc_blue/data.parquet",
         "sha256": "7fda6ce1bfc7a93c43f742ee255dd554faddacd8910ee195ceb508710d558f6b",
         "size_bytes": 8299567,
         "mtime_epoch": 1784399904.8662767

@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.atlas_mustang`
 
-*Generated 2026-07-18T18:30:40.698932+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:58:43.110291+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Mustang  ·  **Descriptor:** `dataset.job_runtime.atlas_mustang`
 
@@ -29,12 +29,12 @@
 
 ## Benchmark window
 
-- **Window:** 2015-08-08 → 2015-11-05 (60d train + 30d test)
-- **Test period:** 2015-10-07 → 2015-11-05
-- **Rows in window:** 65,571 (728 jobs/day)
+- **Window:** 2015-06-09 → 2015-11-05 (60d train + 90d test)
+- **Test period:** 2015-08-08 → 2015-11-05
+- **Rows in window:** 118,444 (789 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
 
 ---
-*Provenance: git `1f961b887ea83187480cb4d7e415e8f7a1bff418`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

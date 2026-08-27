@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.pwa_hpc2n`
 
-*Generated 2026-07-18T18:38:15.069562+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:59:08.336352+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Seth  ·  **Descriptor:** `dataset.job_runtime.pwa_hpc2n`
 
@@ -22,12 +22,12 @@
 
 ## Benchmark window
 
-- **Window:** 2005-02-10 → 2005-05-10 (60d train + 30d test)
-- **Test period:** 2005-04-11 → 2005-05-10
-- **Rows in window:** 14,321 (159 jobs/day)
+- **Window:** 2004-12-12 → 2005-05-10 (60d train + 90d test)
+- **Test period:** 2005-02-10 → 2005-05-10
+- **Rows in window:** 30,663 (204 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
 
 ---
-*Provenance: git `4aacd474f835e7e91f9bd91bb250b0d9843620d3`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

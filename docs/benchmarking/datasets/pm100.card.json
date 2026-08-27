@@ -1,7 +1,7 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.pm100",
-  "generated_at": "2026-07-18T18:27:42.469525+00:00",
+  "generated_at": "2026-08-27T12:59:05.250176+00:00",
   "source": {
     "table_path": "data/datasets/pm100/data.parquet",
     "system": "Marconi100",
@@ -59,17 +59,24 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 40,
+      "history_days": 120,
+      "requested": {
+        "history_days": 120,
+        "test_days": 90,
+        "train_days": 60
+      },
+      "shortfall": true
     },
-    "window_start": "2020-06-13",
-    "window_end": "2020-09-10",
-    "test_start": "2020-08-12",
-    "test_end": "2020-09-10",
-    "n_rows": 122800,
-    "rate_per_day": 1364.4,
+    "window_start": "2020-07-05",
+    "window_end": "2020-10-12",
+    "test_start": "2020-09-03",
+    "test_end": "2020-10-12",
+    "n_rows": 162053,
+    "rate_per_day": 1620.5,
     "gaps_in_window": [],
     "healthy": true,
-    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks. Source affords 160d, short of the 120d history + 90d evaluation requested, so this card runs 120d + 40d."
   },
   "decisions": [],
   "provenance": {
@@ -83,7 +90,7 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "1f961b887ea83187480cb4d7e415e8f7a1bff418",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [

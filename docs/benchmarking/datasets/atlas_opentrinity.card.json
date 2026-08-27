@@ -1,7 +1,7 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.atlas_opentrinity",
-  "generated_at": "2026-07-18T18:30:45.008291+00:00",
+  "generated_at": "2026-08-27T12:58:44.631702+00:00",
   "source": {
     "table_path": "data/datasets/atlas_opentrinity/data.parquet",
     "system": "Trinity",
@@ -52,18 +52,25 @@
   "benchmark_window": {
     "rule": {
       "anchor": 0.8,
-      "train_days": 60,
-      "test_days": 30
+      "train_days": 50,
+      "test_days": 30,
+      "history_days": 50,
+      "requested": {
+        "history_days": 120,
+        "test_days": 90,
+        "train_days": 60
+      },
+      "shortfall": true
     },
     "window_start": "2016-02-03",
     "window_end": "2016-04-22",
     "test_start": "2016-03-24",
     "test_end": "2016-04-22",
     "n_rows": 21529,
-    "rate_per_day": 239.2,
+    "rate_per_day": 269.1,
     "gaps_in_window": [],
     "healthy": true,
-    "rationale": "healthy span is only 80d (< 90d requested); used the whole span. No missing blocks."
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks. Source affords 80d, short of the 120d history + 90d evaluation requested, so this card runs 50d + 30d."
   },
   "decisions": [],
   "provenance": {
@@ -77,7 +84,7 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "1f961b887ea83187480cb4d7e415e8f7a1bff418",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [

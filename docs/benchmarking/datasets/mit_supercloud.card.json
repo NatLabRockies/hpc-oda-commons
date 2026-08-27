@@ -1,7 +1,7 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.mit_supercloud",
-  "generated_at": "2026-07-18T20:02:12.454007+00:00",
+  "generated_at": "2026-08-27T12:58:59.176642+00:00",
   "source": {
     "table_path": "data/datasets/mit_supercloud/data.parquet",
     "system": "Supercloud",
@@ -69,14 +69,15 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 90,
+      "history_days": 120
     },
-    "window_start": "2021-05-11",
+    "window_start": "2021-03-12",
     "window_end": "2021-08-08",
-    "test_start": "2021-07-10",
+    "test_start": "2021-05-11",
     "test_end": "2021-08-08",
-    "n_rows": 93107,
-    "rate_per_day": 1034.5,
+    "n_rows": 207147,
+    "rate_per_day": 1381.0,
     "gaps_in_window": [],
     "healthy": true,
     "rationale": "window END at 80% of healthy span; clear of all missing blocks."
@@ -93,7 +94,7 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "a79f56da07bdff876a5c47ba3d082b18a12fab77",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [

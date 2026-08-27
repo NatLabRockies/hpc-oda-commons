@@ -68,11 +68,49 @@ def test_missing_block_is_detected_and_window_avoids_it_entirely() -> None:
     assert win["window_end"] < block_start
 
 
-def test_short_span_falls_back_to_whole_span() -> None:
-    char = characterize_table(_table({d: 20 for d in range(40)}))  # 40d < 90d window
-    win = select_window(char, train_days=60, test_days=30)
+def test_short_span_spends_its_whole_self_and_says_what_it_gave_up() -> None:
+    """A source too small for the budget still yields a card -- a labelled, smaller one (#191).
+
+    The window covers the entire span either way; what matters is that the card records the
+    shortfall, so a reader comparing two cards can see that one of them is running short
+    rather than inferring it from the dates.
+    """
+    char = characterize_table(_table({d: 20 for d in range(40)}))  # 40d < 120d + 30d
+    win = select_window(char, train_days=60, test_days=30, history_days=120)
+
     assert win["healthy"] is True
-    assert "whole" in win["rationale"].lower()
+    assert win["window_start"] == char["full_span"]["start"]
+    assert win["window_end"] == char["full_span"]["end"]
+    assert win["rule"]["shortfall"] is True
+    assert win["rule"]["requested"]["history_days"] == 120
+    # Evaluation is protected at the floor; history absorbs the shortfall.
+    assert win["rule"]["test_days"] == 30
+    assert win["rule"]["history_days"] == 10
+    assert "short of the" in win["rationale"]
+
+
+def test_a_span_that_fits_records_no_shortfall() -> None:
+    char = characterize_table(_table({d: 20 for d in range(260)}))
+    win = select_window(char, train_days=60, test_days=90, history_days=120)
+
+    assert win["rule"]["history_days"] == 120
+    assert win["rule"]["test_days"] == 90
+    assert "shortfall" not in win["rule"]
+
+
+def test_history_must_exist_behind_the_window() -> None:
+    """The bug behind #191: a window placed with no room for the history it claims.
+
+    240 days of data, a 120d history budget and a 90d evaluation. The window cannot start
+    before day 120, or the earliest scored window would ask for history that is not there
+    and silently receive less.
+    """
+    char = characterize_table(_table({d: 20 for d in range(240)}))
+    win = select_window(char, anchor=0.0, train_days=60, test_days=90, history_days=120)
+
+    span_start = datetime.date.fromisoformat(char["full_span"]["start"])
+    test_start = datetime.date.fromisoformat(win["test_start"])
+    assert (test_start - span_start).days >= 120
 
 
 def test_no_gap_free_window_is_flagged_unhealthy() -> None:
