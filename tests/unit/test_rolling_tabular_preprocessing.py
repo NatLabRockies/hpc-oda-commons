@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
+import pytest
+from scipy.linalg import LinAlgError
 from sklearn.decomposition import TruncatedSVD
 
 from hpc_oda_commons.models.job_runtime_xgboost.model import JobRuntimeXGBoostModel
@@ -11,6 +14,7 @@ from hpc_oda_commons.models.rolling_tabular.preprocessing import (
     _SVD_N_OVERSAMPLES,
     analyze_one_hot_encoding,
     build_preprocessing_diagnostics,
+    fit_truncated_svd,
     profile_categorical_features,
     select_one_hot_config,
     select_svd_components,
@@ -174,3 +178,95 @@ def test_build_and_write_preprocessing_diagnostics(tmp_path: Path) -> None:
         loaded["one_hot_config"]["min_frequency_count"]
         == payload["one_hot_config"]["min_frequency_count"]
     )
+
+
+# --- solver escalation (#185) ---------------------------------------------------------
+
+
+class _FlakySVD:
+    """A TruncatedSVD stand-in that fails to converge until a given rung is reached."""
+
+    calls: list[dict] = []
+
+    def __init__(self, fail_until: int):
+        self.fail_until = fail_until
+
+    def __call__(self, **kwargs):
+        _FlakySVD.calls.append(kwargs)
+        outer = self
+
+        class _Fitted:
+            explained_variance_ratio_ = np.array([0.7, 0.3])
+
+            def fit(self, _matrix):
+                if len(_FlakySVD.calls) <= outer.fail_until:
+                    raise LinAlgError("SVD did not converge")
+                return self
+
+        return _Fitted()
+
+
+def _encoded_fixture():
+    rows = _sample_rows()
+    profiles = profile_categorical_features(rows)
+    config = select_one_hot_config(
+        profiles, infrequent_fraction=0.02, min_frequency_floor=2, target_max_one_hot_width=128
+    )
+    return analyze_one_hot_encoding(rows, config)[1]
+
+
+def test_a_convergence_failure_escalates_instead_of_killing_the_run() -> None:
+    """The failure is not a property of the matrix, so no static setting can prevent it (#185).
+
+    lassen's failing case ran clean three times over all 30 training days on a debug node,
+    with the same code and data that failed in production.
+    """
+    _FlakySVD.calls = []
+    encoded = _encoded_fixture()
+
+    with patch(
+        "hpc_oda_commons.models.rolling_tabular.preprocessing._require_sklearn",
+        return_value=(None, _FlakySVD(fail_until=1)),
+    ):
+        svd, solver = fit_truncated_svd(encoded, 2, random_state=42)
+
+    assert svd is not None
+    assert solver == "randomized_oversampled"  # escalated one rung
+    assert _FlakySVD.calls[0]["n_oversamples"] == _SVD_N_OVERSAMPLES
+    assert _FlakySVD.calls[1]["n_oversamples"] == 100
+
+
+def test_escalation_reaches_a_different_algorithm_when_needed() -> None:
+    _FlakySVD.calls = []
+    encoded = _encoded_fixture()
+
+    with patch(
+        "hpc_oda_commons.models.rolling_tabular.preprocessing._require_sklearn",
+        return_value=(None, _FlakySVD(fail_until=2)),
+    ):
+        _svd, solver = fit_truncated_svd(encoded, 2, random_state=42)
+
+    assert solver == "arpack"
+    assert _FlakySVD.calls[-1]["algorithm"] == "arpack"
+
+
+def test_a_genuinely_broken_input_still_raises() -> None:
+    """Escalation must not paper over an input that no solver can handle."""
+    _FlakySVD.calls = []
+    encoded = _encoded_fixture()
+
+    with (
+        patch(
+            "hpc_oda_commons.models.rolling_tabular.preprocessing._require_sklearn",
+            return_value=(None, _FlakySVD(fail_until=99)),
+        ),
+        pytest.raises(LinAlgError),
+    ):
+        fit_truncated_svd(encoded, 2, random_state=42)
+
+
+def test_the_happy_path_does_not_escalate_and_says_so() -> None:
+    plan = select_svd_components(_encoded_fixture(), target_coverage=0.90, max_svd_components=64)
+
+    assert plan.solver == "randomized"
+    assert plan.to_dict()["solver"] == "randomized"

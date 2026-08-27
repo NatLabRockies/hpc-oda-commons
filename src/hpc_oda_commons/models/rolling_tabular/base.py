@@ -27,11 +27,11 @@ from hpc_oda_commons.models.feature_policy import (
     partition_feature_fields,
 )
 from hpc_oda_commons.models.rolling_tabular.preprocessing import (
-    _SVD_N_OVERSAMPLES,
     _build_one_hot_encoder,
     _normalize_category,
     build_preprocessing_diagnostics,
     detect_categorical_columns,
+    fit_truncated_svd,
     profile_categorical_features,
     select_one_hot_config,
     select_svd_components,
@@ -687,15 +687,11 @@ class RollingTabularModel:
             svd_components = int(svd_plan.selected_components)
             svd_coverage = float(svd_plan.achieved_coverage)
             if svd_components > 0:
-                from sklearn.decomposition import TruncatedSVD
-
-                svd = TruncatedSVD(
-                    n_components=svd_components,
-                    random_state=self.config.random_state,
-                    # Same conditioning the component count was chosen under (#159, #162).
-                    n_oversamples=_SVD_N_OVERSAMPLES,
+                # Same escalation ladder the component count was chosen under (#159, #185),
+                # so this fit cannot fail where that one succeeded.
+                svd, _solver = fit_truncated_svd(
+                    encoded_train, svd_components, self.config.random_state
                 )
-                svd.fit(encoded_train)
 
         return _DailyPreprocessingArtifacts(
             numeric_columns=tuple(numeric_columns),
