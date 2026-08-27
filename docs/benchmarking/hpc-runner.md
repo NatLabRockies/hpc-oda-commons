@@ -163,19 +163,25 @@ hpc-oda bench-matrix status          # sacct over the submitted jobids
 ```bash
 hpc-oda bench-matrix collect         # rsync runs/ back to <plan-dir>/collected-runs
 hpc-oda bench-matrix aggregate       # leaderboard over the collected bundles
-hpc-oda bench-matrix rank            # walk-forward choice among each cell's lookback arms
+hpc-oda bench-matrix rank            # walk-forward choice among each cell's arms
 ```
 
 Each cell writes a result bundle to `runs/<dataset>/<model>/` under `repo_dir`; `collect`
 pulls them back and `aggregate` builds the leaderboard (equivalently, `hpc-oda analyze
 --runs <plan-dir>/collected-runs`).
 
-`rank` answers the question `aggregate` cannot: with each model run at several training
-lookbacks, which arm does a cell get credited with? Taking the best one by test error would
+`rank` answers the question `aggregate` cannot: with each model run at several settings,
+which arm does a cell get credited with? Taking the best one by test error would
 select on the number being reported, so `rank` chooses each window's arm from strictly
 earlier windows and scores it on the current one, and prints the best single arm beside the
 policy so the selection bias is visible (#190). It reads the same collected bundles — no
 extra compute — and writes `arm-ranking.json` next to the leaderboard.
+
+Arms are told apart by the configuration each bundle records (`run_config` in `metrics.json`),
+so the arm key names whatever actually differs — `training_lookback_days=30`,
+`target_encode_min_cardinality=500`, or a combination. Any new axis is rankable without
+teaching `rank` about it, and bundles that ran the same configuration are reported as one cell
+measured twice rather than ranked against themselves (#197).
 
 ## Resource tiers
 
