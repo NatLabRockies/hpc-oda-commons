@@ -25,6 +25,12 @@ from hpc_oda_commons.benchmarking.hpc.config import SiteConfig
 # Six runtime-prediction models. ``job_power_uopc`` is power prediction — out of scope.
 RUNTIME_MODELS: tuple[str, ...] = (
     "job_runtime_baseline",
+    # Trivial but strong: memorises the median runtime of same-signature past jobs. It beat
+    # all six fitted models on 9 of 20 datasets in the 2026-08-25 fleet run (#171), which the
+    # global-mean baseline alone could never have revealed. Measured cost: ~51s on lassen
+    # (302k rows), scaling roughly linearly -- a fraction of a fitted cell on the heavy
+    # datasets, comparable on the light ones where every cell is cheap anyway.
+    "job_runtime_signature_memorizer",
     "job_runtime_tfidf_knn",
     "job_runtime_random_forest",
     "job_runtime_xgboost",

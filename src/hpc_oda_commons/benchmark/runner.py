@@ -383,6 +383,41 @@ def run_rolling_random_forest(
     )
 
 
+def run_rolling_signature_memorizer(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run a rolling benchmark with the signature-memorization baseline."""
+    from hpc_oda_commons.models.job_runtime_signature_memorizer import (
+        JobRuntimeSignatureMemorizerModel,
+        SignatureMemorizerConfig,
+    )
+
+    defaults = SignatureMemorizerConfig()
+    model = JobRuntimeSignatureMemorizerModel(
+        config=SignatureMemorizerConfig(
+            n_windows=int(split.get("n_windows", 1000)),
+            test_window_hours=int(split.get("test_window_hours", 6)),
+            training_lookback_days=int(split.get("training_lookback_days", 100)),
+            window_n_jobs=int(split.get("window_n_jobs", 1)),
+            log_target=bool(split.get("log_target", False)),
+            backoff_levels=int(split.get("backoff_levels", defaults.backoff_levels)),
+        )
+    )
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
+
+
 def run_rolling_mlp(
     rows: list[dict[str, Any]],
     *,
