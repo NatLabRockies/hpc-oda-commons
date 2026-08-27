@@ -14,7 +14,7 @@ import inspect
 import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import nullcontext
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -54,6 +54,11 @@ class _DailyPreprocessingArtifacts:
     svd: Any | None
     svd_components: int
     svd_coverage: float
+    # Target encoding (#172): column -> {category: smoothed median}. Built from TRAINING rows
+    # only, in this function, which never sees a test row -- that is the leakage guard.
+    target_encoded_columns: tuple[str, ...] = ()
+    target_encoding: dict[str, dict[str, float]] = field(default_factory=dict)
+    target_encoding_default: float = 0.0
 
 
 @dataclass
@@ -108,6 +113,18 @@ class RollingTabularConfig:
     target_max_one_hot_width: int = 2048
     max_svd_components: int = 256
     categorical_top_k: int = 10
+    # Columns with at least this many distinct training values are target-encoded instead of
+    # one-hot encoded. 0 disables it, which is the current behaviour (#172).
+    #
+    # One-hot is a poor fit above a few dozen categories, and the damage is not confined to
+    # the wide column: ``select_one_hot_config`` raises a SINGLE min_frequency until the
+    # combined width fits ``target_max_one_hot_width``, so one high-cardinality column pushes
+    # rare values of every other column into "infrequent" too.
+    target_encode_min_cardinality: int = 0
+    # Shrinkage toward the window median, in pseudo-observations. A category seen this many
+    # times is weighted equally with the prior; rarer ones are pulled toward it. Without this,
+    # a category seen twice would be trusted as much as one seen a thousand times.
+    target_encode_smoothing: float = 20.0
     random_state: int = 42
     # Number of worker threads for the (independent) per-window fits. 1 = sequential
     # and byte-identical to a single-threaded run; >1 runs windows concurrently with
@@ -650,6 +667,17 @@ class RollingTabularModel:
             categorical_columns=categorical_columns,
             top_k=self.config.categorical_top_k,
         )
+        # High-cardinality columns leave the one-hot entirely (#172): one-hot serves them
+        # badly, and their width forces a shared min_frequency that degrades the others.
+        te_columns = tuple(
+            c
+            for c in sorted(categorical_columns)
+            if self.config.target_encode_min_cardinality > 0
+            and profiles[c].cardinality >= self.config.target_encode_min_cardinality
+        )
+        profiles = {k: v for k, v in profiles.items() if k not in te_columns}
+        categorical_columns = [c for c in categorical_columns if c not in te_columns]
+
         one_hot_config = select_one_hot_config(
             profiles,
             infrequent_fraction=self.config.infrequent_category_fraction,
@@ -693,9 +721,13 @@ class RollingTabularModel:
                     encoded_train, svd_components, self.config.random_state
                 )
 
+        te_table, te_default = self._build_target_encoding(train_rows, te_columns)
         return _DailyPreprocessingArtifacts(
             numeric_columns=tuple(numeric_columns),
             categorical_columns=tuple(one_hot_config.columns),
+            target_encoded_columns=te_columns,
+            target_encoding=te_table,
+            target_encoding_default=te_default,
             one_hot_min_frequency=one_hot_config.min_frequency_count,
             one_hot_handle_unknown=one_hot_config.handle_unknown,
             encoder=encoder,
@@ -709,15 +741,84 @@ class RollingTabularModel:
         rows: list[dict[str, Any]],
         artifacts: _DailyPreprocessingArtifacts,
     ) -> np.ndarray:
-        numeric = self._numeric_matrix(rows, artifacts.numeric_columns)
-        categorical = self._categorical_features(rows, artifacts)
-        if numeric.shape[1] == 0 and categorical.shape[1] == 0:
+        blocks = [
+            self._numeric_matrix(rows, artifacts.numeric_columns),
+            self._categorical_features(rows, artifacts),
+            self._target_encoded_features(rows, artifacts),
+        ]
+        blocks = [b for b in blocks if b.shape[1] > 0]
+        if not blocks:
             return np.empty((len(rows), 0), dtype=float)
-        if numeric.shape[1] == 0:
-            return categorical
-        if categorical.shape[1] == 0:
-            return numeric
-        return np.hstack((numeric, categorical))
+        if len(blocks) == 1:
+            return blocks[0]
+        return np.hstack(blocks)
+
+    def _build_target_encoding(
+        self, train_rows: list[dict[str, Any]], columns: tuple[str, ...]
+    ) -> tuple[dict[str, dict[str, float]], float]:
+        """Smoothed median runtime per category, from TRAINING rows only.
+
+        Uses the **median** rather than the mean because the leaderboard ranks on MAE, and the
+        median is what minimises it -- the same pairing the ceiling analysis establishes.
+
+        Smoothing shrinks each category toward the window median in proportion to how little
+        was seen of it::
+
+            encoded(c) = (n_c * median_c + m * median_window) / (n_c + m)
+
+        Without it a category seen twice would be trusted as much as one seen a thousand
+        times, which is how target encoding earns its reputation for overfitting.
+        """
+        if not columns:
+            return {}, 0.0
+
+        targets = []
+        for row in train_rows:
+            try:
+                value = float(row.get(self.target_field))  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(value):
+                targets.append(value)
+        if not targets:
+            return {}, 0.0
+
+        prior = float(np.median(targets))
+        m = max(0.0, float(self.config.target_encode_smoothing))
+
+        table: dict[str, dict[str, float]] = {}
+        for column in columns:
+            buckets: dict[str, list[float]] = {}
+            for row in train_rows:
+                try:
+                    value = float(row.get(self.target_field))  # type: ignore[arg-type]
+                except (TypeError, ValueError):
+                    continue
+                if not math.isfinite(value):
+                    continue
+                key = _normalize_category(row.get(column))
+                buckets.setdefault("" if key is None else key, []).append(value)
+            table[column] = {
+                key: (len(vals) * float(np.median(vals)) + m * prior) / (len(vals) + m)
+                for key, vals in buckets.items()
+            }
+        return table, prior
+
+    def _target_encoded_features(
+        self, rows: list[dict[str, Any]], artifacts: _DailyPreprocessingArtifacts
+    ) -> np.ndarray:
+        """One dense column per target-encoded feature; unseen categories take the prior."""
+        columns = artifacts.target_encoded_columns
+        if not columns:
+            return np.empty((len(rows), 0), dtype=float)
+        out = np.empty((len(rows), len(columns)), dtype=float)
+        for j, column in enumerate(columns):
+            lookup = artifacts.target_encoding.get(column, {})
+            default = artifacts.target_encoding_default
+            for i, row in enumerate(rows):
+                key = _normalize_category(row.get(column))
+                out[i, j] = lookup.get("" if key is None else key, default)
+        return out
 
     def _categorical_matrix(
         self, rows: list[dict[str, Any]], columns: tuple[str, ...] | list[str]
