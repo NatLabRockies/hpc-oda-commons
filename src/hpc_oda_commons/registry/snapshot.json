@@ -9,11 +9,19 @@
       "name": "SLURM slurmctld Log Adapter",
       "version": "0.1.0",
       "description": "Ingests slurmctld logs and produces oda.job.v0.2.0 job tables suitable for runtime prediction benchmarks.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "Apache-2.0",
-      "tags": ["slurm", "scheduler", "ingest"],
+      "tags": [
+        "slurm",
+        "scheduler",
+        "ingest"
+      ],
       "reference": {
         "kind": "python",
         "python": {
@@ -28,12 +36,20 @@
       "name": "Job Runtime Baseline (Deterministic)",
       "version": "0.1.0",
       "description": "A fast, deterministic baseline for predicting job runtime using job metadata and scheduler-observable signals.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "output_schema_version": "oda.prediction.v0.1.0",
       "license": "Apache-2.0",
-      "tags": ["baseline", "regression", "runtime"],
+      "tags": [
+        "baseline",
+        "regression",
+        "runtime"
+      ],
       "reference": {
         "kind": "python",
         "python": {
@@ -48,13 +64,26 @@
       "name": "Job Runtime XGBoost (Rolling)",
       "version": "0.1.0",
       "description": "Alternate runtime prediction model using XGBoost regression with automatic categorical one-hot/SVD preprocessing and rolling evaluation.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "output_schema_version": "oda.prediction.v0.1.0",
       "license": "Apache-2.0",
-      "dependencies": ["xgboost>=2.0.0", "scikit-learn>=1.3.0"],
-      "tags": ["alternate", "xgboost", "regression", "runtime", "rolling"],
+      "dependencies": [
+        "xgboost>=2.0.0",
+        "scikit-learn>=1.3.0"
+      ],
+      "tags": [
+        "alternate",
+        "xgboost",
+        "regression",
+        "runtime",
+        "rolling"
+      ],
       "reference": {
         "kind": "python",
         "python": {
@@ -69,13 +98,27 @@
       "name": "Job Runtime MoE XGBoost (Rolling)",
       "version": "0.1.0",
       "description": "Mixture-of-Experts runtime prediction. Routes each job to a per-(user, wallclock-bin) XGBoost expert inside the shared rolling window, with bin edges derived from each training window, a window-wide fallback expert for sparse bins, and exponential time-decay sample weighting.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "output_schema_version": "oda.prediction.v0.1.0",
       "license": "Apache-2.0",
-      "dependencies": ["xgboost>=2.0.0", "scikit-learn>=1.3.0"],
-      "tags": ["alternate", "xgboost", "mixture-of-experts", "regression", "runtime", "rolling"],
+      "dependencies": [
+        "xgboost>=2.0.0",
+        "scikit-learn>=1.3.0"
+      ],
+      "tags": [
+        "alternate",
+        "xgboost",
+        "mixture-of-experts",
+        "regression",
+        "runtime",
+        "rolling"
+      ],
       "reference": {
         "kind": "python",
         "python": {
@@ -90,13 +133,26 @@
       "name": "Job Runtime TF-IDF + kNN (Rolling)",
       "version": "0.1.0",
       "description": "Runtime prediction model using TF-IDF text vectorization of job metadata with k-nearest-neighbor regression and rolling evaluation.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "output_schema_version": "oda.prediction.v0.1.0",
       "license": "Apache-2.0",
-      "dependencies": ["scikit-learn>=1.3.0"],
-      "tags": ["alternate", "tfidf", "knn", "regression", "runtime", "rolling"],
+      "dependencies": [
+        "scikit-learn>=1.3.0"
+      ],
+      "tags": [
+        "alternate",
+        "tfidf",
+        "knn",
+        "regression",
+        "runtime",
+        "rolling"
+      ],
       "reference": {
         "kind": "python",
         "python": {
@@ -111,12 +167,23 @@
       "name": "Job Runtime Embedding + kNN (Rolling)",
       "version": "0.1.0",
       "description": "Runtime prediction model using precomputed dense embeddings of job metadata with similarity-weighted k-nearest-neighbor regression and rolling evaluation.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "output_schema_version": "oda.prediction.v0.1.0",
       "license": "Apache-2.0",
-      "tags": ["alternate", "embedding", "knn", "regression", "runtime", "rolling"],
+      "tags": [
+        "alternate",
+        "embedding",
+        "knn",
+        "regression",
+        "runtime",
+        "rolling"
+      ],
       "reference": {
         "kind": "python",
         "python": {
@@ -126,18 +193,61 @@
       }
     },
     {
+      "id": "model.job_runtime_signature_memorizer",
+      "entry_type": "model",
+      "name": "Job Runtime Signature Memorizer (Rolling)",
+      "version": "0.1.0",
+      "description": "Trivial-but-strong baseline: predicts the median runtime of jobs whose submit-time features are identical, drawn from the rolling training window. No fitting. Backs off by dropping features cheapest-first when nothing matches, and reports exact-match coverage alongside its metrics.",
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
+      "input_schema_version": "oda.job.v0.2.0",
+      "output_schema_version": "oda.prediction.v0.1.0",
+      "license": "Apache-2.0",
+      "dependencies": [],
+      "tags": [
+        "baseline",
+        "memorization",
+        "regression",
+        "runtime",
+        "rolling"
+      ],
+      "reference": {
+        "kind": "python",
+        "python": {
+          "module": "hpc_oda_commons.models.job_runtime_signature_memorizer.model",
+          "object": "JobRuntimeSignatureMemorizerModel"
+        }
+      }
+    },
+    {
       "id": "model.job_runtime_random_forest",
       "entry_type": "model",
       "name": "Job Runtime Random Forest (Rolling)",
       "version": "0.1.0",
       "description": "Alternate runtime prediction model using Random Forest regression with automatic categorical one-hot/SVD preprocessing and rolling evaluation.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "output_schema_version": "oda.prediction.v0.1.0",
       "license": "Apache-2.0",
-      "dependencies": ["scikit-learn>=1.3.0"],
-      "tags": ["alternate", "random-forest", "regression", "runtime", "rolling"],
+      "dependencies": [
+        "scikit-learn>=1.3.0"
+      ],
+      "tags": [
+        "alternate",
+        "random-forest",
+        "regression",
+        "runtime",
+        "rolling"
+      ],
       "reference": {
         "kind": "python",
         "python": {
@@ -152,13 +262,26 @@
       "name": "Job Runtime Feed-Forward MLP (Rolling)",
       "version": "0.1.0",
       "description": "Alternate runtime prediction model using a feed-forward neural network (sklearn MLPRegressor) with automatic categorical one-hot/SVD preprocessing and rolling evaluation.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "output_schema_version": "oda.prediction.v0.1.0",
       "license": "Apache-2.0",
-      "dependencies": ["scikit-learn>=1.3.0"],
-      "tags": ["alternate", "mlp", "neural-network", "regression", "runtime", "rolling"],
+      "dependencies": [
+        "scikit-learn>=1.3.0"
+      ],
+      "tags": [
+        "alternate",
+        "mlp",
+        "neural-network",
+        "regression",
+        "runtime",
+        "rolling"
+      ],
       "reference": {
         "kind": "python",
         "python": {
@@ -173,13 +296,26 @@
       "name": "Job Power UoPC (User kNN, Fixed)",
       "version": "0.1.0",
       "description": "User-based online power prediction using per-user kNN regression on label-encoded job features (UoPC-style).",
-      "problem_domain": ["job-power-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-power-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "output_schema_version": "oda.prediction.v0.1.0",
       "license": "Apache-2.0",
-      "dependencies": ["scikit-learn>=1.3.0"],
-      "tags": ["uopc", "knn", "regression", "power", "fixed", "user-based"],
+      "dependencies": [
+        "scikit-learn>=1.3.0"
+      ],
+      "tags": [
+        "uopc",
+        "knn",
+        "regression",
+        "power",
+        "fixed",
+        "user-based"
+      ],
       "reference": {
         "kind": "python",
         "python": {
@@ -194,11 +330,19 @@
       "name": "Baseline Tiny (Job Runtime Prediction)",
       "version": "0.1.0",
       "description": "Tiny synthetic benchmark recipe for runtime prediction baseline; used for CI smoke and offline demo.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "license": "Apache-2.0",
-      "tags": ["tiny", "ci", "offline"],
+      "tags": [
+        "tiny",
+        "ci",
+        "offline"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml"
@@ -210,11 +354,20 @@
       "name": "XGBoost Rolling Recent (Job Runtime Prediction)",
       "version": "0.1.0",
       "description": "Rolling benchmark recipe for the XGBoost alternate runtime model over the most recent windows.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "license": "Apache-2.0",
-      "tags": ["xgboost", "alternate", "rolling", "offline"],
+      "tags": [
+        "xgboost",
+        "alternate",
+        "rolling",
+        "offline"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/recipes/job-runtime/xgb_hourly_recent.yml"
@@ -226,11 +379,20 @@
       "name": "MLP Rolling (Job Runtime Prediction)",
       "version": "0.1.0",
       "description": "Rolling benchmark recipe for the feed-forward MLP runtime model with automatic categorical preprocessing (OHE + SVD) and a daily preprocessing refresh. Expects ingested job data supplied by the user.",
-      "problem_domain": ["job-runtime-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "license": "Apache-2.0",
-      "tags": ["mlp", "neural-network", "rolling", "categorical-preprocessing"],
+      "tags": [
+        "mlp",
+        "neural-network",
+        "rolling",
+        "categorical-preprocessing"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/recipes/job-runtime/mlp_rolling.yml"
@@ -242,11 +404,22 @@
       "name": "UoPC Fugaku Max Power (Job Power Prediction)",
       "version": "0.1.0",
       "description": "User-based kNN (UoPC) benchmark recipe for Fugaku maximum job power (maxpcon) prediction with a fixed train/test split. Expects raw Fugaku parquet supplied by the user.",
-      "problem_domain": ["job-power-prediction"],
-      "supported_sources": ["slurmctld"],
+      "problem_domain": [
+        "job-power-prediction"
+      ],
+      "supported_sources": [
+        "slurmctld"
+      ],
       "input_schema_version": "oda.job.v0.2.0",
       "license": "Apache-2.0",
-      "tags": ["uopc", "knn", "power", "fugaku", "user-based", "fixed"],
+      "tags": [
+        "uopc",
+        "knn",
+        "power",
+        "fugaku",
+        "user-based",
+        "fixed"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml"
@@ -258,10 +431,18 @@
       "name": "PM100 (Marconi100 Jobs)",
       "version": "1.0.0",
       "description": "Per-job SLURM accounting + per-job power curated from the Marconi100 M100 ExaData job_table (231,238 jobs, May-Oct 2020). Runtime-prediction target = run_time; fetched from Zenodo and normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction", "job-power-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction",
+        "job-power-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["marconi100", "slurm", "power", "benchmark"],
+      "tags": [
+        "marconi100",
+        "slurm",
+        "power",
+        "benchmark"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pm100.yml"
@@ -273,10 +454,19 @@
       "name": "F-DATA (Fugaku Jobs, recent month)",
       "version": "1.0.0",
       "description": "Fujitsu/Fugaku job records from F-DATA (RIKEN R-CCS / Univ. Bologna). Premium runtime slice = most recent monthly file (2024-04, 420,450 jobs); full set spans Mar 2021-Apr 2024 (~24M jobs). Runtime target = duration; normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction", "job-power-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction",
+        "job-power-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["fugaku", "a64fx", "fujitsu", "arm", "power"],
+      "tags": [
+        "fugaku",
+        "a64fx",
+        "fujitsu",
+        "arm",
+        "power"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fdata_fugaku.yml"
@@ -288,10 +478,20 @@
       "name": "Adastra MI250 Jobs (15 days)",
       "version": "1.0.0",
       "description": "SLURM per-job records from Adastra (CINES, HPE Cray EX, AMD MI250), a 15-day 2024 window (15,285 jobs). Runtime target = run_time; normalized to oda.job.v0.2.0. Per-job power columns available for a later power phase.",
-      "problem_domain": ["job-runtime-prediction", "job-power-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction",
+        "job-power-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["adastra", "cines", "slurm", "mi250", "gpu", "power"],
+      "tags": [
+        "adastra",
+        "cines",
+        "slurm",
+        "mi250",
+        "gpu",
+        "power"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/adastra_mi250.yml"
@@ -303,10 +503,18 @@
       "name": "CC-IN2P3 2024 Workload (recent month)",
       "version": "1.0.0",
       "description": "SLURM sacct per-job trace from CC-IN2P3 (CNRS, France). Premium runtime slice = December 2024 (~2.35M jobs); full year = ~44M jobs. Runtime target = elapsed, requested walltime = timelimit; normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["cc-in2p3", "cnrs", "slurm", "sacct", "htc"],
+      "tags": [
+        "cc-in2p3",
+        "cnrs",
+        "slurm",
+        "sacct",
+        "htc"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/ccin2p3_2024.yml"
@@ -318,10 +526,18 @@
       "name": "NREL Eagle Jobs (OEDI 5860)",
       "version": "1.0.0",
       "description": "Per-job SLURM accounting for NREL's Eagle supercomputer (OEDI submission 5860), ~11.03M jobs 2018-Feb 2023 in a single parquet. Runtime-prediction target = run_time; fetched from OEDI and normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["eagle", "nrel", "slurm", "oedi", "home-lab"],
+      "tags": [
+        "eagle",
+        "nrel",
+        "slurm",
+        "oedi",
+        "home-lab"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nrel_eagle.yml"
@@ -333,10 +549,17 @@
       "name": "PWA KIT-FH2 (ForHLR II)",
       "version": "1.0.0",
       "description": "Standard Workload Format log for ForHLR II (KIT-FH2) from the Parallel Workloads Archive (114,355 jobs, 2016-2018). Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["pwa", "swf", "kit", "forhlr2"],
+      "tags": [
+        "pwa",
+        "swf",
+        "kit",
+        "forhlr2"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_kit_fh2.yml"
@@ -348,10 +571,17 @@
       "name": "PWA CEA-Curie (cleaned)",
       "version": "1.0.0",
       "description": "Standard Workload Format cleaned log for CEA Curie (TGCC/GENCI) from the Parallel Workloads Archive (312,826 jobs, 2011-2012). Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["pwa", "swf", "cea", "curie"],
+      "tags": [
+        "pwa",
+        "swf",
+        "cea",
+        "curie"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_cea_curie.yml"
@@ -363,10 +593,18 @@
       "name": "PWA MetaCentrum (2013-2015)",
       "version": "1.0.0",
       "description": "Standard Workload Format log for the Czech MetaCentrum grid (CESNET) from the Parallel Workloads Archive (5,731,100 jobs, 2013-2015) - the largest premium PWA runtime log. Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["pwa", "swf", "metacentrum", "cesnet", "grid"],
+      "tags": [
+        "pwa",
+        "swf",
+        "metacentrum",
+        "cesnet",
+        "grid"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_metacentrum.yml"
@@ -378,10 +616,17 @@
       "name": "Atlas Mustang (LANL)",
       "version": "1.0.0",
       "description": "LANL Mustang SLURM trace from the Atlas repository (~2.1M jobs, 2011-2016). Runtime target derived as end_time - start_time; requested walltime = wallclock_limit; synthesized row-index job_id (no id column); normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["atlas", "lanl", "mustang", "slurm"],
+      "tags": [
+        "atlas",
+        "lanl",
+        "mustang",
+        "slurm"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/atlas_mustang.yml"
@@ -393,10 +638,17 @@
       "name": "Atlas OpenTrinity (LANL)",
       "version": "1.0.0",
       "description": "LANL Trinity (OpenTrinity) SLURM trace from the Atlas repository, formatted release (~25k jobs, 2017). Runtime target derived as end_time - start_time; requested walltime = wallclock_limit; synthesized row-index job_id; normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["atlas", "lanl", "trinity", "slurm"],
+      "tags": [
+        "atlas",
+        "lanl",
+        "trinity",
+        "slurm"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/atlas_opentrinity.yml"
@@ -408,10 +660,18 @@
       "name": "MIT Supercloud Datacenter Challenge (scheduler)",
       "version": "1.0.0",
       "description": "Raw slurmdbd scheduler log from the MIT Supercloud Datacenter Challenge (202201), ~396k modern SLURM+GPU jobs; only the ~103 MB scheduler CSV is used (2 TB node telemetry excluded). Runtime derived as time_end - time_start; requested walltime = timelimit; normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["mit", "supercloud", "slurm", "gpu", "s3"],
+      "tags": [
+        "mit",
+        "supercloud",
+        "slurm",
+        "gpu",
+        "s3"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/mit_supercloud.yml"
@@ -423,10 +683,19 @@
       "name": "NLR Kestrel Jobs (anonymized)",
       "version": "1.0.0",
       "description": "Anonymized SLURM job records from the NLR Kestrel HPC system (H100 GPUs), Aug 2023 - Dec 2025, ~11M jobs, as a zipped Hive-partitioned Parquet dataset. Runtime derived as end_time - start_time; requested walltime = wallclock_req; user/account pre-hashed; normalized to oda.job.v0.2.0. Home-lab, freshest corpus.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-nlr-data-1.0",
-      "tags": ["nlr", "kestrel", "slurm", "gpu", "h100", "home-lab"],
+      "tags": [
+        "nlr",
+        "kestrel",
+        "slurm",
+        "gpu",
+        "h100",
+        "home-lab"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nlr_kestrel.yml"
@@ -438,10 +707,18 @@
       "name": "NLR Eagle Jobs (anonymized)",
       "version": "1.0.0",
       "description": "Anonymized SLURM job records from the NLR Eagle HPC system, 2019-2024 full lifetime, ~13.8M jobs, as a zipped Hive-partitioned Parquet dataset (job records only; energy variant excluded). Runtime derived as end_time - start_time from the DST-correct tz columns; requested walltime = wallclock_req; user/account pre-hashed; normalized to oda.job.v0.2.0. Home-lab, definitive modern Eagle corpus.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-nlr-data-1.0",
-      "tags": ["nlr", "eagle", "slurm", "gpu", "home-lab"],
+      "tags": [
+        "nlr",
+        "eagle",
+        "slurm",
+        "gpu",
+        "home-lab"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nlr_eagle.yml"
@@ -453,10 +730,19 @@
       "name": "IC2 Integrated Cloud + HPC Jobs",
       "version": "1.0.0",
       "description": "Purpose-built runtime + resource-utilization dataset spanning integrated cloud and HPC platforms (IC2, ALCF Polaris, AWS), 3,599 tasks. Per-task records flattened from nested workload JSON (per-node telemetry dropped); runtime derived as finish_time - start_time; no requested walltime. Normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["ic2", "polaris", "aws", "cloud", "hpc", "json"],
+      "tags": [
+        "ic2",
+        "polaris",
+        "aws",
+        "cloud",
+        "hpc",
+        "json"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/ic2.yml"
@@ -468,10 +754,17 @@
       "name": "PWA RICC (RIKEN Integrated Cluster)",
       "version": "1.0.0",
       "description": "Standard Workload Format log for the RIKEN Integrated Cluster of Clusters (RICC) from the Parallel Workloads Archive (447,794 jobs, 2010). Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["pwa", "swf", "riken", "ricc"],
+      "tags": [
+        "pwa",
+        "swf",
+        "riken",
+        "ricc"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_ricc.yml"
@@ -483,10 +776,17 @@
       "name": "PWA HPC2N (Seth cluster)",
       "version": "1.0.0",
       "description": "Standard Workload Format log for the HPC2N Seth cluster (Sweden) from the Parallel Workloads Archive (527,371 jobs, 2002-2006). Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["pwa", "swf", "hpc2n", "seth"],
+      "tags": [
+        "pwa",
+        "swf",
+        "hpc2n",
+        "seth"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_hpc2n.yml"
@@ -498,10 +798,17 @@
       "name": "PWA SDSC Blue Horizon",
       "version": "1.0.0",
       "description": "Standard Workload Format log for the SDSC Blue Horizon (IBM SP) from the Parallel Workloads Archive (250,440 jobs, 2000-2002). Runtime target = Run Time; requested walltime = Requested Time; decoded via the swf decoder and normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["pwa", "swf", "sdsc", "blue-horizon"],
+      "tags": [
+        "pwa",
+        "swf",
+        "sdsc",
+        "blue-horizon"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_sdsc_blue.yml"
@@ -513,10 +820,18 @@
       "name": "Lassen LAST (LLNL)",
       "version": "1.0.0",
       "description": "Per-job allocation history from LLNL's Lassen supercomputer (IBM CSM/LSF), 1,467,747 jobs, from the Livermore Archive for System Telemetry (LAST). Runtime derived as end_time - begin_time; requested walltime = time_limit; git-LFS file fetched over plain HTTPS via the LFS media URL (no git-lfs tool). Normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",
-      "tags": ["lassen", "llnl", "lsf", "csm", "gpu"],
+      "tags": [
+        "lassen",
+        "llnl",
+        "lsf",
+        "csm",
+        "gpu"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/lassen.yml"
@@ -528,10 +843,18 @@
       "name": "FRESCO Anvil Job Accounting",
       "version": "1.0.0",
       "description": "Anonymized SLURM job accounting from Purdue's Anvil supercomputer (A100), FRESCO repository, 11 monthly CSVs (July 2022 - May 2023), 1,475,155 jobs. Runtime = Wall Time; requested walltime = Requested Wall Time; cores/gpus/nodes/queue/exit features. Fetched from the datadepot over direct HTTPS (no Globus). Normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-fresco",
-      "tags": ["fresco", "anvil", "purdue", "slurm", "a100"],
+      "tags": [
+        "fresco",
+        "anvil",
+        "purdue",
+        "slurm",
+        "a100"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_anvil.yml"
@@ -543,10 +866,18 @@
       "name": "FRESCO Conte Job Accounting",
       "version": "1.0.0",
       "description": "Torque/PBS job accounting from Purdue's Conte cluster (FRESCO repository), 12 months 2015-03 to 2016-02, ~1.04M completed jobs. Runtime = resources_used.walltime; requested = Resource_List.walltime; MM/DD/YYYY timestamps; the require_nonnull filter keeps only completed (E) events. Fetched from the datadepot over direct HTTPS; normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-fresco",
-      "tags": ["fresco", "conte", "purdue", "torque", "pbs"],
+      "tags": [
+        "fresco",
+        "conte",
+        "purdue",
+        "torque",
+        "pbs"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_conte.yml"
@@ -558,10 +889,17 @@
       "name": "FRESCO Stampede1 Job Accounting",
       "version": "1.0.0",
       "description": "Slurm job accounting from TACC's Stampede1 (FRESCO repository), a single ~1.13 GB CSV of ~8.7M jobs (2013-2018). Runtime derived as end_time - start_time; requested walltime = the walltime column (minutes; UNLIMITED sentinels normalized to null); MM/DD/YYYY timestamps; user/account/jobID anonymized at source. 8,710,048 rows after dropping inverted-timestamp and non-positive-cpu rows. Fetched from the datadepot over direct HTTPS (no Globus); normalized to oda.job.v0.2.0.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-fresco",
-      "tags": ["fresco", "stampede1", "tacc", "slurm"],
+      "tags": [
+        "fresco",
+        "stampede1",
+        "tacc",
+        "slurm"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_stampede1.yml"
@@ -570,13 +908,22 @@
     {
       "id": "dataset.job_runtime.alcf_djc_polaris",
       "entry_type": "dataset",
-      "name": "ALCF DJC — Polaris (2022–2026)",
+      "name": "ALCF DJC \u2014 Polaris (2022\u20132026)",
       "version": "1.1.0",
       "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Polaris, all published years (2022-08 to 2026-06, 5 files), ALCF public DATA CATALOG. Cobalt/PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. 1,000,194 jobs. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the files yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes them. See docs/datasets/alcf-djc-ingest.md.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-alcf-public",
-      "tags": ["alcf", "argonne", "polaris", "pbs", "cobalt", "manual"],
+      "tags": [
+        "alcf",
+        "argonne",
+        "polaris",
+        "pbs",
+        "cobalt",
+        "manual"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_polaris.yml"
@@ -585,13 +932,22 @@
     {
       "id": "dataset.job_runtime.alcf_djc_aurora",
       "entry_type": "dataset",
-      "name": "ALCF DJC — Aurora (2025–2026)",
+      "name": "ALCF DJC \u2014 Aurora (2025\u20132026)",
       "version": "1.0.0",
       "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Aurora, all published years (2025-01 to 2026-06, 2 files), ALCF public DATA CATALOG. Same schema as the Polaris DJC dataset: PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. 927,999 jobs. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the files yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes them. See docs/datasets/alcf-djc-ingest.md.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-alcf-public",
-      "tags": ["alcf", "argonne", "aurora", "pbs", "cobalt", "manual"],
+      "tags": [
+        "alcf",
+        "argonne",
+        "aurora",
+        "pbs",
+        "cobalt",
+        "manual"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_aurora.yml"
@@ -600,13 +956,23 @@
     {
       "id": "dataset.job_runtime.alcf_djc_theta",
       "entry_type": "dataset",
-      "name": "ALCF DJC — Theta (2017–2024)",
+      "name": "ALCF DJC \u2014 Theta (2017\u20132024)",
       "version": "1.0.0",
       "description": "DIM_JOB_COMPOSITE job accounting from Argonne's Theta (Cray XC40/KNL), all published years (2017-07 to 2024, 8 files), ALCF public DATA CATALOG. Same schema as the Polaris/Aurora DJC datasets: Cobalt/PBS with real requested walltime + elapsed runtime, cores/nodes used+requested, queue, exit status, machine, science field; user/project pre-anonymized. Theta decommissioned end of 2023. Primary-quality. Manual-kind: ALCF gates downloads behind a one-time name/email form, so fetch the files yourself and `datasets prepare --from <dir>` checksum-verifies + normalizes them. See docs/datasets/alcf-djc-ingest.md.",
-      "problem_domain": ["job-runtime-prediction"],
+      "problem_domain": [
+        "job-runtime-prediction"
+      ],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "LicenseRef-alcf-public",
-      "tags": ["alcf", "argonne", "theta", "knl", "pbs", "cobalt", "manual"],
+      "tags": [
+        "alcf",
+        "argonne",
+        "theta",
+        "knl",
+        "pbs",
+        "cobalt",
+        "manual"
+      ],
       "reference": {
         "kind": "path",
         "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_theta.yml"

@@ -29,6 +29,7 @@ from hpc_oda_commons.benchmark.runner import (
     run_rolling_mlp,
     run_rolling_moe_xgboost,
     run_rolling_random_forest,
+    run_rolling_signature_memorizer,
     run_rolling_tfidf_knn,
     run_rolling_xgboost,
 )
@@ -835,6 +836,14 @@ def benchmark(
         )
     elif model_id == "model.job_runtime_random_forest" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_random_forest(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
+    elif model_id == "model.job_runtime_signature_memorizer" and split_method == "rolling":
+        metrics, metrics_payload, artifacts = run_rolling_signature_memorizer(
             rows,
             split=split,
             metric_defs=metric_defs,

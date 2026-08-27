@@ -26,6 +26,21 @@ document text. **Any leaderboard number produced before that fix overstates accu
 amount that varies per dataset, so it is not comparable with numbers produced after it** —
 re-run rather than mix the two.
 
+**Signature memorization joins the roster** (`job_runtime_signature_memorizer`, #171). It
+predicts the median runtime of jobs whose submit-time features are identical, taken from the
+rolling training window — no fitting, no hyperparameters beyond the lookback the split already
+fixes. When nothing matches it drops features one at a time, cheapest first by information cost
+measured on the training window, and finally falls back to the window median.
+
+It earns a place because it *wins*: on the 2026-08-25 fleet run it beat all six fitted models on
+9 of 20 datasets, including both in-house machines. `job_runtime_baseline` — a rolling mean —
+is too weak to reveal that, so the benchmark had no honest "trivial but strong" comparator. Its
+**exact-match coverage is reported alongside its metrics**, because a memorization score means
+little without knowing how often it could match anything.
+
+Adding a model to the roster is a methodology decision, not a side effect of writing one (the
+precedent from #134). This one is recorded here deliberately.
+
 **MLP is excluded from the fleet run** (`--exclude-model mlp`). `job_runtime_mlp` remains a
 registered, in-scope model — it is simply not worth its wall-clock at this scale. It has
 measured clearly uncompetitive on every dataset we have run it on, and it owns the matrix's
