@@ -44,13 +44,13 @@ def test_strict_train_test_time_semantics() -> None:
     ]
 
     split_22, split_23 = splits
-    assert split_22.train_row_indices == ()
-    assert split_22.test_row_indices == (0, 1)
+    assert split_22.train_row_indices.tolist() == []
+    assert split_22.test_row_indices.tolist() == [0, 1]
 
     # end_time == split_time is excluded from training by strict '<' rule.
-    assert split_23.train_row_indices == (0,)
+    assert split_23.train_row_indices.tolist() == [0]
     # submit_time == split_time is included in testing.
-    assert split_23.test_row_indices == (2,)
+    assert split_23.test_row_indices.tolist() == [2]
 
     train_rows, test_rows = materialize_split_rows(rows, split_23)
     assert [row["job_id"] for row in train_rows] == [1]
@@ -118,9 +118,9 @@ def test_training_lookback_days_limits_training_rows() -> None:
         training_lookback_days=1,
     )[0]
 
-    assert default_window.train_row_indices == (0, 1)
-    assert short_window.train_row_indices == (1,)
-    assert short_window.test_row_indices == (2,)
+    assert default_window.train_row_indices.tolist() == [0, 1]
+    assert short_window.train_row_indices.tolist() == [1]
+    assert short_window.test_row_indices.tolist() == [2]
 
 
 def test_daily_preprocessing_cache_recomputes_once_per_day() -> None:
@@ -241,3 +241,84 @@ def test_serialized_window_size_does_not_grow_with_the_training_set() -> None:
     # A 58x bigger training set may only widen the digits of train_row_count. Before the
     # fix this difference was the training set itself, one integer per row.
     assert large_len - small_len < 32, (small_len, large_len)
+
+
+# --- equivalence with the pre-#176 implementation ---------------------------------------
+
+
+def _reference_splits(rows, *, n_windows, test_window_hours, training_lookback_days):
+    """The pre-#176 implementation, verbatim in behaviour: per-window scans over rows.
+
+    Kept here rather than in the module so the fast path is pinned against what it
+    replaced. Row ORDER is part of the contract -- known-issues.md records that reordering
+    training rows can flip a TF-IDF neighbour tie -- so this compares sequences, not sets.
+    """
+    from hpc_oda_commons.models.rolling_tabular.split import _to_utc
+
+    parsed = [
+        (i, _to_utc(r.get("submit_time")), _to_utc(r.get("end_time"))) for i, r in enumerate(rows)
+    ]
+    latest = max(p[1] for p in parsed if p[1] is not None).replace(
+        minute=0, second=0, microsecond=0
+    )
+    start = latest - dt.timedelta(hours=(n_windows - 1) * test_window_hours)
+    out = []
+    for i in range(n_windows):
+        t = start + dt.timedelta(hours=i * test_window_hours)
+        t_end = t + dt.timedelta(hours=test_window_hours)
+        t_train = t - dt.timedelta(days=training_lookback_days)
+        out.append(
+            (
+                tuple(i2 for i2, _s, e in parsed if e is not None and t_train <= e < t),
+                tuple(i2 for i2, s2, _e in parsed if s2 is not None and t <= s2 < t_end),
+            )
+        )
+    return out
+
+
+def _rows_for_equivalence(n: int) -> list[dict]:
+    base = dt.datetime(2026, 3, 1, tzinfo=dt.timezone.utc)
+    rows = []
+    for i in range(n):
+        s = base + dt.timedelta(minutes=i * 37)
+        row = {"submit_time": s, "end_time": s + dt.timedelta(minutes=5 + (i % 90))}
+        if i % 23 == 0:  # missing end_time must be excluded from training, as before
+            row["end_time"] = None
+        if i % 41 == 0:  # missing submit_time must be excluded from testing
+            row["submit_time"] = s
+        rows.append(row)
+    return rows
+
+
+def test_split_membership_is_identical_to_the_pre_176_implementation() -> None:
+    rows = _rows_for_equivalence(500)
+    kw = dict(n_windows=20, test_window_hours=6, training_lookback_days=7)
+
+    splits = build_rolling_splits(rows, **kw)
+    reference = _reference_splits(rows, **kw)
+
+    assert len(splits) == len(reference)
+    saw_nonempty = False
+    for split, (ref_train, ref_test) in zip(splits, reference, strict=True):
+        # sequences, not sets: order is observable downstream
+        assert split.train_row_indices.tolist() == list(ref_train)
+        assert split.test_row_indices.tolist() == list(ref_test)
+        assert split.train_row_count == len(ref_train)
+        assert split.test_row_count == len(ref_test)
+        saw_nonempty = saw_nonempty or bool(ref_train)
+    assert saw_nonempty  # guard: an all-empty grid would pass vacuously
+
+
+def test_indices_are_ascending_and_derived_fresh_each_access() -> None:
+    """Nothing is cached, so a window costs memory only while it is being used."""
+    rows = _rows_for_equivalence(200)
+    split = build_rolling_splits(rows, n_windows=5, test_window_hours=6, training_lookback_days=7)[
+        -1
+    ]
+
+    first = split.train_row_indices
+    second = split.train_row_indices
+
+    assert first is not second
+    assert first.tolist() == second.tolist()
+    assert first.tolist() == sorted(first.tolist())

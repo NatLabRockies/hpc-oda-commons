@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, TypeVar
 
+import numpy as np
 from tqdm import tqdm
 
 T = TypeVar("T")
@@ -21,6 +22,12 @@ def _to_utc(value: Any) -> datetime | None:
     return value.astimezone(timezone.utc)
 
 
+def _epoch_or_nan(value: Any) -> float:
+    """UTC epoch seconds, or NaN when the value is missing or not a datetime."""
+    parsed = _to_utc(value)
+    return float("nan") if parsed is None else parsed.timestamp()
+
+
 def _to_iso_z(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -31,15 +38,49 @@ def _floor_hour(dt: datetime) -> datetime:
 
 @dataclass(frozen=True)
 class RollingSplit:
+    """One rolling window. Row memberships are derived on access, not stored.
+
+    ``train_row_indices`` and ``test_row_indices`` used to be tuples of Python ints built
+    by scanning every row once per window. At the benchmark's scale -- 120 windows over a
+    multi-million-row slice, with a 120-day lookback that holds most of it -- that is
+    hundreds of millions of int objects at ~36 bytes each, and O(n_windows x n_rows)
+    comparisons in Python (#176). It is the in-memory twin of the metrics bloat in #167.
+
+    Membership is a predicate on two timestamps, so it is recomputed from shared epoch
+    arrays instead: the windows hold bounds, and each access returns a fresh int64 array in
+    ascending row order. Only the window being processed is ever materialised.
+    """
+
     split_time_iso: str
     split_end_time_iso: str
     split_epoch: int
     day_key: str
     refresh_preprocessing: bool
-    train_row_indices: tuple[int, ...]
-    test_row_indices: tuple[int, ...]
     train_row_count: int
     test_row_count: int
+    # Shared across every window of a run; never copied.
+    _submit_epochs: np.ndarray = field(repr=False, compare=False)
+    _end_epochs: np.ndarray = field(repr=False, compare=False)
+    _train_start_epoch: float = field(repr=False)
+    _split_epoch_exact: float = field(repr=False)
+    _split_end_epoch: float = field(repr=False)
+
+    @property
+    def train_row_indices(self) -> np.ndarray:
+        """Rows that FINISHED within the lookback, ascending by row index.
+
+        Ascending row order is not incidental: ``docs/known-issues.md`` records that
+        reordering training rows can flip a TF-IDF neighbour tie, so the sequence is part
+        of the contract, not just the set.
+        """
+        ends = self._end_epochs
+        return np.flatnonzero((ends >= self._train_start_epoch) & (ends < self._split_epoch_exact))
+
+    @property
+    def test_row_indices(self) -> np.ndarray:
+        """Rows SUBMITTED within the window, ascending by row index."""
+        sub = self._submit_epochs
+        return np.flatnonzero((sub >= self._split_epoch_exact) & (sub < self._split_end_epoch))
 
     def to_dict(self) -> dict[str, Any]:
         """Serializable window description -- counts, not the index lists.
@@ -94,18 +135,22 @@ def build_rolling_splits(
             f"training_lookback_days={training_lookback_days}"
         )
 
-    parsed: list[tuple[int, datetime | None, datetime | None]] = []
-    max_submit_ts: datetime | None = None
-    for idx, row in enumerate(rows):
-        submit_ts = _to_utc(row.get(submit_time_field))
-        end_ts = _to_utc(row.get(end_time_field))
-        parsed.append((idx, submit_ts, end_ts))
+    # Epoch seconds in row order, NaN where absent. float64 holds microsecond precision
+    # at present-day timestamps (~1e9 s), so this is not a lossy shortcut.
+    submit_epochs = np.fromiter(
+        (_epoch_or_nan(row.get(submit_time_field)) for row in rows),
+        dtype=np.float64,
+        count=len(rows),
+    )
+    end_epochs = np.fromiter(
+        (_epoch_or_nan(row.get(end_time_field)) for row in rows),
+        dtype=np.float64,
+        count=len(rows),
+    )
 
-        if submit_ts is not None and (max_submit_ts is None or submit_ts > max_submit_ts):
-            max_submit_ts = submit_ts
-
-    if max_submit_ts is None:
+    if not np.isfinite(submit_epochs).any():
         raise ValueError("No valid submit timestamps found; cannot build rolling splits.")
+    max_submit_ts = datetime.fromtimestamp(float(np.nanmax(submit_epochs)), tz=timezone.utc)
 
     latest_hour = _floor_hour(max_submit_ts)
     start_hour = latest_hour - timedelta(hours=(n_windows - 1) * test_window_hours)
@@ -126,15 +171,16 @@ def build_rolling_splits(
         refresh = previous_day is None or day_key != previous_day
         previous_day = day_key
 
-        train_indices = tuple(
-            idx
-            for idx, _submit_ts, end_ts in parsed
-            if end_ts is not None and training_window_start <= end_ts < split_time
+        train_start_epoch = training_window_start.timestamp()
+        split_epoch_exact = split_time.timestamp()
+        split_end_epoch = split_end.timestamp()
+        n_train = int(
+            np.count_nonzero((end_epochs >= train_start_epoch) & (end_epochs < split_epoch_exact))
         )
-        test_indices = tuple(
-            idx
-            for idx, submit_ts, _end_ts in parsed
-            if submit_ts is not None and split_time <= submit_ts < split_end
+        n_test = int(
+            np.count_nonzero(
+                (submit_epochs >= split_epoch_exact) & (submit_epochs < split_end_epoch)
+            )
         )
 
         splits.append(
@@ -144,10 +190,13 @@ def build_rolling_splits(
                 split_epoch=int(split_time.timestamp()),
                 day_key=day_key,
                 refresh_preprocessing=refresh,
-                train_row_indices=train_indices,
-                test_row_indices=test_indices,
-                train_row_count=len(train_indices),
-                test_row_count=len(test_indices),
+                train_row_count=n_train,
+                test_row_count=n_test,
+                _submit_epochs=submit_epochs,
+                _end_epochs=end_epochs,
+                _train_start_epoch=train_start_epoch,
+                _split_epoch_exact=split_epoch_exact,
+                _split_end_epoch=split_end_epoch,
             )
         )
 
