@@ -403,7 +403,12 @@ def build_recipe(
     if window_n_jobs is not None:
         split["window_n_jobs"] = window_n_jobs
     return {
-        "recipe_id": f"recipe.job_runtime.{dataset}_{_model_tag(model_key)}",
+        # The arm is part of the identity: three lookbacks of one model are three cells, and
+        # anything keyed on the recipe id downstream would otherwise merge them (#170).
+        "recipe_id": (
+            f"recipe.job_runtime.{dataset}_{_model_tag(model_key)}"
+            f"_lb{int(split['training_lookback_days'])}d"
+        ),
         "problem_domain": ["job-runtime-prediction"],
         "schema_version": INPUT_SCHEMA,
         "dataset": {"id": dataset, "table_path": table_path},
