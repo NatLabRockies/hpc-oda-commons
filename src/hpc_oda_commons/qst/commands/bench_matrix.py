@@ -40,6 +40,7 @@ from hpc_oda_commons.benchmarking.hpc.orchestrate import (
     OrchestrationError,
     collect_commands,
     load_plan,
+    merge_submission_manifest,
     parse_sacct,
     run_command,
     sacct_command,
@@ -402,13 +403,27 @@ def bench_matrix_submit(
 
     n = len(manifest["cells"])
     if execute:
-        (resolved / "submitted.json").write_text(
-            json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
-        )
+        manifest_path = resolved / "submitted.json"
+        existing = None
+        if manifest_path.exists():
+            try:
+                existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                console.print(
+                    f"[yellow]Could not read {manifest_path}; writing a fresh manifest.[/yellow]"
+                )
+        merged = merge_submission_manifest(existing, manifest)
+        manifest_path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
         console.print(
             f"[green]Submitted[/green] {n} cells + {len(manifest['embeds'])} embeds "
-            f"→ {resolved / 'submitted.json'}"
+            f"→ {manifest_path}"
         )
+        carried = len(merged["cells"]) - n
+        if carried > 0:
+            console.print(
+                f"  manifest now holds {len(merged['cells'])} cells "
+                f"({carried} carried over from earlier submissions)"
+            )
     else:
         console.print(
             f"[yellow]Dry-run[/yellow]: would submit {n} cells + {len(manifest['embeds'])} embeds. "

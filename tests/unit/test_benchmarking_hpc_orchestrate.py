@@ -13,6 +13,7 @@ from hpc_oda_commons.benchmarking.hpc.orchestrate import (
     Command,
     LoadedPlan,
     collect_commands,
+    merge_submission_manifest,
     parse_sacct,
     remote_mkdirs_command,
     rsync_pull,
@@ -248,3 +249,75 @@ def test_resolve_rejects_a_directory_without_a_plan(tmp_path: Path) -> None:
 
     with pytest.raises(typer.Exit):
         bench_matrix._resolve_plan_dir(tmp_path / "empty")
+
+
+# --- partial submits must not clobber the manifest (#161) -------------------------------
+
+
+def _manifest(cells, embeds=None, **extra):
+    out = {
+        "plan_id": "p1",
+        "host": "cluster",
+        "executed": True,
+        "cells": [
+            {"dataset": d, "model": m, "job_name": f"b.{d}.{m}", "jobid": j, "dependency": None}
+            for d, m, j in cells
+        ],
+        "embeds": embeds or {},
+    }
+    out.update(extra)
+    return out
+
+
+def test_a_partial_submit_keeps_the_jobs_it_did_not_touch() -> None:
+    """Re-running one failed cell must not erase the record of the other 139 (#161)."""
+    fleet = _manifest(
+        [("ds_a", "baseline", "1"), ("ds_a", "xgboost", "2"), ("ds_b", "baseline", "3")],
+        embeds={"ds_a": "90"},
+    )
+    repair = _manifest([("ds_a", "xgboost", "999")])
+
+    merged = merge_submission_manifest(fleet, repair)
+
+    assert len(merged["cells"]) == 3
+    assert {c["job_name"]: c["jobid"] for c in merged["cells"]} == {
+        "b.ds_a.baseline": "1",
+        "b.ds_a.xgboost": "999",  # re-submitted: updated, not duplicated
+        "b.ds_b.baseline": "3",
+    }
+    assert merged["embeds"] == {"ds_a": "90"}  # embeds not re-submitted are kept
+
+
+def test_a_resubmitted_cell_is_updated_not_duplicated() -> None:
+    merged = merge_submission_manifest(
+        _manifest([("ds", "baseline", "1")]), _manifest([("ds", "baseline", "2")])
+    )
+
+    assert len(merged["cells"]) == 1
+    assert merged["cells"][0]["jobid"] == "2"
+
+
+def test_embeds_from_both_submissions_survive() -> None:
+    merged = merge_submission_manifest(
+        _manifest([], embeds={"ds_a": "10"}), _manifest([], embeds={"ds_b": "20"})
+    )
+
+    assert merged["embeds"] == {"ds_a": "10", "ds_b": "20"}
+
+
+def test_the_first_submission_writes_the_manifest_unchanged() -> None:
+    fresh = _manifest([("ds", "baseline", "1")])
+
+    assert merge_submission_manifest(None, fresh) == fresh
+    assert merge_submission_manifest({}, fresh) == fresh
+
+
+def test_top_level_fields_come_from_the_latest_submission() -> None:
+    """plan_id and host describe the run; the newest invocation is authoritative."""
+    merged = merge_submission_manifest(
+        _manifest([("ds", "baseline", "1")], plan_id="old"),
+        _manifest([("ds", "xgboost", "2")], plan_id="new"),
+    )
+
+    assert merged["plan_id"] == "new"
+    assert len(merged["cells"]) == 2

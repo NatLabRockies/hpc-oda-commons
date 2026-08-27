@@ -128,6 +128,32 @@ def run_command(cmd: Command, *, execute: bool, echo=print) -> CommandResult:
     return CommandResult(ok=True, stdout=proc.stdout.strip())
 
 
+def merge_submission_manifest(existing: dict | None, fresh: dict) -> dict:
+    """Fold this invocation's submissions into whatever the plan already recorded.
+
+    Re-running a cell is the normal repair path -- it is what ``--only`` and ``--only-model``
+    exist for -- so a partial submit must not replace the record of the jobs it did not touch.
+    Writing ``fresh`` wholesale turned a 140-job manifest into a one-cell file, and ``status``
+    reads this file, so it then reported the fleet as one job (#161).
+
+    A re-submitted cell *updates* its entry rather than duplicating it: the new job supersedes
+    the old one, which is the behaviour you want when the old one failed.
+    """
+    if not existing:
+        return fresh
+
+    cells = {c["job_name"]: c for c in existing.get("cells", [])}
+    cells.update({c["job_name"]: c for c in fresh.get("cells", [])})
+    embeds = dict(existing.get("embeds", {}))
+    embeds.update(fresh.get("embeds", {}))
+
+    merged = dict(existing)
+    merged.update({k: v for k, v in fresh.items() if k not in ("cells", "embeds")})
+    merged["cells"] = sorted(cells.values(), key=lambda c: c["job_name"])
+    merged["embeds"] = embeds
+    return merged
+
+
 def _parse_jobid(sbatch_stdout: str) -> str:
     # `sbatch --parsable` prints "<jobid>" or "<jobid>;<cluster>"
     return sbatch_stdout.split(";")[0].strip()
