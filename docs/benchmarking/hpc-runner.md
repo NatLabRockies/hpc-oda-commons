@@ -137,6 +137,21 @@ submitting; pass `--execute` to actually submit (it charges the allocation). `--
 (sbatch CLI flags win over the script directives) for a quick `debug` smoke. A
 `submitted.json` (cell → jobid) is written to the plan dir.
 
+Cells go out in batches of `--chunk-size` (50 by default), one SSH per batch rather than one
+per cell, and `submitted.json` is rewritten after **every** batch. A 440-job plan once ran
+long enough to be killed partway, and because the manifest was written only at the end it
+recorded none of the 187 jobs that had started (#189). If a submit is interrupted now, the
+manifest still describes what it did.
+
+To recover, or to top up a plan whose cells were submitted in pieces:
+
+```bash
+hpc-oda bench-matrix submit --resume --execute
+```
+
+`--resume` asks `sacct` which of the plan's job names already exist and submits only the
+rest. It is read-only until `--execute`, so a dry run shows you exactly what it would add.
+
 ### 5. Status
 
 ```bash

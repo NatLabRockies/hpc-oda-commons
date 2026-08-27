@@ -37,14 +37,17 @@ from hpc_oda_commons.benchmarking.hpc.matrix import (
     write_plan,
 )
 from hpc_oda_commons.benchmarking.hpc.orchestrate import (
+    DEFAULT_SUBMIT_CHUNK,
     LoadedPlan,
     OrchestrationError,
     collect_commands,
     load_plan,
     merge_submission_manifest,
     parse_sacct,
+    parse_sacct_names,
     run_command,
     sacct_command,
+    sacct_names_command,
     stage_commands,
     submit_plan,
 )
@@ -359,6 +362,19 @@ def bench_matrix_stage(
     console.print("[green]Staged.[/green]" if not dry_run else "[yellow]Dry-run only.[/yellow]")
 
 
+def _plan_start_date(plan_id: str) -> str:
+    """``20260826-231908`` -> ``2026-08-26``: how far back ``--resume`` asks sacct to look.
+
+    A plan id that does not carry a date falls back to a wide window rather than a narrow
+    one -- over-reporting existing jobs makes ``--resume`` skip something it should not have,
+    which is visible, while under-reporting would silently submit a duplicate.
+    """
+    head = plan_id.split("-", 1)[0]
+    if len(head) == 8 and head.isdigit():
+        return f"{head[:4]}-{head[4:6]}-{head[6:8]}"
+    return "now-30days"
+
+
 def bench_matrix_submit(
     plan_dir: _PLAN_DIR_OPT = None,
     site: _SITE_OPT = DEFAULT_SITE_CONFIG_PATH,
@@ -380,14 +396,60 @@ def bench_matrix_submit(
     time: Annotated[
         str | None, typer.Option("--time", help="Override walltime (e.g. 00:20:00).")
     ] = None,
+    resume: Annotated[
+        bool,
+        typer.Option(
+            "--resume",
+            help="Submit only cells that have no job yet (diffs the plan against sacct).",
+        ),
+    ] = False,
+    chunk_size: Annotated[
+        int,
+        typer.Option("--chunk-size", help="Cells per SSH round-trip."),
+    ] = DEFAULT_SUBMIT_CHUNK,
 ) -> None:
     """Submit embed jobs then benchmark cells (embedding_knn cells depend on their embed).
 
     Dry-run by default; pass ``--execute`` to really submit. Use ``--only``/``--only-model``
     and ``--partition debug`` for a quick single-cell smoke before the full fleet.
+
+    ``--resume`` recovers an interrupted submit: it asks ``sacct`` which of the plan's job
+    names already exist and submits only the rest (#189).
     """
     cfg = _load_site(site)
     plan, resolved = _load_plan_dir(plan_dir)
+
+    skip: set[str] = set()
+    if resume:
+        # Read-only, so it runs under dry-run too -- otherwise `--resume` without `--execute`
+        # could not show you what it would do, which is the whole point of a dry run.
+        since = _plan_start_date(plan.plan_id)
+        try:
+            res = run_command(
+                sacct_names_command(cfg, since=since), execute=True, echo=lambda _m: None
+            )
+        except OrchestrationError as exc:
+            console.print(f"[red]Could not query sacct for --resume: {exc}[/red]")
+            raise typer.Exit(1) from exc
+        skip = parse_sacct_names(res.stdout or "")
+        console.print(f"[cyan]--resume[/cyan] found {len(skip)} job name(s) since {since}")
+
+    manifest_path = resolved / "submitted.json"
+
+    def _persist(partial: dict) -> dict:
+        """Write after every batch, so an interrupted submit still records what it did."""
+        existing = None
+        if manifest_path.exists():
+            try:
+                existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                console.print(
+                    f"[yellow]Could not read {manifest_path}; writing a fresh manifest.[/yellow]"
+                )
+        merged = merge_submission_manifest(existing, partial)
+        manifest_path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+        return merged
+
     try:
         manifest = submit_plan(
             plan,
@@ -397,25 +459,21 @@ def bench_matrix_submit(
             only_model=only_model,
             partition=partition,
             time=time,
+            chunk_size=chunk_size,
+            skip_job_names=skip,
+            on_progress=_persist if execute else None,
             echo=console.print,
         )
     except OrchestrationError as exc:
+        # The manifest already holds every batch that succeeded before this one.
         console.print(f"[red]{exc}[/red]")
+        if execute and manifest_path.exists():
+            console.print(f"[yellow]Partial submission recorded in {manifest_path}[/yellow]")
         raise typer.Exit(1) from exc
 
     n = len(manifest["cells"])
     if execute:
-        manifest_path = resolved / "submitted.json"
-        existing = None
-        if manifest_path.exists():
-            try:
-                existing = json.loads(manifest_path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                console.print(
-                    f"[yellow]Could not read {manifest_path}; writing a fresh manifest.[/yellow]"
-                )
-        merged = merge_submission_manifest(existing, manifest)
-        manifest_path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+        merged = _persist(manifest)
         console.print(
             f"[green]Submitted[/green] {n} cells + {len(manifest['embeds'])} embeds "
             f"→ {manifest_path}"
