@@ -119,8 +119,13 @@ with hindsight was doing most of the work.
 - **`atlas_opentrinity`'s 120d arm is not 120 days.** That source holds only 80 days, so its
   longest arm is really "all available history". The arms still separate by training-set size,
   so the comparison is real, but the label is not.
-- **`fdata_fugaku` is provisional**: its `xgboost`, `moe_xgboost` and `random_forest` cells
-  ranked on two arms rather than three, the 120d arm having still been running.
+- **`fdata_fugaku` was provisional and no longer is.** When this was first written its
+  `xgboost`, `moe_xgboost` and `random_forest` cells had ranked on two arms rather than three,
+  the 120d arm still running. All 420 cells have since completed with no failures, and the
+  re-ranked fleet reproduces every number above: the same six flips, the same regret
+  distribution, and no dataset whose winner moved. Fugaku itself does not flip — `xgboost`
+  wins it under both rules at 6,711, and its walk-forward score *equals* its oracle, so the
+  policy chose the best arm at every scored window there.
 - Fitted-model metrics are not byte-stable across machines (`docs/known-issues.md`), so small
   differences between reruns of the same cell are expected. The findings above rest on
   differences much larger than that.
