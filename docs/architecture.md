@@ -80,6 +80,11 @@ Raw Input (slurmctld.log / jobs.parquet)
   `HPC_ODA_ENABLE_NATIVE_XGBOOST_IT=1` for native XGBoost integration tests.
 - **Test fixtures**: generate in temp dirs (`tmp_path`); never rely on gitignored files or
   machine-specific absolute paths. Keep fixtures deterministic and minimal.
+- **Distinct fixtures**: when a test needs several of something, make them *different* unless
+  sameness is what it is testing. Identical fixtures quietly exercise cases nobody meant to
+  bless -- a leaderboard ordering test built two bundles for the same benchmark cell and
+  asserted both appeared, which was the double-counting bug of #166 sitting in plain sight for
+  months. Distinct values cost nothing and keep a fixture from asserting more than intended.
 - **Monkeypatching models**: integration tests that exercise the XGBoost / TF-IDF kNN / MLP /
   UoPC benchmark paths monkeypatch the model on `runner.` (e.g. `runner.JobRuntimeXGBoostModel`),
   not via `cli.` -- the models are imported in `benchmark/runner.py`.
