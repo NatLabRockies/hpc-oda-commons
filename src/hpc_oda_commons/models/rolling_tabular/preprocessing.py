@@ -4,6 +4,7 @@ import importlib
 import inspect
 import json
 import math
+import warnings
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -310,6 +311,9 @@ def analyze_one_hot_encoding(
 @dataclass(frozen=True)
 class DimensionalityReductionPlan:
     method: str
+    # Which rung of the solver ladder produced this. Anything other than "randomized" means
+    # the default failed to converge and the run escalated -- visible, never silent (#185).
+    solver: str
     target_coverage: float
     feasible_components: int
     evaluated_components: int
@@ -321,6 +325,7 @@ class DimensionalityReductionPlan:
     def to_dict(self) -> dict[str, Any]:
         return {
             "method": self.method,
+            "solver": self.solver,
             "target_coverage": self.target_coverage,
             "feasible_components": self.feasible_components,
             "evaluated_components": self.evaluated_components,
@@ -349,6 +354,54 @@ class DimensionalityReductionPlan:
 # int with no such hazard (#162).
 _SVD_N_OVERSAMPLES = 20
 
+# Escalation ladder for a solver that can fail to converge on inputs we do not control.
+#
+# Two static choices have now each looked like the fix and then failed on a later matrix:
+# ``power_iteration_normalizer="QR"`` (#159, and unusable anyway per #162) and
+# ``n_oversamples=20`` (#163, which then failed on lassen at a 30-day lookback, #185).
+#
+# The reason a static choice cannot be validated is that the failure is not a property of the
+# matrix. The lassen case ran clean three times over all 30 of its training days on a debug
+# node, with the same code and data that failed in production, and the failing node advertised
+# identical features to the ones that succeeded. So it depends on runtime conditions -- the
+# BLAS kernel actually selected, thread-pool state -- not on the input.
+#
+# Given that, the honest design is to escalate rather than to guess: try the fast path, and on
+# a convergence failure move to a stronger one. Escalation is recorded, never silent.
+_SVD_SOLVER_LADDER: tuple[tuple[str, dict[str, object]], ...] = (
+    ("randomized", {"n_oversamples": _SVD_N_OVERSAMPLES}),
+    ("randomized_oversampled", {"n_oversamples": 100}),
+    ("arpack", {"algorithm": "arpack"}),
+)
+
+
+def fit_truncated_svd(matrix: Any, n_components: int, random_state: int) -> tuple[Any, str]:
+    """Fit a TruncatedSVD, escalating on convergence failure. Returns (fitted, solver).
+
+    Raises the last error if every rung fails, so a genuinely broken input still surfaces
+    rather than being papered over.
+    """
+    _, TruncatedSVD = _require_sklearn()
+    last: Exception | None = None
+    for label, kwargs in _SVD_SOLVER_LADDER:
+        try:
+            svd = TruncatedSVD(n_components=n_components, random_state=random_state, **kwargs)
+            svd.fit(matrix)
+            if label != _SVD_SOLVER_LADDER[0][0]:
+                warnings.warn(
+                    f"TruncatedSVD did not converge on the default solver; succeeded with "
+                    f"{label!r} on a {matrix.shape[0]}x{matrix.shape[1]} matrix. This is "
+                    f"recorded as the run's svd_solver (#185).",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+            return svd, label
+        except Exception as exc:  # noqa: BLE001 - LinAlgError type varies by backend
+            if type(exc).__name__ != "LinAlgError":
+                raise
+            last = exc
+    raise last  # type: ignore[misc]
+
 
 def select_svd_components(
     encoded_matrix: Any,
@@ -362,6 +415,7 @@ def select_svd_components(
     if encoded_matrix is None:
         return DimensionalityReductionPlan(
             method="truncated_svd",
+            solver="none",
             target_coverage=target,
             feasible_components=0,
             evaluated_components=0,
@@ -378,6 +432,7 @@ def select_svd_components(
     if feasible <= 0:
         return DimensionalityReductionPlan(
             method="truncated_svd",
+            solver="none",
             target_coverage=target,
             feasible_components=feasible,
             evaluated_components=0,
@@ -388,12 +443,7 @@ def select_svd_components(
         )
 
     evaluated = min(feasible, max(1, int(max_svd_components)))
-    svd = TruncatedSVD(
-        n_components=evaluated,
-        random_state=random_state,
-        n_oversamples=_SVD_N_OVERSAMPLES,
-    )
-    svd.fit(encoded_matrix)
+    svd, solver = fit_truncated_svd(encoded_matrix, evaluated, random_state)
 
     ratios = [float(value) for value in svd.explained_variance_ratio_]
     cumulative: list[float] = []
@@ -414,6 +464,7 @@ def select_svd_components(
     preview_len = 25
     return DimensionalityReductionPlan(
         method="truncated_svd",
+        solver=solver,
         target_coverage=target,
         feasible_components=feasible,
         evaluated_components=evaluated,

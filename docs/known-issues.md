@@ -111,6 +111,19 @@ older releases `"QR"` is rejected outright, while `"OR"` validates and then matc
 in `randomized_range_finder` — silently skipping power iteration. There is no spelling of
 that parameter that is both accepted and correct across the versions this project supports.
 
+**Recurred, and the remedy changed shape ([#185](https://github.com/NatLabRockies/hpc-oda-commons/issues/185)).**
+`n_oversamples=20` cleared the `alcf_djc_aurora` matrix and then failed on `lassen` at a
+30-day lookback. Diagnosis on a compute node: the `lassen` case ran clean **three times over
+all 30 of its training days**, with the same code and data that had just failed in production,
+and the failing node advertised identical features to the ones that succeeded. So the failure
+is not a property of the matrix — it depends on runtime conditions (which BLAS kernel is
+selected, thread-pool state) — and **no static parameter choice can be validated against it**.
+Two were tried and each looked correct until a later matrix disproved it.
+
+The solver now escalates instead: randomized → higher oversampling → ARPACK, with the rung
+that succeeded recorded as `svd_solver` in the preprocessing diagnostics and a `RuntimeWarning`
+on escalation. A run that needed a fallback says so.
+
 Two patterns worth carrying forward. First, a numeric caveat that had only ever moved last
 digits turned out to be able to take a model out entirely; when a cell dies inside compiled
 numerics, the BLAS build is a first-class suspect and "does it reproduce on another machine?"
