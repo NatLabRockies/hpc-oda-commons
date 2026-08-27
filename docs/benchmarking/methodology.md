@@ -55,22 +55,26 @@ Fixed rolling-window evaluation for every dataset:
 
 | parameter | value | meaning |
 |---|---|---|
-| `n_windows` | 120 | number of rolling test windows |
-| `test_window_hours` | 6 | → 120 × 6h = **30 days of test coverage** |
-| `training_lookback_days` | 120 | **120 days of training** per window |
+| `n_windows` | 360 | number of rolling test windows, derived per card |
+| `test_window_hours` | 6 | → 360 × 6h = **90 days of test coverage** |
+| `training_lookback_days` | {10, 30, 120} | swept as an axis, not fixed (#170) |
 
-Each dataset card still *defines* a **90-day (3-month) window**: 60 days train + 30 days test,
-and that window is what gets scored. The split asks for 120 days of lookback, more history
-than the card window holds, so the slice is extended 60 days earlier than `window_start`
-(`SLICE_HISTORY_DAYS − train_days`) and the earliest rolling windows get their full lookback.
-The test region is untouched, so the scored population is exactly the card's.
+Each dataset card *defines* a **150-day window**: 60 days train + 90 days test, and the test
+region is what gets scored. Behind it the card declares a **history budget** (`history_days`,
+120 by default) — the history the earliest scored window must be able to see. The slice is
+extended `history_days − train_days` days earlier than `window_start`, so the longest lookback
+arm is backed by real data rather than by whatever happens to exist.
 
-> **Limitation.** Thirty days of scoring cannot contain an allocation cycle, a semester
-> boundary, or more than one maintenance outage. It also cannot be widened in place: the
-> evaluation region can only grow backwards into the 60-day training runway, which would leave
-> the earliest windows with less history than the 120d arm asks for — the arm would silently
-> decay toward whatever history exists, exactly where the extra evidence was wanted.
-> Lengthening the evaluation requires re-slicing with a larger history budget (#191).
+> **Both numbers are the card's, not the module's** (#191). One value did not suit every
+> source. `atlas_opentrinity` holds 80 days in total, so its 120-day arm was training on ~80
+> and reporting itself as 120 — a wrong number rather than a weak one. A card now declares
+> what its source can afford, the planner caps that dataset's arms at the budget, and
+> `bench-matrix` derives `n_windows` from `test_days`.
+
+Where a source cannot afford `history_days + test_days`, **the evaluation is shortened before
+the history is**, never below 30 days, and the card records `shortfall: true` alongside what
+was requested. Three datasets run short today: `atlas_opentrinity` (50d history + 30d
+evaluation), `pm100` (120 + 40) and `pwa_ricc` (120 + 30).
 
 `bench-matrix slice` derives that extension per dataset rather than taking it as a flag, so
 the slice cannot silently disagree with the split (#143, #145). Each slice carries a

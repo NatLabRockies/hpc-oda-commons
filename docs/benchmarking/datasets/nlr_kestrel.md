@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.nlr_kestrel`
 
-*Generated 2026-07-18T18:04:50.002962+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:59:03.695523+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Kestrel  ·  **Descriptor:** `dataset.job_runtime.nlr_kestrel`
 
@@ -28,12 +28,12 @@
 
 ## Benchmark window
 
-- **Window:** 2025-03-29 → 2025-06-26 (60d train + 30d test)
-- **Test period:** 2025-05-28 → 2025-06-26
-- **Rows in window:** 1,647,566 (18,306 jobs/day)
+- **Window:** 2025-01-28 → 2025-06-26 (60d train + 90d test)
+- **Test period:** 2025-03-29 → 2025-06-26
+- **Rows in window:** 2,387,339 (15,915 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** anchor (80%) window overlapped a missing block; shifted 15d to the nearest window clear of every block.
 
 ---
-*Provenance: git `3c2bfa8165313c0c068a90777903b0f02f5f5a7d`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

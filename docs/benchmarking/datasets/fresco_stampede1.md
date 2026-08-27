@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.fresco_stampede1`
 
-*Generated 2026-07-18T18:04:48.123497+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:58:55.963063+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Stampede1  ·  **Descriptor:** `dataset.job_runtime.fresco_stampede1`
 
@@ -23,12 +23,12 @@
 
 ## Benchmark window
 
-- **Window:** 2016-10-19 → 2017-01-16 (60d train + 30d test)
-- **Test period:** 2016-12-18 → 2017-01-16
-- **Rows in window:** 378,696 (4,207 jobs/day)
+- **Window:** 2016-08-20 → 2017-01-16 (60d train + 90d test)
+- **Test period:** 2016-10-19 → 2017-01-16
+- **Rows in window:** 601,668 (4,011 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
 
 ---
-*Provenance: git `3c2bfa8165313c0c068a90777903b0f02f5f5a7d`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

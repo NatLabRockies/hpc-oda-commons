@@ -1,7 +1,7 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.fresco_stampede1",
-  "generated_at": "2026-07-18T18:04:48.123497+00:00",
+  "generated_at": "2026-08-27T12:58:55.963063+00:00",
   "source": {
     "table_path": "data/datasets/fresco_stampede1/data.parquet",
     "system": "Stampede1",
@@ -63,14 +63,15 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 90,
+      "history_days": 120
     },
-    "window_start": "2016-10-19",
+    "window_start": "2016-08-20",
     "window_end": "2017-01-16",
-    "test_start": "2016-12-18",
+    "test_start": "2016-10-19",
     "test_end": "2017-01-16",
-    "n_rows": 378696,
-    "rate_per_day": 4207.7,
+    "n_rows": 601668,
+    "rate_per_day": 4011.1,
     "gaps_in_window": [],
     "healthy": true,
     "rationale": "window END at 80% of healthy span; clear of all missing blocks."
@@ -87,7 +88,7 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "3c2bfa8165313c0c068a90777903b0f02f5f5a7d",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [

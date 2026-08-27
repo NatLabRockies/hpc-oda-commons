@@ -27,6 +27,8 @@ from hpc_oda_commons.benchmarking.hpc.matrix import (
     build_plan,
     build_recipe,
     load_cards,
+    lookback_arms_for,
+    n_windows_for,
     render_template,
     select_models,
     slice_extension_for,
@@ -630,3 +632,72 @@ def test_an_excluded_model_gets_no_cells_recipes_or_scripts(tmp_path: Path) -> N
     assert "mlp" not in {c.model for c in plan.cells}
     assert not list(staging.glob("recipes/*__mlp__*.yml"))
     assert not list(staging.glob("scripts/*__mlp__*.sbatch"))
+
+
+# --- per-card history budget and evaluation length (#191) ------------------------------
+
+
+def _budget_card(**kwargs) -> Card:
+    base = dict(
+        dataset="ds",
+        window_rows=1000,
+        window_start="2026-01-01",
+        window_end="2026-04-10",
+        train_days=60,
+        healthy=True,
+        system="Sys",
+        source_table="data/datasets/ds/data.parquet",
+        card_path=Path("ds.card.json"),
+    )
+    base.update(kwargs)
+    return Card(**base)
+
+
+def test_slice_extension_follows_the_card_not_the_constant() -> None:
+    assert slice_extension_for(_budget_card(history_days=200)) == 140
+    assert slice_extension_for(_budget_card(history_days=50)) == 0
+
+
+def test_lookback_arms_are_capped_at_the_history_budget() -> None:
+    """An arm longer than the history behind the window is mislabelled, not merely weak."""
+    assert lookback_arms_for(_budget_card(history_days=120)) == (10, 30, 120)
+    assert lookback_arms_for(_budget_card(history_days=50)) == (10, 30, 50)
+
+
+def test_capped_arms_do_not_duplicate() -> None:
+    """A 20-day budget collapses 30d and 120d onto one arm; run it once, not twice."""
+    assert lookback_arms_for(_budget_card(history_days=20)) == (10, 20)
+
+
+def test_n_windows_follows_the_cards_evaluation_length() -> None:
+    assert n_windows_for(_budget_card(test_days=90)) == 360
+    assert n_windows_for(_budget_card(test_days=30)) == 120
+
+
+def test_a_card_predating_the_field_plans_as_it_did_before(tmp_path: Path) -> None:
+    """Old cards state test_days but not history_days; neither may change under them."""
+    payload = {
+        "benchmark_window": {
+            "rule": {"anchor": 0.8, "train_days": 60, "test_days": 30},
+            "window_start": "2026-01-01",
+            "window_end": "2026-03-31",
+            "n_rows": 100,
+            "healthy": True,
+        },
+        "source": {"system": "Sys", "table_path": "data/datasets/ds/data.parquet"},
+    }
+    path = tmp_path / "legacy.card.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    card = load_cards(tmp_path)[0]
+
+    assert card.history_days == SLICE_HISTORY_DAYS
+    assert card.test_days == 30
+    assert n_windows_for(card) == 120
+    assert lookback_arms_for(card) == LOOKBACK_ARMS
+
+
+def test_the_recipe_carries_the_cards_window_count() -> None:
+    """The plan and the recipe must not be able to disagree about the evaluation length."""
+    recipe = build_recipe("ds", "job_runtime_xgboost", "t.parquet", "runs/ds", n_windows=360)
+    assert recipe["split"]["n_windows"] == 360

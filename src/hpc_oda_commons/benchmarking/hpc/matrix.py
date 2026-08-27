@@ -18,6 +18,7 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
+from hpc_oda_commons.benchmarking.characterize import DEFAULT_TEST_DAYS
 from hpc_oda_commons.benchmarking.hpc.config import SiteConfig
 
 # --- Benchmark configuration (the agreed methodology; see docs/benchmarking/methodology.md) ---
@@ -83,9 +84,12 @@ SLICE_HISTORY_DAYS: int = 120
 # downstream from the per-window metrics these runs already emit.
 LOOKBACK_ARMS: tuple[int, ...] = (10, 30, 120)
 
+# ``n_windows`` is the default for a card that states no evaluation length; the planner
+# derives it per dataset from the card's ``test_days`` (#191). 360 x 6h = the 90-day
+# evaluation the cards now target.
 SPLIT: dict[str, object] = {
     "method": "rolling",
-    "n_windows": 120,
+    "n_windows": 360,
     "test_window_hours": 6,
     "training_lookback_days": 120,
 }
@@ -207,8 +211,32 @@ def slice_extension_for(card: Card) -> int:
 
     ``train_days`` still shortens the extension when the card window already covers part of
     the span, so nothing is cut twice.
+
+    The budget is the card's since #191. ``SLICE_HISTORY_DAYS`` remains the default for cards
+    that predate the field, so an unregenerated card slices exactly as it did.
     """
-    return max(0, SLICE_HISTORY_DAYS - card.train_days)
+    return max(0, card.history_days - card.train_days)
+
+
+def lookback_arms_for(card: Card, arms: Sequence[int] = LOOKBACK_ARMS) -> tuple[int, ...]:
+    """The arms a card can actually express, each capped at its history budget.
+
+    An arm longer than the history behind the window is not the arm it claims to be. On
+    ``atlas_opentrinity`` -- 80 days of source in total -- the "120d" arm trained on the ~80
+    that existed and still reported itself as 120d, which is a wrong number rather than a
+    weak one (#191).
+
+    Capping renames the arm instead of dropping it: the measurement is still wanted, under a
+    label that matches what it did. Arms that collapse onto each other are de-duplicated, so
+    a card with a 30-day budget runs two arms rather than the same arm twice.
+    """
+    return tuple(sorted({min(int(arm), card.history_days) for arm in arms}))
+
+
+def n_windows_for(card: Card, test_window_hours: int | None = None) -> int:
+    """How many rolling windows cover the card's evaluation region."""
+    hours = int(test_window_hours or SPLIT["test_window_hours"])  # type: ignore[arg-type]
+    return max(1, (card.test_days * 24) // hours)
 
 
 def _model_tag(model_key: str) -> str:
@@ -262,6 +290,11 @@ class Card:
     system: str
     source_table: str  # canonical prepared parquet path (relative to repo root)
     card_path: Path
+    # The history budget and evaluation length the card declares. Both were module constants
+    # until #191; one value did not suit every source, and a card whose source could not
+    # afford the constant received less without saying so.
+    history_days: int = SLICE_HISTORY_DAYS
+    test_days: int = DEFAULT_TEST_DAYS
     sliced_rows: int | None = None  # rows in the slice on disk, from its slice.json
 
     @property
@@ -316,6 +349,11 @@ def _parse_card(path: Path) -> Card:
         # A card with no stated rule reports 0, which makes the derived slice extension the
         # full lookback -- wider than needed, never narrower.
         train_days=int((window.get("rule") or {}).get("train_days", 0)),
+        # Cards written before #191 state ``test_days`` (30) but not ``history_days``, so the
+        # old constant is the default for the latter and such a card plans exactly as it used
+        # to: 30 days of evaluation against a 120-day budget.
+        history_days=int((window.get("rule") or {}).get("history_days", SLICE_HISTORY_DAYS)),
+        test_days=int((window.get("rule") or {}).get("test_days", DEFAULT_TEST_DAYS)),
         healthy=bool(window.get("healthy", False)),
         system=str(source.get("system", "")),
         source_table=str(source.get("table_path", "")),
@@ -340,6 +378,7 @@ class Cell:
     needs_embed: bool
     job_name: str
     training_lookback_days: int = int(SPLIT["training_lookback_days"])  # type: ignore[arg-type]
+    n_windows: int = int(SPLIT["n_windows"])  # type: ignore[arg-type]
 
 
 @dataclass
@@ -387,6 +426,7 @@ def build_recipe(
     *,
     window_n_jobs: int | None = None,
     training_lookback_days: int | None = None,
+    n_windows: int | None = None,
 ) -> dict:
     """Build a benchmark recipe payload (``oda.recipe.v0.1.0``) for one cell.
 
@@ -399,6 +439,8 @@ def build_recipe(
     split = dict(SPLIT)
     if training_lookback_days is not None:
         split["training_lookback_days"] = int(training_lookback_days)
+    if n_windows is not None:
+        split["n_windows"] = int(n_windows)
     split.update(MODEL_SPLIT_OVERRIDES.get(model_key, {}))
     if window_n_jobs is not None:
         split["window_n_jobs"] = window_n_jobs
@@ -464,7 +506,7 @@ def build_plan(
             tag = _model_tag(model_key)
             needs_embed = model_key == EMBEDDING_MODEL
             table_path = _embedded_parquet(card.dataset) if needs_embed else window_pq
-            for lookback in lookbacks:
+            for lookback in lookback_arms_for(card, lookbacks):
                 stem = f"{card.dataset}__{tag}__lb{lookback}d"
                 plan.cells.append(
                     Cell(
@@ -481,6 +523,7 @@ def build_plan(
                         needs_embed=needs_embed,
                         job_name=f"b.{card.dataset}.{tag}.lb{lookback}d",
                         training_lookback_days=lookback,
+                        n_windows=n_windows_for(card),
                     )
                 )
 
@@ -605,6 +648,7 @@ def write_plan(plan: Plan, staging_dir: Path, site: SiteConfig) -> Path:
                 cell.window_workers if cell.model in WINDOW_PARALLEL_MODEL_TAGS else None
             ),
             training_lookback_days=cell.training_lookback_days,
+            n_windows=cell.n_windows,
         )
         (staging_dir / cell.recipe_path).write_text(
             yaml.safe_dump(recipe, sort_keys=False), encoding="utf-8"

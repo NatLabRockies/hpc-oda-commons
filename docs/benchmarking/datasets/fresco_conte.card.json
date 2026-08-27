@@ -1,9 +1,9 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.fresco_conte",
-  "generated_at": "2026-07-18T18:47:38.174696+00:00",
+  "generated_at": "2026-08-27T12:58:53.671794+00:00",
   "source": {
-    "table_path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/fresco_conte/data.parquet",
+    "table_path": "data/datasets/fresco_conte/data.parquet",
     "system": "Conte",
     "descriptor": "dataset.job_runtime.fresco_conte"
   },
@@ -57,14 +57,15 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 90,
+      "history_days": 120
     },
-    "window_start": "2015-09-20",
+    "window_start": "2015-07-22",
     "window_end": "2015-12-18",
-    "test_start": "2015-11-19",
+    "test_start": "2015-09-20",
     "test_end": "2015-12-18",
-    "n_rows": 193764,
-    "rate_per_day": 2152.9,
+    "n_rows": 318392,
+    "rate_per_day": 2122.6,
     "gaps_in_window": [],
     "healthy": true,
     "rationale": "window END at 80% of healthy span; clear of all missing blocks."
@@ -81,12 +82,12 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "4aacd474f835e7e91f9bd91bb250b0d9843620d3",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [
       {
-        "path": "/Users/kmenear/Sandbox/hpc_oda_commons/data/datasets/fresco_conte/data.parquet",
+        "path": "data/datasets/fresco_conte/data.parquet",
         "sha256": "2baf86cc9bf124625676eb65e766465af6e2232204465bd450fe156556ebe3b5",
         "size_bytes": 29321219,
         "mtime_epoch": 1784400430.0889697

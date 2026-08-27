@@ -1,7 +1,7 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.ccin2p3_2024",
-  "generated_at": "2026-07-18T19:36:47.973884+00:00",
+  "generated_at": "2026-08-27T12:58:48.466728+00:00",
   "source": {
     "table_path": "data/datasets/ccin2p3_2024/data.parquet",
     "system": "CC-IN2P3",
@@ -57,17 +57,24 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 30,
+      "history_days": 92,
+      "requested": {
+        "history_days": 120,
+        "test_days": 90,
+        "train_days": 60
+      },
+      "shortfall": true
     },
-    "window_start": "2024-09-09",
-    "window_end": "2024-12-07",
-    "test_start": "2024-11-08",
-    "test_end": "2024-12-07",
-    "n_rows": 12581060,
-    "rate_per_day": 139789.6,
+    "window_start": "2024-10-03",
+    "window_end": "2024-12-31",
+    "test_start": "2024-12-02",
+    "test_end": "2024-12-31",
+    "n_rows": 9969424,
+    "rate_per_day": 110771.4,
     "gaps_in_window": [],
     "healthy": true,
-    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+    "rationale": "window END at 80% of healthy span; clear of all missing blocks. Source affords 122d, short of the 120d history + 90d evaluation requested, so this card runs 92d + 30d."
   },
   "decisions": [],
   "provenance": {
@@ -81,7 +88,7 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "a79f56da07bdff876a5c47ba3d082b18a12fab77",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [

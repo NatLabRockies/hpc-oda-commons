@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.pwa_sdsc_blue`
 
-*Generated 2026-07-18T18:38:32.787896+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:59:14.814489+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Blue Horizon  ·  **Descriptor:** `dataset.job_runtime.pwa_sdsc_blue`
 
@@ -23,12 +23,12 @@
 
 ## Benchmark window
 
-- **Window:** 2002-03-20 → 2002-06-17 (60d train + 30d test)
-- **Test period:** 2002-05-19 → 2002-06-17
-- **Rows in window:** 33,222 (369 jobs/day)
+- **Window:** 2002-01-19 → 2002-06-17 (60d train + 90d test)
+- **Test period:** 2002-03-20 → 2002-06-17
+- **Rows in window:** 51,738 (344 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
 
 ---
-*Provenance: git `4aacd474f835e7e91f9bd91bb250b0d9843620d3`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

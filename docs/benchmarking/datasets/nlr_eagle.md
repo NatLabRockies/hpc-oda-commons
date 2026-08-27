@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.nlr_eagle`
 
-*Generated 2026-07-18T18:22:16.286905+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:59:01.568006+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Eagle  ·  **Descriptor:** `dataset.job_runtime.nlr_eagle`
 
@@ -35,12 +35,12 @@
 
 ## Benchmark window
 
-- **Window:** 2023-02-01 → 2023-05-01 (60d train + 30d test)
-- **Test period:** 2023-04-02 → 2023-05-01
-- **Rows in window:** 780,011 (8,666 jobs/day)
+- **Window:** 2022-12-03 → 2023-05-01 (60d train + 90d test)
+- **Test period:** 2023-02-01 → 2023-05-01
+- **Rows in window:** 1,399,575 (9,330 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
 
 ---
-*Provenance: git `3071c4dd863b48e8b27e6870cdb937244d5b1347`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.lassen`
 
-*Generated 2026-07-18T18:28:59.775408+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:58:57.619436+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** Lassen  ·  **Descriptor:** `dataset.job_runtime.lassen`
 
@@ -27,12 +27,12 @@
 
 ## Benchmark window
 
-- **Window:** 2020-03-17 → 2020-06-14 (60d train + 30d test)
-- **Test period:** 2020-05-16 → 2020-06-14
-- **Rows in window:** 174,542 (1,939 jobs/day)
+- **Window:** 2020-01-17 → 2020-06-14 (60d train + 90d test)
+- **Test period:** 2020-03-17 → 2020-06-14
+- **Rows in window:** 301,511 (2,010 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
 
 ---
-*Provenance: git `1f961b887ea83187480cb4d7e415e8f7a1bff418`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

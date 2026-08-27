@@ -1,6 +1,6 @@
 # Dataset card — `dataset.job_runtime.pwa_ricc`
 
-*Generated 2026-07-18T18:37:43.129791+00:00 · schema `oda.dataset_card.v0.1.0`.*
+*Generated 2026-08-27T12:59:13.284601+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
 **System:** RICC  ·  **Descriptor:** `dataset.job_runtime.pwa_ricc`
 
@@ -21,12 +21,12 @@
 
 ## Benchmark window
 
-- **Window:** 2010-06-02 → 2010-08-30 (60d train + 30d test)
-- **Test period:** 2010-08-01 → 2010-08-30
-- **Rows in window:** 239,589 (2,662 jobs/day)
+- **Window:** 2010-07-02 → 2010-09-29 (60d train + 30d test)
+- **Test period:** 2010-08-31 → 2010-09-29
+- **Rows in window:** 350,982 (3,899 jobs/day)
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
-- **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
+- **Rationale:** window END at 80% of healthy span; clear of all missing blocks. Source affords 150d, short of the 120d history + 90d evaluation requested, so this card runs 120d + 30d.
 
 ---
-*Provenance: git `4aacd474f835e7e91f9bd91bb250b0d9843620d3`, package `0.1.0`.*
+*Provenance: git `fdf037fe018c5ad7eed76829bbf790b72aa73995`, package `0.1.0`.*

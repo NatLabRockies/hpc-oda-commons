@@ -27,7 +27,17 @@ CARD_SCHEMA_VERSION = "oda.dataset_card.v0.1.0"
 # Defaults for the health gate + window rule (see docs/benchmarking/methodology.md).
 DEFAULT_ANCHOR = 0.80
 DEFAULT_TRAIN_DAYS = 60
-DEFAULT_TEST_DAYS = 30
+# Ninety days of scoring, raised from 30 (#191). Thirty could not contain an allocation
+# cycle, a semester boundary, or more than one maintenance outage, so every leaderboard
+# number rested on a single month of one machine's life.
+DEFAULT_TEST_DAYS = 90
+# How much history the earliest scored window must be able to see. This is the budget the
+# lookback arms are measured against, and it lives on the card because one value does not
+# suit every source: it was the module constant ``matrix.SLICE_HISTORY_DAYS`` (#191).
+DEFAULT_HISTORY_DAYS = 120
+# The evaluation is what gets given up when a source cannot afford both, but not below this.
+# A shorter run than the benchmark's previous length would be a regression, not a compromise.
+MIN_TEST_DAYS = 30
 DEFAULT_GAP_MIN_DAYS = 3
 DEFAULT_GAP_FLOOR_FRAC = 0.05
 DEFAULT_ROBUST_Q = 0.001  # trim the outer 0.1% of submit timestamps (corrupt/epoch-era rows)
@@ -198,20 +208,70 @@ def _overlapping_gaps(
     return [(a, b) for (a, b) in gap_ranges if a <= end_day and b >= start_day]
 
 
+def fit_history_budget(
+    span_days: int,
+    *,
+    history_days: int = DEFAULT_HISTORY_DAYS,
+    test_days: int = DEFAULT_TEST_DAYS,
+    train_days: int = DEFAULT_TRAIN_DAYS,
+    min_test_days: int = MIN_TEST_DAYS,
+) -> dict[str, Any]:
+    """The largest ``(history, test, train)`` a span can support, and what it cost.
+
+    The window rule used to check only that ``train_days + test_days`` fitted the healthy
+    span. It never checked that the history the split needs *before* that window exists, which
+    is how ``atlas_opentrinity`` came to run a "120d" lookback arm against a source holding 80
+    days in total: the slice asked to reach back, got nothing, and said nothing (#191).
+
+    Evaluation is surrendered before history. An arm labelled 120d that silently trained on 50
+    is a *wrong* number; a shorter evaluation is merely a weaker one, and it says so.
+    """
+    requested = {
+        "history_days": int(history_days),
+        "test_days": int(test_days),
+        "train_days": int(train_days),
+    }
+    history, test = int(history_days), int(test_days)
+    if history + test > span_days:
+        test = max(min_test_days, span_days - history)
+    if history + test > span_days:
+        history = span_days - test
+    if history < 1:
+        # A span too small for even the floor: split it rather than fail. Characterizing a
+        # tiny table is still useful, and the shortfall flag carries the news.
+        test = max(1, span_days // 3)
+        history = max(1, span_days - test)
+    # Never claim more in-window training than the budget itself covers.
+    train = min(int(train_days), history)
+    return {
+        "history_days": int(history),
+        "test_days": int(test),
+        "train_days": int(train),
+        "requested": requested,
+        "shortfall": (history, test) != (requested["history_days"], requested["test_days"]),
+    }
+
+
 def select_window(
     characterization: dict[str, Any],
     *,
     anchor: float = DEFAULT_ANCHOR,
     train_days: int = DEFAULT_TRAIN_DAYS,
     test_days: int = DEFAULT_TEST_DAYS,
+    history_days: int = DEFAULT_HISTORY_DAYS,
     gap_min_days: int = DEFAULT_GAP_MIN_DAYS,
 ) -> dict[str, Any]:
     """Choose the rolling-benchmark window per the agreed rule + health gate.
 
     Places the ``train_days + test_days`` window's END at ``anchor`` of the healthy span,
-    then rejects any window that **overlaps a missing block at all** (even partially — so the
+    then rejects any window that **overlaps a missing block at all** (even partially -- so the
     window never clips the edge of an outage) and shifts to the nearest window clear of every
     block. Returns dates, in-window rows/rate, health verdict, and rationale.
+
+    A candidate must also leave ``history_days`` of data behind its test region, so the
+    longest lookback arm is backed by real history rather than by whatever happens to exist
+    (#191). History may contain gaps -- a model simply trains on the rows that are there --
+    but it may not be absent.
     """
     daily = characterization.get("_daily")
     if daily is None:
@@ -220,11 +280,33 @@ def select_window(
     series = np.asarray(daily["series"], dtype="int64")
     gap_ranges = [(int(a), int(b)) for a, b in daily.get("gaps", [])]
     span_days = len(series)
-    win_days = train_days + test_days
 
-    if span_days < win_days:
-        # Not enough data for the standard window — use the whole healthy span.
-        start_day, end_day = lo_day, lo_day + span_days - 1
+    budget = fit_history_budget(
+        span_days, history_days=history_days, test_days=test_days, train_days=train_days
+    )
+    train_days = budget["train_days"]
+    test_days = budget["test_days"]
+    history_days = budget["history_days"]
+    win_days = train_days + test_days
+    shortfall_note = (
+        ""
+        if not budget["shortfall"]
+        else (
+            f" Source affords {span_days}d, short of the "
+            f"{budget['requested']['history_days']}d history + "
+            f"{budget['requested']['test_days']}d evaluation requested, so this card runs "
+            f"{history_days}d + {test_days}d."
+        )
+    )
+
+    max_end = lo_day + span_days - 1
+    # The earliest end that leaves both a full window and its history behind it.
+    min_end = lo_day + max(win_days, history_days + test_days) - 1
+    if min_end > max_end:
+        # Cannot happen once the budget has been fitted, but a caller may pass a span the
+        # budget could only degrade; use the whole span rather than return a window that
+        # reaches outside it.
+        start_day, end_day = lo_day, max_end
         overlaps = _overlapping_gaps(gap_ranges, start_day, end_day)
         return _window_result(
             lo_day,
@@ -233,17 +315,16 @@ def select_window(
             end_day,
             train_days,
             test_days,
+            history_days,
             anchor,
             _gaps_to_dicts(overlaps),
             healthy=not overlaps,
+            budget=budget,
             rationale=(
-                f"healthy span is only {span_days}d (< {win_days}d requested); used the whole "
-                f"span. {_gap_note(_gaps_to_dicts(overlaps))}"
+                f"healthy span is only {span_days}d; used the whole span."
+                f"{shortfall_note} {_gap_note(_gaps_to_dicts(overlaps))}"
             ),
         )
-
-    max_end = lo_day + span_days - 1
-    min_end = lo_day + win_days - 1  # earliest end that still fits a full window
 
     def _clamp(e: int) -> int:
         return max(min_end, min(max_end, e))
@@ -275,13 +356,15 @@ def select_window(
                     e,
                     train_days,
                     test_days,
+                    history_days,
                     anchor,
                     [],
                     healthy=True,
-                    rationale=rationale,
+                    budget=budget,
+                    rationale=rationale + shortfall_note,
                 )
 
-    # No block-free window anywhere — return the anchor window flagged unhealthy.
+    # No block-free window anywhere -- return the anchor window flagged unhealthy.
     overlaps = _overlapping_gaps(gap_ranges, anchor_end - win_days + 1, anchor_end)
     return _window_result(
         lo_day,
@@ -290,12 +373,15 @@ def select_window(
         anchor_end,
         train_days,
         test_days,
+        history_days,
         anchor,
         _gaps_to_dicts(overlaps),
         healthy=False,
+        budget=budget,
         rationale=(
             "NO window clear of all missing blocks exists at this size; returned the anchor "
-            f"window. {_gap_note(_gaps_to_dicts(overlaps))} — seek other months or widen the window."
+            f"window.{shortfall_note} {_gap_note(_gaps_to_dicts(overlaps))} — seek other "
+            "months or widen the window."
         ),
     )
 
@@ -314,18 +400,31 @@ def _window_result(
     end_day: int,
     train_days: int,
     test_days: int,
+    history_days: int,
     anchor: float,
     gaps: list[dict[str, Any]],
     *,
     healthy: bool,
     rationale: str,
+    budget: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     a, b = start_day - lo_day, end_day - lo_day
     rows = int(series[max(0, a) : b + 1].sum())
     win_days = train_days + test_days
     test_start_day = end_day - test_days + 1
+    rule: dict[str, Any] = {
+        "anchor": anchor,
+        "train_days": train_days,
+        "test_days": test_days,
+        "history_days": history_days,
+    }
+    if budget is not None and budget.get("shortfall"):
+        # Named, not silently smaller: a reader comparing two cards must be able to see that
+        # one of them is running a shorter evaluation and why (#191).
+        rule["requested"] = budget["requested"]
+        rule["shortfall"] = True
     return {
-        "rule": {"anchor": anchor, "train_days": train_days, "test_days": test_days},
+        "rule": rule,
         "window_start": _iso_day(start_day),
         "window_end": _iso_day(end_day),
         "test_start": _iso_day(test_start_day),

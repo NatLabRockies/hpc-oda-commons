@@ -1,7 +1,7 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.nlr_kestrel",
-  "generated_at": "2026-07-18T18:04:50.002962+00:00",
+  "generated_at": "2026-08-27T12:59:03.695523+00:00",
   "source": {
     "table_path": "data/datasets/nlr_kestrel/data.parquet",
     "system": "Kestrel",
@@ -88,14 +88,15 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 90,
+      "history_days": 120
     },
-    "window_start": "2025-03-29",
+    "window_start": "2025-01-28",
     "window_end": "2025-06-26",
-    "test_start": "2025-05-28",
+    "test_start": "2025-03-29",
     "test_end": "2025-06-26",
-    "n_rows": 1647566,
-    "rate_per_day": 18306.3,
+    "n_rows": 2387339,
+    "rate_per_day": 15915.6,
     "gaps_in_window": [],
     "healthy": true,
     "rationale": "anchor (80%) window overlapped a missing block; shifted 15d to the nearest window clear of every block."
@@ -112,7 +113,7 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "3c2bfa8165313c0c068a90777903b0f02f5f5a7d",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [

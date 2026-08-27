@@ -1,7 +1,7 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.nlr_eagle",
-  "generated_at": "2026-07-18T18:22:16.286905+00:00",
+  "generated_at": "2026-08-27T12:59:01.568006+00:00",
   "source": {
     "table_path": "data/datasets/nlr_eagle/data.parquet",
     "system": "Eagle",
@@ -123,14 +123,15 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 90,
+      "history_days": 120
     },
-    "window_start": "2023-02-01",
+    "window_start": "2022-12-03",
     "window_end": "2023-05-01",
-    "test_start": "2023-04-02",
+    "test_start": "2023-02-01",
     "test_end": "2023-05-01",
-    "n_rows": 780011,
-    "rate_per_day": 8666.8,
+    "n_rows": 1399575,
+    "rate_per_day": 9330.5,
     "gaps_in_window": [],
     "healthy": true,
     "rationale": "window END at 80% of healthy span; clear of all missing blocks."
@@ -147,7 +148,7 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "3071c4dd863b48e8b27e6870cdb937244d5b1347",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [

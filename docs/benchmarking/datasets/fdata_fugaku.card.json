@@ -1,7 +1,7 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.job_runtime.fdata_fugaku",
-  "generated_at": "2026-08-22T15:07:29.924791+00:00",
+  "generated_at": "2026-08-27T12:58:50.439335+00:00",
   "source": {
     "table_path": "data/datasets/fdata_fugaku/data.parquet",
     "system": "Fugaku",
@@ -49,14 +49,15 @@
     "rule": {
       "anchor": 0.8,
       "train_days": 60,
-      "test_days": 30
+      "test_days": 90,
+      "history_days": 120
     },
-    "window_start": "2023-05-21",
-    "window_end": "2023-08-18",
-    "test_start": "2023-07-20",
-    "test_end": "2023-08-18",
-    "n_rows": 3311884,
-    "rate_per_day": 36798.7,
+    "window_start": "2023-04-30",
+    "window_end": "2023-09-26",
+    "test_start": "2023-06-29",
+    "test_end": "2023-09-26",
+    "n_rows": 4351251,
+    "rate_per_day": 29008.3,
     "gaps_in_window": [],
     "healthy": true,
     "rationale": "window END at 80% of healthy span; clear of all missing blocks."
@@ -73,7 +74,7 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "49e3f26367484d06d29b05263f5fa78519c3764b",
+      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
       "source_hash": null
     },
     "inputs": [
