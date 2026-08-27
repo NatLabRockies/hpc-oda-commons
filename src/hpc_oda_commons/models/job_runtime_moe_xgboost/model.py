@@ -128,9 +128,13 @@ class _Routing:
 
 @dataclass(frozen=True)
 class _MoEDailyArtifacts(_DailyPreprocessingArtifacts):
-    """The shared daily preprocessing artifacts, plus that day's routing."""
+    """The shared daily preprocessing artifacts, plus that day's routing.
 
-    routing: _Routing
+    ``routing`` carries a default only because the base gained defaulted fields (#172) and a
+    dataclass cannot place a required field after them. Every construction site passes it.
+    """
+
+    routing: _Routing = None  # type: ignore[assignment]
 
 
 @dataclass

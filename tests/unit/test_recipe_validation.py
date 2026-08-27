@@ -151,3 +151,53 @@ def test_validate_recipe_rolling_accepts_objective() -> None:
         "objective": "reg:absoluteerror",
     }
     validate_recipe(payload)
+
+
+# --- recipe knobs must be reachable, as a class (#134, #172) --------------------------
+
+
+def test_every_rolling_tabular_split_knob_is_declared_in_the_schema() -> None:
+    """`split` is `additionalProperties: false`, so an undeclared knob is unreachable.
+
+    This has bitten twice by enumeration: the MoE knobs in #134 were rejected at recipe load,
+    and the target encoding in #172 shipped with the runner silently ignoring it -- an A/B
+    measured a 0.0% difference, to the decimal, before anyone noticed.
+
+    So this derives the list from the runner instead of restating it. A new knob that the
+    runner reads but the schema does not name fails here, without anyone remembering to add
+    a case.
+    """
+    import json
+    from pathlib import Path
+
+    from hpc_oda_commons.benchmark.runner import _rolling_tabular_split_kwargs
+    from hpc_oda_commons.models.job_runtime_xgboost.model import JobRuntimeXGBoostConfig
+
+    knobs = set(_rolling_tabular_split_kwargs({}, JobRuntimeXGBoostConfig()))
+    schema = json.loads(
+        (Path("src/hpc_oda_commons/schemas/oda/recipe/v0.1.0.json")).read_text(encoding="utf-8")
+    )
+    declared = set(schema["properties"]["split"]["properties"])
+
+    assert knobs <= declared, f"undeclared in the recipe schema: {sorted(knobs - declared)}"
+
+
+def test_a_recipe_can_actually_set_the_target_encoding_knobs() -> None:
+    """Declared in the schema AND read by the runner -- both halves, or it does nothing."""
+    from hpc_oda_commons.benchmark.runner import _rolling_tabular_split_kwargs
+    from hpc_oda_commons.models.job_runtime_xgboost.model import JobRuntimeXGBoostConfig
+
+    payload = _valid_rolling_recipe()
+    payload["split"] = {
+        "method": "rolling",
+        "n_windows": 24,
+        "target_encode_min_cardinality": 64,
+        "target_encode_smoothing": 5.0,
+    }
+    validate_recipe(payload)  # half one: the schema accepts it
+
+    kwargs = _rolling_tabular_split_kwargs(payload["split"], JobRuntimeXGBoostConfig())
+
+    # half two: the runner carries it into the model's config
+    assert kwargs["target_encode_min_cardinality"] == 64
+    assert kwargs["target_encode_smoothing"] == 5.0

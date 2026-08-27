@@ -329,16 +329,9 @@ def run_rolling_xgboost(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the XGBoost model."""
-    n_windows = int(split.get("n_windows", 1000))
-    test_window_hours = int(split.get("test_window_hours", 6))
-    training_lookback_days = int(split.get("training_lookback_days", 100))
     model = JobRuntimeXGBoostModel(
         config=JobRuntimeXGBoostConfig(
-            n_windows=n_windows,
-            test_window_hours=test_window_hours,
-            training_lookback_days=training_lookback_days,
-            window_n_jobs=int(split.get("window_n_jobs", 1)),
-            log_target=bool(split.get("log_target", False)),
+            **_rolling_tabular_split_kwargs(split, JobRuntimeXGBoostConfig()),
             objective=str(split.get("objective", JobRuntimeXGBoostConfig.objective)),
         )
     )
@@ -352,6 +345,32 @@ def run_rolling_xgboost(
     )
 
 
+def _rolling_tabular_split_kwargs(split: dict[str, Any], defaults: Any) -> dict[str, Any]:
+    """Config keyword arguments a recipe's ``split`` may set on a rolling-tabular model.
+
+    Centralised because forgetting one is silent and has bitten this project twice: the MoE
+    knobs in #134 were rejected at recipe load until the schema named them, and the target
+    encoding in #172 shipped unreachable because the runner did not pass it -- an A/B measured
+    exactly zero difference, to the decimal, before anyone noticed.
+
+    Anything added here must also be declared in the recipe schema's ``split``, which is
+    ``additionalProperties: false``. A test asserts the two stay in step.
+    """
+    return {
+        "n_windows": int(split.get("n_windows", 1000)),
+        "test_window_hours": int(split.get("test_window_hours", 6)),
+        "training_lookback_days": int(split.get("training_lookback_days", 100)),
+        "window_n_jobs": int(split.get("window_n_jobs", 1)),
+        "log_target": bool(split.get("log_target", False)),
+        "target_encode_min_cardinality": int(
+            split.get("target_encode_min_cardinality", defaults.target_encode_min_cardinality)
+        ),
+        "target_encode_smoothing": float(
+            split.get("target_encode_smoothing", defaults.target_encode_smoothing)
+        ),
+    }
+
+
 def run_rolling_random_forest(
     rows: list[dict[str, Any]],
     *,
@@ -361,16 +380,9 @@ def run_rolling_random_forest(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the Random Forest model."""
-    n_windows = int(split.get("n_windows", 1000))
-    test_window_hours = int(split.get("test_window_hours", 6))
-    training_lookback_days = int(split.get("training_lookback_days", 100))
     model = JobRuntimeRandomForestModel(
         config=JobRuntimeRandomForestConfig(
-            n_windows=n_windows,
-            test_window_hours=test_window_hours,
-            training_lookback_days=training_lookback_days,
-            window_n_jobs=int(split.get("window_n_jobs", 1)),
-            log_target=bool(split.get("log_target", False)),
+            **_rolling_tabular_split_kwargs(split, JobRuntimeRandomForestConfig())
         )
     )
     return _run_rolling_model_evaluate(
