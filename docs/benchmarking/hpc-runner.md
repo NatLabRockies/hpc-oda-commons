@@ -188,7 +188,14 @@ measured twice rather than ranked against themselves (#197).
 Each dataset's cells get a tier from the row count of the **slice they load** — read from
 each `slice.json`, not from the card's own narrower window (`plan.json` records the choice).
 Every tier runs on the ordinary `cpu` partition; cells take the whole node, so the tier sets
-walltime and the window-worker budget, not cores.
+walltime and memory, not cores.
+
+The window-worker budget no longer drops with the tier. It used to fall to 4 on the extreme
+tier, a value extrapolated from a 13.9M-row slice that exceeds `MAX_NODE_ROWS` and is never
+planned. Measured across the fleet on a 240 GiB node, a window-parallel cell peaks at
+**29.3 GiB with 16 workers**, and the real ceiling belongs to `embedding_knn` (**91.7 GiB**),
+which does not use window workers at all. Throttling therefore constrained the models that
+were never the problem, and cost roughly 4x wall-clock for it (#191).
 
 | Tier      | Rows loaded   | Partition | Window workers | Walltime |
 | --------- | ------------- | --------- | -------------- | -------- |

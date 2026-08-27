@@ -128,12 +128,33 @@ INPUT_SCHEMA = "oda.job.v0.2.0"
 #     node.
 #
 # Those two points come from different datasets with different column cardinalities, so
-# they bound the behaviour rather than fitting a curve -- the values below are chosen
-# conservatively within those bounds, not interpolated. An OOM costs the whole cell; an
-# unused worker slot costs nothing.
+# they bound the behaviour rather than fitting a curve.
+#
+# The 13.9M-row point is ``ccin2p3_2024``, which exceeds ``MAX_NODE_ROWS`` and is therefore
+# never planned. The extreme tier in practice holds 2.4M-5.6M-row slices, so its worker count
+# was extrapolated from a dataset that does not run -- and the extrapolation was wrong by a
+# wide margin. Measured across the 420-cell fleet on a 240 GiB node (#191):
+#
+#   * window-parallel peak, 16 workers: 29.3 GiB (pwa_metacentrum moe_xgboost) -- 12% of node
+#   * window-parallel peak,  4 workers: 23.1 GiB (fdata_fugaku moe_xgboost, 5.6M rows)
+#   * heaviest tabular cell overall:    54.7 GiB (fdata_fugaku xgboost, not window-parallel)
+#   * heaviest cell of any kind:        91.7 GiB (fdata_fugaku embedding_knn)
+#
+# The ceiling belongs to ``embedding_knn``, which does not use window workers at all -- it is
+# the model whose OOM drove #165, and 91.7 GiB is what that fix produced. Throttling workers
+# therefore constrained the models that were never the problem: at 4 workers a window-parallel
+# cell ran ~4x longer for no memory reason, which is what made a 360-window evaluation
+# unschedulable inside the tier's own walltime.
+#
+# So the row-count tier still sets walltime and ``--mem``, where embedding_knn's 92 GiB earns
+# the extreme tier its 256G, but the worker count no longer drops with it. An OOM costs the
+# whole cell and an unused worker slot costs nothing -- but so does a timeout, and 4 workers
+# was buying the second to avoid a risk the measurements do not show.
 _LIGHT_WORKERS = 32
 _HEAVY_WORKERS = 16
-_EXTREME_WORKERS = 4
+# Equal to _HEAVY_WORKERS by measurement, not by coincidence: the tiers still differ in
+# walltime and embed memory, which is what the row count actually predicts.
+_EXTREME_WORKERS = 16
 
 # Slices larger than this are not attempted. At 13.9M rows the per-window cost alone is
 # ~90 GB, which leaves no room for concurrency, and the cell needs >24h serially -- a cell
