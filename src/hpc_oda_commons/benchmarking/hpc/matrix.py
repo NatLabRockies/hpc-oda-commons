@@ -56,6 +56,17 @@ WINDOW_PARALLEL_MODEL_TAGS: frozenset[str] = frozenset({"mlp", "tfidf_knn", "moe
 # train on truncated history unless the slice reaches further back than the card window. That
 # shortfall is derived per dataset by ``bench-matrix slice`` rather than passed by hand -- see
 # ``Card.train_days`` -- so the slice and this split cannot drift apart (#143, #145).
+# The span of history a slice carries before its window's test region -- equivalently, the
+# longest lookback a slice can express. Kept separate from ``training_lookback_days`` (#170):
+# this is how much we CUT, that is how much a model USES. While they were the same number, a
+# per-dataset lookback meant re-slicing that dataset.
+#
+# Set equal to the default lookback, so existing slices remain exactly as they are. Raising it
+# is how you enable lookbacks longer than 120 days; that requires a re-slice, but does not
+# invalidate results already measured -- a 120-day lookback selects the same training rows no
+# matter how much extra history sits in the file.
+SLICE_HISTORY_DAYS: int = 120
+
 SPLIT: dict[str, object] = {
     "method": "rolling",
     "n_windows": 120,
@@ -166,14 +177,22 @@ def fits_a_node(window_rows: int) -> bool:
 
 
 def slice_extension_for(card: Card) -> int:
-    """Days a card's slice must reach back beyond its window for ``SPLIT`` to be satisfiable.
+    """Days a card's slice reaches back beyond its window. Fixed, not derived (#170).
 
-    The card sizes its window as ``train_days`` + ``test_days``. When the benchmark split
-    asks for a longer lookback than ``train_days``, the earliest rolling windows would train
-    on truncated history unless the slice starts earlier. Returns that shortfall (0 when the
-    card window already covers the split).
+    This used to be ``training_lookback_days - train_days``, which tied *how much history we
+    cut* to *how much a model uses*. That coupling made the lookback impossible to vary per
+    dataset without re-slicing, and the lookback is worth varying: on ``lassen``, XGBoost
+    scores 3,304 at a 10-day lookback against 4,434 at 120 -- a 25% swing that changed which
+    model won the dataset.
+
+    So the two are separated. The slice cuts a generous fixed span; a model's lookback
+    selects within it and may be anything up to the slice. A short lookback simply leaves
+    history unused, which costs disk rather than correctness.
+
+    ``train_days`` still shortens the extension when the card window already covers part of
+    the span, so nothing is cut twice.
     """
-    return max(0, int(SPLIT["training_lookback_days"]) - card.train_days)  # type: ignore[call-overload]
+    return max(0, SLICE_HISTORY_DAYS - card.train_days)
 
 
 def _model_tag(model_key: str) -> str:
@@ -228,6 +247,10 @@ class Card:
     source_table: str  # canonical prepared parquet path (relative to repo root)
     card_path: Path
     sliced_rows: int | None = None  # rows in the slice on disk, from its slice.json
+    # How much history this dataset's models train on. Chosen per dataset because the best
+    # value differs sharply between machines (#170); falls back to the shared default when
+    # the card does not state one, so a new dataset works without a ceiling analysis.
+    training_lookback_days: int = int(SPLIT["training_lookback_days"])  # type: ignore[arg-type]
 
     @property
     def effective_rows(self) -> int:
@@ -285,6 +308,9 @@ def _parse_card(path: Path) -> Card:
         system=str(source.get("system", "")),
         source_table=str(source.get("table_path", "")),
         card_path=path,
+        training_lookback_days=int(
+            payload.get("training_lookback_days") or SPLIT["training_lookback_days"]  # type: ignore[arg-type]
+        ),
     )
 
 
@@ -304,6 +330,7 @@ class Cell:
     script_path: str  # relative to the staging dir
     needs_embed: bool
     job_name: str
+    training_lookback_days: int = int(SPLIT["training_lookback_days"])  # type: ignore[arg-type]
 
 
 @dataclass
@@ -349,6 +376,7 @@ def build_recipe(
     output_dir: str,
     *,
     window_n_jobs: int | None = None,
+    training_lookback_days: int | None = None,
 ) -> dict:
     """Build a benchmark recipe payload (``oda.recipe.v0.1.0``) for one cell.
 
@@ -359,6 +387,8 @@ def build_recipe(
     ``SPLIT``, so a model can carry the configuration it was actually measured in.
     """
     split = dict(SPLIT)
+    if training_lookback_days is not None:
+        split["training_lookback_days"] = int(training_lookback_days)
     split.update(MODEL_SPLIT_OVERRIDES.get(model_key, {}))
     if window_n_jobs is not None:
         split["window_n_jobs"] = window_n_jobs
@@ -431,6 +461,7 @@ def build_plan(
                     script_path=f"scripts/bench__{card.dataset}__{tag}.sbatch",
                     needs_embed=needs_embed,
                     job_name=f"b.{card.dataset}.{tag}",
+                    training_lookback_days=card.training_lookback_days,
                 )
             )
 
@@ -554,6 +585,7 @@ def write_plan(plan: Plan, staging_dir: Path, site: SiteConfig) -> Path:
             window_n_jobs=(
                 cell.window_workers if cell.model in WINDOW_PARALLEL_MODEL_TAGS else None
             ),
+            training_lookback_days=cell.training_lookback_days,
         )
         (staging_dir / cell.recipe_path).write_text(
             yaml.safe_dump(recipe, sort_keys=False), encoding="utf-8"

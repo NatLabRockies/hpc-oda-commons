@@ -82,6 +82,34 @@ multi-hour per model — this benchmark is an **HPC
 job** (runner: later phase). Three months is the *minimum* we're confident in; future passes
 should use more.
 
+### Training lookback: per dataset, not fixed (#170)
+
+`training_lookback_days` was 120 for every dataset. Measured, that is the best value for only
+**6 of 20**: twelve want *less* history and two want more. The cost of getting it wrong is not
+marginal — on `lassen`, XGBoost scores **3,304 at a 10-day lookback against 4,434 at 120**, a
+25% swing, and at 10 days it would have beaten the random forest that won that dataset in the
+fleet. **The fixed parameter did not just cost accuracy; it decided which model won.**
+
+The value is chosen per dataset by the model-free lookback sweep in
+[`ceilings.md`](ceilings.md), recorded on the dataset card as `training_lookback_days`, and
+read by the planner. A card without one falls back to the shared default, so a new dataset
+works before any ceiling analysis exists.
+
+**The sweep is a proxy and was validated as one.** It optimises *memorization*, not a fitted
+model, so using it to set a model's training window is an inference. Checked on two datasets
+whose predictions point in opposite directions — `lassen` (short is better) and
+`alcf_djc_theta` (long is better) — XGBoost followed both, and on `lassen` the magnitude
+matched closely (25.5% measured against 20.2% predicted). Directions transfer; treat the
+magnitudes as indicative.
+
+**Slicing is now decoupled from the lookback.** The slice cuts a fixed span
+(`SLICE_HISTORY_DAYS`); a model's lookback selects within it. Previously the extension was
+`lookback − train_days`, which meant changing a dataset's lookback required re-slicing it.
+A shorter lookback now simply leaves history unused — disk, not correctness. Raising
+`SLICE_HISTORY_DAYS` is what enables lookbacks beyond 120 days; it needs a re-slice but does
+not invalidate existing results, since a 120-day lookback selects the same rows regardless of
+how much extra history the file holds.
+
 ## Window selection
 
 For each dataset we pick **one** 90-day window and justify it.
