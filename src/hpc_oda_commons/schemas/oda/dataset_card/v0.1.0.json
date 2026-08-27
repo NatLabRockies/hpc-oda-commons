@@ -16,6 +16,11 @@
         "schema_version": {"const": "oda.dataset_card.v0.1.0"},
         "dataset_id": {"type": "string", "minLength": 1},
         "generated_at": {"type": "string"},
+        "training_lookback_days": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "How much history this dataset's models train on, in days. Chosen per dataset because the best value differs sharply between machines (#170); see docs/benchmarking/ceilings.md for the sweep that picks it. Optional -- absent means the benchmark's shared default."
+        },
         "source": {
             "type": "object",
             "additionalProperties": true,

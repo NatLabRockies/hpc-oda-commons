@@ -6,6 +6,7 @@ import datetime
 import json
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import pyarrow as pa
 import pytest
@@ -17,6 +18,7 @@ from hpc_oda_commons.benchmarking.hpc.matrix import (
     MAX_NODE_ROWS,
     MODEL_SPLIT_OVERRIDES,
     RUNTIME_MODELS,
+    SLICE_HISTORY_DAYS,
     SPLIT,
     TIERS,
     Card,
@@ -383,36 +385,83 @@ def test_moe_is_in_the_fleet(tmp_path: Path) -> None:
 # --- derived slice extension (#145) -------------------------------------------------
 
 
-def test_slice_extension_covers_the_split_shortfall() -> None:
-    """The split asks for more history than the card window holds; the slice makes it up."""
-    lookback = int(SPLIT["training_lookback_days"])
+def _card_payload(*, train_days: int = 60) -> dict:
+    """The card fields ``load_cards`` reads, as they appear on disk."""
+    return {
+        "benchmark_window": {
+            "n_rows": 100,
+            "window_start": "2025-03-29",
+            "window_end": "2025-06-26",
+            "healthy": True,
+            "rule": {"anchor": 0.8, "train_days": train_days, "test_days": 30},
+        },
+        "source": {"system": "ds", "table_path": "data/datasets/ds/data.parquet"},
+    }
 
-    assert slice_extension_for(_card("d", 10, train_days=60)) == lookback - 60
-    # A card already wider than the split needs no extension -- and must not get a negative one.
-    assert slice_extension_for(_card("d", 10, train_days=lookback + 30)) == 0
+
+def test_slice_extension_covers_the_span_the_card_window_lacks() -> None:
+    """The slice cuts a fixed generous span; the card window covers part of it already."""
+    assert slice_extension_for(_card("d", 10, train_days=60)) == SLICE_HISTORY_DAYS - 60
+    # A card already wider than the span needs no extension -- and never a negative one.
+    assert slice_extension_for(_card("d", 10, train_days=SLICE_HISTORY_DAYS + 30)) == 0
 
 
 def test_slice_extension_for_a_card_with_no_stated_rule() -> None:
-    """Unknown ``train_days`` extends by the full lookback: wider than needed, never narrower."""
-    assert slice_extension_for(_card("d", 10, train_days=0)) == int(SPLIT["training_lookback_days"])
+    """Unknown ``train_days`` extends by the full span: wider than needed, never narrower."""
+    assert slice_extension_for(_card("d", 10, train_days=0)) == SLICE_HISTORY_DAYS
+
+
+def test_the_slice_extension_does_not_depend_on_the_lookback() -> None:
+    """The decoupling #170 needs: how much we CUT is independent of how much a model USES.
+
+    While these were tied, changing a dataset's lookback meant re-slicing it -- which is what
+    made a per-dataset lookback impractical. Asserted with a lookback deliberately unequal to
+    SLICE_HISTORY_DAYS, since the two share a value by default and a test using the default
+    would pass without checking anything.
+    """
+    card = _card("d", 10, train_days=60)
+    before = slice_extension_for(card)
+
+    with patch.dict(SPLIT, {"training_lookback_days": 17}):
+        assert slice_extension_for(card) == before
+
+
+def test_a_card_may_state_its_own_training_lookback(tmp_path: Path) -> None:
+    """Per-dataset lookback (#170): the best value differs sharply between machines."""
+    payload = _card_payload(train_days=60)
+    payload["training_lookback_days"] = 10
+    path = tmp_path / "ds.card.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    (card,) = load_cards(tmp_path)
+
+    assert card.training_lookback_days == 10
+
+
+def test_a_card_without_one_falls_back_to_the_shared_default(tmp_path: Path) -> None:
+    """A new dataset must work without a ceiling analysis having been run for it."""
+    path = tmp_path / "ds.card.json"
+    path.write_text(json.dumps(_card_payload(train_days=60)), encoding="utf-8")
+
+    (card,) = load_cards(tmp_path)
+
+    assert card.training_lookback_days == int(SPLIT["training_lookback_days"])
+
+
+def test_the_cards_lookback_reaches_the_generated_recipe(tmp_path: Path) -> None:
+    cfg = load_site_config(_write_site(tmp_path))
+    card = replace(_card("ds", 1_000), training_lookback_days=10)
+
+    plan = build_plan([card], cfg, plan_id="p1")
+    staging = tmp_path / "staging"
+    write_plan(plan, staging, cfg)
+
+    recipe = load_recipe(next(staging.glob("recipes/ds__xgboost.yml")), validate=True)
+    assert recipe["split"]["training_lookback_days"] == 10
 
 
 def test_card_carries_the_window_rule_train_days(tmp_path: Path) -> None:
-    (tmp_path / "ds.card.json").write_text(
-        json.dumps(
-            {
-                "benchmark_window": {
-                    "n_rows": 100,
-                    "window_start": "2025-03-29",
-                    "window_end": "2025-06-26",
-                    "healthy": True,
-                    "rule": {"anchor": 0.8, "train_days": 60, "test_days": 30},
-                },
-                "source": {"system": "ds", "table_path": "data/datasets/ds/data.parquet"},
-            }
-        ),
-        encoding="utf-8",
-    )
+    (tmp_path / "ds.card.json").write_text(json.dumps(_card_payload()), encoding="utf-8")
 
     (card,) = load_cards(tmp_path)
 
