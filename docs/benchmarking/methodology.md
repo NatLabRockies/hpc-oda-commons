@@ -117,6 +117,9 @@ operator could actually run, and a wrong pick costs what it costs instead of bei
 The best single arm on the same windows is reported beside it, so the size of the selection
 bias is visible rather than argued about.
 
+What the axis measured, and what the fixed value cost, is written up in
+[`lookback.md`](lookback.md).
+
 Pooling a bundle's per-window values weighted by row count reproduces its global metric
 bit-for-bit, so this is arithmetic over files already on disk and costs no compute. An earlier
 design split the windows in half — select on the first 60, score on the last 60. That is also
