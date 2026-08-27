@@ -24,7 +24,7 @@ re-run.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -49,6 +49,63 @@ _POOLING_EXPONENT: dict[str, int] = {
 
 class ArmSelectionError(ValueError):
     """The arms cannot be compared as given."""
+
+
+# Knobs that change how a run executes but not what it computes. If two bundles differ only
+# here they are the same configuration measured twice, not two arms -- so they are excluded
+# before deciding what distinguishes a cell's bundles. (``window_n_jobs`` can shift a metric
+# in the last decimals through float summation order; see docs/known-issues.md #2. That is a
+# reproducibility caveat, not an axis worth ranking.)
+EXECUTION_ONLY_KNOBS: frozenset[str] = frozenset({"window_n_jobs", "verbose", "n_jobs"})
+
+
+def derive_arm_keys(configs: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
+    """Label each bundle by whatever distinguishes it from the others in its cell (#197).
+
+    The arm key used to be the training lookback, because that was the one axis the recipe id
+    spelled out. Deriving it from the recorded configurations instead means any axis works --
+    a target-encoding threshold, an objective, a decay rate -- without teaching this function
+    about it.
+
+    Raises when the configurations are indistinguishable. Two bundles that ran the same
+    configuration are a cell measured twice, and ranking them as arms would report a
+    difference that is noise by construction.
+    """
+    if not configs:
+        raise ArmSelectionError("no configurations to key")
+    keys = sorted({k for c in configs for k in c} - EXECUTION_ONLY_KNOBS)
+    differing = [k for k in keys if len({_stable(c.get(k)) for c in configs}) > 1]
+    if not differing:
+        raise ArmSelectionError(
+            "bundles are configured identically, so they are one cell measured "
+            f"{len(configs)} times rather than {len(configs)} arms"
+        )
+    return tuple("+".join(f"{k}={_stable(c.get(k))}" for k in differing) for c in configs)
+
+
+def compact_arm_label(arm_key: str) -> str:
+    """A short form for display: the values alone when a cell varies along one axis.
+
+    The stored key names its axis (``training_lookback_days=120``) so an artifact is
+    self-describing. A console table repeating that name once per arm per row is not, so the
+    name is dropped where there is only one axis to confuse it with.
+    """
+    fields = arm_key.split("+")
+    if len(fields) == 1:
+        return fields[0].partition("=")[2] or arm_key
+    return arm_key
+
+
+def _stable(value: Any) -> str:
+    """A comparable, printable form for a config value of any shape."""
+    if isinstance(value, float) and value.is_integer():
+        # 30.0 and 30 are the same arm; rendering them differently would split it in two.
+        return str(int(value))
+    if isinstance(value, (list, tuple)):
+        return "[" + ",".join(_stable(v) for v in value) + "]"
+    if isinstance(value, Mapping):
+        return "{" + ",".join(f"{k}:{_stable(v)}" for k, v in sorted(value.items())) + "}"
+    return str(value)
 
 
 @dataclass(frozen=True)

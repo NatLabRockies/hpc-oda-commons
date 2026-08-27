@@ -5,6 +5,7 @@ Benchmark execution logic for HPC ODA Commons models.
 from __future__ import annotations
 
 import math
+from dataclasses import asdict, is_dataclass
 from typing import Any
 
 from tqdm import tqdm
@@ -14,6 +15,7 @@ from hpc_oda_commons.kernel.metrics import (
     SUPPORTED_ROLLING_METRIC_NAMES,
     compute_regression_metrics_from_defs,
 )
+from hpc_oda_commons.kernel.serialization import to_jsonable
 from hpc_oda_commons.models.job_power_uopc.model import JobPowerUopcModel
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
 from hpc_oda_commons.models.job_runtime_embedding_knn.backends import DEFAULT_SIMS_BLOCK_BYTES
@@ -115,8 +117,32 @@ def run_fixed_uopc(
     requested = {str(m.get("name", "")) for m in metric_defs}
     artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
     metrics = _metrics_from_eval_payload(eval_payload, requested)
-    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
+    metrics_payload: dict[str, Any] = {
+        **eval_payload,
+        "definitions": metric_defs,
+        "run_config": resolved_run_config(model),
+    }
     return metrics, metrics_payload, artifacts
+
+
+def resolved_run_config(model: Any) -> dict[str, Any]:
+    """The configuration the model actually resolved, for the bundle to record (#197).
+
+    Taken from the model rather than from the recipe, deliberately. The recipe states what was
+    *asked for*, and a knob the runner failed to pass would still appear there looking
+    honoured -- which is precisely how the target encoding in #172 shipped unreachable and an
+    A/B measured exactly zero difference, to the decimal. This states what ran.
+
+    Without it a bundle's configuration is only recoverable from its recipe id, so any knob
+    not spelled into that string leaves no trace at all, and ``bench-matrix rank`` can only
+    tell arms apart along the one axis that happens to be named there.
+    """
+    config = getattr(model, "config", None)
+    if config is None:
+        return {}
+    if is_dataclass(config) and not isinstance(config, type):
+        return to_jsonable(asdict(config))
+    return to_jsonable(dict(vars(config)))
 
 
 def _filter_runtime_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -316,7 +342,11 @@ def _run_rolling_model_evaluate(
     )
     artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
     metrics = _metrics_from_eval_payload(eval_payload, requested)
-    metrics_payload: dict[str, Any] = {**eval_payload, "definitions": metric_defs}
+    metrics_payload: dict[str, Any] = {
+        **eval_payload,
+        "definitions": metric_defs,
+        "run_config": resolved_run_config(model),
+    }
     return metrics, metrics_payload, artifacts
 
 

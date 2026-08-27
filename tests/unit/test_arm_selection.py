@@ -10,6 +10,8 @@ from hpc_oda_commons.benchmark.arm_selection import (
     Arm,
     ArmSelectionError,
     common_scored_indices,
+    compact_arm_label,
+    derive_arm_keys,
     pooled_metric,
     walk_forward,
 )
@@ -192,3 +194,67 @@ def test_result_serialises_to_json_ready_types() -> None:
     assert result["windows_total"] == 6
     assert result["windows_common"] == 6
     assert result["regret"] == pytest.approx(4.0)
+
+
+# --- arm keys derived from the recorded configuration (#197) ---------------------------
+
+
+def test_arm_keys_name_whatever_differs() -> None:
+    keys = derive_arm_keys(
+        [
+            {"training_lookback_days": 10, "objective": "reg:absoluteerror"},
+            {"training_lookback_days": 120, "objective": "reg:absoluteerror"},
+        ]
+    )
+    assert keys == ("training_lookback_days=10", "training_lookback_days=120")
+
+
+def test_arm_keys_work_for_an_axis_the_code_has_never_heard_of() -> None:
+    """The point of #197: a new knob must not require teaching this function about it."""
+    keys = derive_arm_keys(
+        [{"target_encode_min_cardinality": 0}, {"target_encode_min_cardinality": 500}]
+    )
+    assert keys == ("target_encode_min_cardinality=0", "target_encode_min_cardinality=500")
+
+
+def test_arm_keys_combine_several_differing_knobs() -> None:
+    keys = derive_arm_keys(
+        [
+            {"training_lookback_days": 10, "target_encode_min_cardinality": 0},
+            {"training_lookback_days": 30, "target_encode_min_cardinality": 500},
+        ]
+    )
+    assert keys[0] == "target_encode_min_cardinality=0+training_lookback_days=10"
+
+
+def test_identically_configured_bundles_are_refused() -> None:
+    """Two runs of one configuration are a cell measured twice, not two arms."""
+    with pytest.raises(ArmSelectionError, match="configured identically"):
+        derive_arm_keys([{"training_lookback_days": 30}, {"training_lookback_days": 30}])
+
+
+def test_execution_only_knobs_do_not_make_an_axis() -> None:
+    """window_n_jobs shifts the last decimals via summation order; that is not an arm."""
+    with pytest.raises(ArmSelectionError, match="configured identically"):
+        derive_arm_keys(
+            [
+                {"training_lookback_days": 30, "window_n_jobs": 1},
+                {"training_lookback_days": 30, "window_n_jobs": 24},
+            ]
+        )
+
+
+def test_int_and_float_spellings_are_the_same_arm() -> None:
+    """30 and 30.0 must not split one arm into two."""
+    with pytest.raises(ArmSelectionError, match="configured identically"):
+        derive_arm_keys([{"training_lookback_days": 30}, {"training_lookback_days": 30.0}])
+
+
+def test_a_knob_present_in_only_one_config_still_distinguishes() -> None:
+    keys = derive_arm_keys([{"a": 1}, {"a": 1, "time_decay_rate": 0.05}])
+    assert keys == ("time_decay_rate=None", "time_decay_rate=0.05")
+
+
+def test_compact_label_drops_the_axis_name_for_a_single_axis() -> None:
+    assert compact_arm_label("training_lookback_days=120") == "120"
+    assert compact_arm_label("a=1+b=2") == "a=1+b=2"

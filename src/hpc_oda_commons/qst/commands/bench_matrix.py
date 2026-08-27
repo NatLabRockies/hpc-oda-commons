@@ -19,7 +19,11 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from hpc_oda_commons.benchmark.arm_selection import DEFAULT_BURN_IN, DEFAULT_METRIC
+from hpc_oda_commons.benchmark.arm_selection import (
+    DEFAULT_BURN_IN,
+    DEFAULT_METRIC,
+    compact_arm_label,
+)
 from hpc_oda_commons.benchmarking.hpc.config import (
     DEFAULT_SITE_CONFIG_PATH,
     SiteConfig,
@@ -646,8 +650,8 @@ def bench_matrix_rank(
     table.add_column("arms chosen")
     for cell in ranking["cells"]:
         counts = cell["choice_counts"]
-        chosen = " ".join(f"{k}:{v}" for k, v in counts.items() if v)
-        oracle = f"{cell['oracle_key']} {cell['oracle_score']:,.0f}"
+        chosen = " ".join(f"{compact_arm_label(k)}:{v}" for k, v in counts.items() if v)
+        oracle = f"{compact_arm_label(cell['oracle_key'])} {cell['oracle_score']:,.0f}"
         pct = 100.0 * cell["regret"] / cell["oracle_score"] if cell["oracle_score"] else 0.0
         table.add_row(
             cell["dataset"].split(".")[-1],

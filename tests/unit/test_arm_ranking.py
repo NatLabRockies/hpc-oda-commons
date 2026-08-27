@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,9 @@ from hpc_oda_commons.benchmark.results import build_arm_ranking, write_arm_ranki
 from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
 
 DATASET = "arm_ranking_demo"
+# Arm keys name their axis since #197, so a bundle says what it ran without its filename.
+LB10 = "training_lookback_days=10"
+LB120 = "training_lookback_days=120"
 MODEL = "model.job_runtime_xgboost"
 
 
@@ -83,9 +87,9 @@ def test_ranking_reports_the_policy_and_the_hindsight_arm(tmp_path: Path) -> Non
     assert len(ranking["cells"]) == 1
     cell = ranking["cells"][0]
     assert cell["dataset"] == DATASET
-    assert cell["choices"] == ["10d", "10d", "120d", "120d"]
+    assert cell["choices"] == [LB10, LB10, LB120, LB120]
     assert cell["score"] == pytest.approx(5.0)
-    assert cell["oracle_key"] == "120d"
+    assert cell["oracle_key"] == LB120
     assert cell["oracle_score"] == pytest.approx(1.0)
 
 
@@ -135,8 +139,8 @@ def test_a_rerun_arm_supersedes_its_predecessor(tmp_path: Path) -> None:
 
     cell = ranking["cells"][0]
     # History now favours the long arm from the first scored window, so the lag disappears.
-    assert cell["choices"] == ["120d"] * 4
-    assert cell["arm_scores"]["10d"] == pytest.approx(20.0)
+    assert cell["choices"] == [LB120] * 4
+    assert cell["arm_scores"][LB10] == pytest.approx(20.0)
 
 
 def test_write_arm_ranking_round_trips(tmp_path: Path) -> None:
@@ -148,3 +152,41 @@ def test_write_arm_ranking_round_trips(tmp_path: Path) -> None:
 
     assert out.name == "arm-ranking.json"
     assert '"oracle_key"' in out.read_text(encoding="utf-8")
+
+
+def test_bundles_written_before_run_config_still_rank(tmp_path: Path) -> None:
+    """A format change must not strand every result measured so far (#197)."""
+    runs = tmp_path / "runs"
+    _write_arm(runs / DATASET / "xgboost" / "benchmark-1", lookback=10, maes=_SHORT)
+    _write_arm(runs / DATASET / "xgboost" / "benchmark-2", lookback=120, maes=_LONG)
+    # These fixtures carry no run_config, exactly like the bundles already on disk.
+    for path in runs.rglob("metrics.json"):
+        assert "run_config" not in json.loads(path.read_text(encoding="utf-8"))
+
+    ranking = build_arm_ranking(runs, burn_in=2)
+
+    assert ranking["cells"][0]["oracle_key"] == LB120
+
+
+def test_a_recorded_config_keys_an_axis_the_summary_never_carried(tmp_path: Path) -> None:
+    """The reason for run_config: the summary records three fields and nothing else."""
+    runs = tmp_path / "runs"
+    for i, (threshold, maes) in enumerate([(0, _SHORT), (500, _LONG)], start=1):
+        bundle = runs / DATASET / "xgboost" / f"benchmark-{i}"
+        _write_arm(bundle, lookback=120, maes=maes)
+        path = bundle / "metrics.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["run_config"] = {
+            "training_lookback_days": 120,
+            "target_encode_min_cardinality": threshold,
+        }
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+    ranking = build_arm_ranking(runs, burn_in=2)
+
+    cell = ranking["cells"][0]
+    assert cell["oracle_key"] == "target_encode_min_cardinality=500"
+    assert set(cell["choice_counts"]) == {
+        "target_encode_min_cardinality=0",
+        "target_encode_min_cardinality=500",
+    }
