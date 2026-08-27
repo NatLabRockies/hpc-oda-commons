@@ -49,7 +49,33 @@ def build_leaderboard_entry(bundle_dir: Path) -> dict[str, Any]:
     return entry
 
 
+def _cell_key(entry: dict[str, Any]) -> tuple[Any, ...]:
+    """What identifies a benchmark cell: one (dataset, model) pair.
+
+    Falls back to the recipe id, then to the bundle path -- a bundle we cannot identify is
+    left alone rather than merged with something it may not be.
+    """
+    dataset = (entry.get("dataset") or {}).get("id")
+    model = (entry.get("model") or {}).get("id")
+    if dataset and model:
+        return ("cell", dataset, model)
+    if entry.get("recipe_id"):
+        return ("recipe", entry["recipe_id"])
+    return ("bundle", entry.get("bundle_dir"))
+
+
 def build_leaderboard(runs_dir: Path) -> dict[str, Any]:
+    """One entry per benchmark cell -- the newest bundle wins.
+
+    Bundles are written to ``runs/<dataset>/<model>/benchmark-<timestamp>/``, so a cell that
+    runs twice leaves two of them. Re-running a cell is the normal repair path, and emitting
+    one entry per *bundle* silently double-weights it: a per-model mean or a
+    best-model-per-dataset ranking counts the superseded run -- from code that has since been
+    fixed -- equally with the run that replaced it (#166).
+
+    ``overwrite: true`` in a recipe is easy to misread as preventing this. It governs the
+    timestamped directory, not the previous result.
+    """
     entries: list[dict[str, Any]] = []
     for bundle_dir in _collect_bundle_dirs(runs_dir):
         try:
@@ -59,11 +85,30 @@ def build_leaderboard(runs_dir: Path) -> dict[str, Any]:
             continue
 
     entries.sort(key=lambda e: e.get("created_at") or "")
+    newest: dict[tuple[Any, ...], dict[str, Any]] = {}
+    superseded: list[dict[str, Any]] = []
+    for entry in entries:  # ascending created_at, so a later bundle replaces an earlier one
+        key = _cell_key(entry)
+        if key in newest:
+            superseded.append(newest[key])
+        newest[key] = entry
+
+    kept = sorted(newest.values(), key=lambda e: e.get("created_at") or "")
     return {
         "schema_version": LEADERBOARD_FORMAT_VERSION,
         "generated_at": _now_utc_iso(),
         "runs_dir": str(runs_dir),
-        "entries": entries,
+        "entries": kept,
+        # Named, not silently dropped: the same rule as anywhere else the tooling narrows
+        # coverage. A reader can see which runs were superseded and by what.
+        "superseded": [
+            {
+                "bundle_dir": e.get("bundle_dir"),
+                "created_at": e.get("created_at"),
+                "recipe_id": e.get("recipe_id"),
+            }
+            for e in superseded
+        ],
     }
 
 
