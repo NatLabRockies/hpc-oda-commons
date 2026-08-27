@@ -67,6 +67,7 @@ from hpc_oda_commons.qst.commands.bench_matrix import (
     bench_matrix_aggregate,
     bench_matrix_collect,
     bench_matrix_plan,
+    bench_matrix_rank,
     bench_matrix_slice,
     bench_matrix_stage,
     bench_matrix_status,
@@ -116,6 +117,7 @@ bench_matrix_app.command("submit")(bench_matrix_submit)
 bench_matrix_app.command("status")(bench_matrix_status)
 bench_matrix_app.command("collect")(bench_matrix_collect)
 bench_matrix_app.command("aggregate")(bench_matrix_aggregate)
+bench_matrix_app.command("rank")(bench_matrix_rank)
 app.command()(browse)
 app.command()(info)
 app.command()(embed)

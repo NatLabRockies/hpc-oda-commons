@@ -19,6 +19,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from hpc_oda_commons.benchmark.arm_selection import DEFAULT_BURN_IN, DEFAULT_METRIC
 from hpc_oda_commons.benchmarking.hpc.config import (
     DEFAULT_SITE_CONFIG_PATH,
     SiteConfig,
@@ -540,3 +541,72 @@ def bench_matrix_aggregate(
             console.print(f"  {entry['created_at']}  {entry['bundle_dir']}")
         if len(superseded) > 10:
             console.print(f"  ... and {len(superseded) - 10} more")
+
+
+def bench_matrix_rank(
+    plan_dir: _PLAN_DIR_OPT = None,
+    runs: Annotated[
+        Path | None,
+        typer.Option("--runs", help="Collected runs dir (default: <plan-dir>/collected-runs)."),
+    ] = None,
+    out: Annotated[
+        Path | None,
+        typer.Option("--out", help="Ranking output dir (default: <plan-dir>/leaderboard)."),
+    ] = None,
+    metric: Annotated[
+        str, typer.Option("--metric", help="Metric to select and score on (mae, rmse).")
+    ] = DEFAULT_METRIC,
+    burn_in: Annotated[
+        int,
+        typer.Option("--burn-in", help="Windows used to build history before scoring starts."),
+    ] = DEFAULT_BURN_IN,
+) -> None:
+    """Rank each cell by walk-forward choice among its training-lookback arms.
+
+    Reporting the best arm by test error would select on the number it reports; this chooses
+    each window's arm from earlier windows only (#190).
+    """
+    from hpc_oda_commons.benchmark.results import build_arm_ranking, write_arm_ranking
+
+    _plan, resolved = _load_plan_dir(plan_dir)
+    runs_dir = runs or (resolved / "collected-runs")
+    out_dir = out or (resolved / "leaderboard")
+    if not runs_dir.exists():
+        console.print(f"[red]No runs at {runs_dir}. Run `bench-matrix collect` first.[/red]")
+        raise typer.Exit(1)
+
+    ranking = build_arm_ranking(runs_dir, metric=metric, burn_in=burn_in)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    json_path = write_arm_ranking(ranking, out_dir)
+
+    table = Table(title=f"Walk-forward lookback selection — {metric}, burn-in {burn_in}")
+    table.add_column("dataset")
+    table.add_column("model")
+    table.add_column("policy", justify="right")
+    table.add_column("best arm (hindsight)", justify="right")
+    table.add_column("cost of choosing", justify="right")
+    table.add_column("arms chosen")
+    for cell in ranking["cells"]:
+        counts = cell["choice_counts"]
+        chosen = " ".join(f"{k}:{v}" for k, v in counts.items() if v)
+        oracle = f"{cell['oracle_key']} {cell['oracle_score']:,.0f}"
+        pct = 100.0 * cell["regret"] / cell["oracle_score"] if cell["oracle_score"] else 0.0
+        table.add_row(
+            cell["dataset"].split(".")[-1],
+            cell["model"].split(".")[-1],
+            f"{cell['score']:,.0f}",
+            oracle,
+            f"+{pct:.1f}%",
+            chosen,
+        )
+    console.print(table)
+    console.print(
+        f"[green]Ranked[/green] {len(ranking['cells'])} cell(s) → [cyan]{json_path}[/cyan]"
+    )
+    if ranking["unranked"]:
+        # Named rather than silently absent, as everywhere else the tooling narrows coverage.
+        console.print(f"[yellow]Unranked {len(ranking['unranked'])}[/yellow] cell(s):")
+        for cell in ranking["unranked"][:10]:
+            console.print(f"  {cell['dataset']} {cell['model']}: {cell['reason']}")
+        if len(ranking["unranked"]) > 10:
+            console.print(f"  ... and {len(ranking['unranked']) - 10} more")

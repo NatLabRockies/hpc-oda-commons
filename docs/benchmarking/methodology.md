@@ -62,8 +62,15 @@ Fixed rolling-window evaluation for every dataset:
 Each dataset card still *defines* a **90-day (3-month) window**: 60 days train + 30 days test,
 and that window is what gets scored. The split asks for 120 days of lookback, more history
 than the card window holds, so the slice is extended 60 days earlier than `window_start`
-(`training_lookback_days − train_days`) and the earliest rolling windows get their full
-lookback. The test region is untouched, so the scored population is exactly the card's.
+(`SLICE_HISTORY_DAYS − train_days`) and the earliest rolling windows get their full lookback.
+The test region is untouched, so the scored population is exactly the card's.
+
+> **Limitation.** Thirty days of scoring cannot contain an allocation cycle, a semester
+> boundary, or more than one maintenance outage. It also cannot be widened in place: the
+> evaluation region can only grow backwards into the 60-day training runway, which would leave
+> the earliest windows with less history than the 120d arm asks for — the arm would silently
+> decay toward whatever history exists, exactly where the extra evidence was wanted.
+> Lengthening the evaluation requires re-slicing with a larger history budget (#191).
 
 `bench-matrix slice` derives that extension per dataset rather than taking it as a flag, so
 the slice cannot silently disagree with the split (#143, #145). Each slice carries a
@@ -102,8 +109,20 @@ axis avoids having to trust it at all.
 
 **Choosing a winner per cell is an analysis step, deliberately.** Reporting each model's best
 arm by test MAE would select on the test set — a noisier model gets three draws at the same
-target. The honest selection tunes on the first 60 windows and scores on the last 60, computed
-downstream from the per-window metrics every run already emits, so it costs no extra compute.
+target, so the leaderboard would reorder by variance rather than by skill. The rule is
+**walk-forward selection** (`bench-matrix rank`, #190): for each window past a burn-in the arm
+is chosen from strictly earlier windows and scored on the current one. What gets reported is
+the error of a *policy* — use whichever lookback has served best so far — which is something an
+operator could actually run, and a wrong pick costs what it costs instead of being edited out.
+The best single arm on the same windows is reported beside it, so the size of the selection
+bias is visible rather than argued about.
+
+Pooling a bundle's per-window values weighted by row count reproduces its global metric
+bit-for-bit, so this is arithmetic over files already on disk and costs no compute. An earlier
+design split the windows in half — select on the first 60, score on the last 60. That is also
+unbiased, but it spends half of an already-short evaluation on selection; walk-forward keeps
+~100 of 120 windows instead of 60. That the evaluation is only 30 days long to begin with is a
+separate defect, and not one the ranking rule can fix (#191).
 
 **The sweep is a proxy and was validated as one.** It optimises *memorization*, not a fitted
 model, so using it to set a model's training window is an inference. Checked on two datasets
