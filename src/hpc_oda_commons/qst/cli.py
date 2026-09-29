@@ -74,6 +74,7 @@ from hpc_oda_commons.qst.commands.bench_matrix import (
     bench_matrix_submit,
 )
 from hpc_oda_commons.qst.commands.browse import browse
+from hpc_oda_commons.qst.commands.catalog import catalog_export
 from hpc_oda_commons.qst.commands.datasets import (
     datasets_ceiling,
     datasets_characterize,
@@ -106,6 +107,12 @@ datasets_app.command("fetch")(datasets_fetch)
 datasets_app.command("prepare")(datasets_prepare)
 datasets_app.command("characterize")(datasets_characterize)
 datasets_app.command("ceiling")(datasets_ceiling)
+catalog_app = typer.Typer(
+    add_completion=False,
+    help="Export datasets as Croissant catalog records.",
+)
+app.add_typer(catalog_app, name="catalog")
+catalog_app.command("export")(catalog_export)
 bench_matrix_app = typer.Typer(
     add_completion=False, help="Plan the full model x dataset benchmark for an HPC cluster."
 )

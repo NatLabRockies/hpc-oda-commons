@@ -14,6 +14,8 @@ This reference covers the v0.1 `hpc-oda` commands.
    Lists registry entries from the bundled snapshot. All flags are optional filters.
 1. `hpc-oda info <entry_id>`
    Shows metadata and compatibility for a registry entry.
+1. `hpc-oda catalog export [--out <dir>] [--dataset <id>]...`
+   Writes one Croissant 1.0 record per registered dataset plus `index.json` to `<dir>` (default `catalog/`). No network access. See [Export datasets to a data catalog](../how-to/export-catalog.md).
 
 ## Run
 1. `hpc-oda run-baseline`
