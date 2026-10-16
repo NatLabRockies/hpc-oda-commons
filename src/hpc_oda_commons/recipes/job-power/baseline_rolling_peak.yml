@@ -1,0 +1,39 @@
+# Rolling mean baseline predicting peak power per allocated node, on the shared rolling
+# protocol (#204): 89 daily windows ending at the last submit, so testing starts
+# around 2024-02-01 like the UoPC paper reproduction, with 60 days of history.
+# Every model in recipes/job-power/*_rolling_*.yml uses the same split and rows.
+
+recipe_id: recipe.job_power.baseline_rolling_peak
+
+problem_domain:
+  - job-power-prediction
+
+schema_version: oda.job.v0.2.0
+
+dataset:
+  id: fdata_fugaku_uopc
+  table_path: data/datasets/fdata_fugaku_uopc/data.parquet
+
+model:
+  id: model.job_runtime_baseline
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: maxpcon_per_node
+  - name: rmse
+    target: maxpcon_per_node
+  - name: mape
+    target: maxpcon_per_node
+  - name: r2
+    target: maxpcon_per_node
+
+split:
+  method: rolling
+  n_windows: 89
+  test_window_hours: 24
+  training_lookback_days: 60
+
+run:
+  output_dir: runs
+  overwrite: false

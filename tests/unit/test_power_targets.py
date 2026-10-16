@@ -127,3 +127,24 @@ def test_rolling_recipes_can_report_mape_and_r2() -> None:
     metrics = [*METRICS, {"name": "mape", "target": TARGET}, {"name": "r2", "target": TARGET}]
     scored, _, _ = runner.run_rolling_baseline(_rows(), split=SPLIT, metric_defs=metrics)
     assert set(scored) == {"mae", "rmse", "mape", "r2"}
+
+
+def test_rolling_power_recipes_share_one_protocol() -> None:
+    """The comparison is only fair if every model sees the same windows and rows: the same
+    dataset, split shape and metric target per power quantity. Model-specific knobs (k,
+    theta) may differ."""
+    import importlib.resources as ir
+    from pathlib import Path
+
+    from hpc_oda_commons.benchmark.recipes import load_recipe
+
+    root = Path(str(ir.files("hpc_oda_commons") / "recipes" / "job-power"))
+    shared = ("method", "n_windows", "test_window_hours", "training_lookback_days")
+    seen: dict[str, set[tuple]] = {}
+    for path in sorted(root.glob("*_rolling_*.yml")):
+        recipe = load_recipe(path)
+        target = runner.recipe_target(recipe["metrics"])
+        key = (recipe["dataset"]["table_path"], *(recipe["split"][k] for k in shared))
+        seen.setdefault(target, set()).add(key)
+    assert set(seen) == {"avgpcon_per_node", "maxpcon_per_node"}
+    assert all(len(keys) == 1 for keys in seen.values()), seen

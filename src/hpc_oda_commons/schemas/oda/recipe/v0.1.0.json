@@ -71,6 +71,7 @@
         "test_start": { "type": "string", "format": "date" },
         "theta": { "type": "integer", "minimum": 1 },
         "k": { "type": "integer", "minimum": 1 },
+        "embedding_field": { "type": "string", "minLength": 1 },
         "theta_values": {
           "type": "array",
           "items": { "type": "integer", "minimum": 1 },
