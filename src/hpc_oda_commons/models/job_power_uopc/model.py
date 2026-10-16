@@ -8,8 +8,8 @@ Adapted from https://github.com/francescoantici/UoPC:
 
 from __future__ import annotations
 
-import time
 import math
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -29,6 +29,7 @@ _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "nodes_requested": ("nodes_requested", "nnumr"),
     "end_time": ("end_time", "edt"),
 }
+
 
 @dataclass
 class _PaperPreparedData:
@@ -129,6 +130,7 @@ def _feature_float(raw: Any) -> float:
     except (TypeError, ValueError):
         return 0.0
 
+
 def _classifier_prediction_from_neighbor_targets(
     neighbor_targets: np.ndarray,
     k: int,
@@ -150,6 +152,7 @@ def _regressor_prediction_from_neighbor_targets(
     if values.size < k:
         raise ValueError(f"Need at least {k} neighbors, got {values.size}.")
     return float(np.mean(values))
+
 
 def _nearest_neighbor_indices_and_distances(
     context_features: np.ndarray,
@@ -326,19 +329,13 @@ class JobPowerUopcModel:
             result["_last_model"] = {"kind": "job_power_uopc", "config": cfg}
         return result
 
-
-
     def _prepare_paper_data(
         self,
         rows: list[dict[str, Any]],
         *,
         test_start: str,
     ) -> _PaperPreparedData:
-        cutoff = (
-            datetime.fromisoformat(test_start)
-            .replace(tzinfo=timezone.utc)
-            .timestamp()
-        )
+        cutoff = datetime.fromisoformat(test_start).replace(tzinfo=timezone.utc).timestamp()
 
         job_ids: list[Any] = []
         users: list[str] = []
@@ -399,16 +396,10 @@ class JobPowerUopcModel:
                 continue
 
             job_ids.append(row.get("job_id"))
-            num_cores_req_values.append(
-                _feature_float(row.get("num_cores_req"))
-            )
-            num_nodes_req_values.append(
-                _feature_float(row.get("num_nodes_req"))
-            )
+            num_cores_req_values.append(_feature_float(row.get("num_cores_req")))
+            num_nodes_req_values.append(_feature_float(row.get("num_nodes_req")))
             nnuma_values.append(nnuma)
-            freq_req_values.append(
-                _feature_float(row.get("freq_req"))
-            )
+            freq_req_values.append(_feature_float(row.get("freq_req")))
 
             users.append(str(row.get("user") or ""))
             submits.append(submit)
@@ -462,9 +453,7 @@ class JobPowerUopcModel:
         sd = num_arr.std(axis=0)
         sd[sd == 0] = 1.0
 
-        features = np.hstack(
-            [emb_arr, (num_arr - mu) / sd]
-        ).astype(np.float32)
+        features = np.hstack([emb_arr, (num_arr - mu) / sd]).astype(np.float32)
 
         # Pre-sort each user's rows by completion time.
         order = np.argsort(end_arr, kind="stable")
@@ -473,19 +462,11 @@ class JobPowerUopcModel:
         for idx in order:
             by_user.setdefault(user_arr[idx], []).append(int(idx))
 
-        user_rows = {
-            user: np.asarray(indices, dtype=np.int64)
-            for user, indices in by_user.items()
-        }
-        user_ends = {
-            user: end_arr[indices]
-            for user, indices in user_rows.items()
-        }
+        user_rows = {user: np.asarray(indices, dtype=np.int64) for user, indices in by_user.items()}
+        user_ends = {user: end_arr[indices] for user, indices in user_rows.items()}
 
         test_idx = np.where(submit_arr >= cutoff)[0]
-        test_idx = test_idx[
-            np.argsort(submit_arr[test_idx], kind="stable")
-        ]
+        test_idx = test_idx[np.argsort(submit_arr[test_idx], kind="stable")]
 
         return _PaperPreparedData(
             job_id_arr=job_id_arr,
@@ -504,7 +485,6 @@ class JobPowerUopcModel:
             user_ends=user_ends,
             test_idx=test_idx,
         )
-
 
     def evaluate_paper_reproduction(
         self,
@@ -536,13 +516,11 @@ class JobPowerUopcModel:
         ]
 
         avg_metric_defs = [
-            {**metric_def, "target": "avgpcon_per_node"}
-            for metric_def in resolved_metric_defs
+            {**metric_def, "target": "avgpcon_per_node"} for metric_def in resolved_metric_defs
         ]
 
         max_metric_defs = [
-            {**metric_def, "target": "maxpcon_per_node"}
-            for metric_def in resolved_metric_defs
+            {**metric_def, "target": "maxpcon_per_node"} for metric_def in resolved_metric_defs
         ]
 
         prepared = self._prepare_paper_data(
@@ -566,7 +544,6 @@ class JobPowerUopcModel:
         user_ends = prepared.user_ends
         test_idx = prepared.test_idx
 
-        
         avg_y_true: list[float] = []
         avg_y_pred: list[float] = []
         max_y_true: list[float] = []
@@ -624,9 +601,9 @@ class JobPowerUopcModel:
             # query's submission time, with no future information.
             global_pos = int(
                 np.searchsorted(
-                end_arr[order],
-                submit_arr[j],
-                side="left",
+                    end_arr[order],
+                    submit_arr[j],
+                    side="left",
                 )
             )
             global_history = order[:global_pos]
@@ -799,8 +776,6 @@ class JobPowerUopcModel:
 
         return result
 
-    
-
     def evaluate_paper_sensitivity(
         self,
         rows: list[dict[str, Any]],
@@ -833,13 +808,9 @@ class JobPowerUopcModel:
         if not k_values:
             raise ValueError("k_values must not be empty.")
         if any(theta <= 0 for theta in theta_values):
-            raise ValueError(
-                "theta_values must contain only positive integers."
-            )
+            raise ValueError("theta_values must contain only positive integers.")
         if any(k <= 0 for k in k_values):
-            raise ValueError(
-                "k_values must contain only positive integers."
-            )
+            raise ValueError("k_values must contain only positive integers.")
 
         theta_values = tuple(sorted(set(theta_values)))
         k_values = tuple(sorted(set(k_values)))
@@ -851,13 +822,11 @@ class JobPowerUopcModel:
         ]
 
         avg_metric_defs = [
-            {**metric_def, "target": "avgpcon_per_node"}
-            for metric_def in resolved_metric_defs
+            {**metric_def, "target": "avgpcon_per_node"} for metric_def in resolved_metric_defs
         ]
 
         max_metric_defs = [
-            {**metric_def, "target": "maxpcon_per_node"}
-            for metric_def in resolved_metric_defs
+            {**metric_def, "target": "maxpcon_per_node"} for metric_def in resolved_metric_defs
         ]
 
         prepared = self._prepare_paper_data(
@@ -942,19 +911,15 @@ class JobPowerUopcModel:
                     continue
 
                 user_history = user_rows[user][:pos]
-                context = user_history[
-                    max(0, len(user_history) - theta) :
-                ]
+                context = user_history[max(0, len(user_history) - theta) :]
 
                 if len(context) == 0:
                     continue
 
-                neighbor_indices, _neighbor_distances = (
-                    _nearest_neighbor_indices_and_distances(
-                        features[context],
-                        features[j].reshape(1, -1),
-                        max_neighbors=max_k,
-                    )
+                neighbor_indices, _neighbor_distances = _nearest_neighbor_indices_and_distances(
+                    features[context],
+                    features[j].reshape(1, -1),
+                    max_neighbors=max_k,
                 )
 
                 if len(neighbor_indices) == 0:
@@ -972,52 +937,36 @@ class JobPowerUopcModel:
 
                     bucket = accumulators[(theta, k)]
 
-                    avg_classifier_pred = (
-                        _classifier_prediction_from_neighbor_targets(
-                            avg_neighbor_targets,
-                            k,
-                        )
+                    avg_classifier_pred = _classifier_prediction_from_neighbor_targets(
+                        avg_neighbor_targets,
+                        k,
                     )
-                    max_classifier_pred = (
-                        _classifier_prediction_from_neighbor_targets(
-                            max_neighbor_targets,
-                            k,
-                        )
+                    max_classifier_pred = _classifier_prediction_from_neighbor_targets(
+                        max_neighbor_targets,
+                        k,
                     )
 
-                    avg_regressor_pred = (
-                        _regressor_prediction_from_neighbor_targets(
-                            avg_neighbor_targets,
-                            k,
-                        )
+                    avg_regressor_pred = _regressor_prediction_from_neighbor_targets(
+                        avg_neighbor_targets,
+                        k,
                     )
-                    max_regressor_pred = (
-                        _regressor_prediction_from_neighbor_targets(
-                            max_neighbor_targets,
-                            k,
-                        )
+                    max_regressor_pred = _regressor_prediction_from_neighbor_targets(
+                        max_neighbor_targets,
+                        k,
                     )
 
                     avg_true = float(avg_target_arr[j])
                     max_true = float(max_target_arr[j])
 
                     bucket["classifier"]["avg_true"].append(avg_true)
-                    bucket["classifier"]["avg_pred"].append(
-                        avg_classifier_pred
-                    )
+                    bucket["classifier"]["avg_pred"].append(avg_classifier_pred)
                     bucket["classifier"]["max_true"].append(max_true)
-                    bucket["classifier"]["max_pred"].append(
-                        max_classifier_pred
-                    )
+                    bucket["classifier"]["max_pred"].append(max_classifier_pred)
 
                     bucket["regressor"]["avg_true"].append(avg_true)
-                    bucket["regressor"]["avg_pred"].append(
-                        avg_regressor_pred
-                    )
+                    bucket["regressor"]["avg_pred"].append(avg_regressor_pred)
                     bucket["regressor"]["max_true"].append(max_true)
-                    bucket["regressor"]["max_pred"].append(
-                        max_regressor_pred
-                    )
+                    bucket["regressor"]["max_pred"].append(max_regressor_pred)
 
             theta_timings[theta] = time.perf_counter() - theta_start
 
@@ -1042,27 +991,19 @@ class JobPowerUopcModel:
 
                     predictor_result: dict[str, Any] = {
                         "rows_scored": len(avg_true),
-                        "coverage": (
-                            len(avg_true) / len(test_idx)
-                            if len(test_idx)
-                            else 0.0
-                        ),
+                        "coverage": (len(avg_true) / len(test_idx) if len(test_idx) else 0.0),
                     }
 
                     if avg_true:
-                        predictor_result["avgpcon_per_node"] = (
-                            compute_regression_metrics_from_defs(
-                                avg_true,
-                                avg_pred,
-                                avg_metric_defs,
-                            )
+                        predictor_result["avgpcon_per_node"] = compute_regression_metrics_from_defs(
+                            avg_true,
+                            avg_pred,
+                            avg_metric_defs,
                         )
-                        predictor_result["maxpcon_per_node"] = (
-                            compute_regression_metrics_from_defs(
-                                max_true,
-                                max_pred,
-                                max_metric_defs,
-                            )
+                        predictor_result["maxpcon_per_node"] = compute_regression_metrics_from_defs(
+                            max_true,
+                            max_pred,
+                            max_metric_defs,
                         )
                     else:
                         predictor_result["avgpcon_per_node"] = {}
@@ -1078,35 +1019,15 @@ class JobPowerUopcModel:
 
         cold_start = {
             "rows_test": int(len(test_idx)),
-            "history_count_min": (
-                int(history_arr.min()) if history_arr.size else 0
-            ),
-            "history_count_max": (
-                int(history_arr.max()) if history_arr.size else 0
-            ),
-            "history_count_mean": (
-                float(history_arr.mean()) if history_arr.size else 0.0
-            ),
-            "history_count_median": (
-                float(np.median(history_arr))
-                if history_arr.size
-                else 0.0
-            ),
-            "rows_with_0_history": int(
-                np.sum(history_arr == 0)
-            ),
-            "rows_with_lt_5_history": int(
-                np.sum(history_arr < 5)
-            ),
-            "rows_with_lt_10_history": int(
-                np.sum(history_arr < 10)
-            ),
-            "rows_with_lt_20_history": int(
-                np.sum(history_arr < 20)
-            ),
-            "rows_with_lt_50_history": int(
-                np.sum(history_arr < 50)
-            ),
+            "history_count_min": (int(history_arr.min()) if history_arr.size else 0),
+            "history_count_max": (int(history_arr.max()) if history_arr.size else 0),
+            "history_count_mean": (float(history_arr.mean()) if history_arr.size else 0.0),
+            "history_count_median": (float(np.median(history_arr)) if history_arr.size else 0.0),
+            "rows_with_0_history": int(np.sum(history_arr == 0)),
+            "rows_with_lt_5_history": int(np.sum(history_arr < 5)),
+            "rows_with_lt_10_history": int(np.sum(history_arr < 10)),
+            "rows_with_lt_20_history": int(np.sum(history_arr < 20)),
+            "rows_with_lt_50_history": int(np.sum(history_arr < 50)),
         }
 
         result: dict[str, Any] = {
@@ -1130,10 +1051,7 @@ class JobPowerUopcModel:
             "cold_start": cold_start,
             "timing": {
                 "total_seconds": total_seconds,
-                "theta_seconds": {
-                    str(theta): seconds
-                    for theta, seconds in theta_timings.items()
-                },
+                "theta_seconds": {str(theta): seconds for theta, seconds in theta_timings.items()},
             },
         }
 
@@ -1141,7 +1059,6 @@ class JobPowerUopcModel:
             result["_history_counts"] = history_counts
 
         return result
-
 
     def _predict_one(
         self,

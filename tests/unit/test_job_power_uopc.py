@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -155,9 +156,7 @@ def test_uopc_paper_reproduction_smoke() -> None:
 
         for target in ("avgpcon_per_node", "maxpcon_per_node"):
             for metric in ("mae", "rmse", "mape", "r2"):
-                assert math.isfinite(
-                    result["baselines"][baseline][target][metric]
-                )
+                assert math.isfinite(result["baselines"][baseline][target][metric])
 
 
 def test_classifier_prediction_from_neighbor_targets_matches_knn() -> None:
@@ -244,12 +243,10 @@ def test_nearest_neighbor_retrieval_matches_sklearn() -> None:
         return_distance=True,
     )
 
-    actual_indices, actual_distances = (
-        _nearest_neighbor_indices_and_distances(
-            x_train,
-            query,
-            max_neighbors=3,
-        )
+    actual_indices, actual_distances = _nearest_neighbor_indices_and_distances(
+        x_train,
+        query,
+        max_neighbors=3,
     )
 
     assert np.array_equal(actual_indices, expected_indices[0])
@@ -326,9 +323,8 @@ def test_uopc_paper_sensitivity_matches_reproduction() -> None:
 
     for target in ("avgpcon_per_node", "maxpcon_per_node"):
         for metric in ("mae", "rmse", "mape", "r2"):
-            assert classifier[target][metric] == pytest.approx(
-                reproduction[target][metric]
-            )
+            assert classifier[target][metric] == pytest.approx(reproduction[target][metric])
+
 
 def test_prepare_paper_data_matches_reproduction_protocol() -> None:
     rows = []
@@ -438,16 +434,11 @@ def test_uopc_sensitivity_reuses_neighbors_for_multiple_k() -> None:
 
         classifier = sensitivity["results"]["20"][str(k)]["classifier"]
 
-        assert (
-            classifier["rows_scored"]
-            == reproduction["summary"]["rows_scored"]
-        )
+        assert classifier["rows_scored"] == reproduction["summary"]["rows_scored"]
 
         for target in (
             "avgpcon_per_node",
             "maxpcon_per_node",
         ):
             for metric in ("mae", "rmse", "mape", "r2"):
-                assert classifier[target][metric] == pytest.approx(
-                    reproduction[target][metric]
-                )
+                assert classifier[target][metric] == pytest.approx(reproduction[target][metric])

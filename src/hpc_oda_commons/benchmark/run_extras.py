@@ -91,18 +91,14 @@ def write_run_extras(
                 }
             )
         else:
-            raise ValueError(
-                "save_predictions requested but benchmark produced no predictions"
-            )
+            raise ValueError("save_predictions requested but benchmark produced no predictions")
 
         pq.write_table(table, path)
         written.append("predictions.parquet")
 
     if extras.save_model:
         if artifacts.last_model is None:
-            raise ValueError(
-                "save_model requested but benchmark produced no trained model"
-            )
+            raise ValueError("save_model requested but benchmark produced no trained model")
         model_dir = bundle_dir / "model"
         ensure_dir(model_dir)
         model_path = model_dir / "last_model.pkl"

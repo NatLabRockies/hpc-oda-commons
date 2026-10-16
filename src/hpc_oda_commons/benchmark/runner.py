@@ -182,12 +182,15 @@ def run_fixed_uopc(
                 )
             )
 
-            summary_payload = eval_payload["results"][str(theta_values[0])][
-                str(k_values[0])
-            ]["classifier"]["avgpcon_per_node"]
+            summary_payload = eval_payload["results"][str(theta_values[0])][str(k_values[0])][
+                "classifier"
+            ]["avgpcon_per_node"]
 
             metrics = _metrics_from_eval_payload(summary_payload, requested)
-            metrics_payload: dict[str, Any] = {**eval_payload, "run_config": resolved_run_config(model)}
+            metrics_payload: dict[str, Any] = {
+                **eval_payload,
+                "run_config": resolved_run_config(model),
+            }
         else:
             # Faithful paper reproduction: report avgpcon_per_node as the
             # benchmark's primary metric set while preserving the complete

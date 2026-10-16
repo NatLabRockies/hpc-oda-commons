@@ -881,6 +881,7 @@ def test_benchmark_uopc_paper_reproduction_routing(
     assert payload["summary"]["theta"] == 500
     assert payload["summary"]["k"] == 5
 
+
 def test_run_fixed_uopc_paper_sensitivity_exposes_summary_metrics(
     monkeypatch,
 ) -> None:
@@ -970,9 +971,5 @@ def test_run_fixed_uopc_paper_sensitivity_exposes_summary_metrics(
     }
 
     # The complete sensitivity payload is still preserved.
-    assert payload["results"]["50"]["5"]["classifier"][
-        "avgpcon_per_node"
-    ]["mae"] == 6.5
-    assert payload["results"]["50"]["10"]["classifier"][
-        "avgpcon_per_node"
-    ]["mae"] == 7.5
+    assert payload["results"]["50"]["5"]["classifier"]["avgpcon_per_node"]["mae"] == 6.5
+    assert payload["results"]["50"]["10"]["classifier"]["avgpcon_per_node"]["mae"] == 7.5
