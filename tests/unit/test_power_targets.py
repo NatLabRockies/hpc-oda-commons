@@ -2,13 +2,15 @@
 
 The table carries both runtime (900-1300 s) and per-node power (100-200 W) in ranges that
 cannot be confused, so a model that silently kept predicting runtime would be caught by its
-own y_true.
+own y_true. The embedding is a float32 array, as the table loader hands it over: column scans
+that compare every value with "" used to crash on it.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import numpy as np
 import pytest
 
 from hpc_oda_commons.benchmark import runner
@@ -44,7 +46,7 @@ def _rows() -> list[dict[str, object]]:
                     "requested_seconds": 3600.0 * (1 + j % 2),
                     "runtime_seconds": 900.0 + 30 * hour + 20 * j,
                     TARGET: 100.0 + 20 * cores + hour,
-                    "embedding": [cores, float(hour % 3), 1.0],
+                    "embedding": np.asarray([cores, float(hour % 3), 1.0], dtype=np.float32),
                 }
             )
     return rows

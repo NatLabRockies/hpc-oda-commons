@@ -863,7 +863,9 @@ class RollingTabularModel:
                     continue
                 if key not in seen_numeric:
                     seen_numeric[key] = False
-                if value is None or value == "":
+                # isinstance first: `array == ""` is elementwise, and F-DATA's per-job
+                # embedding arrives as an array (#204).
+                if value is None or (isinstance(value, str) and value == ""):
                     continue
                 if self._is_numeric_value(value):
                     seen_numeric[key] = True
@@ -882,7 +884,7 @@ class RollingTabularModel:
         for i, row in enumerate(rows):
             for j, col in enumerate(columns):
                 raw = row.get(col)
-                if raw is None or raw == "":
+                if raw is None or (isinstance(raw, str) and raw == ""):
                     out[i, j] = 0.0
                     continue
                 try:
