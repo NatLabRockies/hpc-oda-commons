@@ -36,10 +36,10 @@ The net effect is that promising ODA ideas remain siloed, and the community lack
 
 In v0.1, the scope is intentionally narrow:
 
-- **Domains:** SLURM job runtime prediction (primary) and job power prediction (second slice)
+- **Domains:** SLURM job runtime prediction (primary) and job power prediction (second slice). Every model predicts the column its recipe's metrics target, so the runtime models also predict per-node power on the same rolling protocol (`docs/how-to/predict-power.md`)
 - **Source:** `slurmctld` logs (minimal patterns)
 - **Data:** tiny packaged synthetic dataset (offline) + manifest
-- **Models:** a deterministic baseline (mean predictor) plus XGBoost, Random Forest, and MLP (sharing a rolling-tabular base), TF-IDF + kNN, and an embedding + kNN model (kNN over a precomputed dense embedding column) for runtime, all with rolling evaluation, and a per-user UoPC-style kNN model for power (fixed evaluation)
+- **Models:** a deterministic baseline (mean predictor) plus XGBoost, Random Forest, and MLP (sharing a rolling-tabular base), TF-IDF + kNN, and an embedding + kNN model (kNN over a precomputed dense embedding column) for runtime, all with rolling evaluation, and a per-user UoPC-style kNN model for power (fixed evaluation, the paper's date-cutoff protocol, or the shared rolling windows)
 - **Benchmark:** recipe-driven execution with regression metrics (MAE, RMSE)
 - **Outputs:** schema-valid artifacts and static leaderboard generation
 
