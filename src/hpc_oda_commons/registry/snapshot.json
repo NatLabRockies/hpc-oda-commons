@@ -274,6 +274,53 @@
       }
     },
     {
+      "id": "recipe.job_power.uopc_paper_reproduction",
+      "entry_type": "recipe",
+      "name": "UoPC Paper Reproduction (Fugaku, Job Power Prediction)",
+      "version": "0.1.0",
+      "description": "Reproduces the UoPC paper (Antici et al., IEEE 11017729) on F-DATA Dec 2023-Apr 2024: jobs submitted from 2024-02-01 are scored on avgpcon and maxpcon per node, with per-user-mean and global-mean baselines.",
+      "problem_domain": ["job-power-prediction"],
+      "supported_sources": ["public_dataset"],
+      "input_schema_version": "oda.job.v0.2.0",
+      "license": "Apache-2.0",
+      "tags": ["uopc", "knn", "power", "fugaku", "user-based", "cutoff", "reproduction"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml"
+      }
+    },
+    {
+      "id": "recipe.job_power.uopc_paper_sensitivity",
+      "entry_type": "recipe",
+      "name": "UoPC Theta x k Sensitivity (Fugaku, Job Power Prediction)",
+      "version": "0.1.0",
+      "description": "Sweeps UoPC's history size (theta) and neighbour count (k) on the paper-reproduction data and cutoff, reporting classifier voting, a kNN-regressor ablation and cold-start coverage.",
+      "problem_domain": ["job-power-prediction"],
+      "supported_sources": ["public_dataset"],
+      "input_schema_version": "oda.job.v0.2.0",
+      "license": "Apache-2.0",
+      "tags": ["uopc", "knn", "power", "fugaku", "user-based", "cutoff", "sensitivity"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity.yml"
+      }
+    },
+    {
+      "id": "dataset.job_power.fdata_fugaku_uopc",
+      "entry_type": "dataset",
+      "name": "F-DATA (Fugaku Jobs, Dec 2023-Apr 2024, UoPC window)",
+      "version": "1.0.0",
+      "description": "The five F-DATA monthly files the UoPC paper evaluates on, normalized to oda.job.v0.2.0 with avgpcon/maxpcon power targets, allocated nodes, requested CPU frequency and F-DATA's precomputed job embedding. Separate from the runtime descriptor so the two windows never share a prepared table.",
+      "problem_domain": ["job-power-prediction"],
+      "output_schema_version": "oda.job.v0.2.0",
+      "license": "CC-BY-4.0",
+      "tags": ["fugaku", "a64fx", "fujitsu", "arm", "power", "uopc"],
+      "reference": {
+        "kind": "path",
+        "path": "hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml"
+      }
+    },
+    {
       "id": "dataset.job_runtime.pm100",
       "entry_type": "dataset",
       "name": "PM100 (Marconi100 Jobs)",

@@ -22,6 +22,7 @@ from hpc_oda_commons.benchmark.run_extras import (
     write_run_extras,
 )
 from hpc_oda_commons.benchmark.runner import (
+    run_cutoff_uopc,
     run_fixed_baseline,
     run_fixed_uopc,
     run_rolling_baseline,
@@ -443,7 +444,7 @@ def _normalize_split(recipe_payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(split, dict):
         raise typer.BadParameter("recipe.split must be an object")
     method = str(split.get("method", "fixed"))
-    if method not in {"fixed", "rolling"}:
+    if method not in {"fixed", "rolling", "cutoff"}:
         raise typer.BadParameter(f"Unsupported split method: {method}")
     split["method"] = method
     return split
@@ -804,6 +805,14 @@ def benchmark(
             verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
+    elif model_id == "model.job_power_uopc" and split_method == "cutoff":
+        metrics, metrics_payload, artifacts = run_cutoff_uopc(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
     elif model_id == "model.job_runtime_baseline" and split_method == "rolling":
         metrics, metrics_payload, artifacts = run_rolling_baseline(
             rows,
@@ -902,7 +911,7 @@ def benchmark(
     result_payload: dict[str, Any] = {
         "schema_version": "oda.result.v0.1.0",
         "recipe_id": recipe_id,
-        "problem_domain": ["job-runtime-prediction"],
+        "problem_domain": list(recipe_payload.get("problem_domain", [])),
         "created_at": _now_utc_iso(),
         "metrics": metrics,
         "integrity": integrity,

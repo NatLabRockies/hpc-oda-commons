@@ -45,8 +45,9 @@ Raw Input (slurmctld.log / jobs.parquet)
     expert with a window-wide fallback
     (`model.py`), with a selectable exact dense top-k backend (`backends.py`:
     numpy / torch / faiss). Reuses `rolling_tabular` split + `kernel.metrics`.
-  - `job_power_uopc/` -- user-based online power prediction (UoPC), fixed chronological split,
-    per-user kNN (`evaluate_fixed()`)
+  - `job_power_uopc/` -- user-based online power prediction (UoPC): the Commons adaptation on a
+    fixed chronological split (`evaluate_fixed()`), and the paper protocol on a date cutoff
+    (`evaluate_paper_reproduction()`, `evaluate_paper_sensitivity()`; see `docs/benchmarking/uopc.md`)
 - **`embeddings/`** -- Embedding module behind `hpc-oda embed`: leakage-guarded row
   serialization (`serialize.py` -- submission-time fields only, `prose`/`kv` formats),
   encoders (`encoders.py` -- `HashingEncoder` stub + `SentenceTransformerEncoder`), and the

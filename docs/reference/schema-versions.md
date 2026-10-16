@@ -38,4 +38,10 @@ ISO-8601 strings). All other schema types remain at v0.1.0.
 | `oda.mdl.v0.1.0` | Metric Definition Language | `name` (mae, rmse, mape, r2, underprediction_ratio), `target` |
 | `oda.registry.v0.1.0` | Registry entry catalogue | `id`, `entry_type`, `name`, `version`, `description`, `problem_domain` |
 
+### Additive changes within v0.1.0
+
+Optional fields and enum values have been added to v0.1.0 schemas in place, as before for the rolling-model knobs (`log_target`, `objective`, ...). Existing documents stay valid; only new ones use the additions.
+
+- `oda.recipe.v0.1.0`: `split.method: cutoff`, which requires `split.test_start`; `split.theta`, `split.k`, `split.theta_values`, `split.k_values` (#125).
+
 Schema IDs follow the pattern `oda.<type>.v<MAJOR>.<MINOR>.<PATCH>`. Schema files are stored as JSON Schema (Draft 2020-12) under `src/hpc_oda_commons/schemas/oda/`.

@@ -67,7 +67,7 @@ hpc-oda benchmark my_recipe.yml
 | `model.job_runtime_tfidf_knn` | `rolling` | TF-IDF text vectorization + k-nearest-neighbor regression |
 | `model.job_runtime_embedding_knn` | `rolling` | kNN over a precomputed dense embedding column (see `hpc-oda embed`) |
 | `model.job_runtime_moe_xgboost` | `rolling` | Per-(user, wallclock-bin) XGBoost experts, routed inside the shared window |
-| `model.job_power_uopc` | `fixed` | Job power prediction via per-user kNN (UoPC) |
+| `model.job_power_uopc` | `fixed` or `cutoff` | Job power prediction via per-user kNN (UoPC); `cutoff` runs the paper protocol |
 
 The `xgboost`, `random_forest`, and `mlp` models share the tabular rolling
 implementation in `models/rolling_tabular/` (see `RollingTabularModel`).

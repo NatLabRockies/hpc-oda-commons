@@ -192,6 +192,7 @@ Execution (`hpc_oda_commons.benchmark.runner`):
 - loads recipe and dataset parquet
 - resolves the model and split strategy:
   - **fixed split** (deterministic train/test partition), used by the baseline and by the job-power UoPC model
+  - **cutoff split** (every job submitted from a date is scored), used by the UoPC paper reproduction
   - **rolling split** (sliding window evaluation simulating production retraining), used by the rolling baseline, XGBoost, Random Forest, MLP, TF-IDF + kNN, and embedding + kNN runtime models
 - computes metrics and writes a result bundle under `runs/`
 

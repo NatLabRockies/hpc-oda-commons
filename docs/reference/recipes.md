@@ -10,10 +10,13 @@
 | `mlp_rolling.yml` | MLP | Rolling (20 windows, 6h, 7d) | Feed-forward neural network example |
 | `embedding_knn_rolling.yml` | Embedding + kNN | Rolling (20 windows, 6h, 7d) | Embedding-space kNN (needs an embedded dataset; see `hpc-oda embed`) |
 | `uopc_maxpcon.yml` | UoPC (power) | Fixed | Per-user online power prediction example |
+| `job-power/uopc_paper_reproduction.yml` | UoPC (power) | Cutoff (2024-02-01, θ=500, k=5) | Reproduces the UoPC paper on F-DATA — see [UoPC reproduction](../benchmarking/uopc.md) |
+| `job-power/uopc_paper_sensitivity.yml` | UoPC (power) | Cutoff, θ × k sweep | The paper's sensitivity grid; headline at θ=500, k=5 |
+| `job-power/uopc_paper_sensitivity_smoke.yml` | UoPC (power) | Cutoff, 1 × 2 sweep | Quick end-to-end check of the sweep |
 | `moe_xgboost_rolling.yml` | MoE XGBoost | Rolling (20 windows, 6h, 7d) | Mixture-of-experts routing example |
 | `kestrel_moe_best_rolling.yml` | MoE XGBoost | Rolling (120 windows, 6h, 120d) | The best measured configuration — see [Reproducing the reference result](#reproducing-the-reference-result) |
 
-Bundled recipes are shipped with the package at `src/hpc_oda_commons/recipes/job-runtime/`.
+Bundled recipes are shipped with the package at `src/hpc_oda_commons/recipes/job-runtime/` (and `job-power/` for the paper-protocol power recipes).
 
 ## Recipe Schema (`oda.recipe.v0.1.0`)
 
@@ -53,7 +56,7 @@ metrics:
 
 # Train/test split strategy
 split:
-  method: fixed          # or "rolling"
+  method: fixed          # or "rolling" or "cutoff"
   train_fraction: 0.8    # for fixed splits only
   seed: 42               # for fixed splits only
 
@@ -65,9 +68,14 @@ run:
 
 ### Split Methods
 
-**`fixed`** -- Deterministic train/test split. Used with `model.job_runtime_baseline`.
+**`fixed`** -- Deterministic train/test split. Used with `model.job_runtime_baseline` and the UoPC adaptation (`model.job_power_uopc`).
 - `train_fraction` (float, required): fraction of data for training (e.g., `0.8`)
 - `seed` (int, required): random seed for reproducibility
+
+**`cutoff`** -- Every job submitted on or after a date is a test job; everything earlier is history only. Used with `model.job_power_uopc` to run the UoPC paper protocol ([UoPC reproduction](../benchmarking/uopc.md)).
+- `test_start` (ISO date, required): the cutoff, e.g. `"2024-02-01"` (quote it, so YAML keeps it a string)
+- `theta` (int, default `500`) / `k` (int, default `5`): history size and neighbour count; with a sweep they name the headline cell
+- `theta_values` / `k_values` (lists of int, optional): run the θ × k sensitivity grid instead of one reproduction; the headline `theta`/`k` must be in the grid
 
 **`rolling`** -- Sliding windows that simulate production retraining. Used with the seven rolling models (`model.job_runtime_baseline`, `model.job_runtime_xgboost`, `model.job_runtime_random_forest`, `model.job_runtime_tfidf_knn`, `model.job_runtime_mlp`, `model.job_runtime_embedding_knn`, `model.job_runtime_moe_xgboost`).
 - `n_windows` (int, required): number of windows to evaluate
