@@ -66,10 +66,13 @@ divides by `nnuma`, so the [paper reproduction](../benchmarking/uopc.md) still d
 | `dataset.job_power.fdata_fugaku_uopc` | Fugaku, Dec 2023–Apr 2024 | `avgpcon`, `maxpcon`, per node, plus F-DATA's job `embedding` |
 | `dataset.job_runtime.fdata_fugaku` | Fugaku, Mar–Sep 2023 (the runtime benchmark window) | `avgpcon`, `maxpcon`, per node; rows filtered on runtime only |
 | `dataset.job_runtime.pm100` | Marconi100, May–Oct 2020 | mean and peak of the job's node-power trace, per node; rows filtered on runtime only |
+| `dataset.job_runtime.nlr_eagle` | Eagle, 2018-11 to 2024-06 | average only: the job's node energy over its runtime, per node used; rows filtered on runtime only |
 
 Sources that record power as a trace of samples are reduced with `type: list_mean` or
-`type: list_max`. Adastra records per-node job energy that is not mapped yet (it needs zero-as-missing
-cleaning); see [curation status](../datasets/curation-status.md#power-columns) and the
+`type: list_max`. Sources that record energy instead convert it with `type: energy` and
+divide by runtime (Eagle). Adastra records per-node job energy that is not mapped yet (it
+needs near-zero readings treated as missing,
+[#207](https://github.com/NatLabRockies/hpc-oda-commons/issues/207)); see [curation status](../datasets/curation-status.md#power-columns) and the
 [power sources audit](../datasets/power-sources.md).
 
 ## Run it
