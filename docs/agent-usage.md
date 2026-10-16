@@ -77,7 +77,9 @@ v0.1 models:
 - `model.job_runtime_moe_xgboost` -- mixture of experts: one XGBoost per (user, wallclock bin), routed inside the shared rolling window (rolling splits)
 - `model.job_runtime_random_forest` -- Random Forest, uses the shared `rolling_tabular` OHE+SVD preprocessing (rolling splits)
 - `model.job_runtime_mlp` -- feed-forward neural network, uses the shared `rolling_tabular` preprocessing (rolling splits)
-- `model.job_power_uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split, or the paper protocol with a cutoff split)
+- `model.job_power_uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split, the paper protocol with a cutoff split, or the shared rolling windows)
+
+Every runtime model predicts the column its recipe's metrics target, `runtime_seconds` by default. Point it at `avgpcon_per_node` or `maxpcon_per_node` to predict power; `recipes/job-power/<model>_rolling_{avg,peak}.yml` do this for every model. See `docs/how-to/predict-power.md`.
 
 To create a custom recipe, copy a bundled one and modify the dataset path, split parameters, or model selection:
 ```bash

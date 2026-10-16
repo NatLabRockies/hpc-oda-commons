@@ -12,6 +12,8 @@
 
 **I want to predict with embeddings** -- [Embedding-based kNN model + `hpc-oda embed`](how-to/embedding-knn.md)
 
+**I want to predict job power** -- [Predict job power with any model](how-to/predict-power.md)
+
 **I want to contribute** -- [Contributing](../CONTRIBUTING.md) | [Add a Model](how-to/add-model.md)
 
 **I'm an AI agent** -- [Agent Guide](../CLAUDE.md) (routes to [usage](agent-usage.md) or development)

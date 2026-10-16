@@ -98,3 +98,16 @@ fetchable/pinnable from this environment (Globus) and is documented for user ing
 [`external-datasets.md`](external-datasets.md) rather than pipeline-fetched.
 
 Power/failure/anomaly datasets remain deferred to their phases (see the investigation doc §7).
+
+## Power columns
+
+Mapped per allocated node (`avgpcon_per_node`, `maxpcon_per_node`) for job-power prediction
+([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204),
+[how-to](../how-to/predict-power.md)):
+
+| Dataset | Status |
+|---|---|
+| `fdata_fugaku_uopc` (Dec 2023–Apr 2024) | Mapped. F-DATA gives `avgpcon`/`maxpcon` per job in W and `nnuma` allocated nodes. |
+| `fdata_fugaku` (Mar–Sep 2023) | Mapped, same columns; rows still filtered on runtime only. |
+| `adastra_mi250` | **Not mapped.** `node_power_consumption` is a list of samples whose values do not scale with node count (median sample ~4.6k for 1-node jobs, ~4.4M for 8-node jobs; one single-node sample reads 94,618,545), so it is not watts per job or per node. It looks like an energy counter or a different unit; needs the source's definition before it can be converted. |
+| `pm100` | Under review: power is a list of samples (`node_power_consumption`, also cpu/mem); checking its units and per-job vs per-node meaning the same way. |
