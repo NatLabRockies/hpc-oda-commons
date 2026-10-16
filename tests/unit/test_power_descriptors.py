@@ -125,3 +125,20 @@ def test_uopc_window_derives_per_node_power(tmp_path: Path) -> None:
         "avgpcon_per_node",
         "maxpcon_per_node",
     }
+
+
+def test_fugaku_runtime_window_carries_power_without_changing_its_rows(tmp_path: Path) -> None:
+    """Per-node power rides along on the runtime window, but its filter is still runtime:
+    a job with no power reading keeps its runtime row (#204)."""
+    (target,) = load_descriptor(_DESCRIPTORS / "job-runtime" / "fdata_fugaku.yml").targets
+    assert target.filter == {"require_nonnull": ["runtime_seconds"]}
+
+    raw = tmp_path / "23_07.parquet"
+    _fdata_month(raw)
+    out = tmp_path / "data.parquet"
+    summary = normalize_target(raw, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert summary["rows_final"] == 6  # the row without avgpcon is kept
+    assert [r["avgpcon_per_node"] for r in rows] == [100.0, 105.0, None, 115.0, 120.0, 125.0]
+    assert "embedding" not in rows[0]  # the runtime fleet embeds with `hpc-oda embed`
