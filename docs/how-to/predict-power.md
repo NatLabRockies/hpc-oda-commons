@@ -61,8 +61,9 @@ scoring.
 | `dataset.job_runtime.pm100` | Marconi100, May–Oct 2020 | mean and peak of the job's node-power trace, per node; rows filtered on runtime only |
 
 Sources that record power as a trace of samples are reduced with `type: list_mean` or
-`type: list_max`. Adastra also records power traces, but they are not watts; see
-[curation status](../datasets/curation-status.md#power-columns).
+`type: list_max`. Adastra records per-node job energy that is not mapped yet (it needs zero-as-missing
+cleaning); see [curation status](../datasets/curation-status.md#power-columns) and the
+[power sources audit](../datasets/power-sources.md).
 
 ## Run it
 
