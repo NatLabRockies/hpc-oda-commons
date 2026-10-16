@@ -31,6 +31,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
+from hpc_oda_commons.models.job_power_uopc.model import _one_blas_thread
 from hpc_oda_commons.models.rolling_tabular.split import _epoch_or_nan, build_rolling_splits
 
 
@@ -94,6 +95,7 @@ class JobPowerUopcRollingModel:
             "end": np.asarray([_epoch_or_nan(row.get(cfg.end_time_field)) for row in rows]),
         }
 
+    @_one_blas_thread
     def evaluate(
         self,
         rows: list[dict[str, Any]],

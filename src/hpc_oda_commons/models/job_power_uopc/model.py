@@ -14,6 +14,7 @@ voting. Recipes pick the paper protocol with ``split.method: cutoff``.
 
 from __future__ import annotations
 
+import functools
 import math
 import time
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
+from hpc_oda_commons.models.rolling_tabular.base import _blas_single_thread
 
 _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "maxpcon": ("maxpcon",),
@@ -86,6 +88,24 @@ def _per_node(row: dict[str, Any], column: str, whole_job: float, nodes: float) 
         return float(value)
     except (TypeError, ValueError):
         return float("nan")
+
+
+def _one_blas_thread(method):
+    """Run an evaluate_* method with native BLAS/OpenMP pools pinned to one thread.
+
+    UoPC fits a tiny kNN per test job (or per user and window): up to ``theta`` rows. Left
+    alone, scikit-learn and BLAS spin up a pool across every core for each of those
+    millions of fits, and the threads spend their time synchronising, not computing. On the
+    F-DATA reproduction this showed as ~12 cores busy, two-thirds of it kernel time, and was
+    4.7x slower than one thread, with identical results.
+    """
+
+    @functools.wraps(method)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        with _blas_single_thread():
+            return method(*args, **kwargs)
+
+    return wrapper
 
 
 def _cumsum_from_zero(values: np.ndarray) -> np.ndarray:
@@ -274,6 +294,7 @@ class JobPowerUopcModel:
     def __init__(self, config: JobPowerUopcConfig | None = None) -> None:
         self.config = config or JobPowerUopcConfig()
 
+    @_one_blas_thread
     def evaluate_fixed(
         self,
         rows: list[dict[str, Any]],
@@ -544,6 +565,7 @@ class JobPowerUopcModel:
             },
         )
 
+    @_one_blas_thread
     def evaluate_paper_reproduction(
         self,
         rows: list[dict[str, Any]],
@@ -823,6 +845,7 @@ class JobPowerUopcModel:
 
         return result
 
+    @_one_blas_thread
     def evaluate_paper_sensitivity(
         self,
         rows: list[dict[str, Any]],

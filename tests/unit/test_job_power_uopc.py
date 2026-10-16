@@ -533,3 +533,23 @@ def test_paper_modes_emit_only_artifact_keys_run_extras_strips() -> None:
         rows, test_start="2024-02-01", theta_values=(10,), k_values=(3,), capture_artifacts=True
     )
     assert not [k for k in sweep if k.startswith("_")]
+
+
+def test_uopc_fits_its_tiny_knns_single_threaded(monkeypatch) -> None:
+    """Millions of tiny fits must not each start a thread pool across every core: that cost
+    the F-DATA reproduction 4.7x in thread synchronisation (two-thirds kernel time)."""
+    from sklearn.neighbors import KNeighborsClassifier
+    from threadpoolctl import threadpool_info
+
+    seen: list[int] = []
+    original = KNeighborsClassifier.fit
+
+    def recording_fit(self, *args, **kwargs):
+        seen.extend(pool["num_threads"] for pool in threadpool_info())
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(KNeighborsClassifier, "fit", recording_fit)
+    JobPowerUopcModel().evaluate_paper_reproduction(
+        _paper_rows(), test_start="2024-02-01", theta=10, k=3
+    )
+    assert seen and set(seen) == {1}
