@@ -476,7 +476,7 @@ It subclasses `RollingTabularModel` and overrides only the fit/predict seam (`_f
 
 ### 7.8 Job Power Model (`model.job_power_uopc`)
 
-A per-user kNN power-prediction model (UoPC-style) that predicts `maxpcon` (maximum job power) rather than runtime. Unlike the rolling runtime models, it uses a fixed train/test split. For each user, job history is ordered by end time and the most recent `theta` jobs form the training context; categorical job features (e.g., job name) are label-encoded per fit, and a `KNeighborsRegressor` predicts from the nearest neighbors. It operates on raw Fugaku-style columns (`usr`, `jnam`, `cnumr`, `nnumr`, `edt`, `maxpcon`) via field aliases, and is driven by the bundled `uopc_maxpcon.yml` recipe.
+A per-user kNN power-prediction model (UoPC-style) that predicts `maxpcon` (maximum job power) rather than runtime. Unlike the rolling runtime models, it uses a fixed train/test split. For each user, job history is ordered by end time and the most recent `theta` jobs form the training context; categorical job features (e.g., job name) are label-encoded per fit, and a `KNeighborsRegressor` predicts from the nearest neighbors. It operates on raw Fugaku-style columns (`usr`, `jnam`, `cnumr`, `nnumr`, `edt`, `maxpcon`) via field aliases, and is driven by the bundled `uopc_maxpcon.yml` recipe. With `split.method: cutoff` the same model runs the UoPC paper protocol instead (date cutoff, per-node `avgpcon`/`maxpcon`, embedding features, kNN-classifier voting, mean baselines, θ × k sweep) via the `job-power/uopc_paper_*.yml` recipes; see `docs/benchmarking/uopc.md`.
 
 ---
 
@@ -518,6 +518,7 @@ run:
 - All metrics must target the same field
 - For `rolling` splits: `n_windows` must be positive; `test_window_hours` defaults to 6; `training_lookback_days` defaults to 100
 - For `fixed` splits: `train_fraction` and `seed` control the random split
+- For `cutoff` splits: `test_start` (ISO date) is required
 
 ### 8.2 Bundled Recipes
 
@@ -530,6 +531,8 @@ The package ships five recipes:
 | `alt_model_example.yml` | XGBoost | Rolling (24 windows, 6h, 30d) | Alternate configuration example |
 | `mlp_rolling.yml` | MLP | Rolling (20 windows, 6h, 7d) | Feed-forward MLP runtime benchmark |
 | `uopc_maxpcon.yml` | Job Power (UoPC) | Fixed 80/20 | Per-user kNN power (`maxpcon`) prediction |
+| `job-power/uopc_paper_reproduction.yml` | Job Power (UoPC) | Cutoff 2024-02-01 | UoPC paper reproduction on F-DATA |
+| `job-power/uopc_paper_sensitivity.yml` | Job Power (UoPC) | Cutoff, θ × k sweep | UoPC sensitivity analysis |
 
 ### 8.3 Result Bundles
 
@@ -627,7 +630,7 @@ The bundled registry snapshot contains 36 entries: one adapter, eight models, fo
 | `model.job_runtime_tfidf_knn` | model | TF-IDF + kNN with rolling evaluation |
 | `model.job_runtime_random_forest` | model | Random Forest with rolling evaluation |
 | `model.job_runtime_mlp` | model | Feed-forward MLP with rolling evaluation |
-| `model.job_power_uopc` | model | Per-user kNN power prediction (UoPC-style, fixed split) |
+| `model.job_power_uopc` | model | Per-user kNN power prediction (UoPC-style, fixed split or paper protocol) |
 | `recipe.job_runtime.baseline_tiny` | recipe | Tiny synthetic dataset benchmark |
 | `recipe.job_runtime.xgb_hourly_recent` | recipe | XGBoost rolling benchmark |
 

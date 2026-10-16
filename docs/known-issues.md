@@ -139,3 +139,14 @@ The `jobs-parquet` ingest applies mapping transforms column-wise (vectorized) ra
 row-by-row. One intentional behavior difference: a malformed `memory_slurm` value such as
 `"1.2.3G"` now becomes `null` instead of crashing the ingest, so a few bad rows no longer
 abort the whole run.
+
+## Note — UoPC paper protocol scales features with test-period data
+
+**Status:** informational · **Tracking:** [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125)
+
+The UoPC paper protocol (`model.job_power_uopc` with `split.method: cutoff`) z-scores its
+numeric features (cores, nodes and CPU frequency requested) over the whole usable dataset,
+test months included, because the authors' reference code does. This is a small look-ahead
+in the feature scale only; no target value leaks. It is kept so the numbers stay comparable
+with the paper. A deployment would fit the scaling on history alone. See
+[UoPC reproduction](benchmarking/uopc.md#known-deviations).

@@ -67,6 +67,7 @@ Bundled recipes are at `src/hpc_oda_commons/recipes/job-runtime/`:
 - `mlp_rolling.yml` -- feed-forward neural network, rolling evaluation
 - `embedding_knn_rolling.yml` -- embedding-space kNN, rolling evaluation (needs an embedded dataset; see `hpc-oda embed`)
 - `uopc_maxpcon.yml` -- UoPC user-based power prediction, fixed chronological split
+- `../job-power/uopc_paper_reproduction.yml` / `uopc_paper_sensitivity.yml` -- the UoPC paper protocol on F-DATA (`split.method: cutoff`; prepare `datasets/descriptors/job-power/fdata_fugaku_uopc.yml` first); see `docs/benchmarking/uopc.md`
 
 v0.1 models:
 - `model.job_runtime_baseline` -- mean predictor (supports fixed and rolling splits)
@@ -76,7 +77,7 @@ v0.1 models:
 - `model.job_runtime_moe_xgboost` -- mixture of experts: one XGBoost per (user, wallclock bin), routed inside the shared rolling window (rolling splits)
 - `model.job_runtime_random_forest` -- Random Forest, uses the shared `rolling_tabular` OHE+SVD preprocessing (rolling splits)
 - `model.job_runtime_mlp` -- feed-forward neural network, uses the shared `rolling_tabular` preprocessing (rolling splits)
-- `model.job_power_uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split)
+- `model.job_power_uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split, or the paper protocol with a cutoff split)
 
 To create a custom recipe, copy a bundled one and modify the dataset path, split parameters, or model selection:
 ```bash

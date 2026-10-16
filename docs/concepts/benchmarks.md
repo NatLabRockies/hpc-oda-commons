@@ -17,6 +17,8 @@ Built-in v0.1 recipes:
 - `src/hpc_oda_commons/recipes/job-runtime/mlp_rolling.yml` -- MLP, rolling
 - `src/hpc_oda_commons/recipes/job-runtime/embedding_knn_rolling.yml` -- embedding kNN, rolling (needs an embedded dataset)
 - `src/hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml` -- UoPC power prediction, fixed split
+- `src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml` -- the UoPC paper protocol, cutoff split ([UoPC reproduction](../benchmarking/uopc.md))
+- `src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity.yml` -- the paper's θ × k sweep, cutoff split
 
 See the [Recipes Reference](../reference/recipes.md) for the full format specification with annotated examples.
 

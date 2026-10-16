@@ -131,7 +131,7 @@ hpc-oda benchmark -v my_recipe.yml
 
 **MoE XGBoost** (`model.job_runtime_moe_xgboost`) — Mixture of experts: one XGBoost per (user, requested-wallclock bin), with the bin edges derived from each training window's own request distribution (they land on the system's partition limits), a window-wide fallback expert for sparse bins, and exponential recency weighting of training rows. Routing happens inside the shared rolling window, so it scores exactly the rows the other models score.
 
-**Job Power UoPC** (`model.job_power_uopc`) — Power-prediction model (domain `job-power-prediction`) using per-user online kNN regression on label-encoded job features (UoPC-style), with fixed evaluation.
+**Job Power UoPC** (`model.job_power_uopc`) — Power-prediction model (domain `job-power-prediction`) using per-user online kNN regression on label-encoded job features (UoPC-style), with fixed evaluation. With `split.method: cutoff` it instead reproduces the UoPC paper on Fugaku (per-node average and peak power, embedding features, kNN-classifier voting, per-user and global mean baselines, and a θ × k sensitivity sweep) — see [UoPC reproduction](docs/benchmarking/uopc.md).
 
 ---
 
@@ -198,8 +198,9 @@ run:
   overwrite: false
 ```
 
-v0.1 supports two split methods:
-- **`fixed`** — deterministic train/test split (used with the baseline model)
+v0.1 supports three split methods:
+- **`fixed`** — deterministic train/test split (used with the baseline model and the UoPC adaptation)
+- **`cutoff`** — every job submitted on or after `test_start` is scored (used by the UoPC paper protocol). Parameters: `test_start`, `theta`, `k`, and optionally `theta_values`/`k_values` for a sweep
 - **`rolling`** — sliding-window evaluation that simulates production retraining (used by the rolling baseline, XGBoost, Random Forest, TF-IDF + kNN, and MLP models). Parameters: `n_windows`, `test_window_hours`, `training_lookback_days`
 
 ### Provenance
