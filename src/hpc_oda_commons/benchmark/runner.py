@@ -25,6 +25,10 @@ from hpc_oda_commons.models.job_power_uopc.model import (
     JobPowerUopcConfig,
     JobPowerUopcModel,
 )
+from hpc_oda_commons.models.job_power_uopc.rolling import (
+    JobPowerUopcRollingConfig,
+    JobPowerUopcRollingModel,
+)
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
 from hpc_oda_commons.models.job_runtime_embedding_knn.backends import DEFAULT_SIMS_BLOCK_BYTES
 from hpc_oda_commons.models.job_runtime_embedding_knn.model import (
@@ -706,6 +710,37 @@ def run_rolling_tfidf_knn(
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
             log_target=bool(split.get("log_target", False)),
+        )
+    )
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
+
+
+def run_rolling_uopc(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run UoPC on the shared rolling windows, scored like every other model (#204)."""
+    defaults = JobPowerUopcRollingConfig()
+    model = JobPowerUopcRollingModel(
+        config=JobPowerUopcRollingConfig(
+            target_field=recipe_target(metric_defs) or defaults.target_field,
+            n_windows=int(split.get("n_windows", 1000)),
+            test_window_hours=int(split.get("test_window_hours", 6)),
+            training_lookback_days=int(split.get("training_lookback_days", 100)),
+            theta=int(split.get("theta", defaults.theta)),
+            k=int(split.get("k", defaults.k)),
+            embedding_field=str(split.get("embedding_field", defaults.embedding_field)),
         )
     )
     return _run_rolling_model_evaluate(

@@ -61,12 +61,13 @@ RUNNERS = {
     "embedding_knn": runner.run_rolling_embedding_knn,
     "signature_memorizer": runner.run_rolling_signature_memorizer,
     "moe_xgboost": runner.run_rolling_moe_xgboost,
+    "uopc": runner.run_rolling_uopc,
 }
 
 
 @pytest.mark.parametrize("name", sorted(RUNNERS))
 def test_every_rolling_model_predicts_the_recipe_target(name: str) -> None:
-    split = {**SPLIT, "k": 3} if name == "embedding_knn" else SPLIT
+    split = {**SPLIT, "k": 3} if name in {"embedding_knn", "uopc"} else SPLIT
     _, payload, artifacts = RUNNERS[name](
         _rows(), split=split, metric_defs=METRICS, capture_artifacts=True
     )
@@ -118,3 +119,11 @@ def test_the_embedding_cannot_be_the_target() -> None:
         JobRuntimeEmbeddingKnnModel(
             JobRuntimeEmbeddingKnnConfig(target_field="embedding", embedding_field="embedding")
         )
+
+
+def test_rolling_recipes_can_report_mape_and_r2() -> None:
+    """Needed to compare with UoPC, whose write-up reports both. They are computed over all
+    scored rows; arm ranking still refuses to pool them from windows."""
+    metrics = [*METRICS, {"name": "mape", "target": TARGET}, {"name": "r2", "target": TARGET}]
+    scored, _, _ = runner.run_rolling_baseline(_rows(), split=SPLIT, metric_defs=metrics)
+    assert set(scored) == {"mae", "rmse", "mape", "r2"}
