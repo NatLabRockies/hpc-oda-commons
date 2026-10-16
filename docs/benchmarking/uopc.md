@@ -89,8 +89,61 @@ counts as a reproduction if it lands within a few points of it.
 
 ## Results
 
-Run on <!-- date, machine --> with the bundled recipes.
+Run on 2026-10-16 on an Apple M3 Max (14 cores, 38 GB) with the bundled recipes, at commit
+76f4f0f. The reproduction took 28 minutes (about 1 ms per scored job, single-threaded) and
+peaked at ~20 GB resident.
 
-<!-- results:reproduction -->
+### Paper reproduction (θ = 500, k = 5)
+
+1,591,115 test jobs from 764 users were submitted on or after 2024-02-01. 1,587,516 were
+scored; 3,599 (0.23%) were skipped as cold starts, with fewer than k = 5 prior jobs by
+their user.
+
+| Target (W per allocated node) | Model | MAE | RMSE | MAPE | R² |
+|---|---|---:|---:|---:|---:|
+| Average (`avgpcon`) | **UoPC** | **6.36** | **16.14** | **9.93%** | **0.837** |
+| | Per-user mean | 11.76 | 19.12 | 60.27% | 0.771 |
+| | Global mean | 33.39 | 40.56 | 339.5% | −0.029 |
+| Peak (`maxpcon`) | **UoPC** | **6.72** | **17.77** | **10.17%** | **0.826** |
+| | Per-user mean | 12.49 | 20.46 | 61.77% | 0.769 |
+| | Global mean | 35.34 | 43.19 | 358.1% | −0.030 |
+
+**It reproduces.** 9.9% MAPE on average power (10.2% on peak) matches the public "10%
+prediction error". It also agrees with the unsourced figure in the original contribution
+(MAPE 10.10%, R² 0.833). Our test set is larger than the paper's "more than 700k jobs".
+The paper may filter jobs in a way its public description does not state.
+
+The median absolute percentage error is 2.2%, and 85.5% of jobs are within 10%. The mean
+is carried by a tail: the 90th percentile is 22%.
+
+**Cold starts and short histories.** 95.4% of scored jobs had a full θ = 500 context.
+Error falls as a user's history grows:
+
+| User's prior jobs | Jobs | UoPC MAPE | Per-user mean MAPE |
+|---|---:|---:|---:|
+| 5–49 | 13,623 | 24.4% | 34.3% |
+| 50–499 | 60,094 | 17.0% | 31.0% |
+| 500+ | 1,513,799 | 9.5% | 61.7% |
+
+The per-user mean is worst for the longest histories because it averages a user's whole
+history. Heavy users run many kinds of jobs, and UoPC's nearest neighbours separate them.
+
+**Padded allocations.** The paper divides by F-DATA's allocated nodes (`nnuma`), and so does
+this protocol. That count can be padded. 136,937 scored jobs (8.6%), all from 11 users,
+request 1 node and 48 cores, run on 1 node and draw ~91 W, yet show `nnuma` = 48. Their
+target reads ~1.9 W per allocated node, and both the job and its neighbours sit in that
+cluster. They are easy to predict, so they flatter R² more than MAPE. Without them:
+
+| Target, excluding the padded jobs | Model | MAE | MAPE | R² |
+|---|---|---:|---:|---:|
+| Average | UoPC | 6.95 | 10.25% | 0.762 |
+| | Per-user mean | 12.03 | 21.79% | 0.673 |
+| Peak | UoPC | 7.34 | 10.51% | 0.746 |
+| | Per-user mean | 12.81 | 22.56% | 0.669 |
+
+UoPC's MAPE barely moves, so the reproduction stands. The per-user mean's 60% MAPE is
+mostly those 1.9 W jobs: one heavier job in a user's history inflates their mean by
+several times. The Commons' own power targets divide by requested nodes instead
+([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204)).
 
 <!-- results:sensitivity -->
