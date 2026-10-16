@@ -82,9 +82,21 @@ fields:
 the source is missing) and `<field> / <field>`, a ratio of two other mapped fields, e.g.
 `avgpcon_per_node: {derive: "avgpcon / num_nodes_alloc"}`; a zero or missing denominator
 gives null. Any other expression is an error. (Before #204 an unrecognised expression was
-ignored, leaving the column empty.) For a column that holds a list of samples per job, such
-as a power trace, `transform: {type: list_mean}` or `{type: list_max}` reduces it to one
-number.
+ignored, leaving the column empty.) A ratio may use `runtime_seconds` or another ratio, in
+any order in the mapping; a circular derive is an error (#206). For a column that holds a
+list of samples per job, such as a power trace, `transform: {type: list_mean}` or
+`{type: list_max}` reduces it to one number.
+
+`transform: {type: energy, unit: wh}` converts energy to joules (`j`, `kj`, `wh`, `kwh`).
+`null_values: [0]` on a field turns those source values into null before any transform, for
+counters where a value means "no reading". The row is kept; only that field is null.
+Together they give average power from an energy counter (NLR Eagle, #206):
+
+```yaml
+energy_joules: { from: node_energy_total_watt_hours, type: energy, unit: wh, null_values: [0] }
+avgpcon: { derive: "energy_joules / runtime_seconds" }
+avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc" }
+```
 
 Fields can be **sourced** from a column (`source:`) or **derived** from other fields (`derive:`). The `role` is either `required` (rows missing this field are skipped) or `optional`.
 

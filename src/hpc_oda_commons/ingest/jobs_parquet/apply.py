@@ -188,6 +188,8 @@ def _apply_transform(value: Any, transform: dict[str, Any] | None) -> Any:
         return _memory_to_mb(value, str(transform.get("unit", "mb")))
     if ttype == "memory_slurm":
         return _memory_slurm_to_mb(value)
+    if ttype == "energy":
+        return _energy_to_joules(value, str(transform.get("unit", "j")))
     if ttype == "hash_identifier":
         salt_env = transform.get("salt_env")
         salt = None
@@ -217,12 +219,15 @@ _RATIO_DERIVE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*/\s*([A-Za-z_][A-Za-
 
 
 def _ratio_derives(fields: dict[str, Any]) -> dict[str, tuple[str, str]]:
-    """Fields derived as ``<numerator> / <denominator>`` of two other mapped fields.
+    """Fields derived as ``<numerator> / <denominator>`` of two other mapped fields, in
+    the order they must be computed.
 
     Added for per-node power (``avgpcon_per_node: {derive: "avgpcon / num_nodes_alloc"}``,
     #204), but general. Operands are output fields of the same mapping, so their own
-    transforms (e.g. ``integer``) apply first. Any other derive expression is an error:
-    it used to be ignored silently, leaving the column empty.
+    transforms (e.g. ``integer``) apply first, and ``runtime_seconds`` is derived before
+    any ratio. An operand may itself be a ratio (energy / runtime / nodes, #206); a cycle
+    is an error. Any other derive expression is an error: it used to be ignored silently,
+    leaving the column empty.
     """
     ratios: dict[str, tuple[str, str]] = {}
     for name, spec in fields.items():
@@ -242,11 +247,25 @@ def _ratio_derives(fields: dict[str, Any]) -> dict[str, tuple[str, str]]:
                     f"field {name!r}: derive operand {operand!r} must be another mapped field"
                 )
         ratios[name] = (numerator, denominator)
-    for name, operands in ratios.items():
-        chained = [operand for operand in operands if operand in ratios]
-        if chained:
-            raise ValueError(f"field {name!r}: derive operand {chained[0]!r} is itself derived")
-    return ratios
+
+    ordered: dict[str, tuple[str, str]] = {}
+    visiting: set[str] = set()
+
+    def visit(name: str) -> None:
+        if name in ordered:
+            return
+        if name in visiting:
+            raise ValueError(f"field {name!r}: derive is circular")
+        visiting.add(name)
+        for operand in ratios[name]:
+            if operand in ratios:
+                visit(operand)
+        visiting.discard(name)
+        ordered[name] = ratios[name]
+
+    for name in ratios:
+        visit(name)
+    return ordered
 
 
 def _derive_ratio(current: pa.Array, numerator: pa.Array, denominator: pa.Array) -> pa.Array:
@@ -271,6 +290,27 @@ _MEMORY_FACTORS: dict[str, float] = {
     "mib": 1.0,
     "gib": 1024.0,
 }
+
+
+# Energy unit factors to joules (#206: Eagle reports node energy in Wh).
+_ENERGY_FACTORS: dict[str, float] = {
+    "j": 1.0,
+    "kj": 1e3,
+    "wh": 3600.0,
+    "kwh": 3.6e6,
+}
+
+
+def _energy_to_joules(value: Any, unit: str) -> float | None:
+    factor = _ENERGY_FACTORS.get(unit.lower())
+    if factor is None:
+        raise ValueError(f"unsupported energy unit {unit!r} (supported: {sorted(_ENERGY_FACTORS)})")
+    if value is None:
+        return None
+    try:
+        return float(value) * factor
+    except (TypeError, ValueError):
+        return None
 
 
 # Upper-cased SLURM memory unit factors (MiB), mirroring _SLURM_MEM_UNIT_TO_MIB.
@@ -322,13 +362,25 @@ def _transform_out_type(transform: dict[str, Any] | None) -> pa.DataType | None:
     if transform is None:
         return None
     ttype = transform.get("type")
-    if ttype in ("duration", "memory", "memory_slurm"):
+    if ttype in ("duration", "memory", "memory_slurm", "energy"):
         return pa.float64()
     if ttype == "timestamp":
         return pa.timestamp("us", tz="UTC")
     if ttype == "hash_identifier":
         return pa.string()
     return None
+
+
+def _null_values(col: pa.Array, values: list[Any] | None) -> pa.Array:
+    """Null out source values that mean "no reading" (``null_values: [0]``, #206), before
+    any transform, so they never become a target."""
+    if not values:
+        return col
+    if _is_numeric(col.type):
+        mask = pc.is_in(pc.cast(col, pa.float64()), value_set=pa.array(values, pa.float64()))
+    else:
+        mask = pc.is_in(pc.cast(col, pa.string()), value_set=pa.array([str(v) for v in values]))
+    return pc.if_else(pc.fill_null(mask, False), pa.scalar(None, col.type), col)
 
 
 def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Array:
@@ -369,6 +421,14 @@ def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Arr
         # Non-integer epoch (or ms/us) falls through to the element-wise helper.
         if pa.types.is_integer(col.type):
             return pc.cast(pc.cast(col, pa.timestamp("s", tz="UTC")), pa.timestamp("us", tz="UTC"))
+    elif ttype == "energy":
+        unit = str(transform.get("unit", "j"))
+        if unit.lower() not in _ENERGY_FACTORS:
+            raise ValueError(
+                f"unsupported energy unit {unit!r} (supported: {sorted(_ENERGY_FACTORS)})"
+            )
+        if _is_numeric(col.type):
+            return pc.multiply(pc.cast(col, pa.float64()), _ENERGY_FACTORS[unit.lower()])
     elif ttype == "memory_slurm" and pa.types.is_string(col.type):
         return _memory_slurm_column(col)
     elif ttype == "integer":
@@ -480,9 +540,8 @@ def apply_mapping_spec(
             spec = fields.get(field, {})
             source = spec.get("source")
             if source and source in table.column_names:
-                columns[field] = _transform_column(
-                    table.column(source).combine_chunks(), spec.get("transform")
-                )
+                raw = _null_values(table.column(source).combine_chunks(), spec.get("null_values"))
+                columns[field] = _transform_column(raw, spec.get("transform"))
             else:
                 columns[field] = pa.nulls(n)
 

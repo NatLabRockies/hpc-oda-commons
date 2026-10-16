@@ -488,6 +488,70 @@ def test_normalize_rejects_a_derive_it_cannot_compute(
         normalize_target(_ratio_table(tmp_path), target, tmp_path / "out.parquet")
 
 
+def test_normalize_chains_ratio_derives(tmp_path: Path) -> None:
+    """Average power per node from energy (#206): energy / runtime, then / nodes. A ratio
+    may use another ratio, whatever order the mapping lists them in."""
+    out = tmp_path / "out.parquet"
+    target = _ratio_target(
+        watts_per_node={"derive": "watts / num_nodes_alloc"},
+        watts={"derive": "energy / runtime_seconds"},
+        energy={"from": "watts", "type": "energy", "unit": "wh"},
+    )
+    normalize_target(_ratio_table(tmp_path), target, out)
+
+    table = pq.read_table(out)
+    # 400 Wh over 60 s is 24,000 W, on 4 nodes 6,000 W each.
+    assert table.column("watts").to_pylist()[0] == 400 * 3600 / 60
+    assert table.column("watts_per_node").to_pylist() == [6000.0, None, None, None]
+
+
+def test_normalize_rejects_a_circular_derive(tmp_path: Path) -> None:
+    target = _ratio_target(
+        a={"derive": "b / num_nodes_alloc"},
+        b={"derive": "a / num_nodes_alloc"},
+    )
+    with pytest.raises(ValueError, match="circular"):
+        normalize_target(_ratio_table(tmp_path), target, tmp_path / "out.parquet")
+
+
+@pytest.mark.parametrize(
+    ("unit", "factor"), [("j", 1.0), ("kj", 1e3), ("wh", 3600.0), ("kwh", 3.6e6)]
+)
+def test_energy_transform_converts_to_joules(unit: str, factor: float) -> None:
+    """The vectorized and element-wise paths agree, and a null stays null."""
+    from hpc_oda_commons.ingest.jobs_parquet.apply import _apply_transform, _transform_column
+
+    transform = {"type": "energy", "unit": unit}
+    col = pa.array([2, None, 0.5])
+    assert _transform_column(col, transform).to_pylist() == [2 * factor, None, 0.5 * factor]
+    assert [_apply_transform(v, transform) for v in col.to_pylist()] == [
+        2 * factor,
+        None,
+        0.5 * factor,
+    ]
+
+
+def test_energy_transform_rejects_an_unknown_unit() -> None:
+    from hpc_oda_commons.ingest.jobs_parquet.apply import _transform_column
+
+    with pytest.raises(ValueError, match="unsupported energy unit"):
+        _transform_column(pa.array([1.0]), {"type": "energy", "unit": "cal"})
+
+
+def test_null_values_become_null_before_the_transform(tmp_path: Path) -> None:
+    """Eagle's 0 Wh means no reading (#206): it must not become a 0 W target. Other values,
+    and the rest of the row, are untouched."""
+    out = tmp_path / "out.parquet"
+    target = _ratio_target(
+        power={"from": "watts", "type": "number", "null_values": [300, 200]},
+    )
+    normalize_target(_ratio_table(tmp_path), target, out)
+
+    table = pq.read_table(out)
+    assert table.column("power").to_pylist() == [400.0, None, None, None]
+    assert table.num_rows == 4
+
+
 def test_list_reductions_summarise_a_trace_per_row(tmp_path: Path) -> None:
     """PM100-style power traces (#204): mean and peak per job, null for a missing or empty
     trace, and a null sample inside a trace is skipped rather than poisoning the row."""

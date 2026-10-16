@@ -165,8 +165,8 @@ Key sections:
 Defines field mapping specifications for transforming site-specific data into the canonical ODA schema. Mapping specs are stored as YAML and support:
 
 - **Source mapping**: direct column-to-field mapping
-- **Derived fields**: computed fields: `runtime_seconds` derived from `end_time - start_time`, or a ratio of two mapped fields (`derive: "avgpcon / num_nodes_alloc"`, null for a non-positive denominator). Any other expression is an error.
-- **Transformations**: typed transformations including timestamp parsing, duration conversion, memory normalization, identifier hashing, and `list_mean`/`list_max` to reduce a per-job list of samples (e.g. a power trace) to one number
+- **Derived fields**: computed fields: `runtime_seconds` derived from `end_time - start_time`, or a ratio of two mapped fields (`derive: "avgpcon / num_nodes_alloc"`, null for a non-positive denominator). A ratio may use `runtime_seconds` or another ratio; a circular derive is an error. Any other expression is an error.
+- **Transformations**: typed transformations including timestamp parsing, duration conversion, memory normalization, identifier hashing, energy conversion to joules (`type: energy`, `unit: j|kj|wh|kwh`), and `list_mean`/`list_max` to reduce a per-job list of samples (e.g. a power trace) to one number. `null_values: [...]` turns source values that mean "no reading" into null first
 - **Roles**: fields marked as `required` or `optional`
 
 ```yaml
