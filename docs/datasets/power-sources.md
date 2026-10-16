@@ -120,7 +120,9 @@ without noting it.
 
 ## What it would take
 
-In order of payoff for effort:
+In order of payoff for effort. Item 1 is
+[#206](https://github.com/NatLabRockies/hpc-oda-commons/issues/206); the rest are tracked in
+[#207](https://github.com/NatLabRockies/hpc-oda-commons/issues/207).
 
 1. **NLR Eagle, average.** Map `node_energy_total_watt_hours` on the existing descriptor.
    It needs a Wh → J (or Wh → W·s) conversion, which the mapping cannot express yet: a
