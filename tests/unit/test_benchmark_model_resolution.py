@@ -1017,7 +1017,12 @@ def test_run_cutoff_uopc_sweep_headline_is_the_declared_cell(
         "test_start": "2024-02-01",
         "theta_values": [50],
         "k_values": [5, 10],
-        "headline": {"theta": 50, "k": 10, "predictor": "KNeighborsClassifier"},
+        "headline": {
+            "theta": 50,
+            "k": 10,
+            "predictor": "KNeighborsClassifier",
+            "target": "avgpcon_per_node",
+        },
     }
 
 

@@ -46,6 +46,8 @@ PAPER_THETA = 500
 PAPER_K = 5
 PAPER_THETA_VALUES: tuple[int, ...] = (50, 100, 200, 500, 1000, 2000, 5000)
 PAPER_K_VALUES: tuple[int, ...] = (5, 10, 20, 50)
+# The two targets the paper protocol predicts, both in watts per allocated node.
+PAPER_TARGETS: tuple[str, ...] = ("avgpcon_per_node", "maxpcon_per_node")
 
 
 @dataclass

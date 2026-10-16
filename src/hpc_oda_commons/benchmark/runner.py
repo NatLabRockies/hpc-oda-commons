@@ -19,8 +19,10 @@ from hpc_oda_commons.kernel.serialization import to_jsonable
 from hpc_oda_commons.models.job_power_uopc.model import (
     PAPER_K,
     PAPER_K_VALUES,
+    PAPER_TARGETS,
     PAPER_THETA,
     PAPER_THETA_VALUES,
+    JobPowerUopcConfig,
     JobPowerUopcModel,
 )
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
@@ -73,6 +75,45 @@ def _metrics_from_eval_payload(
     return {name: float(eval_payload[name]) for name in requested if name in eval_payload}
 
 
+def recipe_target(metric_defs: list[dict[str, Any]]) -> str | None:
+    """The one column a recipe's metrics score, or None when they name none.
+
+    A metric's ``target`` is not a label. Metrics are computed from whatever the model
+    predicted, so a recipe whose metrics say ``avgpcon_per_node`` over a model that predicts
+    ``runtime_seconds`` would report runtime errors under a power name (#204). The runner
+    therefore holds the model to this column.
+    """
+    targets = {str(m.get("target", "")).strip() for m in metric_defs if m.get("target")}
+    if not targets:
+        return None
+    if len(targets) > 1:
+        raise ValueError(f"All metrics must share one target; got {sorted(targets)}.")
+    return targets.pop()
+
+
+def _require_target(
+    predicts: str | set[str], metric_defs: list[dict[str, Any]], *, model: str
+) -> str:
+    """Fail unless the recipe's metric target is a column this model predicts.
+
+    ``predicts`` is the model's target, or the set it can be pointed at. Returns the target
+    in force: the recipe's when it names one, else the model's own.
+    """
+    allowed = {predicts} if isinstance(predicts, str) else set(predicts)
+    target = recipe_target(metric_defs)
+    if target is None:
+        if len(allowed) != 1:
+            raise ValueError(f"{model} needs a metric target, one of {sorted(allowed)}.")
+        return next(iter(allowed))
+    if target not in allowed:
+        raise ValueError(
+            f"{model} predicts {' or '.join(repr(t) for t in sorted(allowed))}, but the "
+            f"recipe's metrics score {target!r}. Metric targets are what gets scored, not "
+            "labels, so this would report one column's errors under another's name."
+        )
+    return target
+
+
 def run_fixed_baseline(
     rows: list[dict[str, Any]],
     *,
@@ -81,6 +122,7 @@ def run_fixed_baseline(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed train/test split benchmark with the baseline model."""
+    _require_target("runtime_seconds", metric_defs, model="model.job_runtime_baseline")
     train_fraction = float(split.get("train_fraction", 0.8))
     n_train = max(1, int(len(rows) * train_fraction))
     train_rows = rows[:n_train]
@@ -113,6 +155,10 @@ def run_fixed_uopc(
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed chronological split benchmark with the UoPC kNN model."""
     model = JobPowerUopcModel()
+    # The runner always builds the default config, so its target is the class default.
+    _require_target(
+        JobPowerUopcConfig.target_field, metric_defs, model="model.job_power_uopc (fixed)"
+    )
     eval_payload = model.evaluate_fixed(
         rows,
         split=split,
@@ -149,6 +195,9 @@ def run_cutoff_uopc(
     silent pick, since it is what the leaderboard shows.
     """
     model = JobPowerUopcModel()
+    # The paper protocol predicts both per-node targets; the recipe's metric target picks
+    # which one is the headline (average by default in the bundled recipes).
+    target = _require_target(set(PAPER_TARGETS), metric_defs, model="model.job_power_uopc (cutoff)")
     test_start = str(split["test_start"])
     theta = int(split.get("theta", PAPER_THETA))
     k = int(split.get("k", PAPER_K))
@@ -174,7 +223,7 @@ def run_cutoff_uopc(
             verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
-        headline = eval_payload["results"][str(theta)][str(k)]["classifier"]["avgpcon_per_node"]
+        headline = eval_payload["results"][str(theta)][str(k)]["classifier"][target]
         if not headline:
             raise ValueError(
                 f"No test job had {k} prior jobs at theta={theta}, so the headline is empty."
@@ -184,7 +233,12 @@ def run_cutoff_uopc(
             "test_start": test_start,
             "theta_values": list(theta_values),
             "k_values": list(k_values),
-            "headline": {"theta": theta, "k": k, "predictor": "KNeighborsClassifier"},
+            "headline": {
+                "theta": theta,
+                "k": k,
+                "predictor": "KNeighborsClassifier",
+                "target": target,
+            },
         }
     else:
         eval_payload = model.evaluate_paper_reproduction(
@@ -196,13 +250,14 @@ def run_cutoff_uopc(
             verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
-        headline = eval_payload["avgpcon_per_node"]
+        headline = eval_payload[target]
         run_config = {
             "protocol": "paper_reproduction",
             "test_start": test_start,
             "theta": theta,
             "k": k,
             "predictor": "KNeighborsClassifier",
+            "headline_target": target,
         }
 
     requested = {str(m.get("name", "")) for m in metric_defs}
@@ -263,6 +318,7 @@ def run_rolling_baseline(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the baseline model."""
+    _require_target("runtime_seconds", metric_defs, model="model.job_runtime_baseline")
     requested = _validate_rolling_metric_defs(metric_defs)
 
     n_windows = int(split.get("n_windows", 1000))
@@ -425,6 +481,9 @@ def _run_rolling_model_evaluate(
     verbose: bool,
     capture_artifacts: bool,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    # A model that declares no target predicts runtime, as every rolling model did before #204.
+    predicts = str(getattr(model, "target_field", "runtime_seconds"))
+    _require_target(predicts, metric_defs, model=type(model).__name__)
     requested = _validate_rolling_metric_defs(metric_defs)
     eval_payload = model.evaluate(
         rows,
