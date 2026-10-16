@@ -310,7 +310,7 @@
       "entry_type": "dataset",
       "name": "F-DATA (Fugaku Jobs, Dec 2023-Apr 2024, UoPC window)",
       "version": "1.0.0",
-      "description": "The five F-DATA monthly files the UoPC paper evaluates on, normalized to oda.job.v0.2.0 with avgpcon/maxpcon power targets, allocated nodes, requested CPU frequency and F-DATA's precomputed job embedding. Separate from the runtime descriptor so the two windows never share a prepared table.",
+      "description": "The five F-DATA monthly files the UoPC paper evaluates on, normalized to oda.job.v0.2.0 with avgpcon/maxpcon power targets (whole job and per requested node), allocated nodes, requested CPU frequency and F-DATA's precomputed job embedding. Separate from the runtime descriptor so the two windows never share a prepared table.",
       "problem_domain": ["job-power-prediction"],
       "output_schema_version": "oda.job.v0.2.0",
       "license": "CC-BY-4.0",

@@ -38,19 +38,26 @@ still say `job_runtime`; they are target-agnostic.
 
 ## Per-node power
 
-The power targets are **watts per allocated node**, as the UoPC paper predicts:
-`avgpcon_per_node` (average) and `maxpcon_per_node` (peak). They are computed once, when a
-dataset is prepared, so every model reads the same column:
+The power targets are **watts per node**: `avgpcon_per_node` (average) and
+`maxpcon_per_node` (peak). They are computed once, when a dataset is prepared, so every
+model reads the same column:
 
 ```yaml
-# in a dataset descriptor's mapping
+# in a dataset descriptor's mapping (PM100)
 avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc" }
 maxpcon_per_node: { derive: "maxpcon / num_nodes_alloc" }
 ```
 
 `derive: "<field> / <field>"` divides two other mapped fields after their own transforms.
-A job with zero or no allocated nodes gets null, never an infinite target, and drops out of
-scoring.
+A job with a zero or missing node count gets null, never an infinite target, and drops out
+of scoring.
+
+**Which node count.** Divide by the nodes the power was summed over. For PM100 that is the
+allocated nodes. For F-DATA it is the **requested** nodes (`num_nodes_req`): Fugaku's
+allocated count (`nnuma`) can be padded past the nodes a job runs on, while its power sums
+only those. In the UoPC test months, 137k jobs (8.6%) request 1 node and 48 cores but show
+`nnuma` = 48, and their ~91 W would read as 1.9 W per allocated node. The UoPC paper
+divides by `nnuma`, so the [paper reproduction](../benchmarking/uopc.md) still does.
 
 ## Datasets with power
 

@@ -1,4 +1,4 @@
-# XGBoost (OHE+SVD) predicting peak power per allocated node, on the shared rolling
+# XGBoost (OHE+SVD) predicting peak power per node, on the shared rolling
 # protocol (#204): 89 daily windows ending at the last submit, so testing starts
 # around 2024-02-01 like the UoPC paper reproduction, with 60 days of history.
 # Every model in recipes/job-power/*_rolling_*.yml uses the same split and rows.

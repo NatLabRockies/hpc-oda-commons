@@ -16,7 +16,7 @@ runs/benchmark-20260301-120000/
 ## Understanding the Metrics
 
 Metrics are in the units of the recipe's target: seconds for `runtime_seconds`, watts per
-allocated node for `avgpcon_per_node` / `maxpcon_per_node` (see
+node for `avgpcon_per_node` / `maxpcon_per_node` (see
 [Predict job power](predict-power.md)). The examples below are for runtime.
 
 ### MAE (Mean Absolute Error)

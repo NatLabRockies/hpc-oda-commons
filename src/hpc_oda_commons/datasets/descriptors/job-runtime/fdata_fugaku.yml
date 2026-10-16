@@ -13,7 +13,7 @@ description: >
   missing block. The full dataset spans Mar 2021 - Apr 2024 (38 monthly parquet files, ~24M
   jobs, ~28 GB). Runtime-prediction target = duration (seconds).
   Average and peak job power are mapped too, whole-job (avgpcon, maxpcon) and per
-  allocated node (avgpcon_per_node, maxpcon_per_node), so the runtime models can be
+  requested node (avgpcon_per_node, maxpcon_per_node), so the runtime models can be
   pointed at power on this window (#204). The rows are the runtime benchmark's: the
   filter is still on runtime, so a job without power keeps its runtime row.
 problem_domains: [job-runtime-prediction, job-power-prediction]
@@ -88,7 +88,9 @@ targets:
       pclass: { from: pclass }
       avgpcon: { from: avgpcon, type: number }
       maxpcon: { from: maxpcon, type: number }
-      avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc" }
-      maxpcon_per_node: { derive: "maxpcon / num_nodes_alloc" }
+      # Per requested node, not per nnuma: Fugaku can pad the allocated node count past
+      # the nodes a job runs on, and power sums only those (see fdata_fugaku_uopc.yml).
+      avgpcon_per_node: { derive: "avgpcon / num_nodes_req" }
+      maxpcon_per_node: { derive: "maxpcon / num_nodes_req" }
     filter: { require_nonnull: [runtime_seconds] }
     output: { id: fdata_fugaku, path: data/datasets/fdata_fugaku/data.parquet }

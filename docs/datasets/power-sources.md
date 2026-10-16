@@ -2,7 +2,7 @@
 
 An audit, done 2026-10-16, of where per-job power can come from for job-power prediction
 ([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204)). The target is
-**average and peak power per allocated node**. A source is only useful if it ties power to
+**average and peak power per node**. A source is only useful if it ties power to
 a job, either directly or through a node + time join to a job table.
 
 **How it was checked.** "Verified" means we read the real data: schemas, value ranges,
@@ -41,9 +41,12 @@ without noting it.
 
 ## Verified
 
-- **F-DATA (Fugaku).** `avgpcon`, `maxpcon` and `nnuma` are present in every monthly file
-  we read (2023-07, 2024-04). The data paper's Table 2 defines them as sums over the job's
-  nodes (reported), so per node is `÷ nnuma`. `econ` is energy in Wh (reported). F-DATA also ships a
+- **F-DATA (Fugaku).** `avgpcon`, `maxpcon`, `nnumr`, `nnuma` and `nnumu` are present in
+  every monthly file we read (2023-07, 2024-04). The data paper's Table 2 defines the power
+  columns as sums over the job's nodes (reported). They sum the nodes the job runs on, not
+  the allocated count: in April 2024, 49,877 jobs request 1 node and 48 cores, use 1 node,
+  draw ~91 W, and show `nnuma` = 48; where `nnumu` < `nnuma`, power per used or requested
+  node has a median of ~93 W against 43 W per allocated node. So per node is `÷ nnumr`. `econ` is energy in Wh (reported). F-DATA also ships a
   per-job `embedding`. Mapped in both Fugaku descriptors.
 - **PM100.** `node_power_consumption` is the job's total node power in W across its nodes,
   sampled every 20 s. It scales linearly with node count (about 690–770 W per node from 1 to

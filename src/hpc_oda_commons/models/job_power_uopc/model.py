@@ -79,17 +79,6 @@ class _PaperPreparedData:
     user_max_cumsum: dict[str, np.ndarray]
 
 
-def _per_node(row: dict[str, Any], column: str, whole_job: float, nodes: float) -> float:
-    """The row's per-node target column if it has one, else ``whole_job / nodes``."""
-    value = row.get(column)
-    if value is None:
-        return whole_job / nodes
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return float("nan")
-
-
 def _one_blas_thread(method):
     """Run an evaluate_* method with native BLAS/OpenMP pools pinned to one thread.
 
@@ -444,11 +433,11 @@ class JobPowerUopcModel:
             except (TypeError, ValueError):
                 continue
 
-            # Prepared tables carry the per-node targets every model predicts (#204); use
-            # them so UoPC scores exactly the same column. Hand-placed raw files lack them,
-            # so fall back to the same division.
-            avg_target = _per_node(row, "avgpcon_per_node", avgpcon, nnuma)
-            max_target = _per_node(row, "maxpcon_per_node", maxpcon, nnuma)
+            # The paper's targets: whole-job power over allocated nodes (nnuma), as the
+            # authors' code divides. Not the prepared avgpcon_per_node columns, which divide
+            # by requested nodes because nnuma can be padded (#204).
+            avg_target = avgpcon / nnuma
+            max_target = maxpcon / nnuma
 
             if (
                 not math.isfinite(submit)

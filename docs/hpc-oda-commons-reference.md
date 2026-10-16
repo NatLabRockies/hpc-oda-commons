@@ -480,7 +480,7 @@ A per-user kNN power-prediction model (UoPC-style) that predicts `maxpcon` (maxi
 
 ### 7.9 Prediction targets
 
-Every model predicts the column its recipe's metrics target, `runtime_seconds` by default. The runner sets `target_field` on the target-configurable models (all the runtime models) and fails a model that cannot predict the named column, so a metric's target is never just a label. Features come from `feature_allowlist()` in `models/feature_policy.py`, which never includes the target. Power targets are `avgpcon_per_node` and `maxpcon_per_node`, watts per allocated node, derived during dataset preparation; `recipes/job-power/<model>_rolling_{avg,peak}.yml` run every model on them. See `docs/how-to/predict-power.md`.
+Every model predicts the column its recipe's metrics target, `runtime_seconds` by default. The runner sets `target_field` on the target-configurable models (all the runtime models) and fails a model that cannot predict the named column, so a metric's target is never just a label. Features come from `feature_allowlist()` in `models/feature_policy.py`, which never includes the target. Power targets are `avgpcon_per_node` and `maxpcon_per_node`, watts per node (per requested node on F-DATA, whose allocated count can be padded), derived during dataset preparation; `recipes/job-power/<model>_rolling_{avg,peak}.yml` run every model on them. See `docs/how-to/predict-power.md`.
 
 ---
 

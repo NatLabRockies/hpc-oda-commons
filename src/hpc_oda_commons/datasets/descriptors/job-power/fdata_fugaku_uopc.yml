@@ -9,7 +9,7 @@ description: >
   separate dataset from `dataset.job_runtime.fdata_fugaku` on purpose: the two cover
   different months, and sharing one descriptor would mean sharing one prepared table, so
   preparing either window would overwrite the other's. Power targets are avgpcon and
-  maxpcon (watts, whole job), also given per allocated node as avgpcon_per_node and
+  maxpcon (watts, whole job), also given per requested node as avgpcon_per_node and
   maxpcon_per_node, the columns every model predicts. Each row
   also carries F-DATA's precomputed job `embedding`, which UoPC uses as its main feature.
 problem_domains: [job-power-prediction]
@@ -85,10 +85,13 @@ targets:
       freq_req: { from: freq_req, type: integer }
       avgpcon: { from: avgpcon, type: number }
       maxpcon: { from: maxpcon, type: number }
-      # The prediction targets: watts per allocated node, as the UoPC paper predicts.
-      # Null for a job with no allocated nodes (#204).
-      avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc" }
-      maxpcon_per_node: { derive: "maxpcon / num_nodes_alloc" }
+      # The prediction targets: watts per node. F-DATA's power sums the nodes the job ran
+      # on, but nnuma counts the allocated node shape, which Fugaku can pad: 1-node,
+      # 48-core jobs are recorded with nnuma = 48 and would read ~2 W per node. So divide
+      # by requested nodes, which match the nodes used. Null for a job requesting no
+      # nodes (#204). The UoPC paper protocol divides by nnuma itself, as the paper does.
+      avgpcon_per_node: { derive: "avgpcon / num_nodes_req" }
+      maxpcon_per_node: { derive: "maxpcon / num_nodes_req" }
       embedding: { from: embedding }
     filter: { require_nonnull: [avgpcon_per_node, maxpcon_per_node, embedding] }
     output: { id: fdata_fugaku_uopc, path: data/datasets/fdata_fugaku_uopc/data.parquet }

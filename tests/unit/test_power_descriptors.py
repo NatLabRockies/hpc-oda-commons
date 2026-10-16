@@ -41,8 +41,9 @@ def test_fugaku_runtime_window_is_untouched_by_the_power_work() -> None:
     assert not runtime.source.get("slices")
 
 
-def _fdata_month(path: Path) -> None:
-    """A few rows shaped like an F-DATA monthly file (the columns this descriptor maps)."""
+def _fdata_month(path: Path, nnuma: list[int] | None = None) -> None:
+    """A few rows shaped like an F-DATA monthly file (the columns this descriptor maps).
+    Every job requests 2 nodes; ``nnuma`` overrides the allocated count."""
     n = 6
     stamp = [f"2024-02-0{i + 1}T10:00:00+09:00" for i in range(n)]
     finish = [f"2024-02-0{i + 1}T12:00:00+09:00" for i in range(n)]
@@ -55,7 +56,7 @@ def _fdata_month(path: Path) -> None:
                 "cnumr": pa.array([48] * n, pa.int64()),
                 "cnumat": pa.array([48] * n, pa.int64()),
                 "nnumr": pa.array([2] * n, pa.int64()),
-                "nnuma": pa.array([2] * n, pa.int64()),
+                "nnuma": pa.array(nnuma or [2] * n, pa.int64()),
                 "adt": stamp,
                 "sdt": stamp,
                 "edt": finish,
@@ -125,6 +126,27 @@ def test_uopc_window_derives_per_node_power(tmp_path: Path) -> None:
         "avgpcon_per_node",
         "maxpcon_per_node",
     }
+
+
+def test_per_node_power_divides_by_requested_nodes_not_a_padded_allocation(
+    tmp_path: Path,
+) -> None:
+    """Fugaku can record more allocated nodes (nnuma) than a job runs on: 1-node, 48-core
+    jobs show nnuma = 48 while their power is one node's. The prepared per-node targets
+    divide by requested nodes; the paper protocol still divides by nnuma, as the paper
+    does (#204)."""
+    (target,) = load_descriptor(_UOPC).targets
+    raw = tmp_path / "24_02.parquet"
+    _fdata_month(raw, nnuma=[48, 2, 2, 2, 2, 2])
+    out = tmp_path / "data.parquet"
+    normalize_target(raw, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert rows[0]["avgpcon_per_node"] == 100.0  # 200 W over 2 requested nodes, not 48
+    assert rows[0]["maxpcon_per_node"] == 150.0
+
+    prepared = JobPowerUopcModel()._prepare_paper_data(rows, test_start="2024-02-01")
+    assert prepared.avg_target_arr[0] == 200.0 / 48
 
 
 def test_fugaku_runtime_window_carries_power_without_changing_its_rows(tmp_path: Path) -> None:

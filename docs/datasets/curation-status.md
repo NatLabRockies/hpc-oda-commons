@@ -101,13 +101,13 @@ Power/failure/anomaly datasets remain deferred to their phases (see the investig
 
 ## Power columns
 
-Mapped per allocated node (`avgpcon_per_node`, `maxpcon_per_node`) for job-power prediction
+Mapped per node (`avgpcon_per_node`, `maxpcon_per_node`) for job-power prediction
 ([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204),
 [how-to](../how-to/predict-power.md)):
 
 | Dataset | Status |
 |---|---|
-| `fdata_fugaku_uopc` (Dec 2023–Apr 2024) | Mapped. F-DATA gives `avgpcon`/`maxpcon` per job in W and `nnuma` allocated nodes. |
+| `fdata_fugaku_uopc` (Dec 2023–Apr 2024) | Mapped. F-DATA gives `avgpcon`/`maxpcon` per job in W, divided by requested nodes (`nnumr`): the allocated count `nnuma` can be padded past the nodes a job runs on (1-node jobs recorded with 48). |
 | `fdata_fugaku` (Mar–Sep 2023) | Mapped, same columns; rows still filtered on runtime only. |
 | `adastra_mi250` | **Not mapped yet; usable for average power.** Undocumented at the source, but measured: `node_power_consumption` holds exactly one value per allocated node, each node's **energy in joules over the job** (it grows with run time, r = 0.89). Value ÷ run time gives a median ~1.1–1.3 kW per node, plausible for MI250 nodes, so average power per node = `list_mean` ÷ runtime; no peak. 214 of 15,285 jobs read 0 and some read a few watts: missing telemetry that must become null before it can be a target, which the mapping cannot yet express. The `cpu_`/`mem_power_consumption` columns are placeholders (exactly 140 W and ~74 W × run time). Newer Adastra releases (30-day, 90-day with 20 s telemetry) use different conventions. See [power sources](power-sources.md). |
 | `pm100` (Marconi100, May–Oct 2020) | Mapped. `node_power_consumption` is the job's total node power in W across its allocated nodes, sampled every 20 s: it scales linearly with node count (~690–770 W per node from 1 to 14 nodes). `list_mean`/`list_max` reduce it to `avgpcon`/`maxpcon`, then per node. Checked against the raw traces on the real file. Rows still filtered on runtime only. |
