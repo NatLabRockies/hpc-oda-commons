@@ -32,6 +32,7 @@
           "role": { "type": ["string", "null"] },
           "units": { "type": ["string", "null"] },
           "null_values": { "type": ["array", "null"], "items": { "type": ["number", "string"] } },
+          "null_when": { "type": ["array", "null"], "items": { "type": "object" } },
           "transform": { "type": ["object", "null"], "additionalProperties": true }
         }
       }

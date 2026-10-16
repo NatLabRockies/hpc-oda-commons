@@ -98,6 +98,23 @@ avgpcon: { derive: "energy_joules / runtime_seconds" }
 avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc" }
 ```
 
+`null_when` nulls a field where a condition on another source column holds, and keeps the
+row. It takes a list; any match nulls. Each condition names a `source` column and one of
+`gt`, `ge`, `lt`, `le` (a number) or `in` (a list). A null source value matches nothing. For
+example, Kestrel's Slurm energy is the whole node's when the node was shared, so it is not
+the job's power (#209):
+
+```yaml
+energy_joules:
+  from: consumed_energy_raw_joules
+  type: energy
+  unit: j
+  null_values: [0]
+  null_when:
+    - { source: shared_job_count, ge: 1 }
+    - { source: partition, in: [shared, shared-stdby, sharedl] }
+```
+
 Fields can be **sourced** from a column (`source:`) or **derived** from other fields (`derive:`). The `role` is either `required` (rows missing this field are skipped) or `optional`.
 
 ## Output
