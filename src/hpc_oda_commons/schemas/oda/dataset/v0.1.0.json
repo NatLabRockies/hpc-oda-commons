@@ -57,7 +57,9 @@
             "integer",
             "number",
             "string",
-            "passthrough"
+            "passthrough",
+            "list_mean",
+            "list_max"
           ],
           "description": "Normalization transform; omitted means pass the value through unchanged."
         },

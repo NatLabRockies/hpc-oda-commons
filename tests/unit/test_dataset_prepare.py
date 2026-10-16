@@ -486,3 +486,15 @@ def test_normalize_rejects_a_derive_it_cannot_compute(
     target = _ratio_target(power_per_node={"derive": derive})
     with pytest.raises(ValueError, match=match):
         normalize_target(_ratio_table(tmp_path), target, tmp_path / "out.parquet")
+
+
+def test_list_reductions_summarise_a_trace_per_row(tmp_path: Path) -> None:
+    """PM100-style power traces (#204): mean and peak per job, null for a missing or empty
+    trace, and a null sample inside a trace is skipped rather than poisoning the row."""
+    from hpc_oda_commons.ingest.jobs_parquet.apply import _reduce_list_column
+
+    traces = pa.array([[100, 300], [50], [], None, [10, None, 30]], type=pa.list_(pa.int32()))
+    assert _reduce_list_column(traces, "list_mean").to_pylist() == [200.0, 50.0, None, None, 20.0]
+    assert _reduce_list_column(traces, "list_max").to_pylist() == [300.0, 50.0, None, None, 30.0]
+    with pytest.raises(ValueError, match="needs a list column"):
+        _reduce_list_column(pa.array([1.0]), "list_mean")

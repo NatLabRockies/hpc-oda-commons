@@ -142,3 +142,33 @@ def test_fugaku_runtime_window_carries_power_without_changing_its_rows(tmp_path:
     assert summary["rows_final"] == 6  # the row without avgpcon is kept
     assert [r["avgpcon_per_node"] for r in rows] == [100.0, 105.0, None, 115.0, 120.0, 125.0]
     assert "embedding" not in rows[0]  # the runtime fleet embeds with `hpc-oda embed`
+
+
+def test_pm100_power_is_its_node_trace_per_allocated_node(tmp_path: Path) -> None:
+    """PM100's node_power_consumption is the job's total across its nodes (it scales with
+    node count), so per-node power is the trace's mean/peak over allocated nodes."""
+    (target,) = load_descriptor(_DESCRIPTORS / "job-runtime" / "pm100.yml").targets
+    raw = tmp_path / "job_table.parquet"
+    ts = pa.array([1_600_000_000_000_000] * 2, pa.timestamp("us", tz="UTC"))
+    pq.write_table(
+        pa.table(
+            {
+                "job_id": [1, 2],
+                "start_time": ts,
+                "end_time": ts,
+                "submit_time": ts,
+                "run_time": [60, 120],
+                "num_nodes_alloc": [1, 4],
+                "node_power_consumption": pa.array(
+                    [[600, 800], [2400, 2800, 3200]], pa.list_(pa.int32())
+                ),
+            }
+        ),
+        raw,
+    )
+    out = tmp_path / "data.parquet"
+    normalize_target(raw, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert [r["avgpcon_per_node"] for r in rows] == [700.0, 700.0]
+    assert [r["maxpcon_per_node"] for r in rows] == [800.0, 800.0]

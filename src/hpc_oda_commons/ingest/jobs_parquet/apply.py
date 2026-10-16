@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
@@ -380,11 +381,43 @@ def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Arr
         if pa.types.is_floating(col.type):
             return col
         return pc.cast(col, pa.float64())
+    elif ttype in _LIST_REDUCTIONS:
+        return _reduce_list_column(col, ttype)
 
     # Element-wise fallback: iso8601, hh:mm:ss, epoch_ms/us,
     # hash_identifier, non-numeric sources, or unrecognized transforms.
     values = [_apply_transform(v, transform) for v in col.to_pylist()]
     return pa.array(values, type=_transform_out_type(transform) or col.type)
+
+
+_LIST_REDUCTIONS = frozenset({"list_mean", "list_max"})
+
+
+def _reduce_list_column(col: pa.Array, ttype: str) -> pa.Array:
+    """The mean or maximum of each row's list of samples, as float64.
+
+    For sources that record a job's power as a trace rather than a number, e.g. PM100's
+    ``node_power_consumption``, sampled every 20 s (#204). A null or empty list gives null;
+    a null sample inside a list is skipped rather than poisoning the row.
+    """
+    if not (
+        pa.types.is_list(col.type)
+        or pa.types.is_large_list(col.type)
+        or pa.types.is_fixed_size_list(col.type)
+    ):
+        raise ValueError(f"transform {ttype!r} needs a list column, got {col.type}")
+    n = len(col)
+    parents = np.asarray(pc.list_parent_indices(col), dtype=np.int64)
+    values = pc.cast(pc.list_flatten(col), pa.float64()).to_numpy(zero_copy_only=False)
+    present = ~np.isnan(values)
+    parents, values = parents[present], values[present]
+    counts = np.bincount(parents, minlength=n)
+    if ttype == "list_mean":
+        out = np.bincount(parents, weights=values, minlength=n) / np.maximum(counts, 1)
+    else:
+        out = np.full(n, -np.inf)
+        np.maximum.at(out, parents, values)
+    return pa.array(out, type=pa.float64(), mask=counts == 0)
 
 
 def _completeness_mask(table: pa.Table) -> Any:

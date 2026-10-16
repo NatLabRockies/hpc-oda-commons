@@ -58,10 +58,11 @@ scoring.
 |---|---|---|
 | `dataset.job_power.fdata_fugaku_uopc` | Fugaku, Dec 2023–Apr 2024 | `avgpcon`, `maxpcon`, per node, plus F-DATA's job `embedding` |
 | `dataset.job_runtime.fdata_fugaku` | Fugaku, Mar–Sep 2023 (the runtime benchmark window) | `avgpcon`, `maxpcon`, per node; rows filtered on runtime only |
+| `dataset.job_runtime.pm100` | Marconi100, May–Oct 2020 | mean and peak of the job's node-power trace, per node; rows filtered on runtime only |
 
-PM100 and Adastra also record power, as lists of samples per job; see
-[curation status](../datasets/curation-status.md#power-columns) for why they are not mapped
-yet.
+Sources that record power as a trace of samples are reduced with `type: list_mean` or
+`type: list_max`. Adastra also records power traces, but they are not watts; see
+[curation status](../datasets/curation-status.md#power-columns).
 
 ## Run it
 
