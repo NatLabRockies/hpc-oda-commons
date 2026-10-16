@@ -75,9 +75,11 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   comparable with the paper. A deployment would fit the scaling on history alone.
 - **Classifier on rounded targets.** Treating watts as classes is how the reference code
   works, not a Commons choice. The regressor ablation in the sweep shows what it costs.
-- **Exact values move across machines.** kNN ties and BLAS differences can shift
-  individual predictions ([#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)),
-  so compare to within a tolerance, not to the last digit.
+- **Exact values move across machines and code paths.** kNN ties and BLAS differences can
+  shift individual predictions ([#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)).
+  Ties are common here (many jobs have identical features), so even the sweep and the
+  reproduction differ by ~0.3 MAPE points at the same θ and k. Compare to within a
+  tolerance, not to the last digit.
 
 ## What it is measured against
 
@@ -146,4 +148,108 @@ mostly those 1.9 W jobs: one heavier job in a user's history inflates their mean
 several times. The Commons' own power targets divide by requested nodes instead
 ([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204)).
 
-<!-- results:sensitivity -->
+### Sensitivity sweep (θ × k)
+
+The full grid took 2 h 15 min (7 to 51 minutes per θ, the most at θ = 5000) and peaked at
+~17 GB resident. Each cell shows MAPE / R² on average power per allocated node.
+
+**Classifier** (the paper's predictor, a majority vote over rounded watts):
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 19.49% / 0.769 | 15.92% / 0.771 | 14.74% / 0.769 | 15.09% / 0.751 |
+| 100 | 15.39% / 0.800 | 19.32% / 0.790 | 14.03% / 0.780 | 14.07% / 0.771 |
+| 200 | 11.12% / 0.824 | 13.76% / 0.817 | 19.14% / 0.803 | 13.60% / 0.783 |
+| 500 | 9.65% / 0.840 | 9.56% / 0.848 | 10.74% / 0.841 | 18.92% / 0.812 |
+| 1000 | 9.56% / 0.841 | 9.40% / 0.850 | 9.71% / 0.849 | 13.30% / 0.823 |
+| 2000 | 9.60% / 0.837 | 9.32% / 0.848 | 9.49% / 0.847 | 10.17% / 0.842 |
+| 5000 | 10.01% / 0.816 | 9.68% / 0.829 | 9.81% / 0.826 | 10.27% / 0.824 |
+
+**Regressor** (the mean of the same neighbours, an ablation):
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 27.65% / 0.806 | 33.24% / 0.805 | 39.34% / 0.800 | 54.75% / 0.788 |
+| 100 | 17.36% / 0.832 | 26.06% / 0.826 | 30.93% / 0.819 | 37.57% / 0.810 |
+| 200 | 11.21% / 0.851 | 14.62% / 0.849 | 25.02% / 0.840 | 32.57% / 0.828 |
+| 500 | 9.15% / 0.870 | 9.70% / 0.872 | 12.24% / 0.868 | 24.43% / 0.852 |
+| 1000 | 9.04% / 0.871 | 9.13% / 0.875 | 9.79% / 0.876 | 13.70% / 0.867 |
+| 2000 | 9.06% / 0.873 | 9.02% / 0.878 | 9.22% / 0.881 | 10.62% / 0.880 |
+| 5000 | 9.50% / 0.859 | 9.40% / 0.865 | 9.57% / 0.867 | 10.21% / 0.865 |
+
+<details>
+<summary>Peak power (maxpcon per allocated node)</summary>
+
+Classifier:
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 19.21% / 0.769 | 15.97% / 0.765 | 14.79% / 0.767 | 15.50% / 0.741 |
+| 100 | 15.52% / 0.790 | 18.48% / 0.782 | 14.14% / 0.778 | 14.25% / 0.768 |
+| 200 | 11.30% / 0.816 | 13.52% / 0.808 | 18.50% / 0.795 | 13.82% / 0.776 |
+| 500 | 9.85% / 0.831 | 9.86% / 0.835 | 10.89% / 0.830 | 18.60% / 0.804 |
+| 1000 | 9.89% / 0.830 | 9.80% / 0.835 | 9.89% / 0.836 | 12.89% / 0.816 |
+| 2000 | 9.78% / 0.829 | 9.72% / 0.834 | 9.75% / 0.833 | 10.30% / 0.832 |
+| 5000 | 10.21% / 0.805 | 9.79% / 0.816 | 9.83% / 0.814 | 10.32% / 0.810 |
+
+Regressor:
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 28.18% / 0.799 | 34.04% / 0.797 | 40.46% / 0.793 | 55.94% / 0.783 |
+| 100 | 17.74% / 0.823 | 26.57% / 0.817 | 31.64% / 0.813 | 38.62% / 0.805 |
+| 200 | 11.57% / 0.840 | 15.02% / 0.838 | 25.57% / 0.831 | 33.42% / 0.820 |
+| 500 | 9.50% / 0.858 | 10.07% / 0.860 | 12.61% / 0.857 | 24.97% / 0.844 |
+| 1000 | 9.45% / 0.860 | 9.54% / 0.863 | 10.20% / 0.865 | 14.09% / 0.858 |
+| 2000 | 9.43% / 0.862 | 9.40% / 0.867 | 9.59% / 0.871 | 10.98% / 0.871 |
+| 5000 | 9.71% / 0.849 | 9.59% / 0.856 | 9.76% / 0.857 | 10.40% / 0.855 |
+
+</details>
+
+**Coverage.** A cell scores only jobs whose user has at least k prior jobs: 99.77% of test
+jobs at k = 5, 99.61% at 10, 99.42% at 20 and 98.92% at 50. Of the 1,591,115 test jobs, 812
+have no prior job by their user, and 3,599, 6,133, 9,206 and 17,222 have fewer than 5, 10,
+20 and 50. The median user history is 28,779 jobs.
+
+What the grid shows:
+
+- **θ matters more than k.** MAPE falls from 15–19% at θ = 50 to 9.3–10.7% for
+  θ = 500–2000 with k ≤ 20. θ = 5000 is slightly worse on every metric: the oldest history hurts more
+  than it helps.
+- **The paper's θ = 500, k = 5 is close to the best.** The best classifier cell is θ = 2000,
+  k = 10 (9.32%, R² 0.848), 0.3 points better.
+- **Voting on rounded watts costs R².** The mean of the same neighbours has the higher R²
+  in every cell (0.79–0.88 against 0.75–0.85). Its MAPE is lower only with a large θ and
+  small k; the best cell overall is the regressor at θ = 2000, k = 10 (9.02%, R² 0.878).
+  Elsewhere the regressor's MAPE rises quickly with k, because averaging in one normal job
+  ruins a 1.9 W target (see padded allocations above).
+- **The classifier spikes at k = θ/10**: 19.5% at (50, 5), 19.3% at (100, 10), 19.1% at
+  (200, 20) and 18.9% at (500, 50), with R² smooth across those cells. Re-running the sweep's
+  own neighbour search and vote on samples of 20,000 test jobs at θ = 100 puts the whole
+  spike on the padded users. Their MAPE is 41% at k = 5, 75% at k = 10 and 26% at k = 20.
+  A sample of 120 other users stays at 12.8–13.4% for every k. Why those sizes in
+  particular is not established; it comes from the vote over these users' mix of ~2 W and
+  normal targets, and does not affect the other users.
+- **The headline cell differs from the reproduction run** (9.65% against 9.93% MAPE at
+  θ = 500, k = 5) because of exact ties. Many jobs have identical features: in the
+  samples above, 30% of queries had all 50 nearest neighbours at distance 0. The sweep takes
+  the first k of its 50 nearest neighbours, while the reproduction asks scikit-learn for k
+  directly, and the two pick different jobs among equally near ones. Both are valid
+  readings of the protocol; the spread between them, ~0.3 points, is the tolerance to
+  compare within.
+
+## Should power have its own tracked benchmark?
+
+Yes, but not with this protocol. Per-node power is clearly predictable from a user's
+history: R² is 0.84–0.88 and MAPE ~9–10%, well ahead of the per-user mean (0.67–0.77). That
+headroom is enough to rank models. But this protocol is UoPC's own: it refits a model per
+job against that user's history, which most models in the Commons do not support. A
+tracked benchmark should use the shared rolling protocol that every model runs on
+([power prediction](power.md), #204), with:
+
+- targets per requested node, because F-DATA's allocated counts are padded;
+- average power as the headline, because peak means different things across datasets
+  ([power sources](../datasets/power-sources.md));
+- this reproduction kept as the UoPC reference result.
+
+Whether to make it a leaderboard track should wait for the rolling results.
