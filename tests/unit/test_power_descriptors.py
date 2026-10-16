@@ -108,3 +108,20 @@ def test_uopc_window_prepares_the_columns_the_paper_protocol_reads(tmp_path: Pat
     prepared = model._prepare_paper_data(table.to_pylist(), test_start="2024-02-01")
     assert len(prepared.avg_target_arr) == 5
     assert prepared.avg_target_arr[0] == 100.0  # 200 W over 2 allocated nodes
+
+
+def test_uopc_window_derives_per_node_power(tmp_path: Path) -> None:
+    """The targets every model predicts are computed once, during preparation (#204)."""
+    (target,) = load_descriptor(_UOPC).targets
+    raw = tmp_path / "24_02.parquet"
+    _fdata_month(raw)
+    out = tmp_path / "data.parquet"
+    normalize_target(raw, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert [r["avgpcon_per_node"] for r in rows] == [r["avgpcon"] / 2 for r in rows]
+    assert [r["maxpcon_per_node"] for r in rows] == [r["maxpcon"] / 2 for r in rows]
+    assert {c.target_column for c in target.capabilities} == {
+        "avgpcon_per_node",
+        "maxpcon_per_node",
+    }

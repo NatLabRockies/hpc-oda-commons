@@ -211,6 +211,56 @@ def _derive_runtime(row: dict[str, Any]) -> float | None:
 
 REQUIRED_FIELDS = ("job_id", "start_time", "end_time", "runtime_seconds")
 
+_RUNTIME_DERIVE = "end_time - start_time"
+_RATIO_DERIVE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*/\s*([A-Za-z_][A-Za-z0-9_]*)\s*$")
+
+
+def _ratio_derives(fields: dict[str, Any]) -> dict[str, tuple[str, str]]:
+    """Fields derived as ``<numerator> / <denominator>`` of two other mapped fields.
+
+    Added for per-node power (``avgpcon_per_node: {derive: "avgpcon / num_nodes_alloc"}``,
+    #204), but general. Operands are output fields of the same mapping, so their own
+    transforms (e.g. ``integer``) apply first. Any other derive expression is an error:
+    it used to be ignored silently, leaving the column empty.
+    """
+    ratios: dict[str, tuple[str, str]] = {}
+    for name, spec in fields.items():
+        derive = (spec or {}).get("derive")
+        if not derive or derive == _RUNTIME_DERIVE:
+            continue
+        match = _RATIO_DERIVE.match(str(derive))
+        if match is None:
+            raise ValueError(
+                f"field {name!r}: unsupported derive {derive!r} (supported: "
+                f"{_RUNTIME_DERIVE!r} for runtime_seconds, or '<field> / <field>')"
+            )
+        numerator, denominator = match.groups()
+        for operand in (numerator, denominator):
+            if operand == name or operand not in fields:
+                raise ValueError(
+                    f"field {name!r}: derive operand {operand!r} must be another mapped field"
+                )
+        ratios[name] = (numerator, denominator)
+    for name, operands in ratios.items():
+        chained = [operand for operand in operands if operand in ratios]
+        if chained:
+            raise ValueError(f"field {name!r}: derive operand {chained[0]!r} is itself derived")
+    return ratios
+
+
+def _derive_ratio(current: pa.Array, numerator: pa.Array, denominator: pa.Array) -> pa.Array:
+    """``numerator / denominator`` where ``current`` is null; null for a non-positive or
+    missing denominator, so a job with no allocated nodes has no per-node value."""
+    num = pc.cast(numerator, pa.float64())
+    den = pc.cast(denominator, pa.float64())
+    ratio = pc.if_else(
+        pc.fill_null(pc.greater(den, 0.0), False),
+        pc.divide(num, den),
+        pa.scalar(None, pa.float64()),
+    )
+    return pc.if_else(pc.is_null(current), ratio, pc.cast(current, pa.float64()))
+
+
 _MEMORY_FACTORS: dict[str, float] = {
     "bytes": 1.0 / (1024.0 * 1024.0),
     "kb": 1.0 / 1024.0,
@@ -373,7 +423,8 @@ def apply_mapping_spec(
     """
     mapping = read_mapping_spec(mapping_path, validate=True)
     fields: dict[str, Any] = mapping.get("fields", {})
-    derives_runtime = fields.get("runtime_seconds", {}).get("derive") == "end_time - start_time"
+    derives_runtime = fields.get("runtime_seconds", {}).get("derive") == _RUNTIME_DERIVE
+    ratio_derives = _ratio_derives(fields)
 
     # Fixed output column order, identical across batches so filtered tables concat.
     out_order = list(fields.keys()) + [f for f in REQUIRED_FIELDS if f not in fields]
@@ -418,6 +469,9 @@ def apply_mapping_spec(
                     )
                 ]
                 columns["runtime_seconds"] = pa.array(filled, type=pa.float64())
+
+        for field, (numerator, denominator) in ratio_derives.items():
+            columns[field] = _derive_ratio(columns[field], columns[numerator], columns[denominator])
 
         batch_table = pa.table({field: columns[field] for field in out_order})
 
