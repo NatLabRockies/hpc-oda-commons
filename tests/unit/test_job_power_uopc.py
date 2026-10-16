@@ -442,3 +442,94 @@ def test_uopc_sensitivity_reuses_neighbors_for_multiple_k() -> None:
         ):
             for metric in ("mae", "rmse", "mape", "r2"):
                 assert classifier[target][metric] == pytest.approx(reproduction[target][metric])
+
+
+def _paper_rows(n: int = 120, users: int = 4) -> list[dict]:
+    """Jobs from several users with overlapping lifetimes, so "finished before this job was
+    submitted" differs from "submitted earlier" -- the case a baseline can get wrong."""
+    from datetime import datetime, timedelta, timezone
+
+    rng = np.random.default_rng(7)
+    base = datetime(2024, 1, 15, tzinfo=timezone.utc)
+    rows = []
+    for idx in range(n):
+        submit = base + timedelta(hours=8 * idx)
+        rows.append(
+            {
+                "job_id": idx,
+                "user": f"u{idx % users}",
+                "submit_time": submit,
+                "end_time": submit + timedelta(hours=float(rng.integers(1, 40))),
+                "avgpcon": float(rng.integers(100, 400)),
+                "maxpcon": float(rng.integers(400, 800)),
+                "num_nodes_alloc": int(rng.integers(1, 4)),
+                "num_cores_req": int(rng.integers(1, 5)) * 48,
+                "num_nodes_req": int(rng.integers(1, 4)),
+                "freq_req": 2200,
+                "embedding": rng.random(4).tolist(),
+            }
+        )
+    return rows
+
+
+def test_paper_baselines_match_a_brute_force_mean() -> None:
+    """The baselines read running totals; they must equal averaging the eligible jobs
+    directly: the user's (or everyone's) jobs that finished before this one was submitted."""
+    rows = _paper_rows()
+    result = JobPowerUopcModel().evaluate_paper_reproduction(
+        rows, test_start="2024-02-01", theta=10, k=3, capture_artifacts=True
+    )
+    records = result["_per_job_records"]
+    assert records
+
+    def per_node(row: dict, field: str) -> float:
+        return row[field] / row["num_nodes_alloc"]
+
+    for record in records:
+        submit = record["submit_time"]
+        finished = [r for r in rows if r["end_time"].timestamp() < submit]
+        mine = [r for r in finished if r["user"] == record["user"]]
+        for field, key in (("avgpcon", "avg"), ("maxpcon", "max")):
+            user_mean = np.mean([per_node(r, field) for r in mine])
+            global_mean = np.mean([per_node(r, field) for r in finished])
+            assert record[f"per_user_mean_{key}_pred"] == pytest.approx(user_mean, rel=1e-12)
+            assert record[f"global_mean_{key}_pred"] == pytest.approx(global_mean, rel=1e-12)
+
+
+def test_paper_reproduction_reads_canonical_num_nodes_alloc() -> None:
+    """Prepared tables carry F-DATA's nnuma as the canonical num_nodes_alloc; the raw name
+    still works for hand-placed files. Both give the same per-node targets."""
+    canonical = _paper_rows()
+    raw = [{**r, "nnuma": r["num_nodes_alloc"]} for r in canonical]
+    for r in raw:
+        del r["num_nodes_alloc"]
+
+    model = JobPowerUopcModel()
+    a = model.evaluate_paper_reproduction(canonical, test_start="2024-02-01", theta=10, k=3)
+    b = model.evaluate_paper_reproduction(raw, test_start="2024-02-01", theta=10, k=3)
+
+    assert a["summary"]["rows_scored"] > 0
+    assert a["avgpcon_per_node"] == b["avgpcon_per_node"]
+    assert a["maxpcon_per_node"] == b["maxpcon_per_node"]
+
+
+def test_paper_modes_emit_only_artifact_keys_run_extras_strips() -> None:
+    """Any other "_" key would be written into metrics.json, one value per test job (#168)."""
+    rows = _paper_rows()
+    model = JobPowerUopcModel()
+
+    repro = model.evaluate_paper_reproduction(
+        rows, test_start="2024-02-01", theta=10, k=3, capture_artifacts=True
+    )
+    assert {k for k in repro if k.startswith("_")} == {
+        "_y_true",
+        "_y_pred",
+        "_per_job_records",
+        "_last_model",
+    }
+    assert repro["_y_true"] == [r["avgpcon_per_node_true"] for r in repro["_per_job_records"]]
+
+    sweep = model.evaluate_paper_sensitivity(
+        rows, test_start="2024-02-01", theta_values=(10,), k_values=(3,), capture_artifacts=True
+    )
+    assert not [k for k in sweep if k.startswith("_")]

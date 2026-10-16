@@ -4,6 +4,12 @@ Adapted from https://github.com/francescoantici/UoPC:
 - Per-user history ordered by end time
 - Last ``theta`` jobs used as training context for each prediction
 - Categorical job features label-encoded per fit
+
+Two protocols live here. ``evaluate_fixed`` is the original Commons adaptation (fraction
+split, label-encoded job features, kNN regressor). ``evaluate_paper_reproduction`` and
+``evaluate_paper_sensitivity`` follow the paper (Antici et al., IEEE 11017729) and the
+authors' code: a date cutoff, per-node targets, embedding features and kNN-classifier
+voting. Recipes pick the paper protocol with ``split.method: cutoff``.
 """
 
 from __future__ import annotations
@@ -28,7 +34,18 @@ _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "processors_requested": ("processors_requested", "cnumr"),
     "nodes_requested": ("nodes_requested", "nnumr"),
     "end_time": ("end_time", "edt"),
+    # Canonical oda.job name first; raw F-DATA ``nnuma`` for hand-placed files.
+    "num_nodes_alloc": ("num_nodes_alloc", "nnuma"),
 }
+
+# The configuration the paper reproduction runs (#125): score jobs submitted from this
+# date, keep each user's newest THETA finished jobs, vote among K neighbours. The value
+# lists are the theta x k grid the sensitivity analysis sweeps.
+PAPER_TEST_START = "2024-02-01"
+PAPER_THETA = 500
+PAPER_K = 5
+PAPER_THETA_VALUES: tuple[int, ...] = (50, 100, 200, 500, 1000, 2000, 5000)
+PAPER_K_VALUES: tuple[int, ...] = (5, 10, 20, 50)
 
 
 @dataclass
@@ -48,6 +65,18 @@ class _PaperPreparedData:
     user_rows: dict[str, np.ndarray]
     user_ends: dict[str, np.ndarray]
     test_idx: np.ndarray
+    # Running totals for the mean baselines, so each test job reads its mean in O(1)
+    # instead of re-averaging every earlier job. Index i holds the sum of the first i
+    # jobs by end time (globally, or within one user); index 0 is 0.
+    sorted_end: np.ndarray
+    global_avg_cumsum: np.ndarray
+    global_max_cumsum: np.ndarray
+    user_avg_cumsum: dict[str, np.ndarray]
+    user_max_cumsum: dict[str, np.ndarray]
+
+
+def _cumsum_from_zero(values: np.ndarray) -> np.ndarray:
+    return np.concatenate(([0.0], np.cumsum(values, dtype=np.float64)))
 
 
 @dataclass(frozen=True)
@@ -353,7 +382,7 @@ class JobPowerUopcModel:
         max_targets: list[float] = []
 
         for row in rows:
-            nnuma_raw = row.get("nnuma")
+            nnuma_raw = _first_present(row, "num_nodes_alloc")
             avgpcon_raw = row.get("avgpcon")
             maxpcon_raw = row.get("maxpcon")
             emb_raw = row.get("embedding")
@@ -448,7 +477,9 @@ class JobPowerUopcModel:
         avg_target_arr = np.asarray(avg_targets, dtype=np.float64)
         max_target_arr = np.asarray(max_targets, dtype=np.float64)
 
-        # Match Phase 1 exactly: standardize over the complete usable dataset.
+        # Standardize over the whole usable dataset, test period included, as the authors'
+        # code does. Test-period statistics therefore shape the feature scale: a small
+        # look-ahead, kept on purpose so the numbers stay comparable with the paper.
         mu = num_arr.mean(axis=0)
         sd = num_arr.std(axis=0)
         sd[sd == 0] = 1.0
@@ -484,20 +515,31 @@ class JobPowerUopcModel:
             user_rows=user_rows,
             user_ends=user_ends,
             test_idx=test_idx,
+            sorted_end=end_arr[order],
+            global_avg_cumsum=_cumsum_from_zero(avg_target_arr[order]),
+            global_max_cumsum=_cumsum_from_zero(max_target_arr[order]),
+            user_avg_cumsum={
+                user: _cumsum_from_zero(avg_target_arr[indices])
+                for user, indices in user_rows.items()
+            },
+            user_max_cumsum={
+                user: _cumsum_from_zero(max_target_arr[indices])
+                for user, indices in user_rows.items()
+            },
         )
 
     def evaluate_paper_reproduction(
         self,
         rows: list[dict[str, Any]],
         *,
-        test_start: str = "2024-02-01",
-        theta: int = 500,
-        k: int = 5,
+        test_start: str = PAPER_TEST_START,
+        theta: int = PAPER_THETA,
+        k: int = PAPER_K,
         metric_defs: list[dict[str, Any]] | None = None,
         verbose: bool = False,
         capture_artifacts: bool = False,
     ) -> dict[str, Any]:
-        """Evaluate the verified Phase-1 reproduction of Antici et al. UoPC.
+        """Evaluate the paper reproduction of Antici et al. UoPC.
 
         This path intentionally remains separate from ``evaluate_fixed`` so the
         existing HPC ODA UoPC adaptation and its defaults are unchanged.
@@ -509,6 +551,10 @@ class JobPowerUopcModel:
         - history: same-user jobs with edt < query adt
         - context: newest ``theta`` eligible jobs by completion time
         - predictor: KNeighborsClassifier with rounded integer targets
+
+        The headline metrics are avgpcon per node. With ``capture_artifacts`` the
+        avgpcon predictions go out as ``_y_true``/``_y_pred`` and every job's
+        prediction for both targets (plus the baselines) as ``_per_job_records``.
         """
         resolved_metric_defs = metric_defs or [
             {"name": "mape", "target": "avgpcon_per_node"},
@@ -539,7 +585,6 @@ class JobPowerUopcModel:
         features = prepared.features
         avg_target_arr = prepared.avg_target_arr
         max_target_arr = prepared.max_target_arr
-        order = prepared.order
         user_rows = prepared.user_rows
         user_ends = prepared.user_ends
         test_idx = prepared.test_idx
@@ -557,7 +602,7 @@ class JobPowerUopcModel:
 
         iterator = tqdm(
             test_idx,
-            desc="fixed/uopc-paper-repro",
+            desc="cutoff/uopc-paper-repro",
             unit="job",
             disable=not verbose,
         )
@@ -594,22 +639,15 @@ class JobPowerUopcModel:
 
             # Trivial per-user baseline: mean over all eligible prior jobs for
             # this user, with no future information.
-            user_mean_avg_pred = float(np.mean(avg_target_arr[user_history]))
-            user_mean_max_pred = float(np.mean(max_target_arr[user_history]))
+            user_mean_avg_pred = float(prepared.user_avg_cumsum[user][pos] / pos)
+            user_mean_max_pred = float(prepared.user_max_cumsum[user][pos] / pos)
 
             # Trivial global baseline: mean over all jobs completed before this
-            # query's submission time, with no future information.
-            global_pos = int(
-                np.searchsorted(
-                    end_arr[order],
-                    submit_arr[j],
-                    side="left",
-                )
-            )
-            global_history = order[:global_pos]
-
-            global_mean_avg_pred = float(np.mean(avg_target_arr[global_history]))
-            global_mean_max_pred = float(np.mean(max_target_arr[global_history]))
+            # query's submission time, with no future information. Never empty:
+            # this user's ``pos >= k`` finished jobs are among them.
+            global_pos = int(np.searchsorted(prepared.sorted_end, submit_arr[j], side="left"))
+            global_mean_avg_pred = float(prepared.global_avg_cumsum[global_pos] / global_pos)
+            global_mean_max_pred = float(prepared.global_max_cumsum[global_pos] / global_pos)
 
             # Match the authors' implementation used in Phase 1. Their KNN
             # wraps KNeighborsClassifier, so continuous per-node power labels
@@ -668,13 +706,6 @@ class JobPowerUopcModel:
 
         if not avg_y_true or not max_y_true:
             raise ValueError("No test rows produced scored predictions in paper reproduction.")
-
-        avg_metric_defs = [
-            {**metric_def, "target": "avgpcon_per_node"} for metric_def in resolved_metric_defs
-        ]
-        max_metric_defs = [
-            {**metric_def, "target": "maxpcon_per_node"} for metric_def in resolved_metric_defs
-        ]
 
         avg_metrics = compute_regression_metrics_from_defs(
             avg_y_true,
@@ -758,10 +789,10 @@ class JobPowerUopcModel:
         }
 
         if capture_artifacts:
-            result["_avgpcon_y_true"] = avg_y_true
-            result["_avgpcon_y_pred"] = avg_y_pred
-            result["_maxpcon_y_true"] = max_y_true
-            result["_maxpcon_y_pred"] = max_y_pred
+            # Only the keys run_extras consumes (and strips): anything else starting
+            # with "_" would land in metrics.json, one value per test job (#168).
+            result["_y_true"] = avg_y_true
+            result["_y_pred"] = avg_y_pred
             result["_per_job_records"] = per_job_records
             result["_last_model"] = {
                 "kind": "job_power_uopc_paper_reproduction",
@@ -780,17 +811,9 @@ class JobPowerUopcModel:
         self,
         rows: list[dict[str, Any]],
         *,
-        test_start: str = "2024-02-01",
-        theta_values: tuple[int, ...] = (
-            50,
-            100,
-            200,
-            500,
-            1000,
-            2000,
-            5000,
-        ),
-        k_values: tuple[int, ...] = (5, 10, 20, 50),
+        test_start: str = PAPER_TEST_START,
+        theta_values: tuple[int, ...] = PAPER_THETA_VALUES,
+        k_values: tuple[int, ...] = PAPER_K_VALUES,
         metric_defs: list[dict[str, Any]] | None = None,
         verbose: bool = False,
         capture_artifacts: bool = False,
@@ -1032,7 +1055,7 @@ class JobPowerUopcModel:
 
         result: dict[str, Any] = {
             "summary": {
-                "rows_total": len(rows),
+                "rows_total": len(avg_target_arr),
                 "rows_test": int(len(test_idx)),
                 "theta_values": list(theta_values),
                 "k_values": list(k_values),
@@ -1055,8 +1078,10 @@ class JobPowerUopcModel:
             },
         }
 
-        if capture_artifacts:
-            result["_history_counts"] = history_counts
+        # No per-job artifacts: a grid has no single prediction per job, and the history
+        # counts are summarised in ``cold_start``. ``capture_artifacts`` is accepted for
+        # interface parity with the other evaluate_* methods.
+        _ = capture_artifacts
 
         return result
 
