@@ -91,6 +91,11 @@ def recipe_target(metric_defs: list[dict[str, Any]]) -> str | None:
     return targets.pop()
 
 
+def _target_for(metric_defs: list[dict[str, Any]]) -> str:
+    """The column a target-configurable model should predict: the recipe's, else runtime."""
+    return recipe_target(metric_defs) or "runtime_seconds"
+
+
 def _require_target(
     predicts: str | set[str], metric_defs: list[dict[str, Any]], *, model: str
 ) -> str:
@@ -122,14 +127,14 @@ def run_fixed_baseline(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed train/test split benchmark with the baseline model."""
-    _require_target("runtime_seconds", metric_defs, model="model.job_runtime_baseline")
+    target = _target_for(metric_defs)
     train_fraction = float(split.get("train_fraction", 0.8))
     n_train = max(1, int(len(rows) * train_fraction))
     train_rows = rows[:n_train]
     test_rows = rows[n_train:] if n_train < len(rows) else rows[:]
-    y_true = [float(r["runtime_seconds"]) for r in test_rows]
+    y_true = [float(r[target]) for r in test_rows]
 
-    model = JobRuntimeBaselineModel()
+    model = JobRuntimeBaselineModel(target_field=target)
     model.fit(train_rows)
     y_pred = model.predict(test_rows)
 
@@ -292,11 +297,11 @@ def resolved_run_config(model: Any) -> dict[str, Any]:
     return to_jsonable(dict(vars(config)))
 
 
-def _filter_runtime_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Keep only rows with a finite runtime_seconds value."""
+def _filter_target_rows(rows: list[dict[str, Any]], target: str) -> list[dict[str, Any]]:
+    """Keep only rows with a finite ``target`` value."""
     result: list[dict[str, Any]] = []
     for row in rows:
-        raw = row.get("runtime_seconds")
+        raw = row.get(target)
         if raw is None:
             continue
         try:
@@ -318,7 +323,7 @@ def run_rolling_baseline(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the baseline model."""
-    _require_target("runtime_seconds", metric_defs, model="model.job_runtime_baseline")
+    target = _target_for(metric_defs)
     requested = _validate_rolling_metric_defs(metric_defs)
 
     n_windows = int(split.get("n_windows", 1000))
@@ -355,8 +360,8 @@ def run_rolling_baseline(
 
     for s in split_iter:
         train_rows, test_rows = materialize_split_rows(rows, s)
-        train_supervised = _filter_runtime_rows(train_rows)
-        test_supervised = _filter_runtime_rows(test_rows)
+        train_supervised = _filter_target_rows(train_rows, target)
+        test_supervised = _filter_target_rows(test_rows, target)
 
         if len(train_supervised) < 1:
             window_entries.append(
@@ -394,10 +399,10 @@ def run_rolling_baseline(
                 )
             continue
 
-        model = JobRuntimeBaselineModel()
+        model = JobRuntimeBaselineModel(target_field=target)
         model.fit(train_supervised)
         y_pred = model.predict(test_supervised)
-        y_true = [float(r["runtime_seconds"]) for r in test_supervised]
+        y_true = [float(r[target]) for r in test_supervised]
 
         window_metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
         all_y_true.extend(y_true)
@@ -438,6 +443,7 @@ def run_rolling_baseline(
         "n_windows": n_windows,
         "test_window_hours": test_window_hours,
         "training_lookback_days": training_lookback_days,
+        "target_field": target,
     }
 
     if verbose:
@@ -512,6 +518,7 @@ def run_rolling_xgboost(
     """Run a rolling benchmark with the XGBoost model."""
     model = JobRuntimeXGBoostModel(
         config=JobRuntimeXGBoostConfig(
+            target_field=_target_for(metric_defs),
             **_rolling_tabular_split_kwargs(split, JobRuntimeXGBoostConfig()),
             objective=str(split.get("objective", JobRuntimeXGBoostConfig.objective)),
         )
@@ -563,7 +570,8 @@ def run_rolling_random_forest(
     """Run a rolling benchmark with the Random Forest model."""
     model = JobRuntimeRandomForestModel(
         config=JobRuntimeRandomForestConfig(
-            **_rolling_tabular_split_kwargs(split, JobRuntimeRandomForestConfig())
+            target_field=_target_for(metric_defs),
+            **_rolling_tabular_split_kwargs(split, JobRuntimeRandomForestConfig()),
         )
     )
     return _run_rolling_model_evaluate(
@@ -593,6 +601,7 @@ def run_rolling_signature_memorizer(
     defaults = SignatureMemorizerConfig()
     model = JobRuntimeSignatureMemorizerModel(
         config=SignatureMemorizerConfig(
+            target_field=_target_for(metric_defs),
             n_windows=int(split.get("n_windows", 1000)),
             test_window_hours=int(split.get("test_window_hours", 6)),
             training_lookback_days=int(split.get("training_lookback_days", 100)),
@@ -625,6 +634,7 @@ def run_rolling_mlp(
     training_lookback_days = int(split.get("training_lookback_days", 100))
     model = JobRuntimeMlpModel(
         config=JobRuntimeMlpConfig(
+            target_field=_target_for(metric_defs),
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
@@ -653,6 +663,7 @@ def run_rolling_embedding_knn(
     """Run a rolling benchmark with the embedding-based kNN model."""
     model = JobRuntimeEmbeddingKnnModel(
         config=JobRuntimeEmbeddingKnnConfig(
+            target_field=_target_for(metric_defs),
             n_windows=int(split.get("n_windows", 1000)),
             test_window_hours=int(split.get("test_window_hours", 6)),
             training_lookback_days=int(split.get("training_lookback_days", 100)),
@@ -689,6 +700,7 @@ def run_rolling_tfidf_knn(
     training_lookback_days = int(split.get("training_lookback_days", 100))
     model = JobRuntimeTfidfKnnModel(
         config=JobRuntimeTfidfKnnConfig(
+            target_field=_target_for(metric_defs),
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
@@ -722,6 +734,7 @@ def run_rolling_moe_xgboost(
     edges = split.get("wallclock_bin_edges_hours")
     model = MoEXGBoostModel(
         config=MoEXGBoostConfig(
+            target_field=_target_for(metric_defs),
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,

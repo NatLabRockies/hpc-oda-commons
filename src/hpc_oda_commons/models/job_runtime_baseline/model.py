@@ -6,21 +6,20 @@ from typing import Any
 
 class JobRuntimeBaselineModel:
     """
-    Deterministic baseline for runtime prediction.
+    Deterministic mean-predictor baseline.
 
     v0.1 behavior:
-    - Fit: compute mean(runtime_seconds) on training rows
+    - Fit: compute mean(target) on training rows (``runtime_seconds`` by default)
     - Predict: return that constant mean for every row
     """
 
-    def __init__(self) -> None:
+    def __init__(self, target_field: str = "runtime_seconds") -> None:
+        self.target_field = target_field
         self._mean_runtime: float | None = None
 
     def fit(self, rows: list[dict[str, Any]]) -> None:
-        runtimes = [
-            float(r["runtime_seconds"]) for r in rows if r.get("runtime_seconds") is not None
-        ]
-        self._mean_runtime = float(mean(runtimes)) if runtimes else 0.0
+        values = [float(r[self.target_field]) for r in rows if r.get(self.target_field) is not None]
+        self._mean_runtime = float(mean(values)) if values else 0.0
 
     def predict(self, rows: list[dict[str, Any]]) -> list[float]:
         if self._mean_runtime is None:

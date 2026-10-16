@@ -23,7 +23,7 @@ from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
 from hpc_oda_commons.models.feature_policy import (
-    RUNTIME_PREDICTION_FEATURE_FIELDS,
+    feature_allowlist,
     partition_feature_fields,
 )
 from hpc_oda_commons.models.rolling_tabular.preprocessing import (
@@ -132,12 +132,12 @@ class RollingTabularConfig:
     # distinctly from any estimator-level ``n_jobs`` (e.g. Random Forest's) so the two
     # parallelism axes stay independent.
     window_n_jobs: int = 1
-    # Train on ``log1p(runtime_seconds)`` and invert with ``expm1`` before scoring.
+    # Train on ``log1p(target)`` and invert with ``expm1`` before scoring.
     # HPC runtime distributions are heavy-tailed (p99/p50 reaches ~1,200x), so under
     # squared error a handful of very long jobs dominates the gradient; in log space
-    # each job contributes comparably. Metrics are always computed in seconds — only
-    # the training targets and the raw predictions are transformed. Mirrors the option
-    # the TF-IDF and embedding kNN models already carry.
+    # each job contributes comparably. Metrics are always computed in the target's own
+    # units — only the training targets and the raw predictions are transformed. Mirrors
+    # the option the TF-IDF and embedding kNN models already carry.
     log_target: bool = False
     # Exponential decay applied to training sample weights: a job that ended ``d`` days
     # before the split is weighted ``exp(-time_decay_rate * d)``, so recent behaviour
@@ -149,6 +149,10 @@ class RollingTabularConfig:
     # both sets is ignored, so a column that is only known once a job has run
     # cannot become a feature by virtue of being present in the table.
     extra_feature_fields: frozenset[str] = frozenset()
+    # The column the model predicts. Runtime by default; any finite numeric column works,
+    # e.g. ``avgpcon_per_node`` for job power (#204). The runner sets it from the recipe's
+    # metric target. It is never a feature, whatever ``extra_feature_fields`` says.
+    target_field: str = "runtime_seconds"
 
 
 class RollingTabularModel:
@@ -169,18 +173,21 @@ class RollingTabularModel:
 
     def __init__(self, config: RollingTabularConfig | None = None) -> None:
         self.config = config or RollingTabularConfig()
-        self.target_field = "runtime_seconds"
+        self.target_field = self.config.target_field
 
     def allowed_feature_fields(self) -> frozenset[str]:
-        """Columns this model may use: the shared allowlist plus any configured extras."""
-        return RUNTIME_PREDICTION_FEATURE_FIELDS | frozenset(self.config.extra_feature_fields)
+        """Columns this model may use: the shared allowlist plus any configured extras,
+        never the target."""
+        return feature_allowlist(self.config.extra_feature_fields, target=self.target_field)
 
     def feature_field_report(self, rows: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
         """(usable, ignored) column names for ``rows`` under this model's policy."""
         present: set[str] = set()
         for row in rows[:_FIELD_SCAN_ROWS]:
             present.update(row.keys())
-        return partition_feature_fields(present, extra=self.config.extra_feature_fields)
+        return partition_feature_fields(
+            present, extra=self.config.extra_feature_fields, target=self.target_field
+        )
 
     @staticmethod
     def _check_dependencies() -> None:
