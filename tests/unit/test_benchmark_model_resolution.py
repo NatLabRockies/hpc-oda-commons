@@ -498,6 +498,7 @@ def test_benchmark_uopc_fixed_path(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
 
     assert result["model"]["id"] == "model.job_power_uopc"
+    assert result["problem_domain"] == ["job-power-prediction"]
     assert result["metrics"]["mae"] == 12.5
     assert result["metrics"]["rmse"] == 20.0
     assert metrics_payload["summary"]["rows_scored"] == 10
@@ -786,3 +787,192 @@ def test_benchmark_rejects_v0_1_string_timestamp_table(
 
     with pytest.raises(typer.BadParameter, match="oda.job v0.1"):
         cli.benchmark(recipe_path)
+
+
+def test_benchmark_uopc_paper_reproduction_routing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """UoPC fixed split with test_start dispatches to paper-reproduction mode."""
+
+    class FakeUopcModel:
+        fixed_called = False
+        paper_called = False
+
+        def evaluate_fixed(self, *args, **kwargs):
+            FakeUopcModel.fixed_called = True
+            raise AssertionError("evaluate_fixed must not be used for paper reproduction")
+
+        def evaluate_paper_reproduction(
+            self,
+            rows: list[dict[str, object]],
+            *,
+            test_start: str,
+            theta: int,
+            k: int,
+            metric_defs: list[dict[str, object]] | None = None,
+            verbose: bool = False,
+            capture_artifacts: bool = False,
+        ) -> dict[str, object]:
+            assert rows
+            assert test_start == "2024-02-01"
+            assert theta == 500
+            assert k == 5
+            _ = metric_defs
+            _ = verbose
+            _ = capture_artifacts
+
+            FakeUopcModel.paper_called = True
+
+            return {
+                "avgpcon_per_node": {
+                    "mae": 3.88,
+                    "rmse": 12.53,
+                    "mape": 0.0799,
+                    "r2": 0.796,
+                },
+                "maxpcon_per_node": {
+                    "mae": 4.21,
+                    "rmse": 13.10,
+                    "mape": 0.084,
+                    "r2": 0.781,
+                },
+                "summary": {
+                    "rows_scored": 10,
+                    "rows_skipped": 2,
+                    "theta": 500,
+                    "k": 5,
+                    "targets": [
+                        "avgpcon/nnuma",
+                        "maxpcon/nnuma",
+                    ],
+                },
+            }
+
+    monkeypatch.setattr(runner, "JobPowerUopcModel", FakeUopcModel)
+
+    rows = [{"dummy": idx} for idx in range(12)]
+
+    metrics, payload, _ = runner.run_fixed_uopc(
+        rows,
+        split={
+            "method": "fixed",
+            "train_fraction": 0.8,
+            "seed": 42,
+            "test_start": "2024-02-01",
+            "theta": 500,
+            "k": 5,
+        },
+        metric_defs=[
+            {"name": "mae", "target": "avgpcon_per_node"},
+            {"name": "rmse", "target": "avgpcon_per_node"},
+            {"name": "mape", "target": "avgpcon_per_node"},
+            {"name": "r2", "target": "avgpcon_per_node"},
+        ],
+    )
+
+    assert FakeUopcModel.paper_called is True
+    assert FakeUopcModel.fixed_called is False
+
+    assert metrics["mae"] == 3.88
+    assert metrics["rmse"] == 12.53
+    assert metrics["mape"] == 0.0799
+    assert metrics["r2"] == 0.796
+
+    assert payload["summary"]["theta"] == 500
+    assert payload["summary"]["k"] == 5
+
+def test_run_fixed_uopc_paper_sensitivity_exposes_summary_metrics(
+    monkeypatch,
+) -> None:
+    class FakeUopcModel:
+        def evaluate_paper_sensitivity(
+            self,
+            rows,
+            *,
+            test_start="2024-02-01",
+            theta_values=(50, 100, 200, 500, 1000, 2000, 5000),
+            k_values=(5, 10, 20, 50),
+            metric_defs=None,
+            verbose=False,
+            capture_artifacts=False,
+        ):
+            assert rows
+            assert test_start == "2024-02-01"
+            assert theta_values == (50,)
+            assert k_values == (5, 10)
+
+            return {
+                "results": {
+                    "50": {
+                        "5": {
+                            "classifier": {
+                                "avgpcon_per_node": {
+                                    "mae": 6.5,
+                                    "rmse": 16.3,
+                                    "mape": 0.10,
+                                    "r2": 0.83,
+                                },
+                                "maxpcon_per_node": {
+                                    "mae": 7.0,
+                                    "rmse": 17.0,
+                                    "mape": 0.11,
+                                    "r2": 0.81,
+                                },
+                            },
+                            "regressor": {},
+                        },
+                        "10": {
+                            "classifier": {
+                                "avgpcon_per_node": {
+                                    "mae": 7.5,
+                                    "rmse": 17.3,
+                                    "mape": 0.12,
+                                    "r2": 0.80,
+                                },
+                            },
+                            "regressor": {},
+                        },
+                    }
+                },
+                "summary": {
+                    "theta_values": [50],
+                    "k_values": [5, 10],
+                },
+            }
+
+    monkeypatch.setattr(runner, "JobPowerUopcModel", FakeUopcModel)
+
+    metrics, payload, _ = runner.run_fixed_uopc(
+        [{"dummy": 1}],
+        split={
+            "method": "fixed",
+            "train_fraction": 0.8,
+            "seed": 42,
+            "test_start": "2024-02-01",
+            "theta_values": [50],
+            "k_values": [5, 10],
+        },
+        metric_defs=[
+            {"name": "mae", "target": "avgpcon_per_node"},
+            {"name": "rmse", "target": "avgpcon_per_node"},
+            {"name": "mape", "target": "avgpcon_per_node"},
+            {"name": "r2", "target": "avgpcon_per_node"},
+        ],
+    )
+
+    # Generic result schema receives the first theta/k classifier
+    # avg-power configuration as its compatibility summary.
+    assert metrics == {
+        "mae": 6.5,
+        "rmse": 16.3,
+        "mape": 0.10,
+        "r2": 0.83,
+    }
+
+    # The complete sensitivity payload is still preserved.
+    assert payload["results"]["50"]["5"]["classifier"][
+        "avgpcon_per_node"
+    ]["mae"] == 6.5
+    assert payload["results"]["50"]["10"]["classifier"][
+        "avgpcon_per_node"
+    ]["mae"] == 7.5

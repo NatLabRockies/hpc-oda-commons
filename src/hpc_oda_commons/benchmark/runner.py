@@ -107,21 +107,102 @@ def run_fixed_uopc(
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed chronological split benchmark with the UoPC kNN model."""
     model = JobPowerUopcModel()
-    eval_payload = model.evaluate_fixed(
-        rows,
-        split=split,
-        metric_defs=metric_defs,
-        verbose=verbose,
-        capture_artifacts=capture_artifacts,
-    )
+
+    if "test_start" in split:
+        if "theta_values" in split or "k_values" in split:
+            eval_payload = model.evaluate_paper_sensitivity(
+                rows,
+                test_start=str(split["test_start"]),
+                theta_values=tuple(
+                    int(value)
+                    for value in split.get(
+                        "theta_values",
+                        (50, 100, 200, 500, 1000, 2000, 5000),
+                    )
+                ),
+                k_values=tuple(
+                    int(value)
+                    for value in split.get(
+                        "k_values",
+                        (5, 10, 20, 50),
+                    )
+                ),
+                metric_defs=metric_defs,
+                verbose=verbose,
+                capture_artifacts=capture_artifacts,
+            )
+        else:
+            eval_payload = model.evaluate_paper_reproduction(
+                rows,
+                test_start=str(split["test_start"]),
+                theta=int(split.get("theta", 500)),
+                k=int(split.get("k", 5)),
+                metric_defs=metric_defs,
+                verbose=verbose,
+                capture_artifacts=capture_artifacts,
+            )
+    else:
+        eval_payload = model.evaluate_fixed(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
     requested = {str(m.get("name", "")) for m in metric_defs}
     artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
-    metrics = _metrics_from_eval_payload(eval_payload, requested)
-    metrics_payload: dict[str, Any] = {
-        **eval_payload,
-        "definitions": metric_defs,
-        "run_config": resolved_run_config(model),
-    }
+
+    if "test_start" in split:
+        if "theta_values" in split or "k_values" in split:
+            # The generic ODA result schema requires one top-level regression
+            # metric set. Sensitivity produces a grid, so expose the first
+            # requested theta/k classifier avg-power result as a
+            # schema-compatible summary. The complete sensitivity grid remains
+            # available in metrics_payload.
+            theta_values = tuple(
+                sorted(
+                    set(
+                        int(value)
+                        for value in split.get(
+                            "theta_values",
+                            (50, 100, 200, 500, 1000, 2000, 5000),
+                        )
+                    )
+                )
+            )
+            k_values = tuple(
+                sorted(
+                    set(
+                        int(value)
+                        for value in split.get(
+                            "k_values",
+                            (5, 10, 20, 50),
+                        )
+                    )
+                )
+            )
+
+            summary_payload = eval_payload["results"][str(theta_values[0])][
+                str(k_values[0])
+            ]["classifier"]["avgpcon_per_node"]
+
+            metrics = _metrics_from_eval_payload(summary_payload, requested)
+            metrics_payload: dict[str, Any] = {**eval_payload, "run_config": resolved_run_config(model)}
+        else:
+            # Faithful paper reproduction: report avgpcon_per_node as the
+            # benchmark's primary metric set while preserving the complete
+            # dual-target payload.
+            avg_payload = eval_payload["avgpcon_per_node"]
+            metrics = _metrics_from_eval_payload(avg_payload, requested)
+            metrics_payload = {**eval_payload, "run_config": resolved_run_config(model)}
+    else:
+        metrics = _metrics_from_eval_payload(eval_payload, requested)
+        metrics_payload = {
+            **eval_payload,
+            "definitions": metric_defs,
+            "run_config": resolved_run_config(model),
+        }
+
     return metrics, metrics_payload, artifacts
 
 

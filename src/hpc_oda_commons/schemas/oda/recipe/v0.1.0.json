@@ -67,7 +67,22 @@
           "minItems": 1
         },
         "estimator_n_jobs": { "type": "integer", "minimum": -1 },
-        "objective": { "type": "string", "minLength": 1 }
+        "objective": { "type": "string", "minLength": 1 },
+        "test_start": { "type": "string", "format": "date" },
+        "theta": { "type": "integer", "minimum": 1 },
+        "k": { "type": "integer", "minimum": 1 },
+        "theta_values": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "k_values": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        }
       },
       "required": ["method"],
       "allOf": [

@@ -23,6 +23,7 @@ class RunExtras:
 class BenchmarkArtifacts:
     y_true: list[float] | None = None
     y_pred: list[float] | None = None
+    per_job_records: list[dict[str, Any]] | None = None
     last_model: Any | None = None
 
 
@@ -45,12 +46,22 @@ def pop_eval_artifact_keys(payload: dict[str, Any]) -> BenchmarkArtifacts:
     """Extract artifact fields injected by model.evaluate(); mutates payload in place."""
     y_true = payload.pop("_y_true", None)
     y_pred = payload.pop("_y_pred", None)
+    per_job_records = payload.pop("_per_job_records", None)
     last_model = payload.pop("_last_model", None)
+
     if y_true is not None and not isinstance(y_true, list):
         raise TypeError("_y_true must be a list when present")
     if y_pred is not None and not isinstance(y_pred, list):
         raise TypeError("_y_pred must be a list when present")
-    return BenchmarkArtifacts(y_true=y_true, y_pred=y_pred, last_model=last_model)
+    if per_job_records is not None and not isinstance(per_job_records, list):
+        raise TypeError("_per_job_records must be a list when present")
+
+    return BenchmarkArtifacts(
+        y_true=y_true,
+        y_pred=y_pred,
+        per_job_records=per_job_records,
+        last_model=last_model,
+    )
 
 
 def write_run_extras(
@@ -60,26 +71,47 @@ def write_run_extras(
 ) -> list[str]:
     """Write optional extras under a result bundle directory."""
     written: list[str] = []
-    has_predictions = bool(artifacts.y_true and artifacts.y_pred)
+
+    has_simple_predictions = bool(artifacts.y_true and artifacts.y_pred)
+    has_per_job_records = bool(artifacts.per_job_records)
+
     if len(artifacts.y_true or []) != len(artifacts.y_pred or []):
         raise ValueError("y_true and y_pred must have the same length")
 
     if extras.save_predictions:
-        if not has_predictions:
-            raise ValueError("save_predictions requested but benchmark produced no predictions")
         path = bundle_dir / "predictions.parquet"
-        table = pa.Table.from_pydict({"y_true": artifacts.y_true, "y_pred": artifacts.y_pred})
+
+        if has_per_job_records:
+            table = pa.Table.from_pylist(artifacts.per_job_records)
+        elif has_simple_predictions:
+            table = pa.Table.from_pydict(
+                {
+                    "y_true": artifacts.y_true,
+                    "y_pred": artifacts.y_pred,
+                }
+            )
+        else:
+            raise ValueError(
+                "save_predictions requested but benchmark produced no predictions"
+            )
+
         pq.write_table(table, path)
         written.append("predictions.parquet")
 
     if extras.save_model:
         if artifacts.last_model is None:
-            raise ValueError("save_model requested but benchmark produced no trained model")
+            raise ValueError(
+                "save_model requested but benchmark produced no trained model"
+            )
         model_dir = bundle_dir / "model"
         ensure_dir(model_dir)
         model_path = model_dir / "last_model.pkl"
         with model_path.open("wb") as handle:
-            pickle.dump(artifacts.last_model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(
+                artifacts.last_model,
+                handle,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
         written.append("model/last_model.pkl")
 
     return written
