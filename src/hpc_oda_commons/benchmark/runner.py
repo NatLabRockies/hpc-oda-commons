@@ -16,7 +16,13 @@ from hpc_oda_commons.kernel.metrics import (
     compute_regression_metrics_from_defs,
 )
 from hpc_oda_commons.kernel.serialization import to_jsonable
-from hpc_oda_commons.models.job_power_uopc.model import JobPowerUopcModel
+from hpc_oda_commons.models.job_power_uopc.model import (
+    PAPER_K,
+    PAPER_K_VALUES,
+    PAPER_THETA,
+    PAPER_THETA_VALUES,
+    JobPowerUopcModel,
+)
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
 from hpc_oda_commons.models.job_runtime_embedding_knn.backends import DEFAULT_SIMS_BLOCK_BYTES
 from hpc_oda_commons.models.job_runtime_embedding_knn.model import (
@@ -107,105 +113,107 @@ def run_fixed_uopc(
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed chronological split benchmark with the UoPC kNN model."""
     model = JobPowerUopcModel()
+    eval_payload = model.evaluate_fixed(
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
+    requested = {str(m.get("name", "")) for m in metric_defs}
+    artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
+    metrics = _metrics_from_eval_payload(eval_payload, requested)
+    metrics_payload: dict[str, Any] = {
+        **eval_payload,
+        "definitions": metric_defs,
+        "run_config": resolved_run_config(model),
+    }
+    return metrics, metrics_payload, artifacts
 
-    if "test_start" in split:
-        if "theta_values" in split or "k_values" in split:
-            eval_payload = model.evaluate_paper_sensitivity(
-                rows,
-                test_start=str(split["test_start"]),
-                theta_values=tuple(
-                    int(value)
-                    for value in split.get(
-                        "theta_values",
-                        (50, 100, 200, 500, 1000, 2000, 5000),
-                    )
-                ),
-                k_values=tuple(
-                    int(value)
-                    for value in split.get(
-                        "k_values",
-                        (5, 10, 20, 50),
-                    )
-                ),
-                metric_defs=metric_defs,
-                verbose=verbose,
-                capture_artifacts=capture_artifacts,
+
+def run_cutoff_uopc(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run the UoPC paper protocol: score every job submitted on/after ``split.test_start``.
+
+    With ``theta_values``/``k_values`` this is the sensitivity sweep, otherwise one
+    reproduction at ``theta``/``k``. The result schema takes one metric set, so the sweep
+    reports the classifier's avgpcon-per-node metrics at the ``theta``/``k`` the recipe
+    names (the reproduction's configuration by default) as its headline, and keeps the
+    whole grid in metrics.json. A headline outside the grid is an error rather than a
+    silent pick, since it is what the leaderboard shows.
+    """
+    model = JobPowerUopcModel()
+    test_start = str(split["test_start"])
+    theta = int(split.get("theta", PAPER_THETA))
+    k = int(split.get("k", PAPER_K))
+    sweep = "theta_values" in split or "k_values" in split
+
+    if sweep:
+        theta_values = tuple(
+            sorted({int(v) for v in split.get("theta_values", PAPER_THETA_VALUES)})
+        )
+        k_values = tuple(sorted({int(v) for v in split.get("k_values", PAPER_K_VALUES)}))
+        if theta not in theta_values or k not in k_values:
+            raise ValueError(
+                f"split.theta={theta} / split.k={k} name the sweep's headline result, so they "
+                f"must be in the grid (theta_values={list(theta_values)}, "
+                f"k_values={list(k_values)})."
             )
-        else:
-            eval_payload = model.evaluate_paper_reproduction(
-                rows,
-                test_start=str(split["test_start"]),
-                theta=int(split.get("theta", 500)),
-                k=int(split.get("k", 5)),
-                metric_defs=metric_defs,
-                verbose=verbose,
-                capture_artifacts=capture_artifacts,
-            )
-    else:
-        eval_payload = model.evaluate_fixed(
+        eval_payload = model.evaluate_paper_sensitivity(
             rows,
-            split=split,
+            test_start=test_start,
+            theta_values=theta_values,
+            k_values=k_values,
             metric_defs=metric_defs,
             verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
-    requested = {str(m.get("name", "")) for m in metric_defs}
-    artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
-
-    if "test_start" in split:
-        if "theta_values" in split or "k_values" in split:
-            # The generic ODA result schema requires one top-level regression
-            # metric set. Sensitivity produces a grid, so expose the first
-            # requested theta/k classifier avg-power result as a
-            # schema-compatible summary. The complete sensitivity grid remains
-            # available in metrics_payload.
-            theta_values = tuple(
-                sorted(
-                    set(
-                        int(value)
-                        for value in split.get(
-                            "theta_values",
-                            (50, 100, 200, 500, 1000, 2000, 5000),
-                        )
-                    )
-                )
+        headline = eval_payload["results"][str(theta)][str(k)]["classifier"]["avgpcon_per_node"]
+        if not headline:
+            raise ValueError(
+                f"No test job had {k} prior jobs at theta={theta}, so the headline is empty."
             )
-            k_values = tuple(
-                sorted(
-                    set(
-                        int(value)
-                        for value in split.get(
-                            "k_values",
-                            (5, 10, 20, 50),
-                        )
-                    )
-                )
-            )
-
-            summary_payload = eval_payload["results"][str(theta_values[0])][str(k_values[0])][
-                "classifier"
-            ]["avgpcon_per_node"]
-
-            metrics = _metrics_from_eval_payload(summary_payload, requested)
-            metrics_payload: dict[str, Any] = {
-                **eval_payload,
-                "run_config": resolved_run_config(model),
-            }
-        else:
-            # Faithful paper reproduction: report avgpcon_per_node as the
-            # benchmark's primary metric set while preserving the complete
-            # dual-target payload.
-            avg_payload = eval_payload["avgpcon_per_node"]
-            metrics = _metrics_from_eval_payload(avg_payload, requested)
-            metrics_payload = {**eval_payload, "run_config": resolved_run_config(model)}
+        run_config: dict[str, Any] = {
+            "protocol": "paper_sensitivity",
+            "test_start": test_start,
+            "theta_values": list(theta_values),
+            "k_values": list(k_values),
+            "headline": {"theta": theta, "k": k, "predictor": "KNeighborsClassifier"},
+        }
     else:
-        metrics = _metrics_from_eval_payload(eval_payload, requested)
-        metrics_payload = {
-            **eval_payload,
-            "definitions": metric_defs,
-            "run_config": resolved_run_config(model),
+        eval_payload = model.evaluate_paper_reproduction(
+            rows,
+            test_start=test_start,
+            theta=theta,
+            k=k,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
+        headline = eval_payload["avgpcon_per_node"]
+        run_config = {
+            "protocol": "paper_reproduction",
+            "test_start": test_start,
+            "theta": theta,
+            "k": k,
+            "predictor": "KNeighborsClassifier",
         }
 
+    requested = {str(m.get("name", "")) for m in metric_defs}
+    artifacts = pop_eval_artifact_keys(eval_payload) if capture_artifacts else BenchmarkArtifacts()
+    metrics = _metrics_from_eval_payload(headline, requested)
+    # Never write a stray "_" artifact key into metrics.json: those are per-job arrays (#168).
+    metrics_payload: dict[str, Any] = {
+        **{key: value for key, value in eval_payload.items() if not key.startswith("_")},
+        "definitions": metric_defs,
+        "run_config": run_config,
+    }
     return metrics, metrics_payload, artifacts
 
 

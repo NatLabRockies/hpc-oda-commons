@@ -44,7 +44,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "method": { "type": "string", "enum": ["fixed", "rolling"] },
+        "method": { "type": "string", "enum": ["fixed", "rolling", "cutoff"] },
         "train_fraction": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
         "seed": { "type": "integer" },
         "n_windows": { "type": "integer", "minimum": 1 },
@@ -102,6 +102,15 @@
           },
           "then": {
             "required": ["n_windows"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "method": { "const": "cutoff" } },
+            "required": ["method"]
+          },
+          "then": {
+            "required": ["test_start"]
           }
         }
       ]

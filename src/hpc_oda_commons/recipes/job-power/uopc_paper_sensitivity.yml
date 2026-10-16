@@ -1,6 +1,12 @@
-# UoPC paper sensitivity analysis through the HPC ODA Commons benchmark pipeline.
+# UoPC theta x k sensitivity sweep (Antici et al., IEEE 11017729) through the Commons
+# benchmark, on the same data and cutoff as uopc_paper_reproduction.yml. metrics.json holds
+# the whole grid (classifier voting, plus the kNN-regressor ablation) and cold-start counts;
+# the headline metrics are the classifier at theta/k below. See docs/benchmarking/uopc.md.
+#
+# Prepare the data first (5 monthly files, ~3.9 GB):
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml
 
-recipe_id: recipe.job_power.uopc_phase2_sensitivity
+recipe_id: recipe.job_power.uopc_paper_sensitivity
 
 problem_domain:
   - job-power-prediction
@@ -8,8 +14,8 @@ problem_domain:
 schema_version: oda.job.v0.2.0
 
 dataset:
-  id: fdata_fugaku
-  table_path: data/datasets/fdata_fugaku/data.parquet
+  id: fdata_fugaku_uopc
+  table_path: data/datasets/fdata_fugaku_uopc/data.parquet
 
 model:
   id: model.job_power_uopc
@@ -26,12 +32,13 @@ metrics:
     target: avgpcon_per_node
 
 split:
-  method: fixed
-  train_fraction: 0.8
-  seed: 42
+  method: cutoff
   test_start: "2024-02-01"
   theta_values: [50, 100, 200, 500, 1000, 2000, 5000]
   k_values: [5, 10, 20, 50]
+  # The headline result; must be in the grid above.
+  theta: 500
+  k: 5
 
 run:
   output_dir: runs

@@ -792,7 +792,7 @@ def test_benchmark_rejects_v0_1_string_timestamp_table(
 def test_benchmark_uopc_paper_reproduction_routing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """UoPC fixed split with test_start dispatches to paper-reproduction mode."""
+    """A cutoff split runs the paper reproduction, never the fraction-split adaptation."""
 
     class FakeUopcModel:
         fixed_called = False
@@ -852,12 +852,10 @@ def test_benchmark_uopc_paper_reproduction_routing(
 
     rows = [{"dummy": idx} for idx in range(12)]
 
-    metrics, payload, _ = runner.run_fixed_uopc(
+    metrics, payload, _ = runner.run_cutoff_uopc(
         rows,
         split={
-            "method": "fixed",
-            "train_fraction": 0.8,
-            "seed": 42,
+            "method": "cutoff",
             "test_start": "2024-02-01",
             "theta": 500,
             "k": 5,
@@ -882,7 +880,7 @@ def test_benchmark_uopc_paper_reproduction_routing(
     assert payload["summary"]["k"] == 5
 
 
-def test_run_fixed_uopc_paper_sensitivity_exposes_summary_metrics(
+def test_run_cutoff_uopc_sensitivity_exposes_summary_metrics(
     monkeypatch,
 ) -> None:
     class FakeUopcModel:
@@ -943,15 +941,15 @@ def test_run_fixed_uopc_paper_sensitivity_exposes_summary_metrics(
 
     monkeypatch.setattr(runner, "JobPowerUopcModel", FakeUopcModel)
 
-    metrics, payload, _ = runner.run_fixed_uopc(
+    metrics, payload, _ = runner.run_cutoff_uopc(
         [{"dummy": 1}],
         split={
-            "method": "fixed",
-            "train_fraction": 0.8,
-            "seed": 42,
+            "method": "cutoff",
             "test_start": "2024-02-01",
             "theta_values": [50],
             "k_values": [5, 10],
+            "theta": 50,
+            "k": 5,
         },
         metric_defs=[
             {"name": "mae", "target": "avgpcon_per_node"},
@@ -961,8 +959,7 @@ def test_run_fixed_uopc_paper_sensitivity_exposes_summary_metrics(
         ],
     )
 
-    # Generic result schema receives the first theta/k classifier
-    # avg-power configuration as its compatibility summary.
+    # The result schema takes one metric set: the classifier at the recipe's theta/k.
     assert metrics == {
         "mae": 6.5,
         "rmse": 16.3,
@@ -973,3 +970,149 @@ def test_run_fixed_uopc_paper_sensitivity_exposes_summary_metrics(
     # The complete sensitivity payload is still preserved.
     assert payload["results"]["50"]["5"]["classifier"]["avgpcon_per_node"]["mae"] == 6.5
     assert payload["results"]["50"]["10"]["classifier"]["avgpcon_per_node"]["mae"] == 7.5
+
+
+class _FakeSweepModel:
+    """A UoPC stand-in whose sweep returns a 1 x 2 grid with distinguishable cells."""
+
+    def evaluate_paper_sensitivity(self, rows, *, test_start, theta_values, k_values, **_):
+        def cell(mae: float) -> dict[str, object]:
+            return {"classifier": {"avgpcon_per_node": {"mae": mae, "rmse": mae * 2}}}
+
+        return {
+            "results": {"50": {"5": cell(6.5), "10": cell(7.5)}},
+            "summary": {"theta_values": list(theta_values), "k_values": list(k_values)},
+            "_stray_per_job_array": [1.0, 2.0, 3.0],
+        }
+
+
+_SWEEP_METRICS = [
+    {"name": "mae", "target": "avgpcon_per_node"},
+    {"name": "rmse", "target": "avgpcon_per_node"},
+]
+
+
+def test_run_cutoff_uopc_sweep_headline_is_the_declared_cell(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The headline is the theta/k the recipe names, not whichever cell sorts first."""
+    monkeypatch.setattr(runner, "JobPowerUopcModel", _FakeSweepModel)
+
+    metrics, payload, _ = runner.run_cutoff_uopc(
+        [{"dummy": 1}],
+        split={
+            "method": "cutoff",
+            "test_start": "2024-02-01",
+            "theta_values": [50],
+            "k_values": [5, 10],
+            "theta": 50,
+            "k": 10,
+        },
+        metric_defs=_SWEEP_METRICS,
+    )
+
+    assert metrics == {"mae": 7.5, "rmse": 15.0}
+    assert payload["run_config"] == {
+        "protocol": "paper_sensitivity",
+        "test_start": "2024-02-01",
+        "theta_values": [50],
+        "k_values": [5, 10],
+        "headline": {"theta": 50, "k": 10, "predictor": "KNeighborsClassifier"},
+    }
+
+
+def test_run_cutoff_uopc_sweep_rejects_a_headline_outside_the_grid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no theta/k given the headline defaults to the reproduction's 500/5 -- not in
+    this grid, so it must fail loudly rather than report some other cell."""
+    monkeypatch.setattr(runner, "JobPowerUopcModel", _FakeSweepModel)
+
+    with pytest.raises(ValueError, match="must be in the grid"):
+        runner.run_cutoff_uopc(
+            [{"dummy": 1}],
+            split={
+                "method": "cutoff",
+                "test_start": "2024-02-01",
+                "theta_values": [50],
+                "k_values": [5, 10],
+            },
+            metric_defs=_SWEEP_METRICS,
+        )
+
+
+def test_run_cutoff_uopc_never_writes_underscore_keys_to_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Underscore keys are per-job arrays; in metrics.json they would hold one value per
+    test job (#168). Whatever the model returns, none survive into the payload."""
+    monkeypatch.setattr(runner, "JobPowerUopcModel", _FakeSweepModel)
+
+    _, payload, _ = runner.run_cutoff_uopc(
+        [{"dummy": 1}],
+        split={
+            "method": "cutoff",
+            "test_start": "2024-02-01",
+            "theta_values": [50],
+            "k_values": [5, 10],
+            "theta": 50,
+            "k": 5,
+        },
+        metric_defs=_SWEEP_METRICS,
+        capture_artifacts=True,
+    )
+
+    assert not [key for key in payload if key.startswith("_")]
+
+
+def test_benchmark_routes_a_uopc_cutoff_recipe_to_the_paper_protocol(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """End to end through the CLI: method cutoff reaches run_cutoff_uopc, and the result
+    carries the recipe's problem domain rather than the runtime default."""
+    called: dict[str, object] = {}
+
+    def fake_run_cutoff_uopc(rows, *, split, metric_defs, verbose, capture_artifacts):
+        called["split"] = dict(split)
+        metrics = {"mae": 3.0, "rmse": 4.0}
+        return metrics, {**metrics, "definitions": metric_defs}, runner.BenchmarkArtifacts()
+
+    monkeypatch.setattr(cli, "run_cutoff_uopc", fake_run_cutoff_uopc)
+    monkeypatch.chdir(tmp_path)
+
+    table_path = tmp_path / "power.parquet"
+    pq.write_table(pa.Table.from_pylist([{"user": "alice", "avgpcon": 100.0}]), table_path)
+    recipe_path = tmp_path / "recipe.yml"
+    recipe_path.write_text(
+        "\n".join(
+            [
+                "recipe_id: recipe.job_power.cutoff_test",
+                "problem_domain: [job-power-prediction]",
+                "schema_version: oda.job.v0.2.0",
+                "dataset:",
+                "  id: power",
+                f"  table_path: {table_path}",
+                "model:",
+                "  id: model.job_power_uopc",
+                '  version: "0.1.0"',
+                "metrics:",
+                "  - {name: mae, target: avgpcon_per_node}",
+                "  - {name: rmse, target: avgpcon_per_node}",
+                "split:",
+                "  method: cutoff",
+                '  test_start: "2024-02-01"',
+                "run:",
+                "  output_dir: runs",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    cli.benchmark(recipe_path)
+
+    assert called["split"]["method"] == "cutoff"
+    (bundle,) = (tmp_path / "runs").iterdir()
+    result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
+    assert result["problem_domain"] == ["job-power-prediction"]
+    assert result["metrics"]["mae"] == 3.0

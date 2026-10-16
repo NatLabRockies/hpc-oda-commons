@@ -203,9 +203,36 @@ def test_a_recipe_can_actually_set_the_target_encoding_knobs() -> None:
     assert kwargs["target_encode_smoothing"] == 5.0
 
 
-def test_validate_recipe_uopc_sensitivity_parameters_ok() -> None:
+def _valid_cutoff_recipe() -> dict:
     payload = _valid_recipe()
-    payload["split"]["test_start"] = "2024-02-01"
+    payload["model"] = {"id": "model.job_power_uopc", "version": "0.1.0"}
+    payload["split"] = {"method": "cutoff", "test_start": "2024-02-01"}
+    return payload
+
+
+def test_validate_recipe_cutoff_needs_no_fraction_or_seed() -> None:
+    """A date cutoff has no train fraction or seed, so the schema must not demand them."""
+    validate_recipe(_valid_cutoff_recipe())
+
+
+def test_validate_recipe_cutoff_requires_test_start() -> None:
+    payload = _valid_cutoff_recipe()
+    del payload["split"]["test_start"]
+    with pytest.raises(SchemaValidationError):
+        validate_recipe(payload)
+
+
+@pytest.mark.parametrize("test_start", ["2024-13-01", "Feb 1 2024", ""])
+def test_validate_recipe_cutoff_rejects_a_malformed_test_start(test_start: str) -> None:
+    """jsonschema treats "format": "date" as advisory, so the loader checks it itself."""
+    payload = _valid_cutoff_recipe()
+    payload["split"]["test_start"] = test_start
+    with pytest.raises(SchemaValidationError):
+        validate_recipe(payload)
+
+
+def test_validate_recipe_uopc_sensitivity_parameters_ok() -> None:
+    payload = _valid_cutoff_recipe()
     payload["split"]["theta_values"] = [
         50,
         100,
@@ -235,8 +262,7 @@ def test_validate_recipe_rejects_invalid_uopc_sensitivity_parameters(
     field: str,
     value: list[int],
 ) -> None:
-    payload = _valid_recipe()
-    payload["split"]["test_start"] = "2024-02-01"
+    payload = _valid_cutoff_recipe()
     payload["split"]["theta_values"] = [50, 100]
     payload["split"]["k_values"] = [5, 10]
     payload["split"][field] = value

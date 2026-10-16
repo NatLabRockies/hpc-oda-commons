@@ -22,6 +22,7 @@ from hpc_oda_commons.benchmark.run_extras import (
     write_run_extras,
 )
 from hpc_oda_commons.benchmark.runner import (
+    run_cutoff_uopc,
     run_fixed_baseline,
     run_fixed_uopc,
     run_rolling_baseline,
@@ -443,7 +444,7 @@ def _normalize_split(recipe_payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(split, dict):
         raise typer.BadParameter("recipe.split must be an object")
     method = str(split.get("method", "fixed"))
-    if method not in {"fixed", "rolling"}:
+    if method not in {"fixed", "rolling", "cutoff"}:
         raise typer.BadParameter(f"Unsupported split method: {method}")
     split["method"] = method
     return split
@@ -798,6 +799,14 @@ def benchmark(
         )
     elif model_id == "model.job_power_uopc" and split_method == "fixed":
         metrics, metrics_payload, artifacts = run_fixed_uopc(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
+    elif model_id == "model.job_power_uopc" and split_method == "cutoff":
+        metrics, metrics_payload, artifacts = run_cutoff_uopc(
             rows,
             split=split,
             metric_defs=metric_defs,
