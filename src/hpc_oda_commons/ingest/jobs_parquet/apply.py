@@ -383,6 +383,56 @@ def _null_values(col: pa.Array, values: list[Any] | None) -> pa.Array:
     return pc.if_else(pc.fill_null(mask, False), pa.scalar(None, col.type), col)
 
 
+_NULL_WHEN_COMPARISONS = {
+    "gt": pc.greater,
+    "ge": pc.greater_equal,
+    "lt": pc.less,
+    "le": pc.less_equal,
+}
+_NULL_WHEN_OPS = frozenset(_NULL_WHEN_COMPARISONS) | {"in"}
+
+
+def _check_null_when(fields: dict[str, Any]) -> None:
+    """Fail on a malformed ``null_when`` before any data is read."""
+    for name, spec in fields.items():
+        for cond in (spec or {}).get("null_when") or []:
+            ops = [key for key in cond if key != "source"]
+            if not cond.get("source") or len(ops) != 1 or ops[0] not in _NULL_WHEN_OPS:
+                raise ValueError(
+                    f"field {name!r}: null_when condition {cond!r} needs a source and exactly "
+                    f"one of {sorted(_NULL_WHEN_OPS)}"
+                )
+            if ops[0] == "in" and not isinstance(cond["in"], list):
+                raise ValueError(f"field {name!r}: null_when 'in' needs a list, got {cond['in']!r}")
+
+
+def _null_when(col: pa.Array, table: pa.Table, conditions: list[dict[str, Any]] | None) -> pa.Array:
+    """Null the field where any condition on another source column holds (#209): e.g.
+    Kestrel's job energy is the whole node's when the node was shared, so it is not the
+    job's power. The row is kept. A null source value matches no condition."""
+    if not conditions:
+        return col
+    mask = None
+    for cond in conditions:
+        source = cond["source"]
+        if source not in table.column_names:
+            raise ValueError(f"null_when source column {source!r} is not in the input")
+        values = table.column(source).combine_chunks()
+        (op,) = (key for key in cond if key != "source")
+        if op == "in":
+            if _is_numeric(values.type):
+                value_set = pa.array([float(v) for v in cond["in"]], pa.float64())
+                hit = pc.is_in(pc.cast(values, pa.float64()), value_set=value_set)
+            else:
+                value_set = pa.array([str(v) for v in cond["in"]], pa.string())
+                hit = pc.is_in(pc.cast(values, pa.string()), value_set=value_set)
+        else:
+            hit = _NULL_WHEN_COMPARISONS[op](pc.cast(values, pa.float64()), float(cond[op]))
+        hit = pc.fill_null(hit, False)
+        mask = hit if mask is None else pc.or_(mask, hit)
+    return pc.if_else(mask, pa.scalar(None, col.type), col)
+
+
 def _transform_column(col: pa.Array, transform: dict[str, Any] | None) -> pa.Array:
     """Apply a transform to a whole column.
 
@@ -518,6 +568,7 @@ def apply_mapping_spec(
     fields: dict[str, Any] = mapping.get("fields", {})
     derives_runtime = fields.get("runtime_seconds", {}).get("derive") == _RUNTIME_DERIVE
     ratio_derives = _ratio_derives(fields)
+    _check_null_when(fields)
 
     # Fixed output column order, identical across batches so filtered tables concat.
     out_order = list(fields.keys()) + [f for f in REQUIRED_FIELDS if f not in fields]
@@ -541,7 +592,9 @@ def apply_mapping_spec(
             source = spec.get("source")
             if source and source in table.column_names:
                 raw = _null_values(table.column(source).combine_chunks(), spec.get("null_values"))
-                columns[field] = _transform_column(raw, spec.get("transform"))
+                columns[field] = _null_when(
+                    _transform_column(raw, spec.get("transform")), table, spec.get("null_when")
+                )
             else:
                 columns[field] = pa.nulls(n)
 

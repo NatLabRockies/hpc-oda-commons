@@ -118,7 +118,7 @@ targets:
       - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
       - { problem_domain: job-power-prediction,    target_column: maxpcon }
     suitable_models: [model.job_runtime_xgboost, model.job_power_uopc]   # optional curated hint
-    mapping:                              # reuses apply.py transform vocab (timestamp/duration/memory/hash_identifier; later list_mean/list_max and ratio derives, #204; energy, null_values and chained ratios, #206)
+    mapping:                              # reuses apply.py transform vocab (timestamp/duration/memory/hash_identifier; later list_mean/list_max and ratio derives, #204; energy, null_values and chained ratios, #206; null_when, #209)
       job_id:          { from: jobid,   type: hash_identifier }
       start_time:      { from: sdt,     type: timestamp, format: epoch_s }
       end_time:        { from: edt,     type: timestamp, format: epoch_s }
