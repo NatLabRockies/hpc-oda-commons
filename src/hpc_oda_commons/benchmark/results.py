@@ -4,7 +4,9 @@ Result bundle schema helpers and readers/writers.
 
 from __future__ import annotations
 
+import ast
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -23,6 +25,7 @@ from hpc_oda_commons.kernel.artifacts.result_bundle import (
     validate_result_bundle,
 )
 from hpc_oda_commons.kernel.paths import ensure_dir
+from hpc_oda_commons.kernel.serialization import to_jsonable
 
 LEADERBOARD_FORMAT_VERSION = "oda.leaderboard.v0.1.0"
 
@@ -159,6 +162,32 @@ def _legacy_arm_config(metrics: dict[str, Any]) -> dict[str, Any] | None:
     return {"training_lookback_days": int(lookback)}
 
 
+_LEGACY_SET_REPR = re.compile(r"^(?:frozenset|set)\((.*)\)$", re.DOTALL)
+
+
+def _normalize_legacy_sets(config: dict[str, Any]) -> dict[str, Any]:
+    """Read set-valued knobs from bundles written before #211 as the list written now.
+
+    Those bundles recorded a set as its repr, e.g. ``"frozenset({'qos', 'user'})"``, with
+    the elements in hash-seed order. Parsing the repr back (``ast.literal_eval``, never
+    ``eval``) gives the sorted list ``to_jsonable`` writes today, so an old bundle and a
+    re-run of the same arm share one key. Any other value is left alone.
+    """
+    out: dict[str, Any] = {}
+    for key, value in config.items():
+        match = _LEGACY_SET_REPR.match(value) if isinstance(value, str) else None
+        if match is not None:
+            inner = match.group(1).strip()
+            try:
+                parsed = ast.literal_eval(inner) if inner else set()
+            except (ValueError, SyntaxError):
+                parsed = None
+            if isinstance(parsed, (set, frozenset)):
+                value = to_jsonable(parsed)
+        out[key] = value
+    return out
+
+
 def build_arm_ranking(
     runs_dir: Path,
     *,
@@ -189,7 +218,7 @@ def build_arm_ranking(
         config = metrics.get("run_config") or _legacy_arm_config(metrics)
         if config is None:
             continue
-        entry["_config"] = config
+        entry["_config"] = _normalize_legacy_sets(config)
         entry["_metrics"] = metrics
         entries.append(entry)
 
