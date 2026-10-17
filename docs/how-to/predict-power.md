@@ -80,8 +80,9 @@ hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/xgboost_rolling_avg.yml
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
 
-`recipes/job-power/<model>_rolling_{avg,peak}.yml` exist for all nine models, UoPC
-included, on one shared protocol (89 daily windows from ~2024-02-01, 60 days of lookback,
+`recipes/job-power/<model>_rolling_{avg,peak}.yml` exist for eight models, UoPC
+included (all but MLP, which is left out of the benchmark as it is for runtime), on one
+shared protocol (89 daily windows from ~2024-02-01, 60 days of lookback,
 MAE/RMSE/MAPE/R²). Rolling recipes may report `mape` and `r2`; they are computed over all
 scored rows (arm ranking still refuses to pool them from windows).
 

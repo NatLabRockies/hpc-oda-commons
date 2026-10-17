@@ -13,8 +13,12 @@ How to run any model on power: [Predict job power](../how-to/predict-power.md).
   ([why](../how-to/predict-power.md#per-node-power)).
 - **Split:** 89 daily windows ending at the last submit, so testing starts around
   2024-02-01, the paper's test period; 60 days of training lookback.
-- **Models:** the nine in `recipes/job-power/*_rolling_{avg,peak}.yml`, all with their
-  default configuration. UoPC runs at θ = 500, k = 5.
+- **Models:** the eight in `recipes/job-power/*_rolling_{avg,peak}.yml`, all with their
+  default configuration. UoPC runs at θ = 500, k = 5. MLP is left out, as it is from the
+  runtime fleet run ([methodology](methodology.md)): it measured weaker than the other
+  rolling-tabular models across the board on runtime, and here it cost ~130 s per window
+  (over 3 h per target). `model.job_runtime_mlp` still predicts power when a recipe names
+  it.
 - **Metrics:** MAE and RMSE (W/node), MAPE, R², over all scored rows.
 - **Same rows for everyone.** UoPC predicts the window mean for users with fewer than k
   training jobs, as the rolling baseline would, and reports how many in `rows_fallback`.
