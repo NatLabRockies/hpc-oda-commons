@@ -59,6 +59,25 @@ def run_cli(
     return CmdResult(cmd, proc.returncode, proc.stdout, proc.stderr)
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _preprocessing_store_outside_the_repo(tmp_path_factory: pytest.TempPathFactory):
+    """Keep the benchmark runner's preprocessing store (#213) in a session temp dir.
+
+    Its default is ``.hpc_oda/cache/preprocessing`` under the working directory, which for a
+    test run is the repo. Pointing it elsewhere still exercises the store -- CLI subprocesses
+    inherit the variable -- without writing to the checkout or reusing a previous session's
+    entries.
+    """
+    name = "HPC_ODA_PREPROCESSING_CACHE"
+    previous = os.environ.get(name)
+    os.environ[name] = str(tmp_path_factory.mktemp("preprocessing-store"))
+    yield
+    if previous is None:
+        os.environ.pop(name, None)
+    else:
+        os.environ[name] = previous
+
+
 @pytest.fixture
 def repo_root() -> Path:
     # tests/conftest.py -> tests/ -> repo root

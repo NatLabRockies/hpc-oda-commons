@@ -64,6 +64,9 @@ class JobRuntimeTfidfKnnConfig:
     # Dataset-specific columns to vectorize on top of the shared submission-time
     # allowlist (``models/feature_policy.py``).
     extra_feature_fields: frozenset[str] = frozenset()
+    # The column the model predicts (runtime by default, e.g. ``avgpcon_per_node`` for
+    # power, #204). The runner sets it from the recipe's metric target.
+    target_field: str = "runtime_seconds"
 
 
 @dataclass
@@ -92,7 +95,7 @@ class JobRuntimeTfidfKnnModel:
 
     def __init__(self, config: JobRuntimeTfidfKnnConfig | None = None) -> None:
         self.config = config or JobRuntimeTfidfKnnConfig()
-        self.target_field = "runtime_seconds"
+        self.target_field = self.config.target_field
 
     def evaluate(
         self,
@@ -114,7 +117,9 @@ class JobRuntimeTfidfKnnModel:
         # Precompute once: stateless hashing over every row + the target array. Each
         # window then works on index slices of these, with no cross-window state, so the
         # per-window fits are independent and order-invariant.
-        text_columns = detect_text_columns(rows, extra_fields=self.config.extra_feature_fields)
+        text_columns = detect_text_columns(
+            rows, extra_fields=self.config.extra_feature_fields, target=self.target_field
+        )
         hash_matrix = self._hash_rows(rows, text_columns)
         targets = self._target_array(rows)
 

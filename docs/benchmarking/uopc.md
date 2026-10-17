@@ -25,7 +25,13 @@ is a one-model study, not a leaderboard.
 | Context | newest `theta` = 50 | newest `theta` = 500 |
 | Data | a hand-placed raw Fugaku file | `dataset.job_power.fdata_fugaku_uopc` via `datasets prepare` |
 
-The adaptation is unchanged by this work; the paper protocol is new.
+The adaptation is unchanged by this work; the paper protocol is new. A third mode,
+`split.method: rolling`, scores the same paper model on the shared rolling windows next to
+every other model ([Power prediction benchmark](power.md)). That mode reads the prepared
+`avgpcon_per_node`/`maxpcon_per_node` columns, per requested node, like every other model.
+The paper protocol computes its own targets per allocated node (`nnuma`), as the paper does,
+so the two modes' numbers are not on the same target
+([why](../known-issues.md#note--f-datas-allocated-node-counts-can-be-padded)).
 
 ## Running it
 

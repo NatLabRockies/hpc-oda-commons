@@ -19,6 +19,7 @@ Built-in v0.1 recipes:
 - `src/hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml` -- UoPC power prediction, fixed split
 - `src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml` -- the UoPC paper protocol, cutoff split ([UoPC reproduction](../benchmarking/uopc.md))
 - `src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity.yml` -- the paper's θ × k sweep, cutoff split
+- `src/hpc_oda_commons/recipes/job-power/<model>_rolling_{avg,peak}.yml` -- every model, UoPC included, predicting average or peak power per node on one rolling protocol ([Power prediction benchmark](../benchmarking/power.md))
 
 See the [Recipes Reference](../reference/recipes.md) for the full format specification with annotated examples.
 
@@ -82,7 +83,7 @@ The v0.1 runtime prediction problem uses regression metrics:
 | MAE | Mean Absolute Error -- average absolute difference in seconds |
 | RMSE | Root Mean Squared Error -- penalizes large errors more heavily |
 
-Additional metrics (`mape`, `r2`, `underprediction_ratio`) can be added to a recipe's metric definitions. All metrics must target the same field (e.g., `runtime_seconds`).
+Additional metrics (`mape`, `r2`, `underprediction_ratio`) can be added to a recipe's metric definitions. All metrics must target the same field (e.g., `runtime_seconds`), and **that field is what the model predicts**: point any runtime model at `avgpcon_per_node` or `maxpcon_per_node` to predict power per node. A model that cannot predict the named target fails the run. See [Predict job power](../how-to/predict-power.md).
 
 ## Result Bundles
 

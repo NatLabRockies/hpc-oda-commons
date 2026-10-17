@@ -28,8 +28,9 @@ Raw Input (slurmctld.log / jobs.parquet)
   - `job_runtime_baseline/` -- deterministic mean-prediction model (fit/predict)
   - `rolling_tabular/` -- neutral base package for the rolling tabular runtime models:
     `RollingTabularModel` + `RollingTabularConfig` (`base.py`), categorical preprocessing
-    (OHE + SVD via `preprocessing.py`), and the daily preprocessing cache / split logic
-    (`split.py`). Concrete models supply a regressor via the `_new_regressor()` seam.
+    (OHE + SVD via `preprocessing.py`), the daily preprocessing cache / split logic
+    (`split.py`), and the on-disk store that shares those daily artifacts across runs
+    (`artifact_store.py`, #213). Concrete models supply a regressor via the `_new_regressor()` seam.
     (This is the "neutral base" refactor from issue #6, now landed.)
   - `job_runtime_xgboost/` -- XGBoost regressor; subclasses `RollingTabularModel` and supplies
     an XGBoost regressor via `_new_regressor()`.
@@ -47,7 +48,12 @@ Raw Input (slurmctld.log / jobs.parquet)
     numpy / torch / faiss). Reuses `rolling_tabular` split + `kernel.metrics`.
   - `job_power_uopc/` -- user-based online power prediction (UoPC): the Commons adaptation on a
     fixed chronological split (`evaluate_fixed()`), and the paper protocol on a date cutoff
-    (`evaluate_paper_reproduction()`, `evaluate_paper_sensitivity()`; see `docs/benchmarking/uopc.md`)
+    (`evaluate_paper_reproduction()`, `evaluate_paper_sensitivity()`; see `docs/benchmarking/uopc.md`),
+    and `rolling.py` (`JobPowerUopcRollingModel`) for the shared rolling windows
+- **Targets** -- every model predicts the recipe's metric target (`runtime_seconds` by default):
+  the runner sets `target_field` on target-configurable models and fails a model that cannot
+  predict it (`benchmark/runner.py`, `recipe_target` / `_require_target`). Features come from
+  `models/feature_policy.py`'s `feature_allowlist()`, which never includes the target.
 - **`embeddings/`** -- Embedding module behind `hpc-oda embed`: leakage-guarded row
   serialization (`serialize.py` -- submission-time fields only, `prose`/`kv` formats),
   encoders (`encoders.py` -- `HashingEncoder` stub + `SentenceTransformerEncoder`), and the

@@ -32,6 +32,7 @@ from hpc_oda_commons.benchmark.runner import (
     run_rolling_random_forest,
     run_rolling_signature_memorizer,
     run_rolling_tfidf_knn,
+    run_rolling_uopc,
     run_rolling_xgboost,
 )
 from hpc_oda_commons.benchmark.table_rows import table_to_rows
@@ -799,6 +800,14 @@ def benchmark(
         )
     elif model_id == "model.job_power_uopc" and split_method == "fixed":
         metrics, metrics_payload, artifacts = run_fixed_uopc(
+            rows,
+            split=split,
+            metric_defs=metric_defs,
+            verbose=verbose,
+            capture_artifacts=capture_artifacts,
+        )
+    elif model_id == "model.job_power_uopc" and split_method == "rolling":
+        metrics, metrics_payload, artifacts = run_rolling_uopc(
             rows,
             split=split,
             metric_defs=metric_defs,

@@ -17,7 +17,9 @@ def compute_regression_metrics(y_true: list[float], y_pred: list[float]) -> dict
     return {"mae": float(mae), "rmse": float(rmse)}
 
 
-SUPPORTED_ROLLING_METRIC_NAMES = frozenset({"mae", "rmse", "underprediction_ratio"})
+# mape and r2 are computed over all scored rows, like every metric here. They cannot be
+# pooled from per-window values, which is why arm ranking refuses them (arm_selection.py).
+SUPPORTED_ROLLING_METRIC_NAMES = frozenset({"mae", "rmse", "underprediction_ratio", "mape", "r2"})
 
 
 def compute_regression_metrics_from_defs(

@@ -165,8 +165,8 @@ Key sections:
 Defines field mapping specifications for transforming site-specific data into the canonical ODA schema. Mapping specs are stored as YAML and support:
 
 - **Source mapping**: direct column-to-field mapping
-- **Derived fields**: computed fields (e.g., `runtime_seconds` derived from `end_time - start_time`)
-- **Transformations**: typed transformations including timestamp parsing, duration conversion, memory normalization, and identifier hashing
+- **Derived fields**: computed fields: `runtime_seconds` derived from `end_time - start_time`, or a ratio of two mapped fields (`derive: "avgpcon / num_nodes_alloc"`, null for a non-positive denominator). Any other expression is an error.
+- **Transformations**: typed transformations including timestamp parsing, duration conversion, memory normalization, identifier hashing, and `list_mean`/`list_max` to reduce a per-job list of samples (e.g. a power trace) to one number
 - **Roles**: fields marked as `required` or `optional`
 
 ```yaml
@@ -401,6 +401,15 @@ The rolling evaluation strategy (`evaluate()`) simulates how a model would perfo
 - The first split of each day triggers a full preprocessing refit; subsequent splits within the same day reuse the cached encoder and SVD transformer
 - This provides a realistic simulation of production behavior (daily preprocessing refresh) while remaining computationally tractable
 
+**Preprocessing store** (`models/rolling_tabular/artifact_store.py`, #213):
+- A day's artifacts depend only on that day's training rows and the preprocessing settings, not on the regressor. So XGBoost, Random Forest, MLP and the MoE's shared part all build the same ones on the same table and protocol, and so do runs on different targets over the same rows (with target encoding off). The benchmark runner keeps them on disk and builds each one once.
+- Entries are keyed by content: a SHA-256 over the training rows' values in the allowed feature columns, in row order; the target values, only when target encoding is on; the preprocessing settings; a builder version; and the scikit-learn, NumPy and SciPy versions. A hit returns exactly what a fresh build on the writing machine produced, so results do not change, and any change to the rows or settings is a miss. Across machines with different BLAS builds, an entry carries the writer's last-decimal differences ([known issues](known-issues.md) #2), as a run there would have.
+- It lives at `.hpc_oda/cache/preprocessing/` under the working directory. `HPC_ODA_PREPROCESSING_CACHE=<dir>` moves it and `HPC_ODA_PREPROCESSING_CACHE=off` disables it. Writes are atomic, so array jobs can share one directory. An unreadable entry is rebuilt.
+- Entries are pickles: only point the store at a directory you control.
+- Models used directly from Python get no store unless one is set: `model.artifact_store = DailyArtifactStore(path)`. It is execution-only, like `window_n_jobs`, and never appears in `run_config`.
+- `summary.preprocessing_store` reports `{"hits": n, "misses": m}` for runs that used it.
+- Separately, choosing the SVD's component count already fits the SVD; when the chosen count equals the count evaluated (common on wide one-hot matrices, where 256 components never reach the coverage target), that fit is reused rather than repeated.
+
 **Evaluation loop**:
 - For each split:
   1. Materialize train and test rows from index lists
@@ -476,7 +485,11 @@ It subclasses `RollingTabularModel` and overrides only the fit/predict seam (`_f
 
 ### 7.8 Job Power Model (`model.job_power_uopc`)
 
-A per-user kNN power-prediction model (UoPC-style) that predicts `maxpcon` (maximum job power) rather than runtime. Unlike the rolling runtime models, it uses a fixed train/test split. For each user, job history is ordered by end time and the most recent `theta` jobs form the training context; categorical job features (e.g., job name) are label-encoded per fit, and a `KNeighborsRegressor` predicts from the nearest neighbors. It operates on raw Fugaku-style columns (`usr`, `jnam`, `cnumr`, `nnumr`, `edt`, `maxpcon`) via field aliases, and is driven by the bundled `uopc_maxpcon.yml` recipe. With `split.method: cutoff` the same model runs the UoPC paper protocol instead (date cutoff, per-node `avgpcon`/`maxpcon`, embedding features, kNN-classifier voting, mean baselines, θ × k sweep) via the `job-power/uopc_paper_*.yml` recipes; see `docs/benchmarking/uopc.md`.
+A per-user kNN power-prediction model (UoPC-style) that predicts `maxpcon` (maximum job power) rather than runtime. Unlike the rolling runtime models, it uses a fixed train/test split. For each user, job history is ordered by end time and the most recent `theta` jobs form the training context; categorical job features (e.g., job name) are label-encoded per fit, and a `KNeighborsRegressor` predicts from the nearest neighbors. It operates on raw Fugaku-style columns (`usr`, `jnam`, `cnumr`, `nnumr`, `edt`, `maxpcon`) via field aliases, and is driven by the bundled `uopc_maxpcon.yml` recipe. With `split.method: cutoff` the same model runs the UoPC paper protocol instead (date cutoff, per-node `avgpcon`/`maxpcon`, embedding features, kNN-classifier voting, mean baselines, θ × k sweep) via the `job-power/uopc_paper_*.yml` recipes; see `docs/benchmarking/uopc.md`. With `split.method: rolling` it is scored on the shared rolling windows next to every other model (`models/job_power_uopc/rolling.py`): context is the user's newest `theta` training-window jobs, features are scaled on training rows only, and users with fewer than `k` training jobs get the window mean (counted in `rows_fallback`).
+
+### 7.9 Prediction targets
+
+Every model predicts the column its recipe's metrics target, `runtime_seconds` by default. The runner sets `target_field` on the target-configurable models (all the runtime models) and fails a model that cannot predict the named column, so a metric's target is never just a label. Features come from `feature_allowlist()` in `models/feature_policy.py`, which never includes the target. Power targets are `avgpcon_per_node` and `maxpcon_per_node`, watts per node (per requested node on F-DATA, whose allocated count can be padded), derived during dataset preparation; `recipes/job-power/<model>_rolling_{avg,peak}.yml` run every model on them. See `docs/how-to/predict-power.md`.
 
 ---
 
@@ -519,6 +532,7 @@ run:
 - For `rolling` splits: `n_windows` must be positive; `test_window_hours` defaults to 6; `training_lookback_days` defaults to 100
 - For `fixed` splits: `train_fraction` and `seed` control the random split
 - For `cutoff` splits: `test_start` (ISO date) is required
+- The metrics' shared target is the column the model predicts; a model that cannot predict it fails the run
 
 ### 8.2 Bundled Recipes
 

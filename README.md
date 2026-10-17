@@ -133,6 +133,8 @@ hpc-oda benchmark -v my_recipe.yml
 
 **Job Power UoPC** (`model.job_power_uopc`) — Power-prediction model (domain `job-power-prediction`) using per-user online kNN regression on label-encoded job features (UoPC-style), with fixed evaluation. With `split.method: cutoff` it instead reproduces the UoPC paper on Fugaku (per-node average and peak power, embedding features, kNN-classifier voting, per-user and global mean baselines, and a θ × k sensitivity sweep) — see [UoPC reproduction](docs/benchmarking/uopc.md).
 
+**Any model, any target.** Every model above predicts the column its recipe's metrics name, `runtime_seconds` by default. Point one at `avgpcon_per_node` or `maxpcon_per_node` (watts per node; per requested node on F-DATA, whose allocated count can be padded) to predict job power on the same rolling protocol — see [Predict job power](docs/how-to/predict-power.md).
+
 ---
 
 ## Core Concepts
