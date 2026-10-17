@@ -30,6 +30,7 @@ _TRANSFORM_TYPES = frozenset(
         "duration",
         "memory",
         "memory_slurm",
+        "energy",
         "hash_identifier",
         "integer",
         "number",
@@ -65,6 +66,8 @@ def target_to_mapping_spec(target: Target) -> dict[str, Any]:
         spec: dict[str, Any] = {"source": rule.get("from")}
         if rule.get("derive"):
             spec["derive"] = rule["derive"]
+        if rule.get("null_values"):
+            spec["null_values"] = list(rule["null_values"])
         ttype = rule.get("type")
         if ttype in _TRANSFORM_TYPES:
             transform: dict[str, Any] = {"type": ttype}

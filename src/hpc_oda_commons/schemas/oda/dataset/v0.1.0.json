@@ -53,6 +53,7 @@
             "duration",
             "memory",
             "memory_slurm",
+            "energy",
             "hash_identifier",
             "integer",
             "number",
@@ -64,10 +65,16 @@
           "description": "Normalization transform; omitted means pass the value through unchanged."
         },
         "format": { "type": "string", "description": "e.g., epoch_s, epoch_ms, iso8601, HH:MM:SS." },
-        "unit": { "type": "string", "description": "e.g., seconds, minutes, gb, mib, timedelta." },
+        "unit": { "type": "string", "description": "e.g., seconds, minutes, gb, mib, timedelta; for energy: j, kj, wh, kwh." },
+        "null_values": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": ["number", "string"] },
+          "description": "Source values that mean no reading (e.g., [0] for an energy counter); they become null before the transform."
+        },
         "derive": {
           "type": "string",
-          "description": "Derive this field from others when the source is absent/null, e.g., 'end_time - start_time' for runtime_seconds."
+          "description": "Derive this field from others when the source is absent/null: 'end_time - start_time' for runtime_seconds, or '<field> / <field>' of two other mapped fields (which may themselves be ratios)."
         },
         "synthesize": {
           "type": "string",
