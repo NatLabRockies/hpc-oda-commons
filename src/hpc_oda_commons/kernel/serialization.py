@@ -18,6 +18,11 @@ def to_jsonable(value: Any) -> Any:
         return {str(key): to_jsonable(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [to_jsonable(item) for item in value]
+    if isinstance(value, (set, frozenset)):
+        # A sorted list: a set's iteration order depends on the process's hash seed, so
+        # the same config would otherwise serialize differently from run to run (#211).
+        ordered = sorted(value, key=lambda item: (type(item).__name__, str(item)))
+        return [to_jsonable(item) for item in ordered]
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
     return str(value)
