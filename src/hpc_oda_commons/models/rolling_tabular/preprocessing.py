@@ -416,6 +416,28 @@ def select_svd_components(
     max_svd_components: int = 256,
     random_state: int = 42,
 ) -> DimensionalityReductionPlan:
+    plan, _fitted = _plan_and_fit_svd(
+        encoded_matrix,
+        target_coverage=target_coverage,
+        max_svd_components=max_svd_components,
+        random_state=random_state,
+    )
+    return plan
+
+
+def _plan_and_fit_svd(
+    encoded_matrix: Any,
+    *,
+    target_coverage: float = 0.95,
+    max_svd_components: int = 256,
+    random_state: int = 42,
+) -> tuple[DimensionalityReductionPlan, Any | None]:
+    """``select_svd_components``, also returning the SVD it fitted to choose the count.
+
+    That fit has ``evaluated_components`` components. When the selected count equals it, the
+    fit is exactly the one the caller would make next, so returning it saves a second fit of
+    the same matrix (#213). None when no SVD was fitted.
+    """
     target = min(max(float(target_coverage), 0.0), 1.0)
 
     if encoded_matrix is None:
@@ -429,7 +451,7 @@ def select_svd_components(
             achieved_coverage=1.0,
             variance_ratio_preview=(),
             cumulative_coverage_preview=(),
-        )
+        ), None
 
     _, TruncatedSVD = _require_sklearn()
 
@@ -446,7 +468,7 @@ def select_svd_components(
             achieved_coverage=1.0,
             variance_ratio_preview=(),
             cumulative_coverage_preview=(),
-        )
+        ), None
 
     evaluated = min(feasible, max(1, int(max_svd_components)))
     svd, solver = fit_truncated_svd(encoded_matrix, evaluated, random_state)
@@ -478,7 +500,7 @@ def select_svd_components(
         achieved_coverage=float(achieved),
         variance_ratio_preview=tuple(ratios[:preview_len]),
         cumulative_coverage_preview=tuple(cumulative[:preview_len]),
-    )
+    ), svd
 
 
 def _library_versions() -> dict[str, str]:

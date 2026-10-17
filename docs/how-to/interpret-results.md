@@ -112,6 +112,7 @@ For rolling benchmarks (baseline, XGBoost, random forest, MLP, TF-IDF kNN, or em
 
 - `windows_scored` vs `windows_skipped` -- some windows may lack enough data to train or test. A high skip rate suggests sparse data in parts of the evaluation window.
 - `preprocessing_refits` -- appears only for the tabular rolling models (`xgboost`, `random_forest`, `mlp`), not the baseline or TF-IDF kNN rolling summaries. The OHE/SVD pipeline is refit once per day, and this count shows how many unique days were covered.
+- `preprocessing_store` -- `{"hits": n, "misses": m}`, for the tabular rolling models when the benchmark runner's preprocessing store was in use. Hits are days whose OHE/SVD artifacts an earlier run on the same rows had already built; they change no result, only the run time ([reference](../hpc-oda-commons-reference.md)).
 - Per-window `metrics` show how prediction quality varies over time. Large swings may indicate workload pattern changes.
 
 ## Reading `provenance.json`
