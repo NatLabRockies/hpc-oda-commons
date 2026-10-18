@@ -579,6 +579,52 @@ def test_slice_dataset_records_which_window_it_wrote(tmp_path: Path) -> None:
     assert provenance["rows"] == n == 4
 
 
+def test_cli_datasets_slice_cuts_a_named_window(tmp_path: Path) -> None:
+    """A window given by hand, not a card's, is recorded as ``window`` (#217)."""
+    import pyarrow.parquet as pq
+    from typer.testing import CliRunner
+
+    from hpc_oda_commons.qst.cli import app
+
+    src = tmp_path / "canonical.parquet"
+    pq.write_table(_job_table(), src)
+    out = tmp_path / "windows" / "ds" / "data.parquet"
+
+    result = CliRunner().invoke(
+        app,
+        ["datasets", "slice", str(src), "--start", "2025-01-01", "--end", "2025-03-31"]
+        + ["--out", str(out)],
+    )
+
+    assert result.exit_code == 0, result.output
+    kept = set(pq.read_table(out).column("job_id").to_pylist())
+    assert kept == {"in_window", "test_row", "long_pre_window"}
+    provenance = json.loads((out.parent / "slice.json").read_text(encoding="utf-8"))
+    assert provenance["window"] == {"start": "2025-01-01", "end": "2025-03-31"}
+    assert "card_window" not in provenance
+
+
+def test_cli_datasets_slice_rejects_a_bad_day(tmp_path: Path) -> None:
+    import pyarrow.parquet as pq
+    from typer.testing import CliRunner
+
+    from hpc_oda_commons.qst.cli import app
+
+    src = tmp_path / "canonical.parquet"
+    pq.write_table(_job_table(), src)
+    out = tmp_path / "out" / "data.parquet"
+
+    result = CliRunner().invoke(
+        app,
+        ["datasets", "slice", str(src), "--start", "2025-13-01", "--end", "2025-03-31"]
+        + ["--out", str(out)],
+    )
+
+    assert result.exit_code == 1
+    assert "Cannot slice" in result.output
+    assert not out.exists()
+
+
 # --- model selection (#156) ---------------------------------------------------------
 
 
