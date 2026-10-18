@@ -9,7 +9,8 @@ description: >
   separate dataset from `dataset.job_runtime.fdata_fugaku` on purpose: the two cover
   different months, and sharing one descriptor would mean sharing one prepared table, so
   preparing either window would overwrite the other's. Power targets are avgpcon and
-  maxpcon (watts, whole job); the UoPC protocol divides both by allocated nodes. Each row
+  maxpcon (watts, whole job), also given per requested node as avgpcon_per_node and
+  maxpcon_per_node, the columns every model predicts. Each row
   also carries F-DATA's precomputed job `embedding`, which UoPC uses as its main feature.
 problem_domains: [job-power-prediction]
 systems: [Fugaku]
@@ -53,9 +54,18 @@ decode:
 targets:
   - schema: oda.job.v0.2.0
     capabilities:
-      - { problem_domain: job-power-prediction, target_column: avgpcon }
-      - { problem_domain: job-power-prediction, target_column: maxpcon }
-    suitable_models: [model.job_power_uopc]
+      - { problem_domain: job-power-prediction, target_column: avgpcon_per_node }
+      - { problem_domain: job-power-prediction, target_column: maxpcon_per_node }
+    suitable_models:
+      - model.job_power_uopc
+      - model.job_runtime_baseline
+      - model.job_runtime_xgboost
+      - model.job_runtime_random_forest
+      - model.job_runtime_mlp
+      - model.job_runtime_tfidf_knn
+      - model.job_runtime_embedding_knn
+      - model.job_runtime_signature_memorizer
+      - model.job_runtime_moe_xgboost
     mapping:
       job_id: { from: jid }
       start_time: { from: sdt, type: timestamp, format: iso8601 }
@@ -75,6 +85,13 @@ targets:
       freq_req: { from: freq_req, type: integer }
       avgpcon: { from: avgpcon, type: number }
       maxpcon: { from: maxpcon, type: number }
+      # The prediction targets: watts per node. F-DATA's power sums the nodes the job ran
+      # on, but nnuma counts the allocated node shape, which Fugaku can pad: 1-node,
+      # 48-core jobs are recorded with nnuma = 48 and would read ~2 W per node. So divide
+      # by requested nodes, which match the nodes used. Null for a job requesting no
+      # nodes (#204). The UoPC paper protocol divides by nnuma itself, as the paper does.
+      avgpcon_per_node: { derive: "avgpcon / num_nodes_req" }
+      maxpcon_per_node: { derive: "maxpcon / num_nodes_req" }
       embedding: { from: embedding }
-    filter: { require_nonnull: [avgpcon, maxpcon, embedding] }
+    filter: { require_nonnull: [avgpcon_per_node, maxpcon_per_node, embedding] }
     output: { id: fdata_fugaku_uopc, path: data/datasets/fdata_fugaku_uopc/data.parquet }

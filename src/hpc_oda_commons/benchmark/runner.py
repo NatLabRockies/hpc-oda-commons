@@ -19,9 +19,15 @@ from hpc_oda_commons.kernel.serialization import to_jsonable
 from hpc_oda_commons.models.job_power_uopc.model import (
     PAPER_K,
     PAPER_K_VALUES,
+    PAPER_TARGETS,
     PAPER_THETA,
     PAPER_THETA_VALUES,
+    JobPowerUopcConfig,
     JobPowerUopcModel,
+)
+from hpc_oda_commons.models.job_power_uopc.rolling import (
+    JobPowerUopcRollingConfig,
+    JobPowerUopcRollingModel,
 )
 from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
 from hpc_oda_commons.models.job_runtime_embedding_knn.backends import DEFAULT_SIMS_BLOCK_BYTES
@@ -75,6 +81,50 @@ def _metrics_from_eval_payload(
     return {name: float(eval_payload[name]) for name in requested if name in eval_payload}
 
 
+def recipe_target(metric_defs: list[dict[str, Any]]) -> str | None:
+    """The one column a recipe's metrics score, or None when they name none.
+
+    A metric's ``target`` is not a label. Metrics are computed from whatever the model
+    predicted, so a recipe whose metrics say ``avgpcon_per_node`` over a model that predicts
+    ``runtime_seconds`` would report runtime errors under a power name (#204). The runner
+    therefore holds the model to this column.
+    """
+    targets = {str(m.get("target", "")).strip() for m in metric_defs if m.get("target")}
+    if not targets:
+        return None
+    if len(targets) > 1:
+        raise ValueError(f"All metrics must share one target; got {sorted(targets)}.")
+    return targets.pop()
+
+
+def _target_for(metric_defs: list[dict[str, Any]]) -> str:
+    """The column a target-configurable model should predict: the recipe's, else runtime."""
+    return recipe_target(metric_defs) or "runtime_seconds"
+
+
+def _require_target(
+    predicts: str | set[str], metric_defs: list[dict[str, Any]], *, model: str
+) -> str:
+    """Fail unless the recipe's metric target is a column this model predicts.
+
+    ``predicts`` is the model's target, or the set it can be pointed at. Returns the target
+    in force: the recipe's when it names one, else the model's own.
+    """
+    allowed = {predicts} if isinstance(predicts, str) else set(predicts)
+    target = recipe_target(metric_defs)
+    if target is None:
+        if len(allowed) != 1:
+            raise ValueError(f"{model} needs a metric target, one of {sorted(allowed)}.")
+        return next(iter(allowed))
+    if target not in allowed:
+        raise ValueError(
+            f"{model} predicts {' or '.join(repr(t) for t in sorted(allowed))}, but the "
+            f"recipe's metrics score {target!r}. Metric targets are what gets scored, not "
+            "labels, so this would report one column's errors under another's name."
+        )
+    return target
+
+
 def run_fixed_baseline(
     rows: list[dict[str, Any]],
     *,
@@ -83,13 +133,14 @@ def run_fixed_baseline(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed train/test split benchmark with the baseline model."""
+    target = _target_for(metric_defs)
     train_fraction = float(split.get("train_fraction", 0.8))
     n_train = max(1, int(len(rows) * train_fraction))
     train_rows = rows[:n_train]
     test_rows = rows[n_train:] if n_train < len(rows) else rows[:]
-    y_true = [float(r["runtime_seconds"]) for r in test_rows]
+    y_true = [float(r[target]) for r in test_rows]
 
-    model = JobRuntimeBaselineModel()
+    model = JobRuntimeBaselineModel(target_field=target)
     model.fit(train_rows)
     y_pred = model.predict(test_rows)
 
@@ -115,6 +166,10 @@ def run_fixed_uopc(
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed chronological split benchmark with the UoPC kNN model."""
     model = JobPowerUopcModel()
+    # The runner always builds the default config, so its target is the class default.
+    _require_target(
+        JobPowerUopcConfig.target_field, metric_defs, model="model.job_power_uopc (fixed)"
+    )
     eval_payload = model.evaluate_fixed(
         rows,
         split=split,
@@ -151,6 +206,9 @@ def run_cutoff_uopc(
     silent pick, since it is what the leaderboard shows.
     """
     model = JobPowerUopcModel()
+    # The paper protocol predicts both per-node targets; the recipe's metric target picks
+    # which one is the headline (average by default in the bundled recipes).
+    target = _require_target(set(PAPER_TARGETS), metric_defs, model="model.job_power_uopc (cutoff)")
     test_start = str(split["test_start"])
     theta = int(split.get("theta", PAPER_THETA))
     k = int(split.get("k", PAPER_K))
@@ -176,7 +234,7 @@ def run_cutoff_uopc(
             verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
-        headline = eval_payload["results"][str(theta)][str(k)]["classifier"]["avgpcon_per_node"]
+        headline = eval_payload["results"][str(theta)][str(k)]["classifier"][target]
         if not headline:
             raise ValueError(
                 f"No test job had {k} prior jobs at theta={theta}, so the headline is empty."
@@ -186,7 +244,12 @@ def run_cutoff_uopc(
             "test_start": test_start,
             "theta_values": list(theta_values),
             "k_values": list(k_values),
-            "headline": {"theta": theta, "k": k, "predictor": "KNeighborsClassifier"},
+            "headline": {
+                "theta": theta,
+                "k": k,
+                "predictor": "KNeighborsClassifier",
+                "target": target,
+            },
         }
     else:
         eval_payload = model.evaluate_paper_reproduction(
@@ -198,13 +261,14 @@ def run_cutoff_uopc(
             verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
-        headline = eval_payload["avgpcon_per_node"]
+        headline = eval_payload[target]
         run_config = {
             "protocol": "paper_reproduction",
             "test_start": test_start,
             "theta": theta,
             "k": k,
             "predictor": "KNeighborsClassifier",
+            "headline_target": target,
         }
 
     requested = {str(m.get("name", "")) for m in metric_defs}
@@ -239,11 +303,11 @@ def resolved_run_config(model: Any) -> dict[str, Any]:
     return to_jsonable(dict(vars(config)))
 
 
-def _filter_runtime_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Keep only rows with a finite runtime_seconds value."""
+def _filter_target_rows(rows: list[dict[str, Any]], target: str) -> list[dict[str, Any]]:
+    """Keep only rows with a finite ``target`` value."""
     result: list[dict[str, Any]] = []
     for row in rows:
-        raw = row.get("runtime_seconds")
+        raw = row.get(target)
         if raw is None:
             continue
         try:
@@ -265,6 +329,7 @@ def run_rolling_baseline(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the baseline model."""
+    target = _target_for(metric_defs)
     requested = _validate_rolling_metric_defs(metric_defs)
 
     n_windows = int(split.get("n_windows", 1000))
@@ -301,8 +366,8 @@ def run_rolling_baseline(
 
     for s in split_iter:
         train_rows, test_rows = materialize_split_rows(rows, s)
-        train_supervised = _filter_runtime_rows(train_rows)
-        test_supervised = _filter_runtime_rows(test_rows)
+        train_supervised = _filter_target_rows(train_rows, target)
+        test_supervised = _filter_target_rows(test_rows, target)
 
         if len(train_supervised) < 1:
             window_entries.append(
@@ -340,10 +405,10 @@ def run_rolling_baseline(
                 )
             continue
 
-        model = JobRuntimeBaselineModel()
+        model = JobRuntimeBaselineModel(target_field=target)
         model.fit(train_supervised)
         y_pred = model.predict(test_supervised)
-        y_true = [float(r["runtime_seconds"]) for r in test_supervised]
+        y_true = [float(r[target]) for r in test_supervised]
 
         window_metrics = compute_regression_metrics_from_defs(y_true, y_pred, metric_defs)
         all_y_true.extend(y_true)
@@ -384,6 +449,7 @@ def run_rolling_baseline(
         "n_windows": n_windows,
         "test_window_hours": test_window_hours,
         "training_lookback_days": training_lookback_days,
+        "target_field": target,
     }
 
     if verbose:
@@ -427,6 +493,9 @@ def _run_rolling_model_evaluate(
     verbose: bool,
     capture_artifacts: bool,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    # A model that declares no target predicts runtime, as every rolling model did before #204.
+    predicts = str(getattr(model, "target_field", "runtime_seconds"))
+    _require_target(predicts, metric_defs, model=type(model).__name__)
     requested = _validate_rolling_metric_defs(metric_defs)
     if isinstance(model, RollingTabularModel) and model.artifact_store is None:
         # Every rolling-tabular model on the same rows builds the same daily OHE + SVD, so
@@ -459,6 +528,7 @@ def run_rolling_xgboost(
     """Run a rolling benchmark with the XGBoost model."""
     model = JobRuntimeXGBoostModel(
         config=JobRuntimeXGBoostConfig(
+            target_field=_target_for(metric_defs),
             **_rolling_tabular_split_kwargs(split, JobRuntimeXGBoostConfig()),
             objective=str(split.get("objective", JobRuntimeXGBoostConfig.objective)),
         )
@@ -510,7 +580,8 @@ def run_rolling_random_forest(
     """Run a rolling benchmark with the Random Forest model."""
     model = JobRuntimeRandomForestModel(
         config=JobRuntimeRandomForestConfig(
-            **_rolling_tabular_split_kwargs(split, JobRuntimeRandomForestConfig())
+            target_field=_target_for(metric_defs),
+            **_rolling_tabular_split_kwargs(split, JobRuntimeRandomForestConfig()),
         )
     )
     return _run_rolling_model_evaluate(
@@ -540,6 +611,7 @@ def run_rolling_signature_memorizer(
     defaults = SignatureMemorizerConfig()
     model = JobRuntimeSignatureMemorizerModel(
         config=SignatureMemorizerConfig(
+            target_field=_target_for(metric_defs),
             n_windows=int(split.get("n_windows", 1000)),
             test_window_hours=int(split.get("test_window_hours", 6)),
             training_lookback_days=int(split.get("training_lookback_days", 100)),
@@ -572,6 +644,7 @@ def run_rolling_mlp(
     training_lookback_days = int(split.get("training_lookback_days", 100))
     model = JobRuntimeMlpModel(
         config=JobRuntimeMlpConfig(
+            target_field=_target_for(metric_defs),
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
@@ -600,6 +673,7 @@ def run_rolling_embedding_knn(
     """Run a rolling benchmark with the embedding-based kNN model."""
     model = JobRuntimeEmbeddingKnnModel(
         config=JobRuntimeEmbeddingKnnConfig(
+            target_field=_target_for(metric_defs),
             n_windows=int(split.get("n_windows", 1000)),
             test_window_hours=int(split.get("test_window_hours", 6)),
             training_lookback_days=int(split.get("training_lookback_days", 100)),
@@ -636,11 +710,43 @@ def run_rolling_tfidf_knn(
     training_lookback_days = int(split.get("training_lookback_days", 100))
     model = JobRuntimeTfidfKnnModel(
         config=JobRuntimeTfidfKnnConfig(
+            target_field=_target_for(metric_defs),
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
             window_n_jobs=int(split.get("window_n_jobs", 1)),
             log_target=bool(split.get("log_target", False)),
+        )
+    )
+    return _run_rolling_model_evaluate(
+        model,
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
+
+
+def run_rolling_uopc(
+    rows: list[dict[str, Any]],
+    *,
+    split: dict[str, Any],
+    metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
+    capture_artifacts: bool = False,
+) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
+    """Run UoPC on the shared rolling windows, scored like every other model (#204)."""
+    defaults = JobPowerUopcRollingConfig()
+    model = JobPowerUopcRollingModel(
+        config=JobPowerUopcRollingConfig(
+            target_field=recipe_target(metric_defs) or defaults.target_field,
+            n_windows=int(split.get("n_windows", 1000)),
+            test_window_hours=int(split.get("test_window_hours", 6)),
+            training_lookback_days=int(split.get("training_lookback_days", 100)),
+            theta=int(split.get("theta", defaults.theta)),
+            k=int(split.get("k", defaults.k)),
+            embedding_field=str(split.get("embedding_field", defaults.embedding_field)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -669,6 +775,7 @@ def run_rolling_moe_xgboost(
     edges = split.get("wallclock_bin_edges_hours")
     model = MoEXGBoostModel(
         config=MoEXGBoostConfig(
+            target_field=_target_for(metric_defs),
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,

@@ -430,3 +430,71 @@ def test_value_filters_positive_and_time_order() -> None:
     # require_end_after_start drops the row whose start is after end (index 2).
     ordered = _apply_filter(table, {"require_end_after_start": True})
     assert ordered.num_rows == 3
+
+
+def _ratio_table(tmp_path: Path) -> Path:
+    path = tmp_path / "ratio.parquet"
+    pq.write_table(
+        pa.table(
+            {
+                "jobid": [1, 2, 3, 4],
+                "sdt": [1_600_000_000] * 4,
+                "edt": [1_600_000_060] * 4,
+                "watts": [400.0, 300.0, 200.0, None],
+                "nodes": [4, 0, None, 2],
+            }
+        ),
+        path,
+    )
+    return path
+
+
+def _ratio_target(**mapping) -> Target:
+    base = {
+        "job_id": {"from": "jobid"},
+        "start_time": {"from": "sdt", "type": "timestamp", "format": "epoch_s"},
+        "end_time": {"from": "edt", "type": "timestamp", "format": "epoch_s"},
+        "runtime_seconds": {"derive": "end_time - start_time"},
+        "power": {"from": "watts", "type": "number"},
+        "num_nodes_alloc": {"from": "nodes", "type": "integer"},
+    }
+    return _target(mapping={**base, **mapping})
+
+
+def test_normalize_derives_a_ratio_of_two_mapped_fields(tmp_path: Path) -> None:
+    """Per-node power (#204): null where the denominator is zero, missing, or the numerator
+    is missing, so a job with no allocated nodes never gets an infinite target."""
+    out = tmp_path / "out.parquet"
+    target = _ratio_target(power_per_node={"derive": "power / num_nodes_alloc"})
+    normalize_target(_ratio_table(tmp_path), target, out)
+
+    assert pq.read_table(out).column("power_per_node").to_pylist() == [100.0, None, None, None]
+
+
+@pytest.mark.parametrize(
+    ("derive", "match"),
+    [
+        ("power * num_nodes_alloc", "unsupported derive"),
+        ("power / absent_field", "must be another mapped field"),
+        ("power_per_node / num_nodes_alloc", "must be another mapped field"),
+    ],
+)
+def test_normalize_rejects_a_derive_it_cannot_compute(
+    tmp_path: Path, derive: str, match: str
+) -> None:
+    """These used to be ignored silently, leaving the column empty."""
+    target = _ratio_target(power_per_node={"derive": derive})
+    with pytest.raises(ValueError, match=match):
+        normalize_target(_ratio_table(tmp_path), target, tmp_path / "out.parquet")
+
+
+def test_list_reductions_summarise_a_trace_per_row(tmp_path: Path) -> None:
+    """PM100-style power traces (#204): mean and peak per job, null for a missing or empty
+    trace, and a null sample inside a trace is skipped rather than poisoning the row."""
+    from hpc_oda_commons.ingest.jobs_parquet.apply import _reduce_list_column
+
+    traces = pa.array([[100, 300], [50], [], None, [10, None, 30]], type=pa.list_(pa.int32()))
+    assert _reduce_list_column(traces, "list_mean").to_pylist() == [200.0, 50.0, None, None, 20.0]
+    assert _reduce_list_column(traces, "list_max").to_pylist() == [300.0, 50.0, None, None, 30.0]
+    with pytest.raises(ValueError, match="needs a list column"):
+        _reduce_list_column(pa.array([1.0]), "list_mean")

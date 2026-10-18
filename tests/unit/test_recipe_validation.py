@@ -269,3 +269,10 @@ def test_validate_recipe_rejects_invalid_uopc_sensitivity_parameters(
 
     with pytest.raises(SchemaValidationError):
         validate_recipe(payload)
+
+
+def test_validate_recipe_accepts_embedding_field() -> None:
+    """Read by the embedding-kNN and rolling-UoPC runners, so it must be settable (#204)."""
+    payload = _valid_rolling_recipe()
+    payload["split"]["embedding_field"] = "job_embedding"
+    validate_recipe(payload)

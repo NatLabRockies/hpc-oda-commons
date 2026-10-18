@@ -42,6 +42,8 @@ ISO-8601 strings). All other schema types remain at v0.1.0.
 
 Optional fields and enum values have been added to v0.1.0 schemas in place, as before for the rolling-model knobs (`log_target`, `objective`, ...). Existing documents stay valid; only new ones use the additions.
 
-- `oda.recipe.v0.1.0`: `split.method: cutoff`, which requires `split.test_start`; `split.theta`, `split.k`, `split.theta_values`, `split.k_values` (#125).
+- `oda.recipe.v0.1.0`: `split.method: cutoff`, which requires `split.test_start`; `split.theta`, `split.k`, `split.theta_values`, `split.k_values` (#125); `split.embedding_field` (#204).
+- `oda.dataset.v0.1.0`: mapping transform types `list_mean` and `list_max`; `derive` also accepts `<field> / <field>` (#204).
+- Semantics, not shape: a recipe's shared metric `target` is now the column the model predicts, and a model that cannot predict it fails the run (#204). Every bundled recipe already named its model's target.
 
 Schema IDs follow the pattern `oda.<type>.v<MAJOR>.<MINOR>.<PATCH>`. Schema files are stored as JSON Schema (Draft 2020-12) under `src/hpc_oda_commons/schemas/oda/`.

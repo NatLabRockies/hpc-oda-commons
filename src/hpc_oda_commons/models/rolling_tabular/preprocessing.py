@@ -15,8 +15,14 @@ def _is_categorical_value(value: Any) -> bool:
     return isinstance(value, (str, bool))
 
 
+def _is_blank(value: Any) -> bool:
+    """None or an empty string. isinstance first: ``array == ""`` is elementwise, and
+    array columns such as F-DATA's per-job embedding reach these scans (#204)."""
+    return value is None or (isinstance(value, str) and value == "")
+
+
 def _normalize_category(value: Any) -> str | None:
-    if value is None or value == "":
+    if _is_blank(value):
         return None
     return str(value)
 
@@ -30,7 +36,7 @@ def detect_categorical_columns(rows: list[dict[str, Any]]) -> list[str]:
         for key, value in row.items():
             if key not in seen:
                 seen[key] = False
-            if value is None or value == "":
+            if _is_blank(value):
                 continue
             if _is_categorical_value(value):
                 seen[key] = True

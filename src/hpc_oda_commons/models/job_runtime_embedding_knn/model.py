@@ -51,6 +51,9 @@ class JobRuntimeEmbeddingKnnConfig:
     # Neighbor selection is unaffected by the value; similarity values match up to
     # floating-point summation order (see known-issues #2).
     sims_block_bytes: int = DEFAULT_SIMS_BLOCK_BYTES
+    # The column the model predicts (runtime by default, e.g. ``avgpcon_per_node`` for
+    # power, #204). The runner sets it from the recipe's metric target.
+    target_field: str = "runtime_seconds"
 
 
 class JobRuntimeEmbeddingKnnModel:
@@ -65,7 +68,11 @@ class JobRuntimeEmbeddingKnnModel:
 
     def __init__(self, config: JobRuntimeEmbeddingKnnConfig | None = None) -> None:
         self.config = config or JobRuntimeEmbeddingKnnConfig()
-        self.target_field = "runtime_seconds"
+        self.target_field = self.config.target_field
+        if self.config.embedding_field == self.target_field:
+            raise ValueError(
+                f"{self.target_field!r} is the prediction target, so it cannot be the embedding."
+            )
 
     def evaluate(
         self,

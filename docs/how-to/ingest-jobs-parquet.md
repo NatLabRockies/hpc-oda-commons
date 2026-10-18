@@ -78,6 +78,14 @@ fields:
     role: optional
 ```
 
+`derive` supports two forms: `end_time - start_time` (for `runtime_seconds`, filling it where
+the source is missing) and `<field> / <field>`, a ratio of two other mapped fields, e.g.
+`avgpcon_per_node: {derive: "avgpcon / num_nodes_alloc"}`; a zero or missing denominator
+gives null. Any other expression is an error. (Before #204 an unrecognised expression was
+ignored, leaving the column empty.) For a column that holds a list of samples per job, such
+as a power trace, `transform: {type: list_mean}` or `{type: list_max}` reduces it to one
+number.
+
 Fields can be **sourced** from a column (`source:`) or **derived** from other fields (`derive:`). The `role` is either `required` (rows missing this field are skipped) or `optional`.
 
 ## Output

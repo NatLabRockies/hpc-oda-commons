@@ -41,8 +41,9 @@ def test_fugaku_runtime_window_is_untouched_by_the_power_work() -> None:
     assert not runtime.source.get("slices")
 
 
-def _fdata_month(path: Path) -> None:
-    """A few rows shaped like an F-DATA monthly file (the columns this descriptor maps)."""
+def _fdata_month(path: Path, nnuma: list[int] | None = None) -> None:
+    """A few rows shaped like an F-DATA monthly file (the columns this descriptor maps).
+    Every job requests 2 nodes; ``nnuma`` overrides the allocated count."""
     n = 6
     stamp = [f"2024-02-0{i + 1}T10:00:00+09:00" for i in range(n)]
     finish = [f"2024-02-0{i + 1}T12:00:00+09:00" for i in range(n)]
@@ -55,7 +56,7 @@ def _fdata_month(path: Path) -> None:
                 "cnumr": pa.array([48] * n, pa.int64()),
                 "cnumat": pa.array([48] * n, pa.int64()),
                 "nnumr": pa.array([2] * n, pa.int64()),
-                "nnuma": pa.array([2] * n, pa.int64()),
+                "nnuma": pa.array(nnuma or [2] * n, pa.int64()),
                 "adt": stamp,
                 "sdt": stamp,
                 "edt": finish,
@@ -108,3 +109,88 @@ def test_uopc_window_prepares_the_columns_the_paper_protocol_reads(tmp_path: Pat
     prepared = model._prepare_paper_data(table.to_pylist(), test_start="2024-02-01")
     assert len(prepared.avg_target_arr) == 5
     assert prepared.avg_target_arr[0] == 100.0  # 200 W over 2 allocated nodes
+
+
+def test_uopc_window_derives_per_node_power(tmp_path: Path) -> None:
+    """The targets every model predicts are computed once, during preparation (#204)."""
+    (target,) = load_descriptor(_UOPC).targets
+    raw = tmp_path / "24_02.parquet"
+    _fdata_month(raw)
+    out = tmp_path / "data.parquet"
+    normalize_target(raw, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert [r["avgpcon_per_node"] for r in rows] == [r["avgpcon"] / 2 for r in rows]
+    assert [r["maxpcon_per_node"] for r in rows] == [r["maxpcon"] / 2 for r in rows]
+    assert {c.target_column for c in target.capabilities} == {
+        "avgpcon_per_node",
+        "maxpcon_per_node",
+    }
+
+
+def test_per_node_power_divides_by_requested_nodes_not_a_padded_allocation(
+    tmp_path: Path,
+) -> None:
+    """Fugaku can record more allocated nodes (nnuma) than a job runs on: 1-node, 48-core
+    jobs show nnuma = 48 while their power is one node's. The prepared per-node targets
+    divide by requested nodes; the paper protocol still divides by nnuma, as the paper
+    does (#204)."""
+    (target,) = load_descriptor(_UOPC).targets
+    raw = tmp_path / "24_02.parquet"
+    _fdata_month(raw, nnuma=[48, 2, 2, 2, 2, 2])
+    out = tmp_path / "data.parquet"
+    normalize_target(raw, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert rows[0]["avgpcon_per_node"] == 100.0  # 200 W over 2 requested nodes, not 48
+    assert rows[0]["maxpcon_per_node"] == 150.0
+
+    prepared = JobPowerUopcModel()._prepare_paper_data(rows, test_start="2024-02-01")
+    assert prepared.avg_target_arr[0] == 200.0 / 48
+
+
+def test_fugaku_runtime_window_carries_power_without_changing_its_rows(tmp_path: Path) -> None:
+    """Per-node power rides along on the runtime window, but its filter is still runtime:
+    a job with no power reading keeps its runtime row (#204)."""
+    (target,) = load_descriptor(_DESCRIPTORS / "job-runtime" / "fdata_fugaku.yml").targets
+    assert target.filter == {"require_nonnull": ["runtime_seconds"]}
+
+    raw = tmp_path / "23_07.parquet"
+    _fdata_month(raw)
+    out = tmp_path / "data.parquet"
+    summary = normalize_target(raw, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert summary["rows_final"] == 6  # the row without avgpcon is kept
+    assert [r["avgpcon_per_node"] for r in rows] == [100.0, 105.0, None, 115.0, 120.0, 125.0]
+    assert "embedding" not in rows[0]  # the runtime fleet embeds with `hpc-oda embed`
+
+
+def test_pm100_power_is_its_node_trace_per_allocated_node(tmp_path: Path) -> None:
+    """PM100's node_power_consumption is the job's total across its nodes (it scales with
+    node count), so per-node power is the trace's mean/peak over allocated nodes."""
+    (target,) = load_descriptor(_DESCRIPTORS / "job-runtime" / "pm100.yml").targets
+    raw = tmp_path / "job_table.parquet"
+    ts = pa.array([1_600_000_000_000_000] * 2, pa.timestamp("us", tz="UTC"))
+    pq.write_table(
+        pa.table(
+            {
+                "job_id": [1, 2],
+                "start_time": ts,
+                "end_time": ts,
+                "submit_time": ts,
+                "run_time": [60, 120],
+                "num_nodes_alloc": [1, 4],
+                "node_power_consumption": pa.array(
+                    [[600, 800], [2400, 2800, 3200]], pa.list_(pa.int32())
+                ),
+            }
+        ),
+        raw,
+    )
+    out = tmp_path / "data.parquet"
+    normalize_target(raw, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert [r["avgpcon_per_node"] for r in rows] == [700.0, 700.0]
+    assert [r["maxpcon_per_node"] for r in rows] == [800.0, 800.0]

@@ -140,6 +140,18 @@ row-by-row. One intentional behavior difference: a malformed `memory_slurm` valu
 `"1.2.3G"` now becomes `null` instead of crashing the ingest, so a few bad rows no longer
 abort the whole run.
 
+## Note — F-DATA's allocated node counts can be padded
+
+**Status:** handled · **Tracking:** [#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204), [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125)
+
+F-DATA's `nnuma` (allocated nodes) can exceed the nodes a job ran on, while `avgpcon` and
+`maxpcon` sum only those nodes. In the UoPC test months, 137k jobs (8.6%, 11 users) request
+and use 1 node with 48 cores, draw ~91 W, and show `nnuma` = 48: per allocated node they
+read 1.9 W. The Commons' per-node power targets (`avgpcon_per_node`, `maxpcon_per_node` on
+both Fugaku descriptors) therefore divide by requested nodes. The UoPC paper protocol still
+divides by `nnuma`, as the paper does; its write-up reports the results with and without
+these jobs ([UoPC reproduction](benchmarking/uopc.md#results)).
+
 ## Note — UoPC paper protocol scales features with test-period data
 
 **Status:** informational · **Tracking:** [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125)

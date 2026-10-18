@@ -48,6 +48,8 @@ PAPER_THETA = 500
 PAPER_K = 5
 PAPER_THETA_VALUES: tuple[int, ...] = (50, 100, 200, 500, 1000, 2000, 5000)
 PAPER_K_VALUES: tuple[int, ...] = (5, 10, 20, 50)
+# The two targets the paper protocol predicts, both in watts per allocated node.
+PAPER_TARGETS: tuple[str, ...] = ("avgpcon_per_node", "maxpcon_per_node")
 
 
 @dataclass
@@ -431,6 +433,9 @@ class JobPowerUopcModel:
             except (TypeError, ValueError):
                 continue
 
+            # The paper's targets: whole-job power over allocated nodes (nnuma), as the
+            # authors' code divides. Not the prepared avgpcon_per_node columns, which divide
+            # by requested nodes because nnuma can be padded (#204).
             avg_target = avgpcon / nnuma
             max_target = maxpcon / nnuma
 

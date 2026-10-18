@@ -1,7 +1,7 @@
 dataset_id: dataset.job_runtime.fdata_fugaku
 schema_version: oda.dataset.v0.1.0
 name: F-DATA (Fugaku Jobs, Mar–Sep 2023)
-version: 1.2.0
+version: 1.3.0
 description: >
   Fujitsu/Fugaku job records from F-DATA (RIKEN R-CCS / University of Bologna).
   This descriptor curates a seven-month slice (2023-03 through 2023-09). The benchmark's
@@ -12,8 +12,10 @@ description: >
   ~3-day maintenance outages, so the window rule health-gates and shifts the window off any
   missing block. The full dataset spans Mar 2021 - Apr 2024 (38 monthly parquet files, ~24M
   jobs, ~28 GB). Runtime-prediction target = duration (seconds).
-  Rich per-job power/perf counters (econ, avg/min/max pcon, flops, mbwidth) are
-  available for a later power phase.
+  Average and peak job power are mapped too, whole-job (avgpcon, maxpcon) and per
+  requested node (avgpcon_per_node, maxpcon_per_node), so the runtime models can be
+  pointed at power on this window (#204). The rows are the runtime benchmark's: the
+  filter is still on runtime, so a job without power keeps its runtime row.
 problem_domains: [job-runtime-prediction, job-power-prediction]
 systems: [Fugaku]
 providers: ["RIKEN R-CCS", "University of Bologna"]
@@ -65,6 +67,8 @@ targets:
   - schema: oda.job.v0.2.0
     capabilities:
       - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+      - { problem_domain: job-power-prediction, target_column: avgpcon_per_node }
+      - { problem_domain: job-power-prediction, target_column: maxpcon_per_node }
     suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
     mapping:
       job_id: { from: jid }
@@ -82,5 +86,11 @@ targets:
       exit_code: { from: ec, type: integer }
       job_state: { from: "exit state" }
       pclass: { from: pclass }
+      avgpcon: { from: avgpcon, type: number }
+      maxpcon: { from: maxpcon, type: number }
+      # Per requested node, not per nnuma: Fugaku can pad the allocated node count past
+      # the nodes a job runs on, and power sums only those (see fdata_fugaku_uopc.yml).
+      avgpcon_per_node: { derive: "avgpcon / num_nodes_req" }
+      maxpcon_per_node: { derive: "maxpcon / num_nodes_req" }
     filter: { require_nonnull: [runtime_seconds] }
     output: { id: fdata_fugaku, path: data/datasets/fdata_fugaku/data.parquet }
