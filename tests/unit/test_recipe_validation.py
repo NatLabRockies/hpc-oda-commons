@@ -201,3 +201,71 @@ def test_a_recipe_can_actually_set_the_target_encoding_knobs() -> None:
     # half two: the runner carries it into the model's config
     assert kwargs["target_encode_min_cardinality"] == 64
     assert kwargs["target_encode_smoothing"] == 5.0
+
+
+def _valid_cutoff_recipe() -> dict:
+    payload = _valid_recipe()
+    payload["model"] = {"id": "model.job_power_uopc", "version": "0.1.0"}
+    payload["split"] = {"method": "cutoff", "test_start": "2024-02-01"}
+    return payload
+
+
+def test_validate_recipe_cutoff_needs_no_fraction_or_seed() -> None:
+    """A date cutoff has no train fraction or seed, so the schema must not demand them."""
+    validate_recipe(_valid_cutoff_recipe())
+
+
+def test_validate_recipe_cutoff_requires_test_start() -> None:
+    payload = _valid_cutoff_recipe()
+    del payload["split"]["test_start"]
+    with pytest.raises(SchemaValidationError):
+        validate_recipe(payload)
+
+
+@pytest.mark.parametrize("test_start", ["2024-13-01", "Feb 1 2024", ""])
+def test_validate_recipe_cutoff_rejects_a_malformed_test_start(test_start: str) -> None:
+    """jsonschema treats "format": "date" as advisory, so the loader checks it itself."""
+    payload = _valid_cutoff_recipe()
+    payload["split"]["test_start"] = test_start
+    with pytest.raises(SchemaValidationError):
+        validate_recipe(payload)
+
+
+def test_validate_recipe_uopc_sensitivity_parameters_ok() -> None:
+    payload = _valid_cutoff_recipe()
+    payload["split"]["theta_values"] = [
+        50,
+        100,
+        200,
+        500,
+        1000,
+        2000,
+        5000,
+    ]
+    payload["split"]["k_values"] = [5, 10, 20, 50]
+
+    validate_recipe(payload)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("theta_values", []),
+        ("k_values", []),
+        ("theta_values", [0, 50]),
+        ("k_values", [0, 5]),
+        ("theta_values", [50, 50]),
+        ("k_values", [5, 5]),
+    ],
+)
+def test_validate_recipe_rejects_invalid_uopc_sensitivity_parameters(
+    field: str,
+    value: list[int],
+) -> None:
+    payload = _valid_cutoff_recipe()
+    payload["split"]["theta_values"] = [50, 100]
+    payload["split"]["k_values"] = [5, 10]
+    payload["split"][field] = value
+
+    with pytest.raises(SchemaValidationError):
+        validate_recipe(payload)

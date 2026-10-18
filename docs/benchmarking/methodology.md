@@ -13,7 +13,7 @@ benchmark-matrix runner and the HPC runner are later phases.
 
 Six runtime-prediction models: `job_runtime_baseline`, `job_runtime_tfidf_knn`,
 `job_runtime_random_forest`, `job_runtime_xgboost`, `job_runtime_mlp`,
-`job_runtime_embedding_knn`. (`job_power_uopc` is power prediction — out of scope.) The
+`job_runtime_embedding_knn`. (`job_power_uopc` is power prediction — out of scope; see [UoPC reproduction](uopc.md).) The
 embedding model additionally requires a one-time `hpc-oda embed` pass per dataset (reused
 across runs).
 

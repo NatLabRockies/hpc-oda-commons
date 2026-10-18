@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +74,17 @@ def validate_recipe(payload: dict[str, Any], *, path: Path | None = None) -> Non
                 path=str(path) if path else None,
             )
         method = str(split.get("method", ""))
+        if method == "cutoff":
+            # The schema's "format": "date" is advisory under jsonschema, so check it here:
+            # a typo'd cutoff would otherwise fail deep in the model, or move the test set.
+            try:
+                date.fromisoformat(str(split.get("test_start", "")))
+            except ValueError:
+                raise SchemaValidationError(
+                    schema_id=RECIPE_SCHEMA_ID,
+                    message="split.test_start must be an ISO date (YYYY-MM-DD) for cutoff",
+                    path=str(path) if path else None,
+                ) from None
         if method == "rolling":
             n_windows = split.get("n_windows")
             if not isinstance(n_windows, int) or n_windows <= 0:

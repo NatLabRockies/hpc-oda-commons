@@ -17,6 +17,8 @@ Built-in v0.1 recipes:
 - `src/hpc_oda_commons/recipes/job-runtime/mlp_rolling.yml` -- MLP, rolling
 - `src/hpc_oda_commons/recipes/job-runtime/embedding_knn_rolling.yml` -- embedding kNN, rolling (needs an embedded dataset)
 - `src/hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml` -- UoPC power prediction, fixed split
+- `src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml` -- the UoPC paper protocol, cutoff split ([UoPC reproduction](../benchmarking/uopc.md))
+- `src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity.yml` -- the paper's θ × k sweep, cutoff split
 
 See the [Recipes Reference](../reference/recipes.md) for the full format specification with annotated examples.
 
@@ -54,6 +56,15 @@ This enforces strict temporal separation -- the model never sees future data dur
 - `n_windows` (required): how many windows to evaluate
 - `test_window_hours` (default 6): duration of each test window in hours
 - `training_lookback_days` (default 100): how far back to look for training data
+
+### Cutoff Split
+
+Every job submitted on or after a date (`test_start`) is a test job; everything earlier is history only. Used with `model.job_power_uopc` to reproduce the UoPC paper, which scores each test job against the jobs its user had finished before it was submitted -- an online protocol rather than a retraining schedule. See [UoPC reproduction](../benchmarking/uopc.md).
+
+**Parameters:**
+- `test_start` (required): ISO date, quoted in YAML
+- `theta` / `k`: history size and neighbour count
+- `theta_values` / `k_values` (optional): run the θ × k sensitivity grid instead; `theta`/`k` then name its headline cell
 
 ### Preprocessing Caches
 

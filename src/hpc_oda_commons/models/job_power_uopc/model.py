@@ -4,21 +4,30 @@ Adapted from https://github.com/francescoantici/UoPC:
 - Per-user history ordered by end time
 - Last ``theta`` jobs used as training context for each prediction
 - Categorical job features label-encoded per fit
+
+Two protocols live here. ``evaluate_fixed`` is the original Commons adaptation (fraction
+split, label-encoded job features, kNN regressor). ``evaluate_paper_reproduction`` and
+``evaluate_paper_sensitivity`` follow the paper (Antici et al., IEEE 11017729) and the
+authors' code: a date cutoff, per-node targets, embedding features and kNN-classifier
+voting. Recipes pick the paper protocol with ``split.method: cutoff``.
 """
 
 from __future__ import annotations
 
+import functools
 import math
+import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
+from hpc_oda_commons.models.rolling_tabular.base import _blas_single_thread
 
 _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "maxpcon": ("maxpcon",),
@@ -27,7 +36,67 @@ _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "processors_requested": ("processors_requested", "cnumr"),
     "nodes_requested": ("nodes_requested", "nnumr"),
     "end_time": ("end_time", "edt"),
+    # Canonical oda.job name first; raw F-DATA ``nnuma`` for hand-placed files.
+    "num_nodes_alloc": ("num_nodes_alloc", "nnuma"),
 }
+
+# The configuration the paper reproduction runs (#125): score jobs submitted from this
+# date, keep each user's newest THETA finished jobs, vote among K neighbours. The value
+# lists are the theta x k grid the sensitivity analysis sweeps.
+PAPER_TEST_START = "2024-02-01"
+PAPER_THETA = 500
+PAPER_K = 5
+PAPER_THETA_VALUES: tuple[int, ...] = (50, 100, 200, 500, 1000, 2000, 5000)
+PAPER_K_VALUES: tuple[int, ...] = (5, 10, 20, 50)
+
+
+@dataclass
+class _PaperPreparedData:
+    job_id_arr: np.ndarray
+    user_arr: np.ndarray
+    submit_arr: np.ndarray
+    end_arr: np.ndarray
+    num_cores_req_arr: np.ndarray
+    num_nodes_req_arr: np.ndarray
+    nnuma_arr: np.ndarray
+    freq_req_arr: np.ndarray
+    features: np.ndarray
+    avg_target_arr: np.ndarray
+    max_target_arr: np.ndarray
+    order: np.ndarray
+    user_rows: dict[str, np.ndarray]
+    user_ends: dict[str, np.ndarray]
+    test_idx: np.ndarray
+    # Running totals for the mean baselines, so each test job reads its mean in O(1)
+    # instead of re-averaging every earlier job. Index i holds the sum of the first i
+    # jobs by end time (globally, or within one user); index 0 is 0.
+    sorted_end: np.ndarray
+    global_avg_cumsum: np.ndarray
+    global_max_cumsum: np.ndarray
+    user_avg_cumsum: dict[str, np.ndarray]
+    user_max_cumsum: dict[str, np.ndarray]
+
+
+def _one_blas_thread(method):
+    """Run an evaluate_* method with native BLAS/OpenMP pools pinned to one thread.
+
+    UoPC fits a tiny kNN per test job (or per user and window): up to ``theta`` rows. Left
+    alone, scikit-learn and BLAS spin up a pool across every core for each of those
+    millions of fits, and the threads spend their time synchronising, not computing. On the
+    F-DATA reproduction this showed as ~12 cores busy, two-thirds of it kernel time, and was
+    4.7x slower than one thread, with identical results.
+    """
+
+    @functools.wraps(method)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        with _blas_single_thread():
+            return method(*args, **kwargs)
+
+    return wrapper
+
+
+def _cumsum_from_zero(values: np.ndarray) -> np.ndarray:
+    return np.concatenate(([0.0], np.cumsum(values, dtype=np.float64)))
 
 
 @dataclass(frozen=True)
@@ -111,6 +180,65 @@ def _feature_float(raw: Any) -> float:
         return 0.0
 
 
+def _classifier_prediction_from_neighbor_targets(
+    neighbor_targets: np.ndarray,
+    k: int,
+) -> float:
+    """Reproduce uniform-weight KNeighborsClassifier voting from ordered neighbors."""
+    labels = np.rint(np.asarray(neighbor_targets[:k], dtype=np.float64)).astype(np.int64)
+    if labels.size < k:
+        raise ValueError(f"Need at least {k} neighbors, got {labels.size}.")
+    values, counts = np.unique(labels, return_counts=True)
+    return float(values[np.argmax(counts)])
+
+
+def _regressor_prediction_from_neighbor_targets(
+    neighbor_targets: np.ndarray,
+    k: int,
+) -> float:
+    """Reproduce uniform-weight KNeighborsRegressor prediction from ordered neighbors."""
+    values = np.asarray(neighbor_targets[:k], dtype=np.float64)
+    if values.size < k:
+        raise ValueError(f"Need at least {k} neighbors, got {values.size}.")
+    return float(np.mean(values))
+
+
+def _nearest_neighbor_indices_and_distances(
+    context_features: np.ndarray,
+    query_features: np.ndarray,
+    max_neighbors: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return nearest context-row indices and distances, ordered nearest first."""
+    if max_neighbors <= 0:
+        raise ValueError("max_neighbors must be positive.")
+
+    n_neighbors = min(max_neighbors, len(context_features))
+    if n_neighbors == 0:
+        return (
+            np.asarray([], dtype=np.int64),
+            np.asarray([], dtype=np.float64),
+        )
+
+    # Neighbor locations depend only on features, not on the prediction target.
+    # Fit once so avg/max power and multiple k values can reuse the same search.
+    model = KNeighborsRegressor(n_neighbors=n_neighbors)
+    model.fit(
+        context_features,
+        np.zeros(len(context_features), dtype=np.float64),
+    )
+
+    distances, indices = model.kneighbors(
+        query_features,
+        n_neighbors=n_neighbors,
+        return_distance=True,
+    )
+
+    return (
+        np.asarray(indices[0], dtype=np.int64),
+        np.asarray(distances[0], dtype=np.float64),
+    )
+
+
 class _LabelFeatureEncoder:
     """Per-column label encoders fit on the user's training history."""
 
@@ -153,6 +281,7 @@ class JobPowerUopcModel:
     def __init__(self, config: JobPowerUopcConfig | None = None) -> None:
         self.config = config or JobPowerUopcConfig()
 
+    @_one_blas_thread
     def evaluate_fixed(
         self,
         rows: list[dict[str, Any]],
@@ -248,6 +377,735 @@ class JobPowerUopcModel:
             # is therefore the configuration needed to reproduce the run, not a
             # fitted model (so save_model pickles this config rather than an estimator).
             result["_last_model"] = {"kind": "job_power_uopc", "config": cfg}
+        return result
+
+    def _prepare_paper_data(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        test_start: str,
+    ) -> _PaperPreparedData:
+        cutoff = datetime.fromisoformat(test_start).replace(tzinfo=timezone.utc).timestamp()
+
+        job_ids: list[Any] = []
+        users: list[str] = []
+        submits: list[float] = []
+        ends: list[float] = []
+
+        num_cores_req_values: list[float] = []
+        num_nodes_req_values: list[float] = []
+        nnuma_values: list[float] = []
+        freq_req_values: list[float] = []
+
+        embeddings: list[np.ndarray] = []
+        numeric: list[list[float]] = []
+        avg_targets: list[float] = []
+        max_targets: list[float] = []
+
+        for row in rows:
+            nnuma_raw = _first_present(row, "num_nodes_alloc")
+            avgpcon_raw = row.get("avgpcon")
+            maxpcon_raw = row.get("maxpcon")
+            emb_raw = row.get("embedding")
+            adt_raw = row.get("submit_time")
+            edt_raw = row.get("end_time")
+
+            if (
+                nnuma_raw in (None, 0)
+                or avgpcon_raw is None
+                or maxpcon_raw is None
+                or emb_raw is None
+                or adt_raw is None
+                or edt_raw is None
+            ):
+                continue
+
+            submit = _end_time_sort_key({"ts": adt_raw}, field="ts")
+            end = _end_time_sort_key({"ts": edt_raw}, field="ts")
+
+            try:
+                nnuma = float(nnuma_raw)
+                avgpcon = float(avgpcon_raw)
+                maxpcon = float(maxpcon_raw)
+                emb = np.asarray(emb_raw, dtype=np.float32)
+            except (TypeError, ValueError):
+                continue
+
+            avg_target = avgpcon / nnuma
+            max_target = maxpcon / nnuma
+
+            if (
+                not math.isfinite(submit)
+                or not math.isfinite(end)
+                or not math.isfinite(avg_target)
+                or not math.isfinite(max_target)
+                or nnuma <= 0
+                or emb.ndim != 1
+                or emb.size == 0
+            ):
+                continue
+
+            job_ids.append(row.get("job_id"))
+            num_cores_req_values.append(_feature_float(row.get("num_cores_req")))
+            num_nodes_req_values.append(_feature_float(row.get("num_nodes_req")))
+            nnuma_values.append(nnuma)
+            freq_req_values.append(_feature_float(row.get("freq_req")))
+
+            users.append(str(row.get("user") or ""))
+            submits.append(submit)
+            ends.append(end)
+            embeddings.append(emb)
+            numeric.append(
+                [
+                    _feature_float(row.get("num_cores_req")),
+                    _feature_float(row.get("num_nodes_req")),
+                    _feature_float(row.get("freq_req")),
+                ]
+            )
+            avg_targets.append(avg_target)
+            max_targets.append(max_target)
+
+        if not avg_targets:
+            raise ValueError("No usable rows for UoPC paper reproduction.")
+
+        job_id_arr = np.asarray(job_ids)
+        user_arr = np.asarray(users)
+        submit_arr = np.asarray(submits, dtype=np.float64)
+        end_arr = np.asarray(ends, dtype=np.float64)
+
+        num_cores_req_arr = np.asarray(
+            num_cores_req_values,
+            dtype=np.float64,
+        )
+        num_nodes_req_arr = np.asarray(
+            num_nodes_req_values,
+            dtype=np.float64,
+        )
+        nnuma_arr = np.asarray(
+            nnuma_values,
+            dtype=np.float64,
+        )
+        freq_req_arr = np.asarray(
+            freq_req_values,
+            dtype=np.float64,
+        )
+
+        emb_arr = np.ascontiguousarray(
+            np.vstack(embeddings),
+            dtype=np.float32,
+        )
+        num_arr = np.asarray(numeric, dtype=np.float32)
+        avg_target_arr = np.asarray(avg_targets, dtype=np.float64)
+        max_target_arr = np.asarray(max_targets, dtype=np.float64)
+
+        # Standardize over the whole usable dataset, test period included, as the authors'
+        # code does. Test-period statistics therefore shape the feature scale: a small
+        # look-ahead, kept on purpose so the numbers stay comparable with the paper.
+        mu = num_arr.mean(axis=0)
+        sd = num_arr.std(axis=0)
+        sd[sd == 0] = 1.0
+
+        features = np.hstack([emb_arr, (num_arr - mu) / sd]).astype(np.float32)
+
+        # Pre-sort each user's rows by completion time.
+        order = np.argsort(end_arr, kind="stable")
+
+        by_user: dict[str, list[int]] = {}
+        for idx in order:
+            by_user.setdefault(user_arr[idx], []).append(int(idx))
+
+        user_rows = {user: np.asarray(indices, dtype=np.int64) for user, indices in by_user.items()}
+        user_ends = {user: end_arr[indices] for user, indices in user_rows.items()}
+
+        test_idx = np.where(submit_arr >= cutoff)[0]
+        test_idx = test_idx[np.argsort(submit_arr[test_idx], kind="stable")]
+
+        return _PaperPreparedData(
+            job_id_arr=job_id_arr,
+            user_arr=user_arr,
+            submit_arr=submit_arr,
+            end_arr=end_arr,
+            num_cores_req_arr=num_cores_req_arr,
+            num_nodes_req_arr=num_nodes_req_arr,
+            nnuma_arr=nnuma_arr,
+            freq_req_arr=freq_req_arr,
+            features=features,
+            avg_target_arr=avg_target_arr,
+            max_target_arr=max_target_arr,
+            order=order,
+            user_rows=user_rows,
+            user_ends=user_ends,
+            test_idx=test_idx,
+            sorted_end=end_arr[order],
+            global_avg_cumsum=_cumsum_from_zero(avg_target_arr[order]),
+            global_max_cumsum=_cumsum_from_zero(max_target_arr[order]),
+            user_avg_cumsum={
+                user: _cumsum_from_zero(avg_target_arr[indices])
+                for user, indices in user_rows.items()
+            },
+            user_max_cumsum={
+                user: _cumsum_from_zero(max_target_arr[indices])
+                for user, indices in user_rows.items()
+            },
+        )
+
+    @_one_blas_thread
+    def evaluate_paper_reproduction(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        test_start: str = PAPER_TEST_START,
+        theta: int = PAPER_THETA,
+        k: int = PAPER_K,
+        metric_defs: list[dict[str, Any]] | None = None,
+        verbose: bool = False,
+        capture_artifacts: bool = False,
+    ) -> dict[str, Any]:
+        """Evaluate the paper reproduction of Antici et al. UoPC.
+
+        This path intentionally remains separate from ``evaluate_fixed`` so the
+        existing HPC ODA UoPC adaptation and its defaults are unchanged.
+
+        Reproduction protocol:
+        - targets: avgpcon / nnuma and maxpcon / nnuma
+        - features: embedding + globally z-scored (cnumr, nnumr, freq_req)
+        - test jobs: adt >= test_start
+        - history: same-user jobs with edt < query adt
+        - context: newest ``theta`` eligible jobs by completion time
+        - predictor: KNeighborsClassifier with rounded integer targets
+
+        The headline metrics are avgpcon per node. With ``capture_artifacts`` the
+        avgpcon predictions go out as ``_y_true``/``_y_pred`` and every job's
+        prediction for both targets (plus the baselines) as ``_per_job_records``.
+        """
+        resolved_metric_defs = metric_defs or [
+            {"name": "mape", "target": "avgpcon_per_node"},
+            {"name": "r2", "target": "avgpcon_per_node"},
+        ]
+
+        avg_metric_defs = [
+            {**metric_def, "target": "avgpcon_per_node"} for metric_def in resolved_metric_defs
+        ]
+
+        max_metric_defs = [
+            {**metric_def, "target": "maxpcon_per_node"} for metric_def in resolved_metric_defs
+        ]
+
+        prepared = self._prepare_paper_data(
+            rows,
+            test_start=test_start,
+        )
+
+        job_id_arr = prepared.job_id_arr
+        user_arr = prepared.user_arr
+        submit_arr = prepared.submit_arr
+        end_arr = prepared.end_arr
+        num_cores_req_arr = prepared.num_cores_req_arr
+        num_nodes_req_arr = prepared.num_nodes_req_arr
+        nnuma_arr = prepared.nnuma_arr
+        freq_req_arr = prepared.freq_req_arr
+        features = prepared.features
+        avg_target_arr = prepared.avg_target_arr
+        max_target_arr = prepared.max_target_arr
+        user_rows = prepared.user_rows
+        user_ends = prepared.user_ends
+        test_idx = prepared.test_idx
+
+        avg_y_true: list[float] = []
+        avg_y_pred: list[float] = []
+        max_y_true: list[float] = []
+        max_y_pred: list[float] = []
+        user_mean_avg_y_pred: list[float] = []
+        user_mean_max_y_pred: list[float] = []
+        global_mean_avg_y_pred: list[float] = []
+        global_mean_max_y_pred: list[float] = []
+        per_job_records: list[dict[str, Any]] = []
+        rows_skipped = 0
+
+        iterator = tqdm(
+            test_idx,
+            desc="cutoff/uopc-paper-repro",
+            unit="job",
+            disable=not verbose,
+        )
+
+        for j in iterator:
+            user = user_arr[j]
+            ends_for_user = user_ends.get(user)
+
+            if ends_for_user is None:
+                rows_skipped += 1
+                continue
+
+            # Strict paper history rule: completed BEFORE submission.
+            pos = int(
+                np.searchsorted(
+                    ends_for_user,
+                    submit_arr[j],
+                    side="left",
+                )
+            )
+
+            if pos < k:
+                rows_skipped += 1
+                continue
+
+            # All same-user jobs completed before this query.
+            user_history = user_rows[user][:pos]
+
+            # UoPC itself uses only the newest theta eligible jobs.
+            context = user_history[max(0, len(user_history) - theta) :]
+
+            history_size = len(user_history)
+            context_size = len(context)
+
+            # Trivial per-user baseline: mean over all eligible prior jobs for
+            # this user, with no future information.
+            user_mean_avg_pred = float(prepared.user_avg_cumsum[user][pos] / pos)
+            user_mean_max_pred = float(prepared.user_max_cumsum[user][pos] / pos)
+
+            # Trivial global baseline: mean over all jobs completed before this
+            # query's submission time, with no future information. Never empty:
+            # this user's ``pos >= k`` finished jobs are among them.
+            global_pos = int(np.searchsorted(prepared.sorted_end, submit_arr[j], side="left"))
+            global_mean_avg_pred = float(prepared.global_avg_cumsum[global_pos] / global_pos)
+            global_mean_max_pred = float(prepared.global_max_cumsum[global_pos] / global_pos)
+
+            # Match the authors' implementation used in Phase 1. Their KNN
+            # wraps KNeighborsClassifier, so continuous per-node power labels
+            # are rounded to integer classes before fitting. Fit the two paper
+            # targets independently on the same eligible history context.
+            avg_model = KNeighborsClassifier(n_neighbors=k)
+            avg_model.fit(
+                features[context],
+                np.rint(avg_target_arr[context]).astype(np.int64),
+            )
+            avg_pred = avg_model.predict(features[j : j + 1])
+
+            max_model = KNeighborsClassifier(n_neighbors=k)
+            max_model.fit(
+                features[context],
+                np.rint(max_target_arr[context]).astype(np.int64),
+            )
+            max_pred = max_model.predict(features[j : j + 1])
+
+            avg_y_true.append(float(avg_target_arr[j]))
+            avg_y_pred.append(float(avg_pred[0]))
+            max_y_true.append(float(max_target_arr[j]))
+            max_y_pred.append(float(max_pred[0]))
+            user_mean_avg_y_pred.append(user_mean_avg_pred)
+            user_mean_max_y_pred.append(user_mean_max_pred)
+            global_mean_avg_y_pred.append(global_mean_avg_pred)
+            global_mean_max_y_pred.append(global_mean_max_pred)
+
+            if capture_artifacts:
+                per_job_records.append(
+                    {
+                        "job_id": (
+                            job_id_arr[j].item()
+                            if isinstance(job_id_arr[j], np.generic)
+                            else job_id_arr[j]
+                        ),
+                        "user": str(user_arr[j]),
+                        "submit_time": float(submit_arr[j]),
+                        "end_time": float(end_arr[j]),
+                        "history_size": int(history_size),
+                        "context_size": int(context_size),
+                        "num_cores_req": float(num_cores_req_arr[j]),
+                        "num_nodes_req": float(num_nodes_req_arr[j]),
+                        "nnuma": float(nnuma_arr[j]),
+                        "freq_req": float(freq_req_arr[j]),
+                        "avgpcon_per_node_true": float(avg_target_arr[j]),
+                        "avgpcon_per_node_pred": float(avg_pred[0]),
+                        "maxpcon_per_node_true": float(max_target_arr[j]),
+                        "maxpcon_per_node_pred": float(max_pred[0]),
+                        "per_user_mean_avg_pred": user_mean_avg_pred,
+                        "per_user_mean_max_pred": user_mean_max_pred,
+                        "global_mean_avg_pred": global_mean_avg_pred,
+                        "global_mean_max_pred": global_mean_max_pred,
+                    }
+                )
+
+        if not avg_y_true or not max_y_true:
+            raise ValueError("No test rows produced scored predictions in paper reproduction.")
+
+        avg_metrics = compute_regression_metrics_from_defs(
+            avg_y_true,
+            avg_y_pred,
+            avg_metric_defs,
+        )
+        max_metrics = compute_regression_metrics_from_defs(
+            max_y_true,
+            max_y_pred,
+            max_metric_defs,
+        )
+
+        user_mean_avg_metrics = compute_regression_metrics_from_defs(
+            avg_y_true,
+            user_mean_avg_y_pred,
+            avg_metric_defs,
+        )
+        user_mean_max_metrics = compute_regression_metrics_from_defs(
+            max_y_true,
+            user_mean_max_y_pred,
+            max_metric_defs,
+        )
+
+        global_mean_avg_metrics = compute_regression_metrics_from_defs(
+            avg_y_true,
+            global_mean_avg_y_pred,
+            avg_metric_defs,
+        )
+        global_mean_max_metrics = compute_regression_metrics_from_defs(
+            max_y_true,
+            global_mean_max_y_pred,
+            max_metric_defs,
+        )
+
+        result: dict[str, Any] = {
+            "avgpcon_per_node": {
+                **avg_metrics,
+                "definitions": avg_metric_defs,
+            },
+            "maxpcon_per_node": {
+                **max_metrics,
+                "definitions": max_metric_defs,
+            },
+            "baselines": {
+                "per_user_mean": {
+                    "avgpcon_per_node": {
+                        **user_mean_avg_metrics,
+                        "definitions": avg_metric_defs,
+                    },
+                    "maxpcon_per_node": {
+                        **user_mean_max_metrics,
+                        "definitions": max_metric_defs,
+                    },
+                },
+                "global_mean": {
+                    "avgpcon_per_node": {
+                        **global_mean_avg_metrics,
+                        "definitions": avg_metric_defs,
+                    },
+                    "maxpcon_per_node": {
+                        **global_mean_max_metrics,
+                        "definitions": max_metric_defs,
+                    },
+                },
+            },
+            "summary": {
+                "rows_total": len(avg_target_arr),
+                "rows_test": len(test_idx),
+                "rows_scored": len(avg_y_true),
+                "rows_skipped": rows_skipped,
+                "theta": theta,
+                "k": k,
+                "test_start": test_start,
+                "targets": [
+                    "avgpcon/nnuma",
+                    "maxpcon/nnuma",
+                ],
+                "features": "emb+znum",
+                "predictor": "KNeighborsClassifier",
+            },
+        }
+
+        if capture_artifacts:
+            # Only the keys run_extras consumes (and strips): anything else starting
+            # with "_" would land in metrics.json, one value per test job (#168).
+            result["_y_true"] = avg_y_true
+            result["_y_pred"] = avg_y_pred
+            result["_per_job_records"] = per_job_records
+            result["_last_model"] = {
+                "kind": "job_power_uopc_paper_reproduction",
+                "theta": theta,
+                "k": k,
+                "test_start": test_start,
+                "targets": [
+                    "avgpcon/nnuma",
+                    "maxpcon/nnuma",
+                ],
+            }
+
+        return result
+
+    @_one_blas_thread
+    def evaluate_paper_sensitivity(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        test_start: str = PAPER_TEST_START,
+        theta_values: tuple[int, ...] = PAPER_THETA_VALUES,
+        k_values: tuple[int, ...] = PAPER_K_VALUES,
+        metric_defs: list[dict[str, Any]] | None = None,
+        verbose: bool = False,
+        capture_artifacts: bool = False,
+    ) -> dict[str, Any]:
+        """Evaluate UoPC theta/k sensitivity with reusable neighbor searches.
+
+        For each theta and query job, nearest neighbors are retrieved once up to
+        max(k_values). Those ordered neighbors are then reused for every k.
+
+        Classifier voting is the faithful UoPC prediction rule. A mean-based
+        regressor prediction is reported separately as an ablation.
+        """
+        if not theta_values:
+            raise ValueError("theta_values must not be empty.")
+        if not k_values:
+            raise ValueError("k_values must not be empty.")
+        if any(theta <= 0 for theta in theta_values):
+            raise ValueError("theta_values must contain only positive integers.")
+        if any(k <= 0 for k in k_values):
+            raise ValueError("k_values must contain only positive integers.")
+
+        theta_values = tuple(sorted(set(theta_values)))
+        k_values = tuple(sorted(set(k_values)))
+        max_k = max(k_values)
+
+        resolved_metric_defs = metric_defs or [
+            {"name": "mape", "target": "avgpcon_per_node"},
+            {"name": "r2", "target": "avgpcon_per_node"},
+        ]
+
+        avg_metric_defs = [
+            {**metric_def, "target": "avgpcon_per_node"} for metric_def in resolved_metric_defs
+        ]
+
+        max_metric_defs = [
+            {**metric_def, "target": "maxpcon_per_node"} for metric_def in resolved_metric_defs
+        ]
+
+        prepared = self._prepare_paper_data(
+            rows,
+            test_start=test_start,
+        )
+
+        user_arr = prepared.user_arr
+        submit_arr = prepared.submit_arr
+        features = prepared.features
+        avg_target_arr = prepared.avg_target_arr
+        max_target_arr = prepared.max_target_arr
+        user_rows = prepared.user_rows
+        user_ends = prepared.user_ends
+        test_idx = prepared.test_idx
+
+        # One history count per test job. This is independent of theta and k
+        # and can later be used for cold-start/coverage analysis.
+        history_counts: list[int] = []
+
+        # Results are accumulated independently for every theta/k pair because
+        # coverage differs with k: a job with 7 prior jobs is valid for k=5
+        # but not for k=10, 20, or 50.
+        accumulators: dict[
+            tuple[int, int],
+            dict[str, dict[str, list[float]]],
+        ] = {}
+
+        for theta in theta_values:
+            for k in k_values:
+                accumulators[(theta, k)] = {
+                    "classifier": {
+                        "avg_true": [],
+                        "avg_pred": [],
+                        "max_true": [],
+                        "max_pred": [],
+                    },
+                    "regressor": {
+                        "avg_true": [],
+                        "avg_pred": [],
+                        "max_true": [],
+                        "max_pred": [],
+                    },
+                }
+
+        theta_timings: dict[int, float] = {}
+        total_start = time.perf_counter()
+
+        # Process one theta at a time. For each query, retrieve up to max_k
+        # neighbors once and reuse them for all requested k values.
+        for theta in theta_values:
+            theta_start = time.perf_counter()
+
+            iterator = tqdm(
+                test_idx,
+                desc=f"uopc-sensitivity/theta={theta}",
+                unit="job",
+                disable=not verbose,
+            )
+
+            for j in iterator:
+                user = user_arr[j]
+                ends_for_user = user_ends.get(user)
+
+                if ends_for_user is None:
+                    if theta == theta_values[0]:
+                        history_counts.append(0)
+                    continue
+
+                pos = int(
+                    np.searchsorted(
+                        ends_for_user,
+                        submit_arr[j],
+                        side="left",
+                    )
+                )
+
+                if theta == theta_values[0]:
+                    history_counts.append(pos)
+
+                if pos == 0:
+                    continue
+
+                user_history = user_rows[user][:pos]
+                context = user_history[max(0, len(user_history) - theta) :]
+
+                if len(context) == 0:
+                    continue
+
+                neighbor_indices, _neighbor_distances = _nearest_neighbor_indices_and_distances(
+                    features[context],
+                    features[j].reshape(1, -1),
+                    max_neighbors=max_k,
+                )
+
+                if len(neighbor_indices) == 0:
+                    continue
+
+                # kneighbors() indices are relative to context.
+                neighbor_rows = context[neighbor_indices]
+
+                avg_neighbor_targets = avg_target_arr[neighbor_rows]
+                max_neighbor_targets = max_target_arr[neighbor_rows]
+
+                for k in k_values:
+                    if len(neighbor_rows) < k:
+                        continue
+
+                    bucket = accumulators[(theta, k)]
+
+                    avg_classifier_pred = _classifier_prediction_from_neighbor_targets(
+                        avg_neighbor_targets,
+                        k,
+                    )
+                    max_classifier_pred = _classifier_prediction_from_neighbor_targets(
+                        max_neighbor_targets,
+                        k,
+                    )
+
+                    avg_regressor_pred = _regressor_prediction_from_neighbor_targets(
+                        avg_neighbor_targets,
+                        k,
+                    )
+                    max_regressor_pred = _regressor_prediction_from_neighbor_targets(
+                        max_neighbor_targets,
+                        k,
+                    )
+
+                    avg_true = float(avg_target_arr[j])
+                    max_true = float(max_target_arr[j])
+
+                    bucket["classifier"]["avg_true"].append(avg_true)
+                    bucket["classifier"]["avg_pred"].append(avg_classifier_pred)
+                    bucket["classifier"]["max_true"].append(max_true)
+                    bucket["classifier"]["max_pred"].append(max_classifier_pred)
+
+                    bucket["regressor"]["avg_true"].append(avg_true)
+                    bucket["regressor"]["avg_pred"].append(avg_regressor_pred)
+                    bucket["regressor"]["max_true"].append(max_true)
+                    bucket["regressor"]["max_pred"].append(max_regressor_pred)
+
+            theta_timings[theta] = time.perf_counter() - theta_start
+
+        total_seconds = time.perf_counter() - total_start
+
+        results: dict[str, Any] = {}
+
+        for theta in theta_values:
+            theta_result: dict[str, Any] = {}
+
+            for k in k_values:
+                bucket = accumulators[(theta, k)]
+                configuration: dict[str, Any] = {}
+
+                for predictor in ("classifier", "regressor"):
+                    values = bucket[predictor]
+
+                    avg_true = values["avg_true"]
+                    avg_pred = values["avg_pred"]
+                    max_true = values["max_true"]
+                    max_pred = values["max_pred"]
+
+                    predictor_result: dict[str, Any] = {
+                        "rows_scored": len(avg_true),
+                        "coverage": (len(avg_true) / len(test_idx) if len(test_idx) else 0.0),
+                    }
+
+                    if avg_true:
+                        predictor_result["avgpcon_per_node"] = compute_regression_metrics_from_defs(
+                            avg_true,
+                            avg_pred,
+                            avg_metric_defs,
+                        )
+                        predictor_result["maxpcon_per_node"] = compute_regression_metrics_from_defs(
+                            max_true,
+                            max_pred,
+                            max_metric_defs,
+                        )
+                    else:
+                        predictor_result["avgpcon_per_node"] = {}
+                        predictor_result["maxpcon_per_node"] = {}
+
+                    configuration[predictor] = predictor_result
+
+                theta_result[str(k)] = configuration
+
+            results[str(theta)] = theta_result
+
+        history_arr = np.asarray(history_counts, dtype=np.int64)
+
+        cold_start = {
+            "rows_test": int(len(test_idx)),
+            "history_count_min": (int(history_arr.min()) if history_arr.size else 0),
+            "history_count_max": (int(history_arr.max()) if history_arr.size else 0),
+            "history_count_mean": (float(history_arr.mean()) if history_arr.size else 0.0),
+            "history_count_median": (float(np.median(history_arr)) if history_arr.size else 0.0),
+            "rows_with_0_history": int(np.sum(history_arr == 0)),
+            "rows_with_lt_5_history": int(np.sum(history_arr < 5)),
+            "rows_with_lt_10_history": int(np.sum(history_arr < 10)),
+            "rows_with_lt_20_history": int(np.sum(history_arr < 20)),
+            "rows_with_lt_50_history": int(np.sum(history_arr < 50)),
+        }
+
+        result: dict[str, Any] = {
+            "summary": {
+                "rows_total": len(avg_target_arr),
+                "rows_test": int(len(test_idx)),
+                "theta_values": list(theta_values),
+                "k_values": list(k_values),
+                "max_neighbors": max_k,
+                "test_start": test_start,
+                "primary_predictor": "KNeighborsClassifier",
+                "ablation_predictor": "KNeighborsRegressor",
+                "targets": [
+                    "avgpcon/nnuma",
+                    "maxpcon/nnuma",
+                ],
+                "features": "emb+znum",
+                "history_rule": "same user with edt < query adt",
+            },
+            "results": results,
+            "cold_start": cold_start,
+            "timing": {
+                "total_seconds": total_seconds,
+                "theta_seconds": {str(theta): seconds for theta, seconds in theta_timings.items()},
+            },
+        }
+
+        # No per-job artifacts: a grid has no single prediction per job, and the history
+        # counts are summarised in ``cold_start``. ``capture_artifacts`` is accepted for
+        # interface parity with the other evaluate_* methods.
+        _ = capture_artifacts
+
         return result
 
     def _predict_one(

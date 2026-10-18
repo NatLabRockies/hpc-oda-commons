@@ -1,0 +1,39 @@
+# A two-cell version of uopc_paper_sensitivity.yml: same data and cutoff, one theta and two
+# k values, for checking the sweep end to end in minutes rather than hours.
+
+recipe_id: recipe.job_power.uopc_paper_sensitivity_smoke
+
+problem_domain:
+  - job-power-prediction
+
+schema_version: oda.job.v0.2.0
+
+dataset:
+  id: fdata_fugaku_uopc
+  table_path: data/datasets/fdata_fugaku_uopc/data.parquet
+
+model:
+  id: model.job_power_uopc
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: avgpcon_per_node
+  - name: rmse
+    target: avgpcon_per_node
+  - name: mape
+    target: avgpcon_per_node
+  - name: r2
+    target: avgpcon_per_node
+
+split:
+  method: cutoff
+  test_start: "2024-02-01"
+  theta_values: [50]
+  k_values: [5, 10]
+  theta: 50
+  k: 5
+
+run:
+  output_dir: runs
+  overwrite: false
