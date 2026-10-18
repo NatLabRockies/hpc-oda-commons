@@ -152,6 +152,23 @@ both Fugaku descriptors) therefore divide by requested nodes. The UoPC paper pro
 divides by `nnuma`, as the paper does; its write-up reports the results with and without
 these jobs ([UoPC reproduction](benchmarking/uopc.md#results)).
 
+## Note — Eagle's and Kestrel's energy readings include impossible per-node power
+
+**Status:** open · **Tracking:** [#206](https://github.com/NatLabRockies/hpc-oda-commons/issues/206), [#209](https://github.com/NatLabRockies/hpc-oda-commons/issues/209)
+
+`nlr_eagle` derives average power per node from each job's energy reading. A small share of
+jobs reads impossibly high: of the 10,155,245 jobs with power, 7,720 (0.08%) are above
+1.5 kW per node, 1,678 above 100 kW, and the highest is 20.7 MW. Many are short: those above 1 kW
+have a median runtime of about 2 minutes. They raise the mean from 356 W per node (jobs up to 1.5 kW) to
+614 W. MAE, RMSE and R² on this target would be dominated by them. `nlr_kestrel` has
+far fewer: of 6,119,619 jobs with power, 330 are above 1 kW per node, 138 above 1.5 kW,
+and the highest is 354 kW. Its mean is the same with or without them, 566 W per node.
+
+The mapping can null a value read from the source (`null_values`) or a row by another
+source column (`null_when`), but it can't yet bound a derived value, so these stay in the
+table. Don't benchmark Eagle power until they are handled. On Kestrel they matter less, but
+the same bound should apply.
+
 ## Note — UoPC paper protocol scales features with test-period data
 
 **Status:** informational · **Tracking:** [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125)
