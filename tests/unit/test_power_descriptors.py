@@ -205,6 +205,9 @@ def test_eagle_average_power_comes_from_node_energy(tmp_path: Path) -> None:
         "runtime_seconds",
         "avgpcon_per_node",
     }
+    # Impossible readings (#216): the outer 0.1% of per-node power, not of whole-job power.
+    assert target.mapping["avgpcon_per_node"]["trim_quantiles"] == [0.001, 0.999]
+    assert "trim_quantiles" not in target.mapping["avgpcon"]
     start = pa.array([1_717_200_000_000_000] * 4, pa.timestamp("us", tz="UTC"))
     end = pa.array([1_717_203_600_000_000] * 4, pa.timestamp("us", tz="UTC"))  # 1 hour
     raw = tmp_path / "eagle.parquet"

@@ -72,6 +72,13 @@
           "items": { "type": ["number", "string"] },
           "description": "Source values that mean no reading (e.g., [0] for an energy counter); they become null before the transform."
         },
+        "trim_quantiles": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "number", "minimum": 0, "maximum": 1 },
+          "description": "[low, high] quantiles, e.g. [0.001, 0.999]: after the target filter, values of this (numeric) field below its low quantile or above its high one become null; the row is kept."
+        },
         "derive": {
           "type": "string",
           "description": "Derive this field from others when the source is absent/null: 'end_time - start_time' for runtime_seconds, or '<field> / <field>' of two other mapped fields (which may themselves be ratios)."

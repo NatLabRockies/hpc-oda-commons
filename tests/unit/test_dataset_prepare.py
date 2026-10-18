@@ -552,6 +552,107 @@ def test_null_values_become_null_before_the_transform(tmp_path: Path) -> None:
     assert table.num_rows == 4
 
 
+def _power_table(tmp_path: Path, watts: list, nodes: list | None = None) -> Path:
+    n = len(watts)
+    path = tmp_path / "power.parquet"
+    pq.write_table(
+        pa.table(
+            {
+                "jobid": list(range(n)),
+                "sdt": [1_600_000_000] * n,
+                "edt": [1_600_000_060] * n,
+                "watts": pa.array(watts, pa.float64()),
+                "nodes": nodes or [1] * n,
+                "tag": ["x"] * n,
+            }
+        ),
+        path,
+    )
+    return path
+
+
+def _trimmed(trim: list[float]) -> dict:
+    return {"from": "watts", "type": "number", "trim_quantiles": trim}
+
+
+def test_trim_quantiles_nulls_a_fields_outer_tails_and_keeps_the_rows(tmp_path: Path) -> None:
+    """Impossible per-node power (#216): values below the field's low quantile or above its
+    high one become null. The rows stay, and so does every other value."""
+    out = tmp_path / "out.parquet"
+    watts = [float(v) for v in range(11)] + [None]
+    summary = normalize_target(
+        _power_table(tmp_path, watts), _ratio_target(power=_trimmed([0.1, 0.9])), out
+    )
+
+    table = pq.read_table(out)
+    assert table.num_rows == 12
+    assert table.column("power").to_pylist() == [None, *map(float, range(1, 10)), None, None]
+    assert summary["trimmed"] == {
+        "power": {"quantiles": [0.1, 0.9], "bounds": [1.0, 9.0], "nulled": 2}
+    }
+
+
+def test_trim_bounds_come_from_the_rows_the_filter_keeps(tmp_path: Path) -> None:
+    """A row the target filter drops never moves the bounds: 1e9 W on a job without nodes."""
+    out = tmp_path / "out.parquet"
+    watts = [float(v) for v in range(1, 21)] + [1e9]
+    nodes = [1] * 20 + [None]
+    mapping = _ratio_target(power=_trimmed([0.1, 0.9])).mapping
+    target = _target(mapping=mapping, filter={"require_nonnull": ["num_nodes_alloc"]})
+    summary = normalize_target(_power_table(tmp_path, watts, nodes), target, out)
+
+    assert pq.read_table(out).num_rows == 20
+    # Over the 20 kept values: the 0.1 quantile falls between 2 and 3 (lower: 2), the 0.9
+    # between 18 and 19 (higher: 19). With 1e9 counted they would be 3 and 19.
+    assert summary["trimmed"]["power"]["bounds"] == [2.0, 19.0]
+    assert summary["trimmed"]["power"]["nulled"] == 2
+
+
+def test_trim_leaves_a_table_too_small_for_the_tail_alone(tmp_path: Path) -> None:
+    """Each bound is a value from the data, so a table without a 0.1% tail loses nothing."""
+    out = tmp_path / "out.parquet"
+    summary = normalize_target(
+        _power_table(tmp_path, [100.0, 5000.0, 300.0]),
+        _ratio_target(power=_trimmed([0.001, 0.999])),
+        out,
+    )
+    assert pq.read_table(out).column("power").to_pylist() == [100.0, 5000.0, 300.0]
+    assert summary["trimmed"]["power"] == {
+        "quantiles": [0.001, 0.999],
+        "bounds": [100.0, 5000.0],
+        "nulled": 0,
+    }
+
+
+def test_trim_needs_a_numeric_field(tmp_path: Path) -> None:
+    target = _ratio_target(partition={"from": "tag", "trim_quantiles": [0.1, 0.9]})
+    with pytest.raises(NormalizeError, match="numeric"):
+        normalize_target(_power_table(tmp_path, [1.0, 2.0]), target, tmp_path / "out.parquet")
+
+
+def test_prepare_records_the_trim_in_the_manifest(tmp_path: Path) -> None:
+    """The bounds a table was cut at are part of its lineage."""
+    remote = tmp_path / "remote" / "fugaku.parquet"
+    remote.parent.mkdir(parents=True)
+    pq.write_table(_source_table(), remote)
+    payload = _descriptor_payload(remote)
+    payload["targets"][0]["mapping"] = {
+        **MAPPING,
+        "maxpcon": {"from": "maxpcon", "trim_quantiles": [0.001, 0.999]},
+    }
+    (result,) = prepare_descriptor(
+        Descriptor.from_dict(payload), cache_dir=tmp_path / "cache", out_root=tmp_path / "out"
+    )
+
+    manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+    (step,) = manifest["transformations"]
+    assert step["summary"]["trimmed"]["maxpcon"] == {
+        "quantiles": [0.001, 0.999],
+        "bounds": [120.0, 500.0],
+        "nulled": 0,
+    }
+
+
 def test_list_reductions_summarise_a_trace_per_row(tmp_path: Path) -> None:
     """PM100-style power traces (#204): mean and peak per job, null for a missing or empty
     trace, and a null sample inside a trace is skipped rather than poisoning the row."""
