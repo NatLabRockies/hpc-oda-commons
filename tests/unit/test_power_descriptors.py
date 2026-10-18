@@ -242,6 +242,7 @@ def test_kestrel_average_power_is_null_where_the_node_was_shared(tmp_path: Path)
         "runtime_seconds",
         "avgpcon_per_node",
     }
+    assert target.mapping["avgpcon_per_node"]["trim_quantiles"] == [0.001, 0.999]  # #216
     start = pa.array([1_717_200_000_000_000] * 5, pa.timestamp("us", tz="UTC"))
     end = pa.array([1_717_203_600_000_000] * 5, pa.timestamp("us", tz="UTC"))  # 1 hour
     raw = tmp_path / "kestrel.parquet"

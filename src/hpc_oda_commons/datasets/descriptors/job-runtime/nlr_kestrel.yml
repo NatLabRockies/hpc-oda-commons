@@ -13,7 +13,9 @@ description: >
   node = that / nodes_used (avgpcon, avgpcon_per_node). CPU nodes only: GPU jobs carry
   no energy. On a shared node Slurm reports the node's energy, which is not the job's,
   so power is null for a job that shared its node (shared_job_count >= 1, or a shared*
-  partition). 0 J is no reading. Rows are still filtered on runtime only.
+  partition). 0 J is no reading. Per-node values below the 0.1th or above the 99.9th
+  percentile become null (#216), since a few readings are impossible. Rows are still
+  filtered on runtime only.
 problem_domains: [job-runtime-prediction, job-power-prediction]
 systems: [Kestrel]
 providers: [NLR, "National Laboratory of the Rockies"]
@@ -75,6 +77,7 @@ targets:
           - { source: shared_job_count, ge: 1 }
           - { source: partition, in: [shared, shared-stdby, sharedl] }
       avgpcon: { derive: "energy_joules / runtime_seconds" }
-      avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc" }
+      # A few readings are impossible (up to 354 kW per node): null the outer 0.1% (#216).
+      avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc", trim_quantiles: [0.001, 0.999] }
     filter: { require_nonnull: [runtime_seconds] }
     output: { id: nlr_kestrel, path: data/datasets/nlr_kestrel/data.parquet }
