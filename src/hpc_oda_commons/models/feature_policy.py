@@ -20,7 +20,7 @@ Deliberately absent, because they are only known once a job has been dispatched
 or has finished: ``job_state``, ``exit_code``, ``allocated_cpus``,
 ``num_cores_alloc``, ``num_nodes_alloc``, ``allocgpus``, ``start_time``,
 ``end_time``, ``runtime_seconds``, and every power or energy measurement
-(``avgpcon``, ``maxpcon``, ``econ``, ``*_per_node``). ``job_id`` is absent as a
+(``avgpcon``, ``maxpcon``, ``econ``, ``energy_joules``, ``*_per_node``). ``job_id`` is absent as a
 pure identifier.
 
 The allowlist is the same whatever the model predicts (#204): runtime and power

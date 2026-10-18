@@ -82,9 +82,37 @@ fields:
 the source is missing) and `<field> / <field>`, a ratio of two other mapped fields, e.g.
 `avgpcon_per_node: {derive: "avgpcon / num_nodes_alloc"}`; a zero or missing denominator
 gives null. Any other expression is an error. (Before #204 an unrecognised expression was
-ignored, leaving the column empty.) For a column that holds a list of samples per job, such
-as a power trace, `transform: {type: list_mean}` or `{type: list_max}` reduces it to one
-number.
+ignored, leaving the column empty.) A ratio may use `runtime_seconds` or another ratio, in
+any order in the mapping; a circular derive is an error (#206). For a column that holds a
+list of samples per job, such as a power trace, `transform: {type: list_mean}` or
+`{type: list_max}` reduces it to one number.
+
+`transform: {type: energy, unit: wh}` converts energy to joules (`j`, `kj`, `wh`, `kwh`).
+`null_values: [0]` on a field turns those source values into null before any transform, for
+counters where a value means "no reading". The row is kept; only that field is null.
+Together they give average power from an energy counter (NLR Eagle, #206):
+
+```yaml
+energy_joules: { from: node_energy_total_watt_hours, type: energy, unit: wh, null_values: [0] }
+avgpcon: { derive: "energy_joules / runtime_seconds" }
+avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc" }
+```
+
+**Trimming impossible values.** In a dataset descriptor's mapping,
+`trim_quantiles: [0.001, 0.999]` on a numeric field nulls its values below the field's
+0.1th percentile or above its 99.9th (#216). As with `null_values`, the row is kept. It
+runs after the target's `filter`, over the rows that remain, and before `sample`. Each
+bound is a value from the data (the order statistic at or beyond the quantile), so a table
+too small to have that tail loses nothing. The prepare manifest records, per trimmed field,
+the quantiles, the bounds and how many values became null.
+
+The bounds come from the whole prepared table, test months included. That is a look-ahead
+in the cut-off only, not in any value. Eagle uses it on `avgpcon_per_node`, where a few
+energy readings give impossible power (up to 20.7 MW per node):
+
+```yaml
+avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc", trim_quantiles: [0.001, 0.999] }
+```
 
 Fields can be **sourced** from a column (`source:`) or **derived** from other fields (`derive:`). The `role` is either `required` (rows missing this field are skipped) or `optional`.
 

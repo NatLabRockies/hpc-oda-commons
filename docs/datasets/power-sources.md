@@ -16,7 +16,7 @@ check. Anything neither of those confirmed is marked unconfirmed.
 |---|---|---|---|---|---|
 | F-DATA | Fugaku, 2021-03 to 2024-04 | ~24M | yes | yes¹ | **Mapped** (`fdata_fugaku`, `fdata_fugaku_uopc`) |
 | PM100 | Marconi100, May–Oct 2020 | 231k | yes | yes² | **Mapped** (`pm100`) |
-| NLR Eagle Jobs (+ energy) | Eagle, 2018-11 to 2024-06 | ~13.8M | yes | via join³ | Registered (`nlr_eagle`), power **not mapped yet** |
+| NLR Eagle Jobs (+ energy) | Eagle, 2018-11 to 2024-06 | ~13.8M | yes | via join³ | **Mapped**, average only (`nlr_eagle`) |
 | LLNL LAST (Lassen) | Lassen, 2018-08 to 2020-11 | ~1.47M | yes | no | Registered (`lassen`), power **not mapped yet** (needs a join) |
 | Adastra 15-day | Adastra MI250, 2024-08/09 | 15k | yes | no | Registered (`adastra_mi250`), power **not mapped yet** (needs cleaning) |
 | NLR Kestrel Jobs | Kestrel, 2023-08 to 2025-12 | ~11M | yes⁴ | no | Registered (`nlr_kestrel`), power **not mapped yet** |
@@ -57,9 +57,19 @@ without noting it.
   `node_energy_total_watt_hours`. Wh × 3600 ÷ seconds ÷ `nodes_used` gives 211–701 W per
   node (median 436 W) for June 2024. It agrees exactly (ratio 1.0000 over 9,561 jobs) with
   the per-node averages in the separate 1.3 GB energy variant. Of the 32,448 June-2024
-  rows, 10,262 ran 10+ minutes with non-zero energy; we did not separate short jobs from
-  missing readings, and coverage is reported to thin out late in Eagle's life. The
-  energy variant adds per-node and per-GPU arrays; 0 W in an array means no reading.
+  rows, 13,699 have energy, 18,704 have none and 45 read 0 Wh, which is no reading.
+  Coverage is reported to thin out late in Eagle's life. The energy variant adds per-node
+  and per-GPU arrays; 0 W in an array means no reading. Mapped (#206) as `energy_joules`
+  (`type: energy`, `null_values: [0]`) ÷ runtime ÷ `nodes_used`; prepared through the
+  descriptor, June 2024 matches the energy variant's per-node averages exactly (ratio
+  1.000000 over 12,858 jobs). Over the full table (13,836,216 jobs kept for runtime),
+  10,155,245 (73.4%) have a reading. There are no readings before April 2019. From then
+  on, full months range from 36% (April 2019 and Nov 2022) to 90% (March 2024), and each
+  year from 62% to 80%. GPU jobs have readings too (122k, median 470 W per node). A few
+  readings are impossible, up to 20.7 MW per node, so values outside the 0.1th–99.9th
+  percentiles (100–1,021 W) are nulled (#216). That leaves 10,134,936 jobs (73.2%), median
+  356 W per node, with a 1st–99th percentile range of 215–665 W
+  ([known issues](../known-issues.md)).
 - **LLNL LAST (Lassen).** `final_csm_allocation_node_history.csv` has one row per node per
   allocation, with `energy` in J. The IBM CSM docs define it as "total energy used by the
   node during the allocation". Energy ÷ (end − begin) gives 342–1,430 W per node (median
@@ -124,13 +134,15 @@ In order of payoff for effort. Item 1 is
 [#206](https://github.com/NatLabRockies/hpc-oda-commons/issues/206); the rest are tracked in
 [#207](https://github.com/NatLabRockies/hpc-oda-commons/issues/207).
 
-1. **NLR Eagle, average.** Map `node_energy_total_watt_hours` on the existing descriptor.
-   It needs a Wh → J (or Wh → W·s) conversion, which the mapping cannot express yet: a
-   ratio derive has no constant factor and cannot chain. This adds ~13.8M jobs.
+1. **NLR Eagle, average.** Done (#206): `type: energy`, `null_values` and chained ratio
+   derives, and `trim_quantiles` for the impossible readings (#216). 73.2% of the full
+   table has power. Benchmarks are tracked in
+   [#217](https://github.com/NatLabRockies/hpc-oda-commons/issues/217).
 2. **NLR Kestrel, average.** The same Slurm-energy mapping, after measuring coverage and
    deciding how to handle shared nodes.
-3. **Adastra 15-day, average.** `list_mean` ÷ runtime is expressible today. It needs a way
-   to turn zero or near-zero readings into null without dropping the runtime rows.
+3. **Adastra 15-day, average.** `list_mean` ÷ runtime is expressible today, and
+   `null_values: [0]` handles the zero readings. Near-zero readings (a few watts) need a
+   threshold as well.
 4. **Lassen, average.** Join the per-node energy file to the allocation table, which needs
    multi-file joins in the dataset pipeline.
 5. **Peak beyond Fugaku and PM100.** Eagle Node Power joined on node and time (1 minute),

@@ -194,3 +194,40 @@ def test_pm100_power_is_its_node_trace_per_allocated_node(tmp_path: Path) -> Non
     rows = pq.read_table(out).to_pylist()
     assert [r["avgpcon_per_node"] for r in rows] == [700.0, 700.0]
     assert [r["maxpcon_per_node"] for r in rows] == [800.0, 800.0]
+
+
+def test_eagle_average_power_comes_from_node_energy(tmp_path: Path) -> None:
+    """Eagle's node_energy_total_watt_hours is the job's energy over all its nodes (#206):
+    Wh x 3600 / runtime is the job's average W, / nodes_used per node. 0 Wh is no reading,
+    and a job without power keeps its runtime row."""
+    (target,) = load_descriptor(_DESCRIPTORS / "job-runtime" / "nlr_eagle.yml").targets
+    assert {c.target_column for c in target.capabilities} == {
+        "runtime_seconds",
+        "avgpcon_per_node",
+    }
+    # Impossible readings (#216): the outer 0.1% of per-node power, not of whole-job power.
+    assert target.mapping["avgpcon_per_node"]["trim_quantiles"] == [0.001, 0.999]
+    assert "trim_quantiles" not in target.mapping["avgpcon"]
+    start = pa.array([1_717_200_000_000_000] * 4, pa.timestamp("us", tz="UTC"))
+    end = pa.array([1_717_203_600_000_000] * 4, pa.timestamp("us", tz="UTC"))  # 1 hour
+    raw = tmp_path / "eagle.parquet"
+    pq.write_table(
+        pa.table(
+            {
+                "id": [1, 2, 3, 4],
+                "submit_time_tz": start,
+                "start_time_tz": start,
+                "end_time_tz": end,
+                "nodes_used": pa.array([2, 1, 1, 4], pa.int64()),
+                "node_energy_total_watt_hours": [900.0, 0.0, None, 1600.0],
+            }
+        ),
+        raw,
+    )
+    out = tmp_path / "data.parquet"
+    summary = normalize_target(raw, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert summary["rows_final"] == 4
+    assert [r["avgpcon"] for r in rows] == [900.0, None, None, 1600.0]
+    assert [r["avgpcon_per_node"] for r in rows] == [450.0, None, None, 400.0]
