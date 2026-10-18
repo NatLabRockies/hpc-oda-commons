@@ -49,6 +49,8 @@ from hpc_oda_commons.models.job_runtime_xgboost.model import (
     JobRuntimeXGBoostConfig,
     JobRuntimeXGBoostModel,
 )
+from hpc_oda_commons.models.rolling_tabular.artifact_store import default_artifact_store
+from hpc_oda_commons.models.rolling_tabular.base import RollingTabularModel
 from hpc_oda_commons.models.rolling_tabular.split import (
     build_rolling_splits,
     materialize_split_rows,
@@ -426,6 +428,10 @@ def _run_rolling_model_evaluate(
     capture_artifacts: bool,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     requested = _validate_rolling_metric_defs(metric_defs)
+    if isinstance(model, RollingTabularModel) and model.artifact_store is None:
+        # Every rolling-tabular model on the same rows builds the same daily OHE + SVD, so
+        # keep it between runs (#213). HPC_ODA_PREPROCESSING_CACHE moves or disables it.
+        model.artifact_store = default_artifact_store()
     eval_payload = model.evaluate(
         rows,
         verbose=verbose,

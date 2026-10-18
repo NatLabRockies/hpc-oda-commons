@@ -28,8 +28,9 @@ Raw Input (slurmctld.log / jobs.parquet)
   - `job_runtime_baseline/` -- deterministic mean-prediction model (fit/predict)
   - `rolling_tabular/` -- neutral base package for the rolling tabular runtime models:
     `RollingTabularModel` + `RollingTabularConfig` (`base.py`), categorical preprocessing
-    (OHE + SVD via `preprocessing.py`), and the daily preprocessing cache / split logic
-    (`split.py`). Concrete models supply a regressor via the `_new_regressor()` seam.
+    (OHE + SVD via `preprocessing.py`), the daily preprocessing cache / split logic
+    (`split.py`), and the on-disk store that shares those daily artifacts across runs
+    (`artifact_store.py`, #213). Concrete models supply a regressor via the `_new_regressor()` seam.
     (This is the "neutral base" refactor from issue #6, now landed.)
   - `job_runtime_xgboost/` -- XGBoost regressor; subclasses `RollingTabularModel` and supplies
     an XGBoost regressor via `_new_regressor()`.
