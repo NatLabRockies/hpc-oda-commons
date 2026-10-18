@@ -190,3 +190,32 @@ def test_a_recorded_config_keys_an_axis_the_summary_never_carried(tmp_path: Path
         "target_encode_min_cardinality=0",
         "target_encode_min_cardinality=500",
     }
+
+
+def test_a_legacy_set_repr_and_its_list_form_are_one_arm(tmp_path: Path) -> None:
+    """Bundles before #211 recorded a set as its repr, in hash-seed order. A re-run that
+    records the sorted list must still supersede them, not stand beside them as a new arm."""
+    runs = tmp_path / "runs"
+    _three_arm_cell(runs)
+    _write_arm(
+        runs / DATASET / "xgboost" / "benchmark-3",
+        lookback=10,
+        maes=[20.0] * 6,
+        created_at="2026-03-11T00:00:00Z",
+    )
+    for name, fields in [
+        ("benchmark-1", "frozenset({'user', 'qos'})"),
+        ("benchmark-2", ["qos", "user"]),
+        ("benchmark-3", ["qos", "user"]),
+    ]:
+        path = runs / DATASET / "xgboost" / name / "metrics.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        lookback = payload["summary"]["training_lookback_days"]
+        payload["run_config"] = {"training_lookback_days": lookback, "extra_feature_fields": fields}
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+    ranking = build_arm_ranking(runs, burn_in=2)
+
+    cell = ranking["cells"][0]
+    assert set(cell["arm_scores"]) == {LB10, LB120}
+    assert cell["arm_scores"][LB10] == pytest.approx(20.0)

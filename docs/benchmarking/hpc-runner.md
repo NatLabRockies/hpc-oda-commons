@@ -186,7 +186,10 @@ Arms are told apart by the configuration each bundle records (`run_config` in `m
 so the arm key names whatever actually differs — `training_lookback_days=30`,
 `target_encode_min_cardinality=500`, or a combination. Any new axis is rankable without
 teaching `rank` about it, and bundles that ran the same configuration are reported as one cell
-measured twice rather than ranked against themselves (#197).
+measured twice rather than ranked against themselves (#197). Set-valued knobs such as
+`extra_feature_fields` are recorded as sorted lists, so the same configuration gives the same
+key in every process. Bundles written before that recorded them as Python reprs, which `rank`
+reads back as the same sorted list (#211).
 
 ## Resource tiers
 
