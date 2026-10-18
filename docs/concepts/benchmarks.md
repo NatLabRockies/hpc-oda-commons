@@ -83,7 +83,7 @@ The v0.1 runtime prediction problem uses regression metrics:
 | MAE | Mean Absolute Error -- average absolute difference in seconds |
 | RMSE | Root Mean Squared Error -- penalizes large errors more heavily |
 
-Additional metrics (`mape`, `r2`, `underprediction_ratio`) can be added to a recipe's metric definitions. All metrics must target the same field (e.g., `runtime_seconds`), and **that field is what the model predicts**: point any runtime model at `avgpcon_per_node` or `maxpcon_per_node` to predict power per allocated node. A model that cannot predict the named target fails the run. See [Predict job power](../how-to/predict-power.md).
+Additional metrics (`mape`, `r2`, `underprediction_ratio`) can be added to a recipe's metric definitions. All metrics must target the same field (e.g., `runtime_seconds`), and **that field is what the model predicts**: point any runtime model at `avgpcon_per_node` or `maxpcon_per_node` to predict power per node. A model that cannot predict the named target fails the run. See [Predict job power](../how-to/predict-power.md).
 
 ## Result Bundles
 
