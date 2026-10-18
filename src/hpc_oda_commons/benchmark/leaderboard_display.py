@@ -15,6 +15,14 @@ METRIC_LABELS: dict[str, str] = {
     "r2": "R²",
 }
 
+# Units of the targets MAE/RMSE are reported in, beyond runtime (formatted as a duration).
+POWER_TARGET_UNITS: dict[str, str] = {
+    "avgpcon_per_node": "W/node",
+    "maxpcon_per_node": "W/node",
+    "avgpcon": "W",
+    "maxpcon": "W",
+}
+
 LOWER_IS_BETTER = frozenset({"mae", "rmse", "mape", "underprediction_ratio"})
 HIGHER_IS_BETTER = frozenset({"r2"})
 
@@ -110,6 +118,10 @@ def format_target_label(target: str | None) -> str:
         return "-"
     labels = {
         "runtime_seconds": "job runtime",
+        "avgpcon_per_node": "average power per node",
+        "maxpcon_per_node": "peak power per node",
+        "avgpcon": "average job power",
+        "maxpcon": "peak job power",
     }
     return labels.get(target, target.replace("_", " "))
 
@@ -121,6 +133,8 @@ def format_metric_value(name: str, value: float, *, target: str | None) -> str:
         return f"{value:.3f}"
     if name in {"mae", "rmse"} and target == "runtime_seconds":
         return format_duration(value)
+    if name in {"mae", "rmse"} and target in POWER_TARGET_UNITS:
+        return f"{value:,.1f} {POWER_TARGET_UNITS[target]}"
     if name == "mape":
         return f"{value:.1%}"
     if isinstance(value, float) and value.is_integer():
@@ -192,9 +206,17 @@ def format_training_time(timing: dict[str, Any] | None) -> str:
 
 def prepare_leaderboard_rows(
     entries: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[str], dict[str, float]]:
+) -> tuple[list[dict[str, Any]], list[str], dict[str | None, dict[str, float]]]:
+    """Display rows, metric names, and the best value of each metric **per target**.
+
+    Bests are per prediction target because errors in different targets are not
+    comparable: an MAE in seconds is not "better" than one in watts (#204).
+    """
     metric_names = collect_metric_names(entries)
-    bests = best_metric_values(entries, metric_names)
+    bests: dict[str | None, dict[str, float]] = {}
+    for target in {entry.get("prediction_target") for entry in entries}:
+        same = [entry for entry in entries if entry.get("prediction_target") == target]
+        bests[target] = best_metric_values(same, metric_names)
     rows: list[dict[str, Any]] = []
 
     for entry in entries:
@@ -208,7 +230,7 @@ def prepare_leaderboard_rows(
             row_metrics[name] = {
                 "raw": value,
                 "display": format_metric_value(name, value, target=target),
-                "is_best": is_best_metric(name, value, bests),
+                "is_best": is_best_metric(name, value, bests.get(target, {})),
             }
 
         model = entry.get("model", {})

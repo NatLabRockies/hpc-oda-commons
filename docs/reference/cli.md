@@ -58,6 +58,9 @@ This reference covers the v0.1 `hpc-oda` commands.
    - `model.job_runtime_embedding_knn` + `split.method: rolling` (needs an `embedding` column; see `hpc-oda embed`)
    - `model.job_runtime_moe_xgboost` + `split.method: rolling`
    - `model.job_power_uopc` + `split.method: fixed`
+   - `model.job_power_uopc` + `split.method: cutoff` (the UoPC paper protocol; see `docs/benchmarking/uopc.md`)
+   - `model.job_power_uopc` + `split.method: rolling` (UoPC on the shared rolling windows; see `docs/how-to/predict-power.md`)
+   The model predicts the column the recipe's metrics target (`runtime_seconds` by default); a model that cannot predict it fails the run.
    Result bundles include an `integrity` block with code hash and validation status.
    For rolling recipes, `split.n_windows` is required.
    Optional: `split.test_window_hours` (default `6`) sets the test window duration.

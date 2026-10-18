@@ -23,18 +23,22 @@ from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
 from hpc_oda_commons.models.feature_policy import (
-    RUNTIME_PREDICTION_FEATURE_FIELDS,
+    feature_allowlist,
     partition_feature_fields,
+)
+from hpc_oda_commons.models.rolling_tabular.artifact_store import (
+    DailyArtifactStore,
+    daily_artifacts_key,
 )
 from hpc_oda_commons.models.rolling_tabular.preprocessing import (
     _build_one_hot_encoder,
     _normalize_category,
+    _plan_and_fit_svd,
     build_preprocessing_diagnostics,
     detect_categorical_columns,
     fit_truncated_svd,
     profile_categorical_features,
     select_one_hot_config,
-    select_svd_components,
     write_preprocessing_diagnostics,
 )
 from hpc_oda_commons.models.rolling_tabular.split import (
@@ -132,12 +136,12 @@ class RollingTabularConfig:
     # distinctly from any estimator-level ``n_jobs`` (e.g. Random Forest's) so the two
     # parallelism axes stay independent.
     window_n_jobs: int = 1
-    # Train on ``log1p(runtime_seconds)`` and invert with ``expm1`` before scoring.
+    # Train on ``log1p(target)`` and invert with ``expm1`` before scoring.
     # HPC runtime distributions are heavy-tailed (p99/p50 reaches ~1,200x), so under
     # squared error a handful of very long jobs dominates the gradient; in log space
-    # each job contributes comparably. Metrics are always computed in seconds — only
-    # the training targets and the raw predictions are transformed. Mirrors the option
-    # the TF-IDF and embedding kNN models already carry.
+    # each job contributes comparably. Metrics are always computed in the target's own
+    # units — only the training targets and the raw predictions are transformed. Mirrors
+    # the option the TF-IDF and embedding kNN models already carry.
     log_target: bool = False
     # Exponential decay applied to training sample weights: a job that ended ``d`` days
     # before the split is weighted ``exp(-time_decay_rate * d)``, so recent behaviour
@@ -149,6 +153,10 @@ class RollingTabularConfig:
     # both sets is ignored, so a column that is only known once a job has run
     # cannot become a feature by virtue of being present in the table.
     extra_feature_fields: frozenset[str] = frozenset()
+    # The column the model predicts. Runtime by default; any finite numeric column works,
+    # e.g. ``avgpcon_per_node`` for job power (#204). The runner sets it from the recipe's
+    # metric target. It is never a feature, whatever ``extra_feature_fields`` says.
+    target_field: str = "runtime_seconds"
 
 
 class RollingTabularModel:
@@ -169,18 +177,27 @@ class RollingTabularModel:
 
     def __init__(self, config: RollingTabularConfig | None = None) -> None:
         self.config = config or RollingTabularConfig()
-        self.target_field = "runtime_seconds"
+        self.target_field = self.config.target_field
+        # Where to keep the daily artifacts between runs (#213). Execution-only, like
+        # ``window_n_jobs``: a hit returns exactly what the build would, so it is not part of
+        # the config and never reaches ``run_config``. None builds every day, as before.
+        self.artifact_store: DailyArtifactStore | None = None
+        self._store_hits = 0
+        self._store_misses = 0
 
     def allowed_feature_fields(self) -> frozenset[str]:
-        """Columns this model may use: the shared allowlist plus any configured extras."""
-        return RUNTIME_PREDICTION_FEATURE_FIELDS | frozenset(self.config.extra_feature_fields)
+        """Columns this model may use: the shared allowlist plus any configured extras,
+        never the target."""
+        return feature_allowlist(self.config.extra_feature_fields, target=self.target_field)
 
     def feature_field_report(self, rows: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
         """(usable, ignored) column names for ``rows`` under this model's policy."""
         present: set[str] = set()
         for row in rows[:_FIELD_SCAN_ROWS]:
             present.update(row.keys())
-        return partition_feature_fields(present, extra=self.config.extra_feature_fields)
+        return partition_feature_fields(
+            present, extra=self.config.extra_feature_fields, target=self.target_field
+        )
 
     @staticmethod
     def _check_dependencies() -> None:
@@ -273,6 +290,7 @@ class RollingTabularModel:
         # Build the day-keyed preprocessing artifacts up front so the window sweep is
         # order-independent (and therefore identical for any n_jobs). refit_ids are the
         # split indices that triggered each day's build — the sequential cache semantics.
+        self._store_hits = self._store_misses = 0
         cache, refit_ids = self._precompute_daily_artifacts(rows, splits)
 
         usable, ignored = self.feature_field_report(rows)
@@ -372,6 +390,11 @@ class RollingTabularModel:
             "test_window_hours": self.config.test_window_hours,
             "training_lookback_days": self.config.training_lookback_days,
         }
+        if self.artifact_store is not None:
+            summary["preprocessing_store"] = {
+                "hits": self._store_hits,
+                "misses": self._store_misses,
+            }
         if verbose:
             metric_bits = " ".join(f"{k}={global_metrics[k]:.6f}" for k in sorted(global_metrics))
             print(
@@ -658,6 +681,65 @@ class RollingTabularModel:
     def _build_daily_preprocessing_artifacts(
         self, train_rows: list[dict[str, Any]]
     ) -> _DailyPreprocessingArtifacts:
+        """The day's shared artifacts, from the store when it already holds them (#213)."""
+        store = self.artifact_store
+        if store is None:
+            return self._build_shared_daily_artifacts(train_rows)
+        key = self._daily_artifacts_key(train_rows)
+        cached = store.load(key)
+        if type(cached) is _DailyPreprocessingArtifacts:
+            self._store_hits += 1
+            return cached
+        built = self._build_shared_daily_artifacts(train_rows)
+        store.save(key, built)
+        self._store_misses += 1
+        return built
+
+    # Every method the shared build calls that a subclass could override. Their qualified
+    # names go into the store key, so a subclass that changes one gets entries of its own
+    # instead of another model's.
+    _DAILY_BUILD_METHODS = (
+        "allowed_feature_fields",
+        "_build_shared_daily_artifacts",
+        "_detect_numeric_columns",
+        "_is_numeric_value",
+        "_categorical_matrix",
+        "_build_target_encoding",
+    )
+
+    def _daily_artifacts_key(self, train_rows: list[dict[str, Any]]) -> str:
+        """Content key over everything ``_build_shared_daily_artifacts`` reads.
+
+        The build only looks at the allowed feature columns (column detection scans every key,
+        but its result is filtered to the allowlist), plus the target when target encoding is
+        on. Leaving the target out otherwise is what lets runs on different targets over the
+        same rows share one entry.
+        """
+        cfg = self.config
+        target_encoding = cfg.target_encode_min_cardinality > 0
+        columns = sorted(self.allowed_feature_fields())
+        if target_encoding:
+            columns.append(self.target_field)
+        settings: dict[str, Any] = {
+            "explained_variance_target": cfg.explained_variance_target,
+            "infrequent_category_fraction": cfg.infrequent_category_fraction,
+            "min_frequency_floor": cfg.min_frequency_floor,
+            "target_max_one_hot_width": cfg.target_max_one_hot_width,
+            "max_svd_components": cfg.max_svd_components,
+            "random_state": cfg.random_state,
+            "categorical_top_k": cfg.categorical_top_k,
+            "target_encode_min_cardinality": cfg.target_encode_min_cardinality,
+            "target_encode_smoothing": cfg.target_encode_smoothing if target_encoding else None,
+            "target_field": self.target_field if target_encoding else None,
+            "methods": [
+                getattr(type(self), name).__qualname__ for name in self._DAILY_BUILD_METHODS
+            ],
+        }
+        return daily_artifacts_key(train_rows, columns=columns, settings=settings)
+
+    def _build_shared_daily_artifacts(
+        self, train_rows: list[dict[str, Any]]
+    ) -> _DailyPreprocessingArtifacts:
         allowed = self.allowed_feature_fields()
 
         categorical_candidates = detect_categorical_columns(train_rows)
@@ -706,7 +788,7 @@ class RollingTabularModel:
             )
             matrix = self._categorical_matrix(train_rows, one_hot_config.columns)
             encoded_train = encoder.fit_transform(matrix)
-            svd_plan = select_svd_components(
+            svd_plan, selection_svd = _plan_and_fit_svd(
                 encoded_train,
                 target_coverage=self.config.explained_variance_target,
                 max_svd_components=self.config.max_svd_components,
@@ -714,7 +796,12 @@ class RollingTabularModel:
             )
             svd_components = int(svd_plan.selected_components)
             svd_coverage = float(svd_plan.achieved_coverage)
-            if svd_components > 0:
+            if svd_components > 0 and svd_components == svd_plan.evaluated_components:
+                # Choosing the count already fitted this exact SVD: same matrix, same
+                # n_components, same random_state. Fitting it again only doubled the cost
+                # of the day (#213).
+                svd = selection_svd
+            elif svd_components > 0:
                 # Same escalation ladder the component count was chosen under (#159, #185),
                 # so this fit cannot fail where that one succeeded.
                 svd, _solver = fit_truncated_svd(
@@ -856,7 +943,9 @@ class RollingTabularModel:
                     continue
                 if key not in seen_numeric:
                     seen_numeric[key] = False
-                if value is None or value == "":
+                # isinstance first: `array == ""` is elementwise, and F-DATA's per-job
+                # embedding arrives as an array (#204).
+                if value is None or (isinstance(value, str) and value == ""):
                     continue
                 if self._is_numeric_value(value):
                     seen_numeric[key] = True
@@ -875,7 +964,7 @@ class RollingTabularModel:
         for i, row in enumerate(rows):
             for j, col in enumerate(columns):
                 raw = row.get(col)
-                if raw is None or raw == "":
+                if raw is None or (isinstance(raw, str) and raw == ""):
                     out[i, j] = 0.0
                     continue
                 try:

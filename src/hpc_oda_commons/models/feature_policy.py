@@ -1,5 +1,5 @@
 """
-Which columns a runtime-prediction model is allowed to use as features.
+Which columns a prediction model is allowed to use as features.
 
 ``oda.job.v0.2.0`` sets ``additionalProperties: true``: any column a dataset
 descriptor maps lands in the normalized table. Selecting features by *excluding*
@@ -19,7 +19,13 @@ map already used to serialize rows for embedding
 Deliberately absent, because they are only known once a job has been dispatched
 or has finished: ``job_state``, ``exit_code``, ``allocated_cpus``,
 ``num_cores_alloc``, ``num_nodes_alloc``, ``allocgpus``, ``start_time``,
-``end_time``, ``runtime_seconds``. ``job_id`` is absent as a pure identifier.
+``end_time``, ``runtime_seconds``, and every power or energy measurement
+(``avgpcon``, ``maxpcon``, ``econ``, ``energy_joules``, ``*_per_node``). ``job_id`` is absent as a
+pure identifier.
+
+The allowlist is the same whatever the model predicts (#204): runtime and power
+are both only known when a job ends. ``feature_allowlist`` adds a model's extras
+and guarantees its target is never among them.
 """
 
 from __future__ import annotations
@@ -66,15 +72,29 @@ RUNTIME_PREDICTION_FEATURE_FIELDS: frozenset[str] = frozenset(
 )
 
 
+def feature_allowlist(extra: Iterable[str] = (), *, target: str | None = None) -> frozenset[str]:
+    """The shared allowlist plus ``extra``, never including ``target``.
+
+    Naming the target as an extra feature is an error rather than a silent drop: it would
+    hand the model its own answer, and a recipe that asks for that is mistaken.
+    """
+    extra = frozenset(extra)
+    if target is not None and target in extra:
+        raise ValueError(f"{target!r} is the prediction target, so it cannot also be a feature.")
+    allowed = RUNTIME_PREDICTION_FEATURE_FIELDS | extra
+    return allowed - {target} if target is not None else allowed
+
+
 def partition_feature_fields(
-    present: Iterable[str], *, extra: Iterable[str] = ()
+    present: Iterable[str], *, extra: Iterable[str] = (), target: str | None = None
 ) -> tuple[list[str], list[str]]:
     """Split the column names present in a table into (usable, ignored).
 
     ``extra`` admits dataset-specific columns the shared allowlist cannot know
-    about. Both lists are sorted, so they are stable to log and to assert on.
+    about; ``target`` is always ignored. Both lists are sorted, so they are stable
+    to log and to assert on.
     """
-    allowed = RUNTIME_PREDICTION_FEATURE_FIELDS | frozenset(extra)
+    allowed = feature_allowlist(extra, target=target)
     usable: list[str] = []
     ignored: list[str] = []
     for name in sorted(set(present)):

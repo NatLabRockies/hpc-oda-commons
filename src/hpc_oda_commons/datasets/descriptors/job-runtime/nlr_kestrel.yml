@@ -1,14 +1,22 @@
 dataset_id: dataset.job_runtime.nlr_kestrel
 schema_version: oda.dataset.v0.1.0
 name: NLR Kestrel Jobs (anonymized)
-version: 1.0.0
+version: 1.1.0
 description: >
   Anonymized SLURM sacct job records from the NLR Kestrel HPC system (H100 GPUs),
   Aug 2023 - Dec 2025, ~11M jobs, as a zipped Hive-partitioned Parquet dataset. The
   runtime-prediction target is derived (end_time - start_time); requested walltime =
   wallclock_req (an Arrow duration). Timestamps are tz-aware and normalized to UTC on
   decode. user/account are already hashed in the source. Home-lab; freshest corpus.
-problem_domains: [job-runtime-prediction]
+  Average job power is mapped too (#209): consumed_energy_raw_joules is Slurm's job
+  energy summed over its nodes, so whole-job average watts = energy / runtime and per
+  node = that / nodes_used (avgpcon, avgpcon_per_node). CPU nodes only: GPU jobs carry
+  no energy. On a shared node Slurm reports the node's energy, which is not the job's,
+  so power is null for a job that shared its node (shared_job_count >= 1, or a shared*
+  partition). 0 J is no reading. Per-node values below the 0.1th or above the 99.9th
+  percentile become null (#216), since a few readings are impossible. Rows are still
+  filtered on runtime only.
+problem_domains: [job-runtime-prediction, job-power-prediction]
 systems: [Kestrel]
 providers: [NLR, "National Laboratory of the Rockies"]
 citation: { doi: "10.7799/3023270", url: "https://data.nlr.gov/submissions/302" }
@@ -37,6 +45,7 @@ targets:
   - schema: oda.job.v0.2.0
     capabilities:
       - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
+      - { problem_domain: job-power-prediction, target_column: avgpcon_per_node }
     suitable_models: [model.job_runtime_baseline, model.job_runtime_xgboost]
     mapping:
       job_id: { from: id }
@@ -56,5 +65,19 @@ targets:
       job_state: { from: state_simple }
       user: { from: user_hash }
       account: { from: account_hash }
+      # Average power (#209). Slurm job energy, summed over the job's nodes; 0 J is no
+      # reading. On a shared node it is the node's energy, not the job's, so null it.
+      # shared_job_count counts the other jobs on the node: 1 already means shared.
+      energy_joules:
+        from: consumed_energy_raw_joules
+        type: energy
+        unit: j
+        null_values: [0]
+        null_when:
+          - { source: shared_job_count, ge: 1 }
+          - { source: partition, in: [shared, shared-stdby, sharedl] }
+      avgpcon: { derive: "energy_joules / runtime_seconds" }
+      # A few readings are impossible (up to 354 kW per node): null the outer 0.1% (#216).
+      avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc", trim_quantiles: [0.001, 0.999] }
     filter: { require_nonnull: [runtime_seconds] }
     output: { id: nlr_kestrel, path: data/datasets/nlr_kestrel/data.parquet }

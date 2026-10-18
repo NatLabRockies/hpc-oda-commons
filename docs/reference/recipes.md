@@ -10,10 +10,14 @@
 | `mlp_rolling.yml` | MLP | Rolling (20 windows, 6h, 7d) | Feed-forward neural network example |
 | `embedding_knn_rolling.yml` | Embedding + kNN | Rolling (20 windows, 6h, 7d) | Embedding-space kNN (needs an embedded dataset; see `hpc-oda embed`) |
 | `uopc_maxpcon.yml` | UoPC (power) | Fixed | Per-user online power prediction example |
+| `job-power/uopc_paper_reproduction.yml` | UoPC (power) | Cutoff (2024-02-01, θ=500, k=5) | Reproduces the UoPC paper on F-DATA — see [UoPC reproduction](../benchmarking/uopc.md) |
+| `job-power/uopc_paper_sensitivity.yml` | UoPC (power) | Cutoff, θ × k sweep | The paper's sensitivity grid; headline at θ=500, k=5 |
+| `job-power/uopc_paper_sensitivity_smoke.yml` | UoPC (power) | Cutoff, 1 × 2 sweep | Quick end-to-end check of the sweep |
+| `job-power/<model>_rolling_{avg,peak}.yml` | Eight models (all but MLP) | Rolling (89 windows, 24h, 60d) | Average or peak power per node on one shared protocol — see [Power prediction benchmark](../benchmarking/power.md) |
 | `moe_xgboost_rolling.yml` | MoE XGBoost | Rolling (20 windows, 6h, 7d) | Mixture-of-experts routing example |
 | `kestrel_moe_best_rolling.yml` | MoE XGBoost | Rolling (120 windows, 6h, 120d) | The best measured configuration — see [Reproducing the reference result](#reproducing-the-reference-result) |
 
-Bundled recipes are shipped with the package at `src/hpc_oda_commons/recipes/job-runtime/`.
+Bundled recipes are shipped with the package at `src/hpc_oda_commons/recipes/job-runtime/` (and `job-power/` for the paper-protocol power recipes).
 
 ## Recipe Schema (`oda.recipe.v0.1.0`)
 
@@ -53,7 +57,7 @@ metrics:
 
 # Train/test split strategy
 split:
-  method: fixed          # or "rolling"
+  method: fixed          # or "rolling" or "cutoff"
   train_fraction: 0.8    # for fixed splits only
   seed: 42               # for fixed splits only
 
@@ -65,16 +69,22 @@ run:
 
 ### Split Methods
 
-**`fixed`** -- Deterministic train/test split. Used with `model.job_runtime_baseline`.
+**`fixed`** -- Deterministic train/test split. Used with `model.job_runtime_baseline` and the UoPC adaptation (`model.job_power_uopc`).
 - `train_fraction` (float, required): fraction of data for training (e.g., `0.8`)
 - `seed` (int, required): random seed for reproducibility
 
-**`rolling`** -- Sliding windows that simulate production retraining. Used with the seven rolling models (`model.job_runtime_baseline`, `model.job_runtime_xgboost`, `model.job_runtime_random_forest`, `model.job_runtime_tfidf_knn`, `model.job_runtime_mlp`, `model.job_runtime_embedding_knn`, `model.job_runtime_moe_xgboost`).
+**`cutoff`** -- Every job submitted on or after a date is a test job; everything earlier is history only. Used with `model.job_power_uopc` to run the UoPC paper protocol ([UoPC reproduction](../benchmarking/uopc.md)).
+- `test_start` (ISO date, required): the cutoff, e.g. `"2024-02-01"` (quote it, so YAML keeps it a string)
+- `theta` (int, default `500`) / `k` (int, default `5`): history size and neighbour count; with a sweep they name the headline cell
+- `theta_values` / `k_values` (lists of int, optional): run the θ × k sensitivity grid instead of one reproduction; the headline `theta`/`k` must be in the grid
+
+**`rolling`** -- Sliding windows that simulate production retraining. Used with the rolling models (`model.job_runtime_baseline`, `model.job_runtime_xgboost`, `model.job_runtime_random_forest`, `model.job_runtime_tfidf_knn`, `model.job_runtime_mlp`, `model.job_runtime_embedding_knn`, `model.job_runtime_moe_xgboost`, `model.job_runtime_signature_memorizer`) and with `model.job_power_uopc`, which then reads `theta`, `k` and `embedding_field` (see [Predict job power](../how-to/predict-power.md#uopc-on-the-same-windows)). Rolling recipes may report `mae`, `rmse`, `mape`, `r2` and `underprediction_ratio`.
 - `n_windows` (int, required): number of windows to evaluate
 - `test_window_hours` (int, default `6`): duration of each test window in hours
 - `training_lookback_days` (int, default `100`): days of history per training window
 - `window_n_jobs` (int, default `1`): worker threads for the independent per-window fits of the fitted tabular models (`xgboost`, `random_forest`, `mlp`). `1` is sequential; `>1` runs windows concurrently with BLAS pinned per worker (results are unchanged except for the floating-point caveat in [known-issues](../known-issues.md)).
-- `log_target` (bool, default `false`): train on `log1p(runtime_seconds)` and invert with `expm1` before scoring. Supported by `xgboost`, `random_forest`, `mlp`, `tfidf_knn`, and `embedding_knn`. Metrics stay in seconds. Improves typical-job accuracy on heavy-tailed workloads at the cost of MAE/RMSE — see [the reference](../hpc-oda-commons-reference.md) for measured numbers.
+- `log_target` (bool, default `false`): train on `log1p(target)` and invert with `expm1` before scoring. Supported by `xgboost`, `random_forest`, `mlp`, `tfidf_knn`, and `embedding_knn`. Metrics stay in the target's units. Improves typical-job accuracy on heavy-tailed workloads at the cost of MAE/RMSE — see [the reference](../hpc-oda-commons-reference.md) for measured numbers.
+- `embedding_field` (string, default `embedding`): embedding-kNN and rolling UoPC — the column holding each job's embedding vector.
 - `sims_block_bytes` (int, default `2147483648`): embedding-kNN only — peak bytes for one dense similarity block; the query is streamed in blocks of this budget so per-window memory stays bounded on large corpora.
 - `time_decay_rate` (float, default `0.0`): exponential recency weight on training rows, in units of 1/day — `0.05` is roughly a two-week half-life. Supported by the rolling tabular models; composes with `objective`.
 - `objective` (string, default `reg:squarederror`): XGBoost and MoE XGBoost only — the loss the trees are fitted against. `reg:absoluteerror` fits the metric the leaderboard ranks on; on heavy-tailed runtimes the two are not close. Trades RMSE for MAE and median AE.
@@ -90,7 +100,7 @@ run:
 
 ### Validation Rules
 - `metrics` must include at least `mae` and `rmse`
-- All metrics must target the same field (e.g., `runtime_seconds`)
+- All metrics must target the same field (e.g., `runtime_seconds`). **That field is what the model predicts**, not a label: the target-configurable models are trained on it, and a model that cannot predict it (e.g. the fixed UoPC adaptation, which only predicts `maxpcon`) fails the run. See [Predict job power](../how-to/predict-power.md).
 - For `rolling`, `n_windows` must be positive
 
 ## Reproducing the reference result

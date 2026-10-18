@@ -23,6 +23,11 @@ The runner reads your local site config and fills the tracked templates at plan 
 generated scripts (which do contain your paths/account) land under `.hpc_oda/`, which is
 gitignored — so real hostnames, accounts, users, and paths stay off the repo.
 
+Every cell `cd`s to the same `{{workdir}}`, so the tabular models' cells share one preprocessing
+store at `<workdir>/.hpc_oda/cache/preprocessing/` (#213): the first cell on a dataset slice builds
+each day's OHE + SVD artifacts and later cells on the same slice load them, whatever their
+model. Set `HPC_ODA_PREPROCESSING_CACHE` in the site environment to move it, or to `off`.
+
 ## One-time setup
 
 1. **Copy the example config and fill it in** (keep it under the gitignored `.hpc_oda/`):

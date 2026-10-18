@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from hpc_oda_commons.models.feature_policy import RUNTIME_PREDICTION_FEATURE_FIELDS
+from hpc_oda_commons.models.feature_policy import feature_allowlist
 
 
 def detect_text_columns(
     rows: list[dict[str, Any]],
     *,
     extra_fields: frozenset[str] | None = None,
+    target: str | None = None,
 ) -> list[str]:
     """Find the string-valued columns this model may vectorize.
 
@@ -21,7 +22,7 @@ def detect_text_columns(
     """
     if not rows:
         return []
-    allowed = RUNTIME_PREDICTION_FEATURE_FIELDS | frozenset(extra_fields or ())
+    allowed = feature_allowlist(extra_fields or (), target=target)
     text_cols: list[str] = []
     for key in rows[0]:
         if key not in allowed:

@@ -61,7 +61,7 @@ def test_prepare_leaderboard_rows_marks_best_metric() -> None:
 
     rows, metric_names, bests = prepare_leaderboard_rows(entries)
     assert metric_names == ["mae", "rmse"]
-    assert bests["mae"] == 5.0
+    assert bests["runtime_seconds"]["mae"] == 5.0
     assert rows[1]["metrics"]["mae"]["is_best"] is True
     assert (
         short_registry_id("recipe.job_runtime.baseline_tiny", prefix="recipe.") == "baseline_tiny"
@@ -122,6 +122,39 @@ def test_render_leaderboard_html_aligns_columns_when_metric_missing() -> None:
     html = render_leaderboard_html(leaderboard)
     partial_row = next(seg for seg in html.split("<tr>") if "partial" in seg)
     dash_idx = partial_row.index('class="metric muted">-')
-    value_idx = partial_row.index(">999<")
+    value_idx = partial_row.index(">999.0 W<")  # maxpcon is reported in watts
     # The MAE dash must come before the RMSE value (columns stay aligned).
     assert dash_idx < value_idx
+
+
+def test_format_power_metrics_in_watts() -> None:
+    assert format_metric_value("mae", 12.345, target="avgpcon_per_node") == "12.3 W/node"
+    assert format_metric_value("rmse", 1234.5, target="maxpcon") == "1,234.5 W"
+    assert format_metric_value("mape", 0.101, target="avgpcon_per_node") == "10.1%"
+
+
+def test_bests_are_per_target_so_seconds_never_beat_watts() -> None:
+    """A runs folder can hold runtime and power results. An MAE of 5 seconds is not better
+    than one of 12 W/node; each target gets its own best (#204)."""
+
+    def entry(model: str, target: str, mae: float) -> dict:
+        return {
+            "created_at": "2026-01-01T00:00:00Z",
+            "recipe_id": f"recipe.{model}",
+            "model": {"id": f"model.{model}", "version": "0.1.0"},
+            "dataset": {"id": "d"},
+            "prediction_target": target,
+            "metrics": {"mae": mae},
+        }
+
+    rows, _, bests = prepare_leaderboard_rows(
+        [
+            entry("a", "runtime_seconds", 5.0),
+            entry("b", "runtime_seconds", 50.0),
+            entry("c", "avgpcon_per_node", 12.0),
+            entry("d", "avgpcon_per_node", 30.0),
+        ]
+    )
+    assert bests == {"runtime_seconds": {"mae": 5.0}, "avgpcon_per_node": {"mae": 12.0}}
+    assert [r["metrics"]["mae"]["is_best"] for r in rows] == [True, False, True, False]
+    assert rows[2]["target_label"] == "average power per node"

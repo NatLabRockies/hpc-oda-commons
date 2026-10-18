@@ -139,3 +139,53 @@ The `jobs-parquet` ingest applies mapping transforms column-wise (vectorized) ra
 row-by-row. One intentional behavior difference: a malformed `memory_slurm` value such as
 `"1.2.3G"` now becomes `null` instead of crashing the ingest, so a few bad rows no longer
 abort the whole run.
+
+## Note — F-DATA's allocated node counts can be padded
+
+**Status:** handled · **Tracking:** [#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204), [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125)
+
+F-DATA's `nnuma` (allocated nodes) can exceed the nodes a job ran on, while `avgpcon` and
+`maxpcon` sum only those nodes. In the UoPC test months, 137k jobs (8.6%, 11 users) request
+and use 1 node with 48 cores, draw ~91 W, and show `nnuma` = 48: per allocated node they
+read 1.9 W. The Commons' per-node power targets (`avgpcon_per_node`, `maxpcon_per_node` on
+both Fugaku descriptors) therefore divide by requested nodes. The UoPC paper protocol still
+divides by `nnuma`, as the paper does; its write-up reports the results with and without
+these jobs ([UoPC reproduction](benchmarking/uopc.md#results)).
+
+## Note — Eagle's and Kestrel's energy readings include impossible per-node power
+
+**Status:** handled · **Tracking:** [#206](https://github.com/NatLabRockies/hpc-oda-commons/issues/206), [#209](https://github.com/NatLabRockies/hpc-oda-commons/issues/209), [#216](https://github.com/NatLabRockies/hpc-oda-commons/issues/216)
+
+`nlr_eagle` derives average power per node from each job's energy reading, and a few
+readings are impossible. Before #216, 7,720 of the 10,155,245 jobs with power read above
+1.5 kW per node, and the highest read 20.7 MW. They raised the mean from 356 W to 614 W per
+node.
+
+The descriptor now sets `trim_quantiles: [0.001, 0.999]` on `avgpcon_per_node`. Values
+outside the field's own 0.1th–99.9th percentiles become null, and the rows stay. On the
+full table the bounds are 100.1 W and 1,020.7 W per node, and 20,309 values (0.2%) become
+null. The rule is symmetric, so it has two side effects:
+- **Low end.** It also nulls 10,154 readings below 100 W, which are mostly long jobs
+  (median 70 minutes) and not obviously wrong.
+- **GPU jobs.** GPU nodes draw more, so 681 of 121,948 GPU jobs (0.56%) lose their value.
+
+The bounds come from the whole table, test months included: a look-ahead in the cut-off
+only, not in any value.
+
+`nlr_kestrel` has far fewer impossible readings: 138 above 1.5 kW per node, the highest
+354 kW, and they don't move its mean (566 W per node). The same rule applies. Its bounds
+are 85.0 W and 813.3 W, and 12,219 values (0.2%) become null. Here the side effect is at
+the top. 5,789 of the 6,119 values above 813 W lie below 1 kW, plausible for a busy node,
+and they are mostly long jobs (median 101 minutes). The 6,100 below 85 W are mostly very
+short jobs (median 2 s).
+
+## Note — UoPC paper protocol scales features with test-period data
+
+**Status:** informational · **Tracking:** [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125)
+
+The UoPC paper protocol (`model.job_power_uopc` with `split.method: cutoff`) z-scores its
+numeric features (cores, nodes and CPU frequency requested) over the whole usable dataset,
+test months included, because the authors' reference code does. This is a small look-ahead
+in the feature scale only; no target value leaks. It is kept so the numbers stay comparable
+with the paper. A deployment would fit the scaling on history alone. See
+[UoPC reproduction](benchmarking/uopc.md#known-deviations).

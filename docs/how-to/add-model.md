@@ -22,6 +22,27 @@ must filter through the allowlist too — a normalized table can carry `job_stat
 Admit a dataset-specific column with `extra_feature_fields` on the model config rather than
 by widening the shared allowlist, unless the field is genuinely cross-site.
 
+Build the feature set with `feature_allowlist(extra, target=...)` rather than the raw
+`RUNTIME_PREDICTION_FEATURE_FIELDS` set: it guarantees the model's own target is never a
+feature, and rejects a config that names it as an extra.
+
+## Targets
+
+A model predicts the column the recipe's metrics name (#204), `runtime_seconds` by default.
+To support that:
+
+1. Give the config a `target_field: str = "runtime_seconds"` and set `self.target_field`
+   from it. Read the target only through `self.target_field`, never a literal column name.
+2. In the runner, pass `target_field=_target_for(metric_defs)` when building the config, and
+   go through `_run_rolling_model_evaluate`, which checks the recipe's target against
+   `model.target_field` before evaluating.
+3. A model that can only predict one column (like the fixed UoPC adaptation) calls
+   `_require_target(<its column>, metric_defs, model=...)` instead, so a recipe naming any
+   other target fails rather than reporting this column's errors under that name.
+
+`tests/unit/test_power_targets.py` runs every rolling runner on a power target whose values
+cannot be confused with runtime; add a new rolling model to its `RUNNERS`.
+
 ## Required Metadata
 
 The registry entry should include:
@@ -46,7 +67,7 @@ The toolkit ships eight models, each illustrating a different complexity level:
 | `model.job_runtime_tfidf_knn` | `models/job_runtime_tfidf_knn/` | `evaluate()` with TF-IDF vectorization; hashes once, scores window slices in parallel (`window_n_jobs`) |
 | `model.job_runtime_embedding_knn` | `models/job_runtime_embedding_knn/` | `evaluate()` over a precomputed embedding column; selectable dense top-k backend (`backends.py`) |
 | `model.job_runtime_moe_xgboost` | `models/job_runtime_moe_xgboost/` | Subclass of `RollingTabularModel` that overrides the fit/predict seam to route each job to a per-(user, wallclock-bin) expert |
-| `model.job_power_uopc` | `models/job_power_uopc/` | Per-user kNN job-power model on a fixed split |
+| `model.job_power_uopc` | `models/job_power_uopc/` | Per-user kNN job-power model: `evaluate_fixed()` on a fixed split, `evaluate_paper_reproduction()` / `evaluate_paper_sensitivity()` on a date cutoff |
 
 For a minimal starting point, see `models/job_runtime_baseline/`. For a new
 rolling tabular regressor, subclass `RollingTabularModel` in
