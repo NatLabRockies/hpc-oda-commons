@@ -63,11 +63,13 @@ without noting it.
   (`type: energy`, `null_values: [0]`) ÷ runtime ÷ `nodes_used`; prepared through the
   descriptor, June 2024 matches the energy variant's per-node averages exactly (ratio
   1.000000 over 12,858 jobs). Over the full table (13,836,216 jobs kept for runtime),
-  10,155,245 (73.4%) have power. There are no readings before April 2019. From then on,
-  full months range from 36% (April 2019 and Nov 2022) to 90% (March 2024), and each year from 62% to 80%.
-  GPU jobs have readings too (122k, median 470 W per node). The median is 356 W per node,
-  with a 1st–99th percentile range of 214–672 W. 0.08% read impossibly high, up to 20.7 MW
-  per node ([known issues](../known-issues.md)).
+  10,155,245 (73.4%) have a reading. There are no readings before April 2019. From then
+  on, full months range from 36% (April 2019 and Nov 2022) to 90% (March 2024), and each
+  year from 62% to 80%. GPU jobs have readings too (122k, median 470 W per node). A few
+  readings are impossible, up to 20.7 MW per node, so values outside the 0.1th–99.9th
+  percentiles (100–1,021 W) are nulled (#216). That leaves 10,134,936 jobs (73.2%), median
+  356 W per node, with a 1st–99th percentile range of 215–665 W
+  ([known issues](../known-issues.md)).
 - **LLNL LAST (Lassen).** `final_csm_allocation_node_history.csv` has one row per node per
   allocation, with `energy` in J. The IBM CSM docs define it as "total energy used by the
   node during the allocation". Energy ÷ (end − begin) gives 342–1,430 W per node (median
@@ -133,8 +135,9 @@ In order of payoff for effort. Item 1 is
 [#207](https://github.com/NatLabRockies/hpc-oda-commons/issues/207).
 
 1. **NLR Eagle, average.** Done (#206): `type: energy`, `null_values` and chained ratio
-   derives. 73.4% of the full table has power. The impossible readings still need a range
-   check on derived values before Eagle power can be benchmarked.
+   derives, and `trim_quantiles` for the impossible readings (#216). 73.2% of the full
+   table has power. Benchmarks are tracked in
+   [#217](https://github.com/NatLabRockies/hpc-oda-commons/issues/217).
 2. **NLR Kestrel, average.** The same Slurm-energy mapping, after measuring coverage and
    deciding how to handle shared nodes.
 3. **Adastra 15-day, average.** `list_mean` ÷ runtime is expressible today, and
