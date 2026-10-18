@@ -2,7 +2,8 @@
 
 Every runtime model predicting **power per node**, scored next to UoPC on the same
 rolling windows and rows ([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204)).
-How to run any model on power: [Predict job power](../how-to/predict-power.md).
+How to run any model on power: [Predict job power](../how-to/predict-power.md). The same
+split on NLR Eagle and Kestrel: [Power prediction on Eagle and Kestrel](power-nlr.md).
 
 ## Protocol
 

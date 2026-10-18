@@ -14,6 +14,7 @@
 | `job-power/uopc_paper_sensitivity.yml` | UoPC (power) | Cutoff, θ × k sweep | The paper's sensitivity grid; headline at θ=500, k=5 |
 | `job-power/uopc_paper_sensitivity_smoke.yml` | UoPC (power) | Cutoff, 1 × 2 sweep | Quick end-to-end check of the sweep |
 | `job-power/<model>_rolling_{avg,peak}.yml` | Eight models (all but MLP) | Rolling (89 windows, 24h, 60d) | Average or peak power per node on one shared protocol — see [Power prediction benchmark](../benchmarking/power.md) |
+| `job-power/<model>_rolling_avg_{eagle,kestrel}.yml` | Six models (not UoPC or embedding kNN) | Rolling (89 windows, 24h, 60d) | Average power per node on NLR Eagle (Jul–Sep 2023) and Kestrel (Oct–Dec 2025), on tables cut with `hpc-oda datasets slice` — see [Power prediction on Eagle and Kestrel](../benchmarking/power-nlr.md) |
 | `moe_xgboost_rolling.yml` | MoE XGBoost | Rolling (20 windows, 6h, 7d) | Mixture-of-experts routing example |
 | `kestrel_moe_best_rolling.yml` | MoE XGBoost | Rolling (120 windows, 6h, 120d) | The best measured configuration — see [Reproducing the reference result](#reproducing-the-reference-result) |
 
