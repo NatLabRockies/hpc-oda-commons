@@ -5,7 +5,8 @@ A descriptor target carries an inline ``mapping`` (canonical column -> source fi
 rule). This module translates that into an ``oda.mapping`` spec and runs the existing
 :func:`apply_mapping_spec` (single source of truth for the timestamp/duration/memory/
 hash transforms, completeness filtering, and runtime derivation), then applies the
-optional ``filter`` / ``sample`` / ``select`` refinements.
+optional ``filter`` / ``sample`` / ``select`` refinements. A field rule's
+``trim_quantiles`` nulls that field's values outside its own quantiles, after the filter.
 """
 
 from __future__ import annotations
@@ -134,6 +135,43 @@ def _apply_filter(table: pa.Table, filt: Mapping[str, Any]) -> pa.Table:
     return table
 
 
+def _apply_trims(table: pa.Table, target: Target) -> tuple[pa.Table, dict[str, Any]]:
+    """Null each ``trim_quantiles`` field's values outside its own [low, high] quantiles (#216).
+
+    The bounds are taken over the field's non-null values in the rows the filter kept, so they
+    describe the table being written. Each bound is a value from the data (the order
+    statistic at or beyond the quantile), so a table too small to have such a tail loses
+    nothing. A value strictly outside the bounds becomes null and the row stays, as with
+    ``null_values``. Returns the table and, per trimmed field, the quantiles, the bounds they
+    gave and how many values were nulled.
+    """
+    trimmed: dict[str, Any] = {}
+    for field, rule in target.mapping.items():
+        trim = rule.get("trim_quantiles") if isinstance(rule, Mapping) else None
+        if not trim:
+            continue
+        low_q, high_q = (float(q) for q in trim)
+        record: dict[str, Any] = {"quantiles": [low_q, high_q], "bounds": None, "nulled": 0}
+        trimmed[field] = record
+        if field not in table.column_names:
+            continue  # an optional field that was empty in every row
+        col = table.column(field)
+        if not (pa.types.is_integer(col.type) or pa.types.is_floating(col.type)):
+            raise NormalizeError(
+                f"trim_quantiles on {field!r} needs a numeric column, got {col.type}"
+            )
+        if col.null_count == len(col):
+            continue
+        (low,) = pc.quantile(col, q=low_q, interpolation="lower").to_pylist()
+        (high,) = pc.quantile(col, q=high_q, interpolation="higher").to_pylist()
+        outside = pc.fill_null(pc.or_(pc.less(col, low), pc.greater(col, high)), False)
+        col = pc.if_else(outside, pa.scalar(None, col.type), col)
+        table = table.set_column(table.schema.get_field_index(field), field, col)
+        record["bounds"] = [low, high]
+        record["nulled"] = pc.sum(pc.cast(outside, pa.int64())).as_py() or 0
+    return table, trimmed
+
+
 def _take(table: pa.Table, indices: Sequence[int]) -> pa.Table:
     return table.take(pa.array(sorted(indices), type=pa.int64()))
 
@@ -211,6 +249,9 @@ def normalize_target(
 
     if target.filter:
         table = _apply_filter(table, target.filter)
+    table, trimmed = _apply_trims(table, target)
+    if trimmed:
+        summary["trimmed"] = trimmed
     if target.sample:
         table = _apply_sample(table, target.sample)
     if target.select:

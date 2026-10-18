@@ -116,6 +116,16 @@ def test_wrong_schema_version_const_fails() -> None:
         validate_descriptor(payload)
 
 
+@pytest.mark.parametrize(
+    ("trim", "match"), [([0.9, 0.1], "low < high"), ([0.5, 0.5], "low < high"), ([0.1, 1.5], None)]
+)
+def test_trim_quantiles_must_be_an_ordered_pair_of_quantiles(trim, match) -> None:
+    payload = _valid_descriptor()
+    payload["targets"][0]["mapping"]["maxpcon"]["trim_quantiles"] = trim
+    with pytest.raises(SchemaValidationError, match=match):
+        validate_descriptor(payload)
+
+
 def test_capability_target_column_must_be_produced_by_mapping() -> None:
     payload = _valid_descriptor()
     # Claim a power capability but drop maxpcon from the mapping.

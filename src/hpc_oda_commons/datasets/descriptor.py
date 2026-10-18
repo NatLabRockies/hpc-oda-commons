@@ -169,6 +169,18 @@ def validate_descriptor(payload: Mapping[str, Any], *, path: Path | None = None)
                     path=loc,
                 )
 
+        for field, rule in (target.get("mapping") or {}).items():
+            trim = rule.get("trim_quantiles")
+            if trim and not trim[0] < trim[1]:
+                raise SchemaValidationError(
+                    schema_id=DATASET_SCHEMA_ID,
+                    message=(
+                        f"targets[{idx}].mapping.{field}.trim_quantiles {list(trim)} needs "
+                        "low < high."
+                    ),
+                    path=loc,
+                )
+
         sample = target.get("sample")
         if sample and sample.get("strategy") == "stratified" and not sample.get("by"):
             raise SchemaValidationError(

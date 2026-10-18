@@ -115,6 +115,22 @@ energy_joules:
     - { source: partition, in: [shared, shared-stdby, sharedl] }
 ```
 
+**Trimming impossible values.** In a dataset descriptor's mapping,
+`trim_quantiles: [0.001, 0.999]` on a numeric field nulls its values below the field's
+0.1th percentile or above its 99.9th (#216). As with `null_values`, the row is kept. It
+runs after the target's `filter`, over the rows that remain, and before `sample`. Each
+bound is a value from the data (the order statistic at or beyond the quantile), so a table
+too small to have that tail loses nothing. The prepare manifest records, per trimmed field,
+the quantiles, the bounds and how many values became null.
+
+The bounds come from the whole prepared table, test months included. That is a look-ahead
+in the cut-off only, not in any value. Eagle and Kestrel use it on `avgpcon_per_node`,
+where a few energy readings give impossible power (up to 20.7 MW per node on Eagle):
+
+```yaml
+avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc", trim_quantiles: [0.001, 0.999] }
+```
+
 Fields can be **sourced** from a column (`source:`) or **derived** from other fields (`derive:`). The `role` is either `required` (rows missing this field are skipped) or `optional`.
 
 ## Output
