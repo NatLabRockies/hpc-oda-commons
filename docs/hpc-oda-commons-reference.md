@@ -401,6 +401,15 @@ The rolling evaluation strategy (`evaluate()`) simulates how a model would perfo
 - The first split of each day triggers a full preprocessing refit; subsequent splits within the same day reuse the cached encoder and SVD transformer
 - This provides a realistic simulation of production behavior (daily preprocessing refresh) while remaining computationally tractable
 
+**Preprocessing store** (`models/rolling_tabular/artifact_store.py`, #213):
+- A day's artifacts depend only on that day's training rows and the preprocessing settings, not on the regressor. So XGBoost, Random Forest, MLP and the MoE's shared part all build the same ones on the same table and protocol, and so do runs on different targets over the same rows (with target encoding off). The benchmark runner keeps them on disk and builds each one once.
+- Entries are keyed by content: a SHA-256 over the training rows' values in the allowed feature columns, in row order; the target values, only when target encoding is on; the preprocessing settings; a builder version; and the scikit-learn, NumPy and SciPy versions. A hit returns exactly what a fresh build on the writing machine produced, so results do not change, and any change to the rows or settings is a miss. Across machines with different BLAS builds, an entry carries the writer's last-decimal differences ([known issues](known-issues.md) #2), as a run there would have.
+- It lives at `.hpc_oda/cache/preprocessing/` under the working directory. `HPC_ODA_PREPROCESSING_CACHE=<dir>` moves it and `HPC_ODA_PREPROCESSING_CACHE=off` disables it. Writes are atomic, so array jobs can share one directory. An unreadable entry is rebuilt.
+- Entries are pickles: only point the store at a directory you control.
+- Models used directly from Python get no store unless one is set: `model.artifact_store = DailyArtifactStore(path)`. It is execution-only, like `window_n_jobs`, and never appears in `run_config`.
+- `summary.preprocessing_store` reports `{"hits": n, "misses": m}` for runs that used it.
+- Separately, choosing the SVD's component count already fits the SVD; when the chosen count equals the count evaluated (common on wide one-hot matrices, where 256 components never reach the coverage target), that fit is reused rather than repeated.
+
 **Evaluation loop**:
 - For each split:
   1. Materialize train and test rows from index lists
