@@ -69,6 +69,7 @@ divides by `nnuma`, so the [paper reproduction](../benchmarking/uopc.md) still d
 | `dataset.job_runtime.fdata_fugaku` | Fugaku, Mar–Sep 2023 (the runtime benchmark window) | `avgpcon`, `maxpcon`, per node; rows filtered on runtime only |
 | `dataset.job_runtime.pm100` | Marconi100, May–Oct 2020 | mean and peak of the job's node-power trace, per node; rows filtered on runtime only |
 | `dataset.job_runtime.nlr_eagle` | Eagle, 2018-11 to 2024-06 | average only: the job's node energy over its runtime, per node used; rows filtered on runtime only |
+| `dataset.job_runtime.nlr_kestrel` | Kestrel, 2023-08 to 2025-12 | average only, CPU nodes: Slurm job energy over runtime, per node used; null for jobs that shared their node and for GPU jobs (no energy); rows filtered on runtime only |
 
 Sources that record power as a trace of samples are reduced with `type: list_mean` or
 `type: list_max`. Sources that record energy instead convert it with `type: energy` and

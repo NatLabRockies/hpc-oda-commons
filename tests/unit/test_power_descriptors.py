@@ -231,3 +231,45 @@ def test_eagle_average_power_comes_from_node_energy(tmp_path: Path) -> None:
     assert summary["rows_final"] == 4
     assert [r["avgpcon"] for r in rows] == [900.0, None, None, 1600.0]
     assert [r["avgpcon_per_node"] for r in rows] == [450.0, None, None, 400.0]
+
+
+def test_kestrel_average_power_is_null_where_the_node_was_shared(tmp_path: Path) -> None:
+    """Slurm's job energy is the node's on a shared node (#209), so a job that shared its
+    node (shared_job_count >= 1, or a shared* partition) has no power target. 0 J is no
+    reading. Every job keeps its runtime row."""
+    (target,) = load_descriptor(_DESCRIPTORS / "job-runtime" / "nlr_kestrel.yml").targets
+    assert {c.target_column for c in target.capabilities} == {
+        "runtime_seconds",
+        "avgpcon_per_node",
+    }
+    assert target.mapping["avgpcon_per_node"]["trim_quantiles"] == [0.001, 0.999]  # #216
+    start = pa.array([1_717_200_000_000_000] * 5, pa.timestamp("us", tz="UTC"))
+    end = pa.array([1_717_203_600_000_000] * 5, pa.timestamp("us", tz="UTC"))  # 1 hour
+    raw = tmp_path / "kestrel.parquet"
+    pq.write_table(
+        pa.table(
+            {
+                "id": ["1", "2", "3", "4", "5"],
+                "submit_time": start,
+                "start_time": start,
+                "end_time": end,
+                "nodes_used": pa.array([2, 1, 1, 1, 1], pa.int64()),
+                "partition": ["standard", "standard", "shared", "short", "short"],
+                "shared_job_count": [None, 1.0, None, None, None],
+                "consumed_energy_raw_joules": [
+                    3600.0 * 1400,
+                    3600.0 * 700,
+                    3600.0 * 700,
+                    0.0,
+                    None,
+                ],
+            }
+        ),
+        raw,
+    )
+    out = tmp_path / "data.parquet"
+    summary = normalize_target(raw, target, out)
+
+    rows = pq.read_table(out).to_pylist()
+    assert summary["rows_final"] == 5
+    assert [r["avgpcon_per_node"] for r in rows] == [700.0, None, None, None, None]

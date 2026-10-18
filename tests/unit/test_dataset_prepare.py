@@ -552,6 +552,66 @@ def test_null_values_become_null_before_the_transform(tmp_path: Path) -> None:
     assert table.num_rows == 4
 
 
+def test_null_when_nulls_a_field_on_another_columns_value(tmp_path: Path) -> None:
+    """Kestrel's energy is the node's on a shared node (#209): null it there, keep the row.
+    Any condition nulls; a null source value matches nothing."""
+    path = tmp_path / "shared.parquet"
+    pq.write_table(
+        pa.table(
+            {
+                "jobid": [1, 2, 3, 4, 5],
+                "sdt": [1_600_000_000] * 5,
+                "edt": [1_600_000_060] * 5,
+                "watts": [100.0, 200.0, 300.0, 400.0, 500.0],
+                "others": [None, 0.0, 1.0, 3.0, None],
+                "part": ["standard", "standard", "standard", "standard", "shared"],
+            }
+        ),
+        path,
+    )
+    target = _target(
+        mapping={
+            "job_id": {"from": "jobid"},
+            "start_time": {"from": "sdt", "type": "timestamp", "format": "epoch_s"},
+            "end_time": {"from": "edt", "type": "timestamp", "format": "epoch_s"},
+            "runtime_seconds": {"derive": "end_time - start_time"},
+            "power": {
+                "from": "watts",
+                "type": "number",
+                "null_when": [
+                    {"source": "others", "ge": 1},
+                    {"source": "part", "in": ["shared"]},
+                ],
+            },
+        }
+    )
+    out = tmp_path / "out.parquet"
+    normalize_target(path, target, out)
+
+    table = pq.read_table(out)
+    assert table.column("power").to_pylist() == [100.0, 200.0, None, None, None]
+    assert table.num_rows == 5
+
+
+@pytest.mark.parametrize(
+    ("condition", "match"),
+    [
+        ({"source": "watts", "between": [1, 2]}, "exactly one of"),
+        ({"ge": 1}, "needs a source"),
+        ({"source": "watts", "in": "shared"}, "needs a list"),
+        ({"source": "absent", "ge": 1}, "not in the input"),
+    ],
+)
+def test_null_when_rejects_a_malformed_condition(
+    tmp_path: Path, condition: dict, match: str
+) -> None:
+    target = _ratio_target(
+        power={"from": "watts", "type": "number", "null_when": [condition]},
+    )
+    with pytest.raises(ValueError, match=match):
+        normalize_target(_ratio_table(tmp_path), target, tmp_path / "out.parquet")
+
+
 def _power_table(tmp_path: Path, watts: list, nodes: list | None = None) -> Path:
     n = len(watts)
     path = tmp_path / "power.parquet"

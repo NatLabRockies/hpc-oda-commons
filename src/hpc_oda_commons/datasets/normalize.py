@@ -69,6 +69,8 @@ def target_to_mapping_spec(target: Target) -> dict[str, Any]:
             spec["derive"] = rule["derive"]
         if rule.get("null_values"):
             spec["null_values"] = list(rule["null_values"])
+        if rule.get("null_when"):
+            spec["null_when"] = [dict(cond) for cond in rule["null_when"]]
         ttype = rule.get("type")
         if ttype in _TRANSFORM_TYPES:
             transform: dict[str, Any] = {"type": ttype}

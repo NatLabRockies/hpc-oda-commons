@@ -19,7 +19,7 @@ check. Anything neither of those confirmed is marked unconfirmed.
 | NLR Eagle Jobs (+ energy) | Eagle, 2018-11 to 2024-06 | ~13.8M | yes | via join³ | **Mapped**, average only (`nlr_eagle`) |
 | LLNL LAST (Lassen) | Lassen, 2018-08 to 2020-11 | ~1.47M | yes | no | Registered (`lassen`), power **not mapped yet** (needs a join) |
 | Adastra 15-day | Adastra MI250, 2024-08/09 | 15k | yes | no | Registered (`adastra_mi250`), power **not mapped yet** (needs cleaning) |
-| NLR Kestrel Jobs | Kestrel, 2023-08 to 2025-12 | ~11M | yes⁴ | no | Registered (`nlr_kestrel`), power **not mapped yet** |
+| NLR Kestrel Jobs | Kestrel, 2023-08 to 2025-12 | ~11M | yes⁴ | no | **Mapped**, average only, CPU nodes (`nlr_kestrel`) |
 | M100 ExaData | Marconi100, 2020-03 to 2022-09 | all jobs | yes | yes | Not registered; 49.9 TB, node + time join |
 | C6EnPLS | CRESCO6, 2023-11 to 2024-01 | 7k | yes | yes² | Not registered; one workload type |
 | SURF Lisa | Lisa, 2022-06 to 2022-11 (power) | — | yes | yes | Not registered; Slurm × Prometheus join, shared nodes |
@@ -32,7 +32,7 @@ check. Anything neither of those confirmed is marked unconfirmed.
 ¹ The mean of each node's maximum, not the peak of the job's total.
 ² The peak of the job's total power across nodes, divided by nodes.
 ³ Eagle Node Power (1-minute iLO readings per node) joined on `nodelist` and time.
-⁴ Slurm energy, total over the job's nodes. Shared nodes can mix in other jobs' power.
+⁴ Slurm energy, total over the job's nodes. On a shared node it is the node's energy, so those jobs get no power target.
 
 **Peak power does not mean the same thing everywhere.** F-DATA's `maxpcon` is the sum of
 each node's own peak; PM100 and C6EnPLS give the peak of the summed trace. These differ
@@ -87,10 +87,20 @@ without noting it.
 
 ## Reported
 
-- **NLR Kestrel Jobs** (data.nlr.gov 302, DOI 10.7799/3023270):
-  `consumed_energy_raw_joules`, the Slurm job energy summed over nodes. Average per node =
-  energy ÷ elapsed ÷ `nodes_used`. How many jobs have non-zero energy is unconfirmed, and
-  shared nodes are a caveat. There is no public Kestrel node-power series.
+- **NLR Kestrel Jobs** (data.nlr.gov 302, DOI 10.7799/3023270), verified since (#209):
+  `consumed_energy_raw_joules` is the Slurm job energy summed over nodes. Average per node
+  = energy ÷ elapsed ÷ `nodes_used`. 81% (June 2024) and 73% (June 2025) of jobs have
+  non-zero energy; GPU jobs have none. On a shared node it is the node's energy (a 1-core
+  job reads ~650 W), so power is null for jobs that shared their node
+  (`shared_job_count` ≥ 1, or a `shared*` partition). That leaves 86.6% / 67.8% of the
+  rows kept for runtime, median 510 / 664 W per node. Over the full table (9,321,737 jobs
+  kept for runtime), 6,119,619 (65.6%) have a reading. There are no readings before December 2023, and
+  2024 and 2025 are each 71–72%. Of the 3.2M jobs without power, 1.57M shared their node,
+  1.01M have no reading (729k of them from Aug–Nov 2023), 616k ran in a GPU partition
+  (435k in April and May 2024) and 4,910 ran for 0 s. 138 readings are above 1.5 kW per
+  node, the highest 354 kW. Values outside the 0.1th–99.9th percentiles (85–813 W) are
+  nulled (#216). That leaves 6,107,400 jobs (65.5%), median 587 W per node, with a
+  1st–99th percentile range of 248–778 W ([known issues](../known-issues.md)). There is no public Kestrel node-power series.
 - **NLR Eagle Node Power** (288, 10.7799/3015211): `dv` (node), `vl` (W) every minute,
   2019-04 to 2024-08, about 7.2 GB. Timestamps are local Mountain time with no zone, and 0 W
   means no reading. Joining to Eagle jobs on `nodelist` and time would give per-node peak.
@@ -138,8 +148,9 @@ In order of payoff for effort. Item 1 is
    derives, and `trim_quantiles` for the impossible readings (#216). 73.2% of the full
    table has power. Benchmarks are tracked in
    [#217](https://github.com/NatLabRockies/hpc-oda-commons/issues/217).
-2. **NLR Kestrel, average.** The same Slurm-energy mapping, after measuring coverage and
-   deciding how to handle shared nodes.
+2. **NLR Kestrel, average.** Done (#209): the same energy mapping, with `null_when` to
+   drop jobs that shared their node, and `trim_quantiles` (#216). 65.5% of the full table
+   has power, from December 2023 on.
 3. **Adastra 15-day, average.** `list_mean` ÷ runtime is expressible today, and
    `null_values: [0]` handles the zero readings. Near-zero readings (a few watts) need a
    threshold as well.
