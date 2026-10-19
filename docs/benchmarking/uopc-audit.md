@@ -7,6 +7,9 @@
 - item 4, scoped down to feature modes ([results](uopc.md#feature-modes)). It does not
   include the paper-style embedding.
 
+`balanced` became UoPC's default, with the paper-reproduction recipes pinned to `zscore`.
+Item 5, the F-DATA job-name ablation, was dropped as unnecessary for now.
+
 This note checks the Commons' UoPC against its sources, prompted by the question "did we
 reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
 (`split.method: cutoff`, [uopc.md](uopc.md)) and the rolling benchmark version

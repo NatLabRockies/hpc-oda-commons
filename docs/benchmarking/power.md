@@ -38,15 +38,20 @@ Every model scored the same 1,510,726 jobs, in the 85 of 89 daily windows that h
 jobs. UoPC predicted the window mean for 12,928 of them (0.86%), users with fewer than k = 5
 training jobs. Best value in each column in bold.
 
+UoPC's rows use its `balanced` features, the default since
+[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222). They were rerun on
+2026-10-19 at 935e58a. Its earlier `zscore` features scored 11.36% / 0.660 (average) and
+11.73% / 0.629 (peak) ([feature modes](uopc.md#feature-modes)).
+
 **Average power (`avgpcon_per_node`, W per node)**
 
 | Model | MAE | RMSE | MAPE | R² | Wall time |
 |---|---:|---:|---:|---:|---:|
 | MoE XGBoost | **7.19** | 14.75 | **10.07%** | 0.775 | 3.0 h |
 | XGBoost | 7.68 | **13.54** | 11.05% | **0.810** | 2.6 h |
+| UoPC (θ = 500, k = 5) | 7.71 | 17.55 | 10.80% | 0.682 | 5 min |
 | Random Forest | 7.78 | 14.71 | 11.10% | 0.776 | 2.4 h |
 | Embedding + kNN | 8.03 | 17.83 | 11.11% | 0.671 | 3.4 h |
-| UoPC (θ = 500, k = 5) | 8.01 | 18.13 | 11.36% | 0.660 | 4 min |
 | TF-IDF + kNN | 13.62 | 24.46 | 18.48% | 0.382 | 65 min |
 | Signature memorizer | 15.47 | 25.02 | 20.88% | 0.353 | 28 min |
 | Baseline (window mean) | 25.57 | 31.17 | 35.51% | −0.004 | 4 min |
@@ -59,7 +64,7 @@ training jobs. Best value in each column in bold.
 | XGBoost | 7.98 | **14.69** | 11.43% | **0.801** | 34 min† |
 | Random Forest | 7.98 | 15.54 | 11.17% | 0.777 | 71 min† |
 | Embedding + kNN | 8.23 | 19.09 | 11.15% | 0.663 | 3.5 h |
-| UoPC (θ = 500, k = 5) | 8.60 | 20.04 | 11.73% | 0.629 | 5 min |
+| UoPC (θ = 500, k = 5) | 8.27 | 19.44 | 11.15% | 0.651 | 5 min |
 | TF-IDF + kNN | 14.38 | 26.66 | 18.90% | 0.343 | 1.5 h |
 | Signature memorizer | 15.86 | 26.77 | 19.43% | 0.338 | 29 min |
 | Baseline (window mean) | 26.05 | 32.95 | 34.62% | −0.003 | 6 min |
@@ -70,23 +75,28 @@ training jobs. Best value in each column in bold.
 targets. Plain XGBoost has the lowest RMSE and the highest R², so it makes fewer large
 misses. The three tree models are within about a point of MAPE of each other.
 
-**UoPC is close on typical jobs and further behind on large errors.** Its MAPE is within
-1.3 points of the best on both targets, but its RMSE is about a third higher than
-XGBoost's and its R² is about 0.65 against about 0.8. Embedding + kNN, the other model that
-reads F-DATA's job embedding, lands with it. Both predict from a job's nearest neighbours, while the tree
-models also use the submission fields directly.
+**UoPC is close on typical jobs and further behind on large errors.**
+- **Typical jobs:** its MAPE is second-best on average power (10.80%) and within 0.75 points
+  of the best on both targets.
+- **Large errors:** its RMSE is about 30% higher than XGBoost's, and its R² is 0.68 and 0.65
+  against about 0.8.
+- **Embedding + kNN,** the other model that reads F-DATA's job embedding, is just behind it.
+
+Both predict from a job's nearest neighbours, while the tree models also use the submission
+fields directly.
 
 **Peak is a little harder than average.** MAE is higher for every model, and MAPE is up to
 0.4 points higher for the five strongest.
 
 **This is not the paper's number.** UoPC scores 9.93% MAPE in the [paper
-reproduction](uopc.md) and 11.36% here. The two protocols differ: there each job is
-predicted from all its user's earlier jobs, per allocated node; here every model retrains
-once a day on the previous 60 days, per requested node. Per requested node, the paper
-protocol scores 8.65%, so the day-level cutoff costs UoPC about 2.7 points
-([variants](uopc.md#variants-padded-jobs-and-node-count)). These UoPC rows use the default
-`zscore` features; `split.uopc_features: balanced` scores 10.80% / 0.682 and 11.15% / 0.651
-([feature modes](uopc.md#feature-modes)).
+reproduction](uopc.md) and 10.80% here. The two protocols differ:
+- the reproduction predicts each job from all its user's earlier jobs, per allocated node,
+  with `zscore` features;
+- here every model retrains once a day on the previous 60 days, per requested node.
+
+The day-level cutoff is the main cost. With the same target and `zscore` features, the paper
+protocol scores 8.65% and the rolling one 11.36%, about 2.7 points apart
+([variants](uopc.md#variants-padded-jobs-and-node-count)).
 
 **Wall times are not comparable between models.** The rolling-tabular models spend most of
 their time building each day's OHE + SVD preprocessing, one day at a time. The average-power
