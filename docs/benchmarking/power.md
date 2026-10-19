@@ -107,8 +107,9 @@ baselines don't use that preprocessing.
   hashes: before 97b9e72, after it, and after the preprocessing store (#213). The store's
   results are byte-identical to building each day ([#214](https://github.com/NatLabRockies/hpc-oda-commons/pull/214)).
   MoE XGBoost (average) started on the earlier code and finished after the store was
-  merged. Its bundle records the later commit because a bundle reads the checkout when it
-  is written, not when the run starts ([#215](https://github.com/NatLabRockies/hpc-oda-commons/issues/215)).
+  merged. Its bundle records the later commit because a bundle then read the checkout when it
+  was written, not when the run started. Since [#215](https://github.com/NatLabRockies/hpc-oda-commons/issues/215),
+  a bundle records the code at start and flags a checkout that moved.
 - **MLP was dropped** after 3 of 89 windows of its average-power run, at ~130 s per window.
   See Protocol.
 

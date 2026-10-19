@@ -723,8 +723,13 @@ def benchmark(
     Run a benchmark recipe (v0.1 runtime prediction).
     Writes a result bundle under ./runs/.
     """
+    from hpc_oda_commons.kernel.integrity import check_integrity
+
     root = Path.cwd()
     _ensure_dirs(root)
+    # The code this run executes is the code imported now. Record it now: a long run can
+    # outlast a commit, merge or branch switch in the checkout (#215).
+    integrity = check_integrity(project_root=root)
 
     recipe_payload = _load_recipe(recipe)
     recipe_id = str(recipe_payload.get("recipe_id", "recipe.unknown"))
@@ -894,10 +899,6 @@ def benchmark(
         )
     total_train_eval_seconds = round(time.perf_counter() - train_eval_started, 3)
 
-    from hpc_oda_commons.kernel.integrity import check_integrity
-
-    integrity = check_integrity(project_root=root)
-
     prov = build_provenance(
         input_schema=input_schema,
         result_schema="oda.result.v0.1.0",
@@ -905,7 +906,20 @@ def benchmark(
         project_root=root,
         capture_packages=True,
         source_hash=integrity["code_hash"],
+        git_commit=integrity["git_commit"],
     )
+    now = check_integrity(project_root=root)
+    changed = (now["code_hash"], now["git_commit"]) != (
+        integrity["code_hash"],
+        integrity["git_commit"],
+    )
+    prov["code"]["code_changed_during_run"] = changed
+    if changed:
+        console.print(
+            "[yellow]The checkout changed while this run trained[/yellow] "
+            f"(commit {integrity['git_commit']} → {now['git_commit']}). "
+            "The bundle records the code the run started with."
+        )
 
     run_id = f"benchmark-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     run_cfg = recipe_payload.get("run") or {}

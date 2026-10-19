@@ -81,6 +81,7 @@ Use rolling evaluation with the same `n_windows`, `test_window_hours`, and `trai
 - `model.id` + `model.version` -- exactly which model produced this result
 - `integrity.code_hash` -- SHA-256 of all `.py` files in the package. Two results with the same hash used identical code.
 - `integrity.validated` -- `true` if the code hash matches a known-good commit registered via `hpc-oda record-hash`
+- `integrity.git_commit` -- the checkout's commit. `hpc-oda benchmark` reads it and the code hash when the run starts, since the code a run executes is the code it imported then ([#215](https://github.com/NatLabRockies/hpc-oda-commons/issues/215))
 
 ## Reading `metrics.json` (Rolling)
 
@@ -121,12 +122,14 @@ For rolling benchmarks (baseline, XGBoost, random forest, MLP, TF-IDF kNN, or em
 {
   "schema_versions": {"input": "oda.job.v0.2.0", "result": "oda.result.v0.1.0"},
   "environment": {"python": "3.12.1"},
-  "code": {"package_version": "0.1.0", "git_commit": "abc123..."},
+  "code": {"package_version": "0.1.0", "git_commit": "abc123...", "code_changed_during_run": false},
   "inputs": [{"path": "data.parquet", "sha256": "e3b0c44...", "size_bytes": 1048576}]
 }
 ```
 
 Use provenance to verify two results were produced under comparable conditions: same code version, same input data (matching SHA-256 hashes), same schema versions.
+
+`code.code_changed_during_run` is `true` when the checkout's commit or code hash differed at the end of a benchmark from its start, for example after a merge during a long run. The bundle still records the code the run started with, which is the code it ran. A `true` here says the checkout moved, and the run should be checked or redone if that matters.
 
 ## Reading the Leaderboard
 
