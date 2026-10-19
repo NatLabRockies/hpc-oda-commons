@@ -1,8 +1,8 @@
 # UoPC audit — our implementation against the paper and the authors' code
 
-**Status:** dev note, 2026-10-19. Findings only; nothing here has been changed in code yet.
-The [proposed work](#proposed-work) is tracked in
-[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222).
+**Status:** dev note, 2026-10-19. The [proposed work](#proposed-work) is tracked in
+[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222); item 2 (the corrections) is
+done, and results are unchanged so far.
 
 This note checks the Commons' UoPC against its sources, prompted by the question "did we
 reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
@@ -213,6 +213,8 @@ a user's latest near-identical jobs, so this is the likely main cause of 11.36% 
   - Results are saved as `pred_{α}_{β}pickle` but loaded as `pred_{α}_{β}.pickle`.
 
 ## Claims to correct
+
+**Fixed** under #222 item 2. The line numbers below refer to the files as audited.
 
 | Where | Claim | What's true |
 |---|---|---|

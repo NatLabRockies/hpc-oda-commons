@@ -5,12 +5,8 @@ job's power draw (Antici, Borghesi, Domke, Kiziltan, *ISC High Performance 2025*
 [doi:10.23919/ISC.2025.11017729](https://doi.org/10.23919/ISC.2025.11017729); code at
 [francescoantici/UoPC](https://github.com/francescoantici/UoPC)), what it measured, and how
 far the numbers can be trusted. Tracking issue:
-[#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125).
-
-> **Audit pending corrections.** [UoPC audit](uopc-audit.md) checks this page against the full
-> paper and the authors' code. Some statements here are wrong, chiefly what it attributes to
-> "the authors' code". They are being corrected under
-> [#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222).
+[#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125). The
+[UoPC audit](uopc-audit.md) checks it against the full paper and the authors' code.
 
 Job-power prediction is outside the runtime benchmark ([methodology](methodology.md)); this
 is a one-model study, not a leaderboard.
@@ -23,8 +19,8 @@ is a one-model study, not a leaderboard.
 |---|---|---|
 | Recipe | `job-runtime/uopc_maxpcon.yml` | `job-power/uopc_paper_reproduction.yml`, `uopc_paper_sensitivity.yml` |
 | Target | `maxpcon` (W, whole job) | `avgpcon` **and** `maxpcon` divided by allocated nodes |
-| Features | job name (label-encoded), cores and nodes requested | F-DATA's job `embedding` plus z-scored cores, nodes and CPU frequency requested |
-| Predictor | kNN regressor (mean of the k neighbours) | kNN **classifier** on rounded targets (majority vote), as the authors' code does |
+| Features | job name (label-encoded), cores and nodes requested | F-DATA's job `embedding` plus z-scored cores, nodes and CPU frequency requested (an adaptation; see [Known deviations](#known-deviations)) |
+| Predictor | kNN regressor (mean of the k neighbours) | kNN **classifier** (majority vote), as in the authors' tool, on targets rounded to whole watts |
 | Test set | last 20% of jobs by end time | every job submitted on or after `test_start` |
 | History for a test job | every earlier job by that user, by end time | that user's jobs that **finished before it was submitted** |
 | Context | newest `theta` = 50 | newest `theta` = 500 |
@@ -80,12 +76,45 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
 
 ## Known deviations
 
-- **Feature scaling sees the test period.** The numeric features are z-scored over the
-  whole usable dataset, test months included, because the authors' code does. It is a
-  small look-ahead in the feature scale only (no target leaks), kept so the numbers stay
-  comparable with the paper. A deployment would fit the scaling on history alone.
-- **Classifier on rounded targets.** Treating watts as classes is how the reference code
-  works, not a Commons choice. The regressor ablation in the sweep shows what it costs.
+- **Features are an adaptation.** The paper describes a job by the string "job name, cores
+  requested, nodes requested, requested frequency, environment". It leaves out the user,
+  since each model is per-user, and embeds the string with all-MiniLM-L6-v2. The public job
+  names are anonymised (`jnam_…`), so that string can't be rebuilt from F-DATA. Instead the
+  protocol uses F-DATA's precomputed `embedding` plus cores, nodes and frequency z-scored
+  separately. Environment is not used.
+  - **F-DATA's embedding encodes the job name only.** On February 2024 it is almost a
+    function of user + job name, and it does not change with cores, nodes, frequency or
+    environment.
+  - **The z-scoring decides how much each number counts.** One embedding is at most 1.5
+    from another, with a median of 0.84 between two job names of one user.
+    - Frequency has two values, so its z-scores are at least 2 apart (2.03 here) whatever
+      the data. A frequency mismatch therefore outweighs any difference in job name.
+    - A few enormous jobs inflate the spread of cores (std. dev. 29,869) and nodes (622).
+      So ordinary differences barely count: 48 → 96 cores adds 0.002, and 1 → 16 nodes
+      0.024.
+    - In practice the neighbours are the user's jobs at the same frequency with the most
+      similar job names.
+  - The scaling is the Commons' choice (#203); the paper scales nothing. Whether the
+    features change the result is open
+    ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222)).
+- **Feature scaling sees the test period.** The z-scores use the whole usable dataset,
+  test months included: a look-ahead in the feature scale only, with no target leak.
+  Fitting on the history before 2024-02-01 instead would barely change anything:
+  - frequency's gap would be 2.02 rather than 2.03;
+  - the std. devs. of cores and nodes would be about 16% smaller, still negligible next to
+    job names.
+
+  A deployment would fit the scaling on history alone.
+- **Classifier on rounded targets.** The authors' tool predicts with `KNeighborsClassifier`,
+  which accepts only discrete labels. Per-node power isn't whole watts, so it is rounded to
+  whole watts first; the rounding is ours. The regressor ablation in the sweep shows what
+  voting costs.
+- **The paper's data lacks the most padded jobs.** The paper divides by allocated nodes, as
+  this protocol does. Its Fig. 4 shows the same small bars at ~11, 15 and 22 W that our
+  test period has per allocated node, from jobs allocated 4–8× the nodes they requested.
+  But its lowest bar is ~11 W. Our test period has 150,015 jobs below 5 W: 139,074 with
+  1 node requested and `nnuma` = 48, and 10,941 at 24×. So this protocol scores ~150k jobs
+  (9.4%) the paper apparently did not; see [padded allocations](#paper-reproduction-θ--500-k--5).
 - **Exact values move across machines and code paths.** kNN ties and BLAS differences can
   shift individual predictions ([#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)).
   Ties are common here (many jobs have identical features), so even the sweep and the
@@ -94,11 +123,26 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
 
 ## What it is measured against
 
-Public sources state UoPC "achieves only a 10% prediction error on more than 700k job data
-extracted from Supercomputer Fugaku" (the authors' README). The paper's per-target tables
-are behind the IEEE paywall and are **not yet recorded here**. Until they are, the
-comparison is with that ~10% figure, read as MAPE on average power per node, and a run
-counts as a reproduction if it lands within a few points of it.
+The paper's Table I, on Fugaku jobs submitted from 2024-02-01 (more than 1.3 million jobs
+from more than 700 users). Its baselines retrain daily on the last 60 days of **all** users'
+jobs ("A-"); the "U-" models use only the user's jobs.
+
+| Approach | Avg power MAPE | R² | Peak power MAPE | R² |
+|---|---:|---:|---:|---:|
+| **UoPC (U-KNN)** | **10%** | **0.80** | **10%** | **0.79** |
+| U-RF | — | — | — | — |
+| A-RF | 14% | 0.76 | 15% | 0.76 |
+| A-KNN | 16% | 0.60 | 17% | 0.58 |
+
+- **U-RF** gave no result within a week.
+- **A linear regression on the user's last 5 jobs** scored over 100% MAPE and is left out
+  of the table.
+- **On PM100** the paper reports UoPC at 18% / 0.11 on average power and 22% / 0.13 on
+  peak, against A-RF at 20% / 0.07 and 24% / 0.13.
+- **The README's figure is garbled.** It says "10% prediction error on more than 700k job
+  data"; the paper's figures are >1.3M jobs and >700 users.
+
+A run counts as a reproduction if it lands within a few points of UoPC's row.
 
 ## Results
 
@@ -121,10 +165,11 @@ their user.
 | | Per-user mean | 12.49 | 20.46 | 61.77% | 0.769 |
 | | Global mean | 35.34 | 43.19 | 358.1% | −0.030 |
 
-**It reproduces.** 9.9% MAPE on average power (10.2% on peak) matches the public "10%
-prediction error". It also agrees with the unsourced figure in the original contribution
-(MAPE 10.10%, R² 0.833). Our test set is larger than the paper's "more than 700k jobs".
-The paper may filter jobs in a way its public description does not state.
+**It reproduces.** 9.9% MAPE on average power (10.2% on peak) matches the paper's 10%. R²
+is higher than the paper's (0.837 against 0.80, and 0.826 against 0.79). That is
+consistent with the ~150k heavily padded jobs this test set contains and the paper's
+apparently does not ([Known deviations](#known-deviations)). Those jobs are easy to
+predict: without the 48× ones, R² is 0.762 and 0.746 (below).
 
 The median absolute percentage error is 2.2%, and 85.5% of jobs are within 10%. The mean
 is carried by a tail: the 90th percentile is 22%.

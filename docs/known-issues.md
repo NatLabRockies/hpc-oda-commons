@@ -185,9 +185,13 @@ short jobs (median 2 s).
 
 The UoPC paper protocol (`model.job_power_uopc` with `split.method: cutoff`) z-scores its
 numeric features (cores, nodes and CPU frequency requested) over the whole usable dataset,
-test months included, because the authors' reference code does. This is a small look-ahead
-in the feature scale only; no target value leaks. It is kept so the numbers stay comparable
-with the paper. A deployment would fit the scaling on history alone. See
+test months included. The scaling is the Commons' adaptation; the paper scales nothing.
+This is a look-ahead in the feature scale only, with no target leak, and it is immaterial:
+- fitting on the history before 2024-02-01 instead moves frequency's gap from 2.03 to 2.02;
+- the std. devs. of cores and nodes would be about 16% smaller, still negligible next to
+  job-name distances.
+
+A deployment would fit the scaling on history alone. See
 [UoPC reproduction](benchmarking/uopc.md#known-deviations).
 
 ## Note — on macOS, torch and XGBoost crash in one process

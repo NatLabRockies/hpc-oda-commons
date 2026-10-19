@@ -1,4 +1,4 @@
-"""User-based online power prediction (UoPC) with per-user kNN regression.
+"""User-based online power prediction (UoPC): a per-user kNN over each user's own history.
 
 Adapted from https://github.com/francescoantici/UoPC:
 - Per-user history ordered by end time
@@ -7,9 +7,12 @@ Adapted from https://github.com/francescoantici/UoPC:
 
 Two protocols live here. ``evaluate_fixed`` is the original Commons adaptation (fraction
 split, label-encoded job features, kNN regressor). ``evaluate_paper_reproduction`` and
-``evaluate_paper_sensitivity`` follow the paper (Antici et al., IEEE 11017729) and the
-authors' code: a date cutoff, per-node targets, embedding features and kNN-classifier
-voting. Recipes pick the paper protocol with ``split.method: cutoff``.
+``evaluate_paper_sensitivity`` follow the paper's protocol (Antici et al., IEEE 11017729):
+a date cutoff, per-allocated-node targets, and kNN-classifier voting as in the authors'
+tool. The features are an adaptation, not the paper's: F-DATA's job embedding plus z-scored
+numeric requests, where the paper embeds a string of the job's submission fields
+(docs/benchmarking/uopc-audit.md). Recipes pick the paper protocol with
+``split.method: cutoff``.
 """
 
 from __future__ import annotations
@@ -433,9 +436,9 @@ class JobPowerUopcModel:
             except (TypeError, ValueError):
                 continue
 
-            # The paper's targets: whole-job power over allocated nodes (nnuma), as the
-            # authors' code divides. Not the prepared avgpcon_per_node columns, which divide
-            # by requested nodes because nnuma can be padded (#204).
+            # The paper's targets: whole-job power over allocated nodes (nnuma), per its
+            # text and figures. Not the prepared avgpcon_per_node columns, which divide by
+            # requested nodes because nnuma can be padded (#204).
             avg_target = avgpcon / nnuma
             max_target = maxpcon / nnuma
 
@@ -503,9 +506,11 @@ class JobPowerUopcModel:
         avg_target_arr = np.asarray(avg_targets, dtype=np.float64)
         max_target_arr = np.asarray(max_targets, dtype=np.float64)
 
-        # Standardize over the whole usable dataset, test period included, as the authors'
-        # code does. Test-period statistics therefore shape the feature scale: a small
-        # look-ahead, kept on purpose so the numbers stay comparable with the paper.
+        # Standardize over the whole usable dataset, test period included. This is the
+        # Commons' adaptation (#203); the paper embeds the numbers as text and scales
+        # nothing. Test-period statistics shape the feature scale, a look-ahead that is
+        # immaterial here: frequency's two values stay >= 2 apart under any scaling, and
+        # outliers keep cores and nodes negligible either way (uopc-audit.md).
         mu = num_arr.mean(axis=0)
         sd = num_arr.std(axis=0)
         sd[sd == 0] = 1.0
@@ -676,10 +681,10 @@ class JobPowerUopcModel:
             global_mean_avg_pred = float(prepared.global_avg_cumsum[global_pos] / global_pos)
             global_mean_max_pred = float(prepared.global_max_cumsum[global_pos] / global_pos)
 
-            # Match the authors' implementation used in Phase 1. Their KNN
-            # wraps KNeighborsClassifier, so continuous per-node power labels
-            # are rounded to integer classes before fitting. Fit the two paper
-            # targets independently on the same eligible history context.
+            # The authors' tool predicts with KNeighborsClassifier. A classifier
+            # needs discrete labels, so continuous per-node power is rounded to
+            # whole watts first; the rounding is ours. Fit the two paper targets
+            # independently on the same eligible history context.
             avg_model = KNeighborsClassifier(n_neighbors=k)
             avg_model.fit(
                 features[context],

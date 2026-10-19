@@ -87,8 +87,9 @@ both systems.
 window mean is about as far off on all three (30%, 36% and 35.5% MAPE). The difference is
 how much of that error the models remove: the best MAE is 31% below the baseline's on
 Eagle and 47% below on Kestrel, against 72% on F-DATA. F-DATA's records include the job
-name and the requested CPU frequency; Eagle's and Kestrel's include neither. We haven't
-measured how much of the gap that explains.
+name; Eagle's and Kestrel's don't. We haven't measured how much of the gap that explains.
+F-DATA also has the requested CPU frequency, but only UoPC uses it: it is not in the
+feature allowlist of the other models.
 
 **Remembering identical jobs gets most of the way on Eagle.** The signature memorizer, the
 median power of past jobs with the same submission fields, found an exact match for 72% of

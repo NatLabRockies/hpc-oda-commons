@@ -9,10 +9,12 @@ to be scored on exactly their windows and rows instead:
 - **Context.** A test job's context is its user's newest ``theta`` *training* jobs, by end
   time. Within one window every test job of a user shares that context, so one classifier
   is fitted per (window, user) rather than per job.
-- **Features** are the paper's: the job embedding plus requested cores, nodes and CPU
-  frequency, z-scored on the window's training rows. Unlike the paper protocol there is no
-  look-ahead: test-period statistics never touch the scaling.
-- **Prediction** is the paper's ``KNeighborsClassifier`` on targets rounded to whole units.
+- **Features** are the paper reproduction's adaptation, not the paper's own: the job
+  embedding plus requested cores, nodes and CPU frequency, z-scored on the window's
+  training rows. Unlike the paper protocol there is no look-ahead: test-period statistics
+  never touch the scaling.
+- **Prediction** is ``KNeighborsClassifier``, as in the authors' tool, on targets rounded to
+  whole units so they can be classes.
 - **Cold start.** The other models score every test job; UoPC cannot score a user with
   fewer than ``k`` training jobs. Those jobs get the window's mean target, the rolling
   baseline's prediction, so every model is scored on the same rows. How many needed it is
@@ -48,7 +50,8 @@ class JobPowerUopcRollingConfig:
     k: int = 5
     user_field: str = "user"
     embedding_field: str = "embedding"
-    # The paper's numeric features: requested cores, requested nodes, requested frequency.
+    # The reproduction's numeric features: requested cores, nodes and frequency. The paper
+    # puts these in the embedded text instead.
     numeric_fields: tuple[str, ...] = ("num_cores_req", "num_nodes_req", "freq_req")
     target_field: str = "avgpcon_per_node"
 
@@ -194,7 +197,7 @@ class JobPowerUopcRollingModel:
         target = arrays["target"]
         numeric = arrays["numeric"][train]
         with warnings.catch_warnings():
-            # A dataset without one of the paper's columns gives an all-NaN column, whose
+            # A dataset without one of these columns gives an all-NaN column, whose
             # mean is NaN by definition; it is replaced just below.
             warnings.simplefilter("ignore", RuntimeWarning)
             mu = np.nanmean(numeric, axis=0)
