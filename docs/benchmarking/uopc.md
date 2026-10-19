@@ -7,6 +7,11 @@ job's power draw (Antici, Borghesi, Domke, Kiziltan, *ISC High Performance 2025*
 far the numbers can be trusted. Tracking issue:
 [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125).
 
+> **Audit pending corrections.** [UoPC audit](uopc-audit.md) checks this page against the full
+> paper and the authors' code. Some statements here are wrong, chiefly what it attributes to
+> "the authors' code". They are being corrected under
+> [#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222).
+
 Job-power prediction is outside the runtime benchmark ([methodology](methodology.md)); this
 is a one-model study, not a leaderboard.
 
