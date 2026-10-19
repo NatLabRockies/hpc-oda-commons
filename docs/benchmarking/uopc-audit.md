@@ -1,8 +1,11 @@
 # UoPC audit — our implementation against the paper and the authors' code
 
 **Status:** dev note, 2026-10-19. The [proposed work](#proposed-work) is tracked in
-[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222). Item 2 (the corrections) and
-item 3 (the reproduction reruns, [results](uopc.md#variants-padded-jobs-and-node-count)) are done.
+[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222). Done:
+- item 2, the corrections;
+- item 3, the reproduction reruns ([results](uopc.md#variants-padded-jobs-and-node-count));
+- item 4, scoped down to feature modes ([results](uopc.md#feature-modes)). It does not
+  include the paper-style embedding.
 
 This note checks the Commons' UoPC against its sources, prompted by the question "did we
 reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
@@ -16,9 +19,10 @@ reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
   results: 9.93% MAPE / R² 0.837 against the paper's 10% / 0.80 on average power, and
   10.17% / 0.826 against 10% / 0.79 on peak.
 - **The features differ.** The paper embeds the string "job name, cores, nodes, frequency,
-  environment". We use F-DATA's precomputed embedding, which encodes the job name only, plus
-  z-scored cores, nodes and frequency. The z-scoring makes frequency a hard split and all but
-  removes cores and nodes. Environment is not used.
+  environment". We use F-DATA's precomputed embedding plus z-scored cores, nodes and
+  frequency. That embedding is the same encoder over the original user, job name and
+  environment. The z-scoring makes frequency a hard split and all but removes cores and
+  nodes.
 - **The node count is right in the reproduction and deliberately different in the benchmark.**
   The paper divides by allocated nodes (`nnuma`), and its figures confirm it. But its data
   lacks the ~150k most heavily padded test jobs that the public files contain, so our
@@ -130,14 +134,22 @@ is per-user. The paper is internally inconsistent in three places:
 - the footnote links all-MiniLM-**L12**-v2;
 - the text says the output is "normalized in the range [-1, 1]".
 
-**F-DATA's precomputed `embedding` encodes the job name only.** On February 2024 (669,758
-jobs, 38,637 distinct embeddings), the embedding is almost a function of user + `jnam`. There
-are 37,946 such pairs; 709 have more than one embedding, and 19 embeddings span more than one
-pair. Adding cores, nodes, frequency and environment to the key creates 2,244 embeddings
-shared across keys, so the embedding does not change with those fields. The public `jnam`
-values are anonymised (`jnam_2111729`), so the embedding was presumably computed from the
-real names before anonymisation. That would make it the only public carrier of job-name
-meaning. We have not checked F-DATA's documentation for how it was built.
+**F-DATA's precomputed `embedding` is all-MiniLM-L6-v2 over the original user, job name
+and environment.** [F-DATA's generation script](https://github.com/francescoantici/F-DATA/blob/main/generation_scripts/generate_derived_features.py) (`generate_derived_features.py`) joins the unanonymised `usr`, `jnam`
+and `jobenv_req` with commas, leaving out empty values, and encodes the string. The Zenodo
+`feature_list.csv` describes the column as "Sensitive data encoding with Sentence-Bert".
+
+The data agrees. On February 2024 (669,758 jobs, 38,637 distinct embeddings), the embedding
+is almost a function of user + `jnam`:
+- there are 37,946 such pairs; 709 have more than one embedding, and 19 embeddings span more
+  than one pair;
+- adding the environment changes almost nothing, because it barely varies within a user's
+  job name (one pair has two environments);
+- adding nodes creates 2,238 embeddings shared across keys, so the embedding doesn't change
+  with nodes.
+
+It is the only public carrier of the real job names' meaning. (An earlier version of this
+note called it name-only and said environment was unused; both were wrong.)
 
 **Our features** are that embedding (unit length) plus `num_cores_req`, `num_nodes_req` and
 `freq_req`, each z-scored. The reproduction scales over all five months, which is a small
@@ -161,8 +173,15 @@ Kestrel there is no frequency column (it is constant after filling), and the emb
 ours: harrier-oss-v1-0.6b over partition, qos, account, user, requested walltime, nodes,
 cores, GPUs, and the submit weekday and hour.
 
-**What we know of the effect:** the reproduction's 9.93% matches the paper's 10%, so on
-F-DATA the difference may not matter much. It has not been tested.
+**Measured (#222 item 4):** the scaling does hold UoPC back. A `balanced` mode scores better
+everywhere tried:
+- the unpadded reproduction: 9.75% / R² 0.766, against 10.34% / 0.751;
+- the rolling F-DATA UoPC: 10.80% / 0.682, against 11.36% / 0.660;
+- Eagle and Kestrel, by 0.6 and 1.6 points.
+
+The balanced mode adds log2 nodes and scaled frequency, weighted to about one job-name
+distance. On Eagle and Kestrel the z-scored columns are worse than the embedding alone.
+R² stays below the paper's 0.80 on its apparent data.
 
 ## Deviation 3 — the rolling history cutoff
 

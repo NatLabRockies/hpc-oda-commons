@@ -218,7 +218,11 @@ def run_cutoff_uopc(
     max_alloc_ratio = (
         float(split["max_alloc_ratio"]) if split.get("max_alloc_ratio") is not None else None
     )
-    variant = {"node_count": node_count, "max_alloc_ratio": max_alloc_ratio}
+    variant = {
+        "node_count": node_count,
+        "max_alloc_ratio": max_alloc_ratio,
+        "features": str(split.get("uopc_features", "zscore")),
+    }
 
     if sweep:
         theta_values = tuple(
@@ -757,6 +761,7 @@ def run_rolling_uopc(
             theta=int(split.get("theta", defaults.theta)),
             k=int(split.get("k", defaults.k)),
             embedding_field=str(split.get("embedding_field", defaults.embedding_field)),
+            features=str(split.get("uopc_features", defaults.features)),
         )
     )
     return _run_rolling_model_evaluate(

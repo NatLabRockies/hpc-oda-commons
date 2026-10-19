@@ -45,7 +45,7 @@ Optional fields and enum values have been added to v0.1.0 schemas in place, as b
 - `oda.recipe.v0.1.0`: `split.method: cutoff`, which requires `split.test_start`; `split.theta`, `split.k`, `split.theta_values`, `split.k_values` (#125); `split.embedding_field` (#204).
 - `oda.dataset.v0.1.0`: mapping transform types `list_mean` and `list_max`; `derive` also accepts `<field> / <field>` (#204). Transform type `energy` and field option `null_values`; a ratio derive may use another ratio (#206). Field option `trim_quantiles`, applied after the target filter (#216). Field option `null_when` (#209).
 - `oda.mapping.v0.1.0`: field options `null_values` (#206) and `null_when` (#209).
-- `oda.recipe.v0.1.0`: `split.node_count` (`allocated` | `requested`) and `split.max_alloc_ratio`, both for `method: cutoff` only (#222).
+- `oda.recipe.v0.1.0`: `split.node_count` (`allocated` | `requested`) and `split.max_alloc_ratio`, both for `method: cutoff` only, and `split.uopc_features` (`zscore` | `embedding` | `balanced`) for `model.job_power_uopc` under `cutoff` or `rolling` (#222).
 - `oda.result.v0.1.0`: `provenance.code.code_changed_during_run`, written by `hpc-oda benchmark` (#215). `provenance.code` already allowed extra fields, so the schema file is unchanged.
 - Semantics, not shape: a recipe's shared metric `target` is now the column the model predicts, and a model that cannot predict it fails the run (#204). Every bundled recipe already named its model's target.
 

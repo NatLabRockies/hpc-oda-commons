@@ -107,7 +107,9 @@ Here they are about 4–7 points behind the best model, level with TF-IDF + kNN,
 the signature memorizer on MAE. UoPC's R² is below zero on both systems, and its RMSE is
 above the window mean's. The computed embedding carries only the submission fields the
 other models use directly, while F-DATA's comes from the source. So this measures the
-methods on these systems, not on F-DATA's inputs.
+methods on these systems, not on F-DATA's inputs. UoPC here uses the default `zscore`
+features. With `split.uopc_features: balanced` it scores 23.54% on Eagle and 24.69% on
+Kestrel, with R² still below zero ([feature modes](uopc.md#feature-modes)).
 
 **Random Forest trails on Kestrel.** It is 3.9 points of MAPE behind MoE XGBoost there,
 against 0.6 on Eagle.

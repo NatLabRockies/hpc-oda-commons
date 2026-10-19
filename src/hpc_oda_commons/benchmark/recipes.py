@@ -82,6 +82,16 @@ def validate_recipe(payload: dict[str, Any], *, path: Path | None = None) -> Non
                 message=f"split.{', split.'.join(cutoff_only)} only apply to split.method: cutoff",
                 path=str(path) if path else None,
             )
+        if "uopc_features" in split and (
+            (payload.get("model") or {}).get("id") != "model.job_power_uopc"
+            or method not in ("cutoff", "rolling")
+        ):
+            raise SchemaValidationError(
+                schema_id=RECIPE_SCHEMA_ID,
+                message="split.uopc_features only applies to model.job_power_uopc "
+                "with split.method cutoff or rolling",
+                path=str(path) if path else None,
+            )
         if method == "cutoff":
             # The schema's "format": "date" is advisory under jsonschema, so check it here:
             # a typo'd cutoff would otherwise fail deep in the model, or move the test set.

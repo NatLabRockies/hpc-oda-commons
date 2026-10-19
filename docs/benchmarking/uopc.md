@@ -81,10 +81,13 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   since each model is per-user, and embeds the string with all-MiniLM-L6-v2. The public job
   names are anonymised (`jnam_…`), so that string can't be rebuilt from F-DATA. Instead the
   protocol uses F-DATA's precomputed `embedding` plus cores, nodes and frequency z-scored
-  separately. Environment is not used.
-  - **F-DATA's embedding encodes the job name only.** On February 2024 it is almost a
-    function of user + job name, and it does not change with cores, nodes, frequency or
-    environment.
+  separately.
+  - **F-DATA's embedding is the paper's encoder over three fields.** [F-DATA's generation script](https://github.com/francescoantici/F-DATA/blob/main/generation_scripts/generate_derived_features.py) embeds the
+    original, unanonymised "user, job name, environment" string with all-MiniLM-L6-v2. So
+    it carries the real job name and environment that the public columns hide. It also
+    carries the user, which the paper leaves out, but that is constant within UoPC's
+    per-user models. It does not change with cores, nodes or frequency, so the protocol
+    adds those as numbers.
   - **The z-scoring decides how much each number counts.** One embedding is at most 1.5
     from another, with a median of 0.84 between two job names of one user.
     - Frequency has two values, so its z-scores are at least 2 apart (2.03 here) whatever
@@ -94,9 +97,16 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
       0.024.
     - In practice the neighbours are the user's jobs at the same frequency with the most
       similar job names.
-  - The scaling is the Commons' choice (#203); the paper scales nothing. Whether the
-    features change the result is open
-    ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222)).
+  - The scaling is the Commons' choice (#203); the paper scales nothing. It does hold UoPC
+    back: `split.uopc_features: balanced` scores better on every protocol and system tried
+    ([Feature modes](#feature-modes)). The default stays `zscore` until that is decided.
+  - **We don't embed F-DATA ourselves.** The paper's string can't be rebuilt from public
+    data: the job names and environments are anonymised IDs (`jnam_2111729`), which would
+    carry no name meaning and would make unrelated IDs look alike.
+- **R² stays below the paper's on its apparent data.** This is a known limitation. Without
+  the padded jobs, the best features reach R² 0.766 and 0.753, against the paper's 0.80 and
+  0.79. The paper's features rely on the real job names, which public F-DATA doesn't have,
+  so the gap may not be closable on public data.
 - **Feature scaling sees the test period.** The z-scores use the whole usable dataset,
   test months included: a look-ahead in the feature scale only, with no target leak.
   Fitting on the history before 2024-02-01 instead would barely change anything:
@@ -172,8 +182,8 @@ consistent with the ~150k heavily padded jobs this test set contains and the pap
 apparently does not ([Known deviations](#known-deviations)). Those jobs are easy to
 predict. But they don't account for the whole gap: with every job allocated more than 12×
 its request dropped, R² is 0.751 and 0.737, *below* the paper's
-([Variants](#variants-padded-jobs-and-node-count)). The features, which differ from the
-paper's, may account for the rest; #222 tests them.
+([Variants](#variants-padded-jobs-and-node-count)). Better-balanced features narrow the gap
+to 0.766 and 0.753 ([Feature modes](#feature-modes)), but don't close it.
 
 The median absolute percentage error is 2.2%, and 85.5% of jobs are within 10%. The mean
 is carried by a tail: the 90th percentile is 22%.
@@ -332,9 +342,8 @@ What they show:
 - **On the paper's apparent data, MAPE still matches and R² falls short.** Dropping the
   padded jobs leaves 1.44M test jobs (the paper reports more than 1.3M). MAPE is 10.3% and
   10.5% against the paper's 10%. R² is 0.75 and 0.74 against 0.80 and 0.79. The padded jobs
-  had lifted our R² above the paper's; without them it sits below. The remaining gap is
-  plausibly the features (F-DATA's name-only embedding plus scaled numbers, against the
-  paper's embedded string), which #222's encoding experiment tests.
+  had lifted our R² above the paper's; without them it sits below. Better-balanced features
+  narrow that gap but don't close it ([Feature modes](#feature-modes)).
 - **Dividing by requested nodes lowers MAPE and R² alike.** It scores the same jobs as the
   reproduction. MAPE drops from 9.93% to 8.65% because the ~2 W padded targets, where a
   small miss is a large percentage, become ~90 W. R² drops from 0.837 to 0.738 because
@@ -352,6 +361,84 @@ What they show:
   8.65% it is below the rolling benchmark's best, MoE XGBoost at 10.07%. Its R² of 0.738 is
   below XGBoost's 0.810, the same pattern as on the rolling windows: small typical errors,
   more large misses. The protocols differ, so this is not a ranking.
+
+### Feature modes
+
+`split.uopc_features` sets how UoPC describes a job to its kNN, in both the cutoff and
+rolling protocols ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222)):
+
+| Mode | Features |
+|---|---|
+| `zscore` (default) | the job embedding + z-scored cores, nodes and frequency requested |
+| `embedding` | the job embedding alone |
+| `balanced` | the embedding + `0.2 × log2(nodes requested)` + `0.8 × frequency scaled to [0, 1]` |
+
+- **The balanced weights** make one doubling of nodes add 0.2, so 1 → 16 nodes adds 0.8. A
+  frequency switch also adds 0.8. Both are about one typical job-name distance on F-DATA,
+  where the median between two of a user's job names is 0.84.
+- **Its frequency range** is fitted on history only.
+- **It leaves cores out**, since on F-DATA they are always 48 × nodes.
+- **The whole-machine jobs that inflate z-scored nodes are kept.** Jobs of up to 152,064
+  nodes are genuine, completed production runs.
+
+Each run below is a bundled recipe plus one `uopc_features` key. The variant recipes are not
+bundled. They ran on 2026-10-19 at 935e58a, and the `zscore` rows are the earlier results.
+
+**Unpadded reproduction** (`uopc_paper_reproduction_unpadded.yml`, the paper's apparent data):
+
+| Target | Features | MAE | RMSE | MAPE | R² |
+|---|---|---:|---:|---:|---:|
+| Average | Paper (Table I) | | | 10% | 0.80 |
+| | `zscore` | 7.07 | 17.01 | 10.34% | 0.751 |
+| | `embedding` | 7.83 | 18.31 | 11.62% | 0.711 |
+| | **`balanced`** | **6.78** | **16.48** | **9.75%** | **0.766** |
+| Peak | Paper (Table I) | | | 10% | 0.79 |
+| | `zscore` | 7.41 | 18.62 | 10.54% | 0.737 |
+| | `embedding` | 8.26 | 19.97 | 11.93% | 0.697 |
+| | **`balanced`** | **7.09** | **18.02** | **9.93%** | **0.753** |
+
+**Rolling benchmark UoPC** (`uopc_rolling_*.yml`, [power.md](power.md),
+[power-nlr.md](power-nlr.md)):
+
+| Data | Features | MAE | RMSE | MAPE | R² |
+|---|---|---:|---:|---:|---:|
+| F-DATA, average | `zscore` | 8.01 | 18.13 | 11.36% | 0.660 |
+| | `embedding` | 8.41 | 18.78 | 11.86% | 0.635 |
+| | **`balanced`** | **7.71** | **17.55** | **10.80%** | **0.682** |
+| F-DATA, peak | `zscore` | 8.60 | 20.04 | 11.73% | 0.629 |
+| | `embedding` | 9.05 | 20.81 | 12.29% | 0.600 |
+| | **`balanced`** | **8.27** | **19.44** | **11.15%** | **0.651** |
+| Eagle, average | `zscore` | 80.94 | 116.87 | 24.15% | −0.141 |
+| | `embedding` | 79.02 | 113.94 | 23.66% | −0.084 |
+| | **`balanced`** | **78.59** | **113.43** | **23.54%** | **−0.075** |
+| Kestrel, average | `zscore` | 125.34 | 190.91 | 26.27% | −0.157 |
+| | `embedding` | 114.56 | 179.12 | 24.74% | −0.018 |
+| | **`balanced`** | **114.37** | **178.84** | **24.69%** | **−0.015** |
+
+What they show:
+
+- **`balanced` is best everywhere tried.**
+  - On F-DATA it gains 0.6 MAPE points and about 0.02 R² over `zscore`, in both protocols
+    and on both targets.
+  - The reproduction drops below the paper's 10% MAPE.
+  - The rolling UoPC reaches 10.80%, between XGBoost (11.05%) and MoE XGBoost (10.07%) on
+    average power. Its R² of 0.682 is still well below theirs (0.81 and 0.78).
+- **On F-DATA the numbers carry real information.** `embedding` alone is worst there,
+  because F-DATA's embedding holds only user, job name and environment. So `zscore` was using the numbers
+  badly, not using numbers it shouldn't.
+- **On Eagle and Kestrel, `zscore` actively hurts.**
+  - `embedding` alone beats it by 0.5 and 1.5 points.
+  - Our embedding there already includes the requested nodes in its text, so the z-scored
+    columns add distortion rather than information.
+  - `balanced` is level with `embedding`.
+  - UoPC stays far behind the tree models on both systems either way (R² below zero, ~24%
+    against ~20%).
+- **The balanced weights were set for F-DATA's embedding.** On Eagle and Kestrel our harrier
+  embedding sits much closer: the median within-user distance is ~0.2, against 0.84. One
+  doubling of nodes there weighs about as much as a typical job-name difference, roughly
+  four times its relative weight on F-DATA.
+- **Runs peaked at 15–21 GB.** The first balanced reproduction slowed to a crawl alongside
+  another 8 GB process and was rerun.
 
 ## Should power have its own tracked benchmark?
 
