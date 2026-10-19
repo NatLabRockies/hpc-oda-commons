@@ -96,12 +96,15 @@ def slice_dataset(
     window_end: str,
     *,
     extra_lookback_days: int = 0,
+    window_key: str = "card_window",
 ) -> int:
     """Read ``source`` parquet, slice to the window, write ``out``. Returns rows written.
 
     Also writes ``slice.json`` beside ``out``. Windowed parquets all land at the same
     path whatever window they hold, so without it a recipe pointing at one cannot say
-    which window it got — the ambiguity #143 exists to remove.
+    which window it got — the ambiguity #143 exists to remove. ``window_key`` names the
+    requested window there: ``card_window`` when it came from a dataset card, ``window``
+    when it was given by hand (``hpc-oda datasets slice``, #217).
     """
     table = pq.read_table(source)
     sliced = slice_to_window(
@@ -113,7 +116,7 @@ def slice_dataset(
         json.dumps(
             {
                 "source_table": str(source),
-                "card_window": {"start": window_start, "end": window_end},
+                window_key: {"start": window_start, "end": window_end},
                 "extra_lookback_days": extra_lookback_days,
                 "effective_window": {
                     "start": effective_start(window_start, extra_lookback_days),

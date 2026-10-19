@@ -1,0 +1,45 @@
+# Baseline (the training window's mean) predicting average power per node on NLR Kestrel (#217), on the
+# same rolling protocol as F-DATA (#204): 89 daily windows, 60 days of history. The windows
+# end at the table's last submit, so they cover Kestrel's last 89 days; the slice only keeps
+# the table small enough to load.
+#
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/nlr_kestrel.yml
+#   hpc-oda datasets slice data/datasets/nlr_kestrel/data.parquet \
+#     --start 2025-08-01 --end 2026-01-01 --out data/windows/nlr_kestrel_power/data.parquet
+#
+# Every model in recipes/job-power/*_rolling_avg_kestrel.yml uses the same split and rows.
+
+recipe_id: recipe.job_power.baseline_rolling_avg_kestrel
+
+problem_domain:
+  - job-power-prediction
+
+schema_version: oda.job.v0.2.0
+
+dataset:
+  id: nlr_kestrel
+  table_path: data/windows/nlr_kestrel_power/data.parquet
+
+model:
+  id: model.job_runtime_baseline
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: avgpcon_per_node
+  - name: rmse
+    target: avgpcon_per_node
+  - name: mape
+    target: avgpcon_per_node
+  - name: r2
+    target: avgpcon_per_node
+
+split:
+  method: rolling
+  n_windows: 89
+  test_window_hours: 24
+  training_lookback_days: 60
+
+run:
+  output_dir: runs
+  overwrite: false

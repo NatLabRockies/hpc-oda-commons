@@ -21,6 +21,7 @@ from hpc_oda_commons.benchmarking import (
     select_window,
     write_card,
 )
+from hpc_oda_commons.benchmarking.hpc.slice import SliceError, slice_dataset
 from hpc_oda_commons.datasets.decode import DecodeError
 from hpc_oda_commons.datasets.descriptor import load_descriptor
 from hpc_oda_commons.datasets.fetch import (
@@ -338,6 +339,32 @@ def datasets_characterize(
     )
     console.print(f"  card: {json_path}")
     console.print(f"        {md_path}")
+
+
+def datasets_slice(
+    table_path: Annotated[
+        Path,
+        typer.Argument(exists=True, readable=True, help="Canonical oda.job parquet to slice."),
+    ],
+    start: Annotated[
+        str, typer.Option("--start", help="First day kept, YYYY-MM-DD (UTC, inclusive).")
+    ],
+    end: Annotated[str, typer.Option("--end", help="Last day kept, YYYY-MM-DD (UTC, inclusive).")],
+    out: Annotated[Path, typer.Option("--out", help="Output parquet path.")],
+) -> None:
+    """Cut a prepared table to a window you name, keeping every job that overlaps it.
+
+    The rolling split tests the days before a table's last submit, so cutting the end
+    picks the test period, and the start must leave the training lookback. A job is kept
+    if it was submitted by the end of ``--end`` and ended on or after ``--start``, as in
+    ``bench-matrix slice``. Writes ``slice.json`` beside ``--out``.
+    """
+    try:
+        n = slice_dataset(table_path, out, start, end, window_key="window")
+    except (SliceError, ValueError) as exc:
+        console.print(f"[red]Cannot slice {table_path}: {exc}[/red]")
+        raise typer.Exit(1) from exc
+    console.print(f"{n:,} rows overlapping {start}..{end} → {out}")
 
 
 def datasets_ceiling(

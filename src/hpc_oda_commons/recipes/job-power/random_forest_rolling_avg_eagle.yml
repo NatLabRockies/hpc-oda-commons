@@ -1,0 +1,46 @@
+# Random Forest (OHE+SVD) predicting average power per node on NLR Eagle (#217), on the
+# same rolling protocol as F-DATA (#204): 89 daily windows, 60 days of history. The windows
+# end at the table's last submit, so the table is sliced first to end 2023-09-30, the last
+# full quarter before Eagle wound down (its last 89 days have a quarter as many jobs with
+# power, from 159 users).
+#
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/nlr_eagle.yml
+#   hpc-oda datasets slice data/datasets/nlr_eagle/data.parquet \
+#     --start 2023-05-01 --end 2023-09-30 --out data/windows/nlr_eagle_power/data.parquet
+#
+# Every model in recipes/job-power/*_rolling_avg_eagle.yml uses the same split and rows.
+
+recipe_id: recipe.job_power.random_forest_rolling_avg_eagle
+
+problem_domain:
+  - job-power-prediction
+
+schema_version: oda.job.v0.2.0
+
+dataset:
+  id: nlr_eagle
+  table_path: data/windows/nlr_eagle_power/data.parquet
+
+model:
+  id: model.job_runtime_random_forest
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: avgpcon_per_node
+  - name: rmse
+    target: avgpcon_per_node
+  - name: mape
+    target: avgpcon_per_node
+  - name: r2
+    target: avgpcon_per_node
+
+split:
+  method: rolling
+  n_windows: 89
+  test_window_hours: 24
+  training_lookback_days: 60
+
+run:
+  output_dir: runs
+  overwrite: false

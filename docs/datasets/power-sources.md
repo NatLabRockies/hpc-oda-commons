@@ -146,11 +146,12 @@ In order of payoff for effort. Item 1 is
 
 1. **NLR Eagle, average.** Done (#206): `type: energy`, `null_values` and chained ratio
    derives, and `trim_quantiles` for the impossible readings (#216). 73.2% of the full
-   table has power. Benchmarks are tracked in
-   [#217](https://github.com/NatLabRockies/hpc-oda-commons/issues/217).
+   table has power. Benchmarked in #217
+   ([results](../benchmarking/power-nlr.md)).
 2. **NLR Kestrel, average.** Done (#209): the same energy mapping, with `null_when` to
    drop jobs that shared their node, and `trim_quantiles` (#216). 65.5% of the full table
-   has power, from December 2023 on.
+   has power, from December 2023 on. Benchmarked in #217
+   ([results](../benchmarking/power-nlr.md)).
 3. **Adastra 15-day, average.** `list_mean` ÷ runtime is expressible today, and
    `null_values: [0]` handles the zero readings. Near-zero readings (a few watts) need a
    threshold as well.
