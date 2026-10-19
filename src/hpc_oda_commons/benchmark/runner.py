@@ -213,6 +213,12 @@ def run_cutoff_uopc(
     theta = int(split.get("theta", PAPER_THETA))
     k = int(split.get("k", PAPER_K))
     sweep = "theta_values" in split or "k_values" in split
+    # Variants that separate the paper's data and target from ours (#222).
+    node_count = str(split.get("node_count", "allocated"))
+    max_alloc_ratio = (
+        float(split["max_alloc_ratio"]) if split.get("max_alloc_ratio") is not None else None
+    )
+    variant = {"node_count": node_count, "max_alloc_ratio": max_alloc_ratio}
 
     if sweep:
         theta_values = tuple(
@@ -230,6 +236,7 @@ def run_cutoff_uopc(
             test_start=test_start,
             theta_values=theta_values,
             k_values=k_values,
+            **variant,
             metric_defs=metric_defs,
             verbose=verbose,
             capture_artifacts=capture_artifacts,
@@ -242,6 +249,7 @@ def run_cutoff_uopc(
         run_config: dict[str, Any] = {
             "protocol": "paper_sensitivity",
             "test_start": test_start,
+            **variant,
             "theta_values": list(theta_values),
             "k_values": list(k_values),
             "headline": {
@@ -257,6 +265,7 @@ def run_cutoff_uopc(
             test_start=test_start,
             theta=theta,
             k=k,
+            **variant,
             metric_defs=metric_defs,
             verbose=verbose,
             capture_artifacts=capture_artifacts,
@@ -265,6 +274,7 @@ def run_cutoff_uopc(
         run_config = {
             "protocol": "paper_reproduction",
             "test_start": test_start,
+            **variant,
             "theta": theta,
             "k": k,
             "predictor": "KNeighborsClassifier",
