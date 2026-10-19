@@ -33,7 +33,12 @@ from sklearn.neighbors import KNeighborsClassifier
 from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
-from hpc_oda_commons.models.job_power_uopc.model import _one_blas_thread
+from hpc_oda_commons.models.job_power_uopc.model import (
+    _FEATURE_LABELS,
+    _one_blas_thread,
+    balanced_numeric_features,
+    check_uopc_features,
+)
 from hpc_oda_commons.models.rolling_tabular.split import _epoch_or_nan, build_rolling_splits
 
 
@@ -54,6 +59,11 @@ class JobPowerUopcRollingConfig:
     # puts these in the embedded text instead.
     numeric_fields: tuple[str, ...] = ("num_cores_req", "num_nodes_req", "freq_req")
     target_field: str = "avgpcon_per_node"
+    # zscore (the numeric_fields above), embedding (none), or balanced (log2 nodes and
+    # frequency, weighted; see model.UOPC_FEATURE_MODES) (#222).
+    features: str = "zscore"
+    nodes_field: str = "num_nodes_req"
+    frequency_field: str = "freq_req"
 
 
 def _finite(value: Any) -> float:
@@ -72,7 +82,14 @@ class JobPowerUopcRollingModel:
     def __init__(self, config: JobPowerUopcRollingConfig | None = None) -> None:
         self.config = config or JobPowerUopcRollingConfig()
         self.target_field = self.config.target_field
-        if self.target_field in {self.config.embedding_field, *self.config.numeric_fields}:
+        check_uopc_features(self.config.features)
+        feature_fields = {
+            self.config.embedding_field,
+            *self.config.numeric_fields,
+            self.config.nodes_field,
+            self.config.frequency_field,
+        }
+        if self.target_field in feature_fields:
             raise ValueError(
                 f"{self.target_field!r} is the prediction target, so it cannot be a feature."
             )
@@ -95,6 +112,8 @@ class JobPowerUopcRollingModel:
             ),
             "target": np.asarray([_finite(row.get(self.target_field)) for row in rows]),
             "user": user_codes.astype(np.int64),
+            "nodes": np.asarray([_finite(row.get(cfg.nodes_field)) for row in rows]),
+            "frequency": np.asarray([_finite(row.get(cfg.frequency_field)) for row in rows]),
             "end": np.asarray([_epoch_or_nan(row.get(cfg.end_time_field)) for row in rows]),
         }
 
@@ -180,6 +199,7 @@ class JobPowerUopcRollingModel:
                 "training_lookback_days": cfg.training_lookback_days,
                 "theta": cfg.theta,
                 "k": cfg.k,
+                "features": _FEATURE_LABELS[cfg.features],
                 "target_field": self.target_field,
             },
         }
@@ -206,7 +226,18 @@ class JobPowerUopcRollingModel:
         sd = np.where(np.isfinite(sd) & (sd > 0), sd, 1.0)
         window_mean = float(np.mean(target[train]))
 
+        balanced = None
+        if cfg.features == "balanced":
+            # Once per window, with frequency's range fitted on its training rows only.
+            fit = np.zeros(len(target), dtype=bool)
+            fit[train] = True
+            balanced = balanced_numeric_features(arrays["nodes"], arrays["frequency"], fit=fit)
+
         def features(idx: np.ndarray) -> np.ndarray:
+            if cfg.features == "embedding":
+                return arrays["embedding"][idx]
+            if balanced is not None:
+                return np.hstack([arrays["embedding"][idx], balanced[idx]])
             scaled = (np.nan_to_num(arrays["numeric"][idx], nan=0.0) - mu) / sd
             return np.hstack([arrays["embedding"][idx], scaled.astype(np.float32)])
 

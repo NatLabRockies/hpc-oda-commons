@@ -85,7 +85,8 @@
           "uniqueItems": true
         },
         "node_count": { "type": "string", "enum": ["allocated", "requested"] },
-        "max_alloc_ratio": { "type": "number", "exclusiveMinimum": 0 }
+        "max_alloc_ratio": { "type": "number", "exclusiveMinimum": 0 },
+        "uopc_features": { "type": "string", "enum": ["zscore", "embedding", "balanced"] }
       },
       "required": ["method"],
       "allOf": [

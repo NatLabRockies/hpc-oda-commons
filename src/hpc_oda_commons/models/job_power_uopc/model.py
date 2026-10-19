@@ -56,6 +56,17 @@ PAPER_TARGETS: tuple[str, ...] = ("avgpcon_per_node", "maxpcon_per_node")
 # Divisors the paper protocol's targets may use: the paper's allocated nodes, or requested
 # nodes as in the rolling benchmark (#222).
 PAPER_NODE_COUNTS: tuple[str, ...] = ("allocated", "requested")
+# How UoPC turns a job into the vector its kNN compares (#222):
+# - zscore: the job embedding plus z-scored cores, nodes and frequency requested (default);
+# - embedding: the job embedding alone;
+# - balanced: the embedding plus log2(nodes) and frequency, weighted so a typical difference
+#   is comparable to the distance between two job names (median ~0.84 on F-DATA).
+UOPC_FEATURE_MODES: tuple[str, ...] = ("zscore", "embedding", "balanced")
+# Balanced weights: each doubling of requested nodes adds 0.2 (1 -> 16 nodes adds 0.8), and
+# the lowest-to-highest requested frequency adds 0.8. Cores are left out: on F-DATA they are
+# always 48 x nodes.
+BALANCED_NODE_WEIGHT = 0.2
+BALANCED_FREQUENCY_WEIGHT = 0.8
 
 
 @dataclass
@@ -87,6 +98,7 @@ class _PaperPreparedData:
     # and the node count the targets divide by.
     rows_dropped_alloc_ratio: int = 0
     node_count: str = "allocated"
+    features_mode: str = "zscore"
 
 
 def _one_blas_thread(method):
@@ -109,6 +121,45 @@ def _one_blas_thread(method):
 
 def _cumsum_from_zero(values: np.ndarray) -> np.ndarray:
     return np.concatenate(([0.0], np.cumsum(values, dtype=np.float64)))
+
+
+def balanced_numeric_features(
+    nodes: np.ndarray, frequency: np.ndarray, fit: np.ndarray
+) -> np.ndarray:
+    """The ``balanced`` numeric columns: weighted log2(requested nodes), and requested
+    frequency scaled to [0, 1] over the ``fit`` rows (history only) then weighted.
+
+    Missing or sub-1 node counts read as 1 node. Missing frequencies, or a frequency that
+    never varies in the fitted rows, contribute 0; values outside the fitted range are
+    clipped to it.
+    """
+    nodes = np.asarray(nodes, dtype=np.float64)
+    frequency = np.asarray(frequency, dtype=np.float64)
+    node_col = BALANCED_NODE_WEIGHT * np.log2(
+        np.where(np.isfinite(nodes) & (nodes >= 1), nodes, 1.0)
+    )
+    fitted = frequency[np.asarray(fit, dtype=bool)]
+    fitted = fitted[np.isfinite(fitted)]
+    freq_col = np.zeros_like(frequency)
+    if fitted.size and fitted.max() > fitted.min():
+        lo, hi = float(fitted.min()), float(fitted.max())
+        known = np.isfinite(frequency)
+        freq_col[known] = (
+            BALANCED_FREQUENCY_WEIGHT * (np.clip(frequency[known], lo, hi) - lo) / (hi - lo)
+        )
+    return np.column_stack([node_col, freq_col]).astype(np.float32)
+
+
+def check_uopc_features(features: str) -> None:
+    if features not in UOPC_FEATURE_MODES:
+        raise ValueError(f"features must be one of {list(UOPC_FEATURE_MODES)}, got {features!r}.")
+
+
+_FEATURE_LABELS = {
+    "zscore": "emb+znum",
+    "embedding": "emb",
+    "balanced": "emb+balanced(log2 nodes, frequency)",
+}
 
 
 def _check_paper_variant(node_count: str, max_alloc_ratio: float | None) -> None:
@@ -422,8 +473,10 @@ class JobPowerUopcModel:
         test_start: str,
         node_count: str = "allocated",
         max_alloc_ratio: float | None = None,
+        features: str = "zscore",
     ) -> _PaperPreparedData:
         _check_paper_variant(node_count, max_alloc_ratio)
+        check_uopc_features(features)
         rows_dropped_alloc_ratio = 0
         cutoff = datetime.fromisoformat(test_start).replace(tzinfo=timezone.utc).timestamp()
 
@@ -557,16 +610,25 @@ class JobPowerUopcModel:
         avg_target_arr = np.asarray(avg_targets, dtype=np.float64)
         max_target_arr = np.asarray(max_targets, dtype=np.float64)
 
-        # Standardize over the whole usable dataset, test period included. This is the
-        # Commons' adaptation (#203); the paper embeds the numbers as text and scales
-        # nothing. Test-period statistics shape the feature scale, a look-ahead that is
-        # immaterial here: frequency's two values stay >= 2 apart under any scaling, and
-        # outliers keep cores and nodes negligible either way (uopc-audit.md).
-        mu = num_arr.mean(axis=0)
-        sd = num_arr.std(axis=0)
-        sd[sd == 0] = 1.0
+        if features == "zscore":
+            # Standardize over the whole usable dataset, test period included. This is the
+            # Commons' adaptation (#203); the paper embeds the numbers as text and scales
+            # nothing. Test-period statistics shape the feature scale, a look-ahead that is
+            # immaterial here: frequency's two values stay >= 2 apart under any scaling, and
+            # outliers keep cores and nodes negligible either way (uopc-audit.md).
+            mu = num_arr.mean(axis=0)
+            sd = num_arr.std(axis=0)
+            sd[sd == 0] = 1.0
 
-        features = np.hstack([emb_arr, (num_arr - mu) / sd]).astype(np.float32)
+            features_arr = np.hstack([emb_arr, (num_arr - mu) / sd]).astype(np.float32)
+        elif features == "embedding":
+            features_arr = emb_arr
+        else:
+            # Frequency's range comes from jobs submitted before the cutoff: history only.
+            numeric_cols = balanced_numeric_features(
+                num_nodes_req_arr, freq_req_arr, fit=submit_arr < cutoff
+            )
+            features_arr = np.hstack([emb_arr, numeric_cols]).astype(np.float32)
 
         # Pre-sort each user's rows by completion time.
         order = np.argsort(end_arr, kind="stable")
@@ -590,7 +652,7 @@ class JobPowerUopcModel:
             num_nodes_req_arr=num_nodes_req_arr,
             nnuma_arr=nnuma_arr,
             freq_req_arr=freq_req_arr,
-            features=features,
+            features=features_arr,
             avg_target_arr=avg_target_arr,
             max_target_arr=max_target_arr,
             order=order,
@@ -610,6 +672,7 @@ class JobPowerUopcModel:
             },
             rows_dropped_alloc_ratio=rows_dropped_alloc_ratio,
             node_count=node_count,
+            features_mode=features,
         )
 
     @_one_blas_thread
@@ -622,6 +685,7 @@ class JobPowerUopcModel:
         k: int = PAPER_K,
         node_count: str = "allocated",
         max_alloc_ratio: float | None = None,
+        features: str = "zscore",
         metric_defs: list[dict[str, Any]] | None = None,
         verbose: bool = False,
         capture_artifacts: bool = False,
@@ -661,6 +725,7 @@ class JobPowerUopcModel:
             test_start=test_start,
             node_count=node_count,
             max_alloc_ratio=max_alloc_ratio,
+            features=features,
         )
 
         job_id_arr = prepared.job_id_arr
@@ -870,7 +935,7 @@ class JobPowerUopcModel:
                 "test_start": test_start,
                 "targets": _paper_target_labels(prepared.node_count),
                 **_paper_variant_summary(prepared, max_alloc_ratio),
-                "features": "emb+znum",
+                "features": _FEATURE_LABELS[prepared.features_mode],
                 "predictor": "KNeighborsClassifier",
             },
         }
@@ -901,6 +966,7 @@ class JobPowerUopcModel:
         k_values: tuple[int, ...] = PAPER_K_VALUES,
         node_count: str = "allocated",
         max_alloc_ratio: float | None = None,
+        features: str = "zscore",
         metric_defs: list[dict[str, Any]] | None = None,
         verbose: bool = False,
         capture_artifacts: bool = False,
@@ -944,6 +1010,7 @@ class JobPowerUopcModel:
             test_start=test_start,
             node_count=node_count,
             max_alloc_ratio=max_alloc_ratio,
+            features=features,
         )
 
         user_arr = prepared.user_arr
@@ -1154,7 +1221,7 @@ class JobPowerUopcModel:
                 "ablation_predictor": "KNeighborsRegressor",
                 "targets": _paper_target_labels(prepared.node_count),
                 **_paper_variant_summary(prepared, max_alloc_ratio),
-                "features": "emb+znum",
+                "features": _FEATURE_LABELS[prepared.features_mode],
                 "history_rule": "same user with edt < query adt",
             },
             "results": results,
