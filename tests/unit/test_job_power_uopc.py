@@ -351,6 +351,7 @@ def test_prepare_paper_data_matches_reproduction_protocol() -> None:
     prepared = JobPowerUopcModel()._prepare_paper_data(
         rows,
         test_start="2024-02-01",
+        features="zscore",
     )
 
     assert len(prepared.user_arr) == 20

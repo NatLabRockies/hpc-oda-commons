@@ -35,6 +35,7 @@ from tqdm import tqdm
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
 from hpc_oda_commons.models.job_power_uopc.model import (
     _FEATURE_LABELS,
+    UOPC_DEFAULT_FEATURES,
     _one_blas_thread,
     balanced_numeric_features,
     check_uopc_features,
@@ -59,9 +60,9 @@ class JobPowerUopcRollingConfig:
     # puts these in the embedded text instead.
     numeric_fields: tuple[str, ...] = ("num_cores_req", "num_nodes_req", "freq_req")
     target_field: str = "avgpcon_per_node"
-    # zscore (the numeric_fields above), embedding (none), or balanced (log2 nodes and
-    # frequency, weighted; see model.UOPC_FEATURE_MODES) (#222).
-    features: str = "zscore"
+    # balanced (default: log2 nodes and frequency, weighted), zscore (the numeric_fields
+    # above) or embedding (none); see model.UOPC_FEATURE_MODES (#222).
+    features: str = UOPC_DEFAULT_FEATURES
     nodes_field: str = "num_nodes_req"
     frequency_field: str = "freq_req"
 

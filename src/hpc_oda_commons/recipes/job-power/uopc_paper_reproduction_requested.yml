@@ -34,6 +34,9 @@ metrics:
 
 split:
   method: cutoff
+  # The published reproduction results use zscore features; balanced is the model
+  # default since #222 (docs/benchmarking/uopc.md#feature-modes).
+  uopc_features: zscore
   test_start: "2024-02-01"
   theta: 500
   k: 5

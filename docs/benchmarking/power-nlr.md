@@ -37,8 +37,8 @@ node** on NLR Eagle and Kestrel, on the same split shape
   scripts, so `hpc-oda embed` (harrier-oss-v1-0.6b, prose) encodes each job's submission
   fields: partition, qos, account, user, requested walltime, nodes, cores and GPUs, and the
   weekday and hour of submission. These are the fields the other models already see.
-  UoPC's numeric features include the requested CPU frequency, which neither source has;
-  the missing column adds nothing.
+  UoPC's default `balanced` features add log2 of the requested nodes and the requested CPU
+  frequency. Neither source has frequency, so that column is 0.
 - **Metrics:** MAE and RMSE (W/node), MAPE, R², over all scored rows.
 
 ## Results
@@ -47,6 +47,11 @@ Run on 2026-10-18 on an Apple M3 Max (14 cores, 38 GB), one recipe at a time. On
 system every model scored the same jobs, in all 89 windows. UoPC predicted the window mean
 for users with fewer than k = 5 training jobs: 18,169 Eagle jobs (3.7%) and 4,999 Kestrel
 jobs (0.8%). Best value in each column in bold.
+
+UoPC's rows use its `balanced` features, the default since
+[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222). They were rerun on
+2026-10-19 at 935e58a. Its earlier `zscore` features scored 24.15% / −0.141 on Eagle and
+26.27% / −0.157 on Kestrel ([feature modes](uopc.md#feature-modes)).
 
 **Eagle (`avgpcon_per_node`, W per node; 490,260 jobs)**
 
@@ -58,7 +63,7 @@ jobs (0.8%). Best value in each column in bold.
 | Signature memorizer | 66.61 | 97.99 | 20.73% | 0.198 | 6 min |
 | Embedding + kNN | 77.41 | 109.83 | 24.48% | −0.008 | 14 min |
 | TF-IDF + kNN | 78.12 | 115.84 | 24.39% | −0.121 | 14 min |
-| UoPC (θ = 500, k = 5) | 80.94 | 116.87 | 24.15% | −0.141 | 2 min |
+| UoPC (θ = 500, k = 5) | 78.59 | 113.43 | 23.54% | −0.075 | 2 min |
 | Baseline (window mean) | 92.78 | 109.81 | 30.02% | −0.007 | 2 min |
 
 **Kestrel (`avgpcon_per_node`, W per node; 638,081 jobs)**
@@ -71,7 +76,7 @@ jobs (0.8%). Best value in each column in bold.
 | Signature memorizer | 112.61 | 161.41 | 26.56% | 0.173 | 8 min |
 | Embedding + kNN | 113.12 | 167.20 | 25.26% | 0.113 | 26 min |
 | TF-IDF + kNN | 113.26 | 171.75 | 25.05% | 0.064 | 27 min |
-| UoPC (θ = 500, k = 5) | 125.34 | 190.91 | 26.27% | −0.157 | 3 min |
+| UoPC (θ = 500, k = 5) | 114.37 | 178.84 | 24.69% | −0.015 | 3 min |
 | Baseline (window mean) | 163.08 | 179.36 | 36.10% | −0.021 | 3 min |
 
 † Read every day's preprocessing from the store that the XGBoost run had just filled
@@ -101,15 +106,15 @@ Kestrel the tree models pull clearly ahead of it.
 above the baseline's: its large misses cost more than predicting the window mean would.
 On F-DATA it was ahead of the memorizer.
 
-**The embedding models add nothing here.** On F-DATA, embedding + kNN and UoPC were
-level with XGBoost and Random Forest (11.11% and 11.36% MAPE, against 11.05% and 11.10%).
-Here they are about 4–7 points behind the best model, level with TF-IDF + kNN, and behind
-the signature memorizer on MAE. UoPC's R² is below zero on both systems, and its RMSE is
-above the window mean's. The computed embedding carries only the submission fields the
-other models use directly, while F-DATA's comes from the source. So this measures the
-methods on these systems, not on F-DATA's inputs. UoPC here uses the default `zscore`
-features. With `split.uopc_features: balanced` it scores 23.54% on Eagle and 24.69% on
-Kestrel, with R² still below zero ([feature modes](uopc.md#feature-modes)).
+**The embedding models add nothing here.** On F-DATA, embedding + kNN and UoPC were level
+with XGBoost and Random Forest: 11.11% and 10.80% MAPE, against 11.05% and 11.10%.
+- **Here they are 3–6 points behind the best model,** level with TF-IDF + kNN and behind the
+  signature memorizer on MAE.
+- **UoPC's R² is below zero on both systems.** On Eagle its RMSE is also above the window
+  mean's.
+- **The embeddings carry different information.** Ours carries only the submission fields
+  the other models use directly. F-DATA's comes from the source and includes the real job
+  names. So this measures the methods on these systems, not on F-DATA's inputs.
 
 **Random Forest trails on Kestrel.** It is 3.9 points of MAPE behind MoE XGBoost there,
 against 0.6 on Eagle.

@@ -155,8 +155,26 @@ def test_rolling_balanced_works_without_a_frequency_column() -> None:
     assert result["_y_pred"] == [200.0]
 
 
-def test_zscore_is_the_default() -> None:
-    assert JobPowerUopcRollingConfig().features == "zscore"
+def test_balanced_is_the_default() -> None:
+    """balanced scored best everywhere tried (#222)."""
+    assert JobPowerUopcRollingConfig().features == "balanced"
+    prepared = JobPowerUopcModel()._prepare_paper_data(_paper_rows(), test_start="2024-02-01")
+    assert prepared.features_mode == "balanced"
+
+
+def test_paper_reproduction_recipes_pin_zscore() -> None:
+    """Their published results use zscore, so they stay reproducible after the switch."""
+    from pathlib import Path
+
+    import hpc_oda_commons
+    from hpc_oda_commons.benchmark.recipes import load_recipe
+
+    recipes = sorted(
+        (Path(hpc_oda_commons.__file__).parent / "recipes" / "job-power").glob("uopc_paper_*.yml")
+    )
+    assert len(recipes) == 5
+    for recipe in recipes:
+        assert load_recipe(recipe)["split"]["uopc_features"] == "zscore", recipe.name
 
 
 def test_unknown_mode_is_an_error() -> None:

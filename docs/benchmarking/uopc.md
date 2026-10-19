@@ -99,7 +99,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
       similar job names.
   - The scaling is the Commons' choice (#203); the paper scales nothing. It does hold UoPC
     back: `split.uopc_features: balanced` scores better on every protocol and system tried
-    ([Feature modes](#feature-modes)). The default stays `zscore` until that is decided.
+    ([Feature modes](#feature-modes)). `balanced` is the model's default since #222. The
+    paper-reproduction recipes pin `zscore`, which the results on this page use.
   - **We don't embed F-DATA ourselves.** The paper's string can't be rebuilt from public
     data: the job names and environments are anonymised IDs (`jnam_2111729`), which would
     carry no name meaning and would make unrelated IDs look alike.
@@ -369,9 +370,9 @@ rolling protocols ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issue
 
 | Mode | Features |
 |---|---|
-| `zscore` (default) | the job embedding + z-scored cores, nodes and frequency requested |
+| `zscore` | the job embedding + z-scored cores, nodes and frequency requested (the paper-reproduction recipes, which pin it) |
 | `embedding` | the job embedding alone |
-| `balanced` | the embedding + `0.2 × log2(nodes requested)` + `0.8 × frequency scaled to [0, 1]` |
+| `balanced` (default since #222) | the embedding + `0.2 × log2(nodes requested)` + `0.8 × frequency scaled to [0, 1]` |
 
 - **The balanced weights** make one doubling of nodes add 0.2, so 1 → 16 nodes adds 0.8. A
   frequency switch also adds 0.8. Both are about one typical job-name distance on F-DATA,

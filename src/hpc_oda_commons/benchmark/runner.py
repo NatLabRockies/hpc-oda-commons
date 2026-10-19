@@ -22,6 +22,7 @@ from hpc_oda_commons.models.job_power_uopc.model import (
     PAPER_TARGETS,
     PAPER_THETA,
     PAPER_THETA_VALUES,
+    UOPC_DEFAULT_FEATURES,
     JobPowerUopcConfig,
     JobPowerUopcModel,
 )
@@ -221,7 +222,7 @@ def run_cutoff_uopc(
     variant = {
         "node_count": node_count,
         "max_alloc_ratio": max_alloc_ratio,
-        "features": str(split.get("uopc_features", "zscore")),
+        "features": str(split.get("uopc_features", UOPC_DEFAULT_FEATURES)),
     }
 
     if sweep:
