@@ -57,11 +57,14 @@ PAPER_TARGETS: tuple[str, ...] = ("avgpcon_per_node", "maxpcon_per_node")
 # nodes as in the rolling benchmark (#222).
 PAPER_NODE_COUNTS: tuple[str, ...] = ("allocated", "requested")
 # How UoPC turns a job into the vector its kNN compares (#222):
-# - zscore: the job embedding plus z-scored cores, nodes and frequency requested (default);
+# - zscore: the job embedding plus z-scored cores, nodes and frequency requested, as the
+#   paper reproduction's published results use;
 # - embedding: the job embedding alone;
-# - balanced: the embedding plus log2(nodes) and frequency, weighted so a typical difference
-#   is comparable to the distance between two job names (median ~0.84 on F-DATA).
+# - balanced (default): the embedding plus log2(nodes) and frequency, weighted so a typical
+#   difference is comparable to the distance between two job names (median ~0.84 on
+#   F-DATA). It scored best everywhere tried, so it is the default since #222.
 UOPC_FEATURE_MODES: tuple[str, ...] = ("zscore", "embedding", "balanced")
+UOPC_DEFAULT_FEATURES = "balanced"
 # Balanced weights: each doubling of requested nodes adds 0.2 (1 -> 16 nodes adds 0.8), and
 # the lowest-to-highest requested frequency adds 0.8. Cores are left out: on F-DATA they are
 # always 48 x nodes.
@@ -98,7 +101,7 @@ class _PaperPreparedData:
     # and the node count the targets divide by.
     rows_dropped_alloc_ratio: int = 0
     node_count: str = "allocated"
-    features_mode: str = "zscore"
+    features_mode: str = UOPC_DEFAULT_FEATURES
 
 
 def _one_blas_thread(method):
@@ -473,7 +476,7 @@ class JobPowerUopcModel:
         test_start: str,
         node_count: str = "allocated",
         max_alloc_ratio: float | None = None,
-        features: str = "zscore",
+        features: str = UOPC_DEFAULT_FEATURES,
     ) -> _PaperPreparedData:
         _check_paper_variant(node_count, max_alloc_ratio)
         check_uopc_features(features)
@@ -685,7 +688,7 @@ class JobPowerUopcModel:
         k: int = PAPER_K,
         node_count: str = "allocated",
         max_alloc_ratio: float | None = None,
-        features: str = "zscore",
+        features: str = UOPC_DEFAULT_FEATURES,
         metric_defs: list[dict[str, Any]] | None = None,
         verbose: bool = False,
         capture_artifacts: bool = False,
@@ -966,7 +969,7 @@ class JobPowerUopcModel:
         k_values: tuple[int, ...] = PAPER_K_VALUES,
         node_count: str = "allocated",
         max_alloc_ratio: float | None = None,
-        features: str = "zscore",
+        features: str = UOPC_DEFAULT_FEATURES,
         metric_defs: list[dict[str, Any]] | None = None,
         verbose: bool = False,
         capture_artifacts: bool = False,
