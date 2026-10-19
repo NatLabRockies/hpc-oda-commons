@@ -92,9 +92,8 @@ shared protocol (89 daily windows from ~2024-02-01, 60 days of lookback,
 MAE/RMSE/MAPE/R²). Rolling recipes may report `mape` and `r2`; they are computed over all
 scored rows (arm ranking still refuses to pool them from windows).
 
-On Eagle and Kestrel, `recipes/job-power/<model>_rolling_avg_{eagle,kestrel}.yml` run six of
-those models on the same split shape, average power only. UoPC and embedding kNN are left
-out: they need a job embedding, and neither source has one. The split tests the days before
+On Eagle and Kestrel, `recipes/job-power/<model>_rolling_avg_{eagle,kestrel}.yml` run the
+same eight models on the same split shape, average power only. The split tests the days before
 a table's last submit, so each table is cut to its benchmark period first, keeping every job
 that overlaps it:
 
@@ -105,7 +104,10 @@ hpc-oda datasets slice data/datasets/nlr_eagle/data.parquet \
 hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/xgboost_rolling_avg_eagle.yml
 ```
 
-Each recipe's header gives its system's slice. Results are in
+Neither source has a job embedding, so UoPC and embedding kNN read the slice with one
+computed by `hpc-oda embed`. Run that step in a separate environment with the `embed`
+extra ([why](../known-issues.md#note--on-macos-torch-and-xgboost-crash-in-one-process)).
+Each recipe's header gives its system's slice, and its embed step if it has one. Results are in
 [Power prediction on Eagle and Kestrel](../benchmarking/power-nlr.md).
 
 The leaderboard shows power errors in W/node and picks the best value of each metric per

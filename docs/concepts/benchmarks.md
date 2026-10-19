@@ -20,7 +20,7 @@ Built-in v0.1 recipes:
 - `src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml` -- the UoPC paper protocol, cutoff split ([UoPC reproduction](../benchmarking/uopc.md))
 - `src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity.yml` -- the paper's θ × k sweep, cutoff split
 - `src/hpc_oda_commons/recipes/job-power/<model>_rolling_{avg,peak}.yml` -- every model, UoPC included, predicting average or peak power per node on one rolling protocol ([Power prediction benchmark](../benchmarking/power.md))
-- `src/hpc_oda_commons/recipes/job-power/<model>_rolling_avg_{eagle,kestrel}.yml` -- six of those models predicting average power per node on NLR Eagle and Kestrel, on the same split shape ([Power prediction on Eagle and Kestrel](../benchmarking/power-nlr.md))
+- `src/hpc_oda_commons/recipes/job-power/<model>_rolling_avg_{eagle,kestrel}.yml` -- the same models predicting average power per node on NLR Eagle and Kestrel, on the same split shape ([Power prediction on Eagle and Kestrel](../benchmarking/power-nlr.md))
 
 See the [Recipes Reference](../reference/recipes.md) for the full format specification with annotated examples.
 
