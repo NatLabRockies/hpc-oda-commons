@@ -81,10 +81,13 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   since each model is per-user, and embeds the string with all-MiniLM-L6-v2. The public job
   names are anonymised (`jnam_…`), so that string can't be rebuilt from F-DATA. Instead the
   protocol uses F-DATA's precomputed `embedding` plus cores, nodes and frequency z-scored
-  separately. Environment is not used.
-  - **F-DATA's embedding encodes the job name only.** On February 2024 it is almost a
-    function of user + job name, and it does not change with cores, nodes, frequency or
-    environment.
+  separately.
+  - **F-DATA's embedding is the paper's encoder over three fields.** [F-DATA's generation script](https://github.com/francescoantici/F-DATA/blob/main/generation_scripts/generate_derived_features.py) embeds the
+    original, unanonymised "user, job name, environment" string with all-MiniLM-L6-v2. So
+    it carries the real job name and environment that the public columns hide. It also
+    carries the user, which the paper leaves out, but that is constant within UoPC's
+    per-user models. It does not change with cores, nodes or frequency, so the protocol
+    adds those as numbers.
   - **The z-scoring decides how much each number counts.** One embedding is at most 1.5
     from another, with a median of 0.84 between two job names of one user.
     - Frequency has two values, so its z-scores are at least 2 apart (2.03 here) whatever
@@ -421,7 +424,7 @@ What they show:
   - The rolling UoPC reaches 10.80%, between XGBoost (11.05%) and MoE XGBoost (10.07%) on
     average power. Its R² of 0.682 is still well below theirs (0.81 and 0.78).
 - **On F-DATA the numbers carry real information.** `embedding` alone is worst there,
-  because F-DATA's embedding encodes the job name only. So `zscore` was using the numbers
+  because F-DATA's embedding holds only user, job name and environment. So `zscore` was using the numbers
   badly, not using numbers it shouldn't.
 - **On Eagle and Kestrel, `zscore` actively hurts.**
   - `embedding` alone beats it by 0.5 and 1.5 points.
