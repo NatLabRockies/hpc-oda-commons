@@ -11,6 +11,8 @@
 | `embedding_knn_rolling.yml` | Embedding + kNN | Rolling (20 windows, 6h, 7d) | Embedding-space kNN (needs an embedded dataset; see `hpc-oda embed`) |
 | `uopc_maxpcon.yml` | UoPC (power) | Fixed | Per-user online power prediction example |
 | `job-power/uopc_paper_reproduction.yml` | UoPC (power) | Cutoff (2024-02-01, θ=500, k=5) | Reproduces the UoPC paper on F-DATA — see [UoPC reproduction](../benchmarking/uopc.md) |
+| `job-power/uopc_paper_reproduction_unpadded.yml` | UoPC (power) | Cutoff, `max_alloc_ratio: 12` | The reproduction without jobs allocated >12× their request, which the paper's data lacks (#222) |
+| `job-power/uopc_paper_reproduction_requested.yml` | UoPC (power) | Cutoff, `node_count: requested` | The reproduction per requested node, the rolling benchmark's target (#222) |
 | `job-power/uopc_paper_sensitivity.yml` | UoPC (power) | Cutoff, θ × k sweep | The paper's sensitivity grid; headline at θ=500, k=5 |
 | `job-power/uopc_paper_sensitivity_smoke.yml` | UoPC (power) | Cutoff, 1 × 2 sweep | Quick end-to-end check of the sweep |
 | `job-power/<model>_rolling_{avg,peak}.yml` | Eight models (all but MLP) | Rolling (89 windows, 24h, 60d) | Average or peak power per node on one shared protocol — see [Power prediction benchmark](../benchmarking/power.md) |

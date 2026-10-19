@@ -114,7 +114,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   test period has per allocated node, from jobs allocated 4–8× the nodes they requested.
   But its lowest bar is ~11 W. Our test period has 150,015 jobs below 5 W: 139,074 with
   1 node requested and `nnuma` = 48, and 10,941 at 24×. So this protocol scores ~150k jobs
-  (9.4%) the paper apparently did not; see [padded allocations](#paper-reproduction-θ--500-k--5).
+  (9.4%) the paper apparently did not. The [unpadded variant](#variants-padded-jobs-and-node-count)
+  drops them.
 - **Exact values move across machines and code paths.** kNN ties and BLAS differences can
   shift individual predictions ([#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)).
   Ties are common here (many jobs have identical features), so even the sweep and the
@@ -169,7 +170,10 @@ their user.
 is higher than the paper's (0.837 against 0.80, and 0.826 against 0.79). That is
 consistent with the ~150k heavily padded jobs this test set contains and the paper's
 apparently does not ([Known deviations](#known-deviations)). Those jobs are easy to
-predict: without the 48× ones, R² is 0.762 and 0.746 (below).
+predict. But they don't account for the whole gap: with every job allocated more than 12×
+its request dropped, R² is 0.751 and 0.737, *below* the paper's
+([Variants](#variants-padded-jobs-and-node-count)). The features, which differ from the
+paper's, may account for the rest; #222 tests them.
 
 The median absolute percentage error is 2.2%, and 85.5% of jobs are within 10%. The mean
 is carried by a tail: the 90th percentile is 22%.
@@ -293,6 +297,61 @@ What the grid shows:
   directly, and the two pick different jobs among equally near ones. Both are valid
   readings of the protocol; the spread between them, ~0.3 points, is the tolerance to
   compare within.
+
+### Variants: padded jobs and node count
+
+Two reruns separate what makes our numbers differ from the paper's and from the rolling
+benchmark ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222)). Each is
+the reproduction above with one setting changed:
+
+| Recipe | Changed setting | Jobs used | Test jobs | Scored |
+|---|---|---:|---:|---:|
+| `uopc_paper_reproduction.yml` | — | 2,930,414 | 1,591,115 | 1,587,516 |
+| `uopc_paper_reproduction_unpadded.yml` | `max_alloc_ratio: 12` | 2,488,780 | 1,443,390 | 1,439,792 |
+| `uopc_paper_reproduction_requested.yml` | `node_count: requested` | 2,930,414 | 1,591,115 | 1,587,516 |
+
+They ran on 2026-10-19 at d1e11c8, ~32 minutes each, peaking at 12 and 16 GB.
+`max_alloc_ratio: 12` dropped 441,634 jobs from history and test: 410,740 allocated 48× their
+request, 30,855 at 24×, and 39 others.
+
+| Target | Run | MAE | RMSE | MAPE | R² | Per-user mean MAPE / R² |
+|---|---|---:|---:|---:|---:|---:|
+| Average | Paper (Table I) | | | 10% | 0.80 | |
+| | Reproduction (per allocated node) | 6.36 | 16.14 | 9.93% | 0.837 | 60.27% / 0.771 |
+| | Unpadded (per allocated node) | 7.07 | 17.01 | **10.34%** | **0.751** | 23.02% / 0.693 |
+| | Per requested node | 6.30 | 15.97 | **8.65%** | **0.738** | 14.30% / 0.729 |
+| | Rolling benchmark UoPC (per requested node, [power.md](power.md)) | 8.01 | 18.13 | 11.36% | 0.660 | — |
+| Peak | Paper (Table I) | | | 10% | 0.79 | |
+| | Reproduction | 6.72 | 17.77 | 10.17% | 0.826 | 61.77% / 0.769 |
+| | Unpadded | 7.41 | 18.62 | **10.54%** | **0.737** | 23.81% / 0.686 |
+| | Per requested node | 6.67 | 17.56 | **8.91%** | **0.718** | 15.01% / 0.719 |
+| | Rolling benchmark UoPC | 8.60 | 20.04 | 11.73% | 0.629 | — |
+
+What they show:
+
+- **On the paper's apparent data, MAPE still matches and R² falls short.** Dropping the
+  padded jobs leaves 1.44M test jobs (the paper reports more than 1.3M). MAPE is 10.3% and
+  10.5% against the paper's 10%. R² is 0.75 and 0.74 against 0.80 and 0.79. The padded jobs
+  had lifted our R² above the paper's; without them it sits below. The remaining gap is
+  plausibly the features (F-DATA's name-only embedding plus scaled numbers, against the
+  paper's embedded string), which #222's encoding experiment tests.
+- **Dividing by requested nodes lowers MAPE and R² alike.** It scores the same jobs as the
+  reproduction. MAPE drops from 9.93% to 8.65% because the ~2 W padded targets, where a
+  small miss is a large percentage, become ~90 W. R² drops from 0.837 to 0.738 because
+  those same jobs no longer form an easy, isolated cluster. The per-user mean's 60% MAPE
+  falls to 14%, confirming that it came from the padded jobs.
+- **The rolling benchmark's day-level cutoff costs UoPC about 2.7 points.** The
+  per-requested-node run and the rolling UoPC share a target and features. The reproduction
+  sees every job its user finished before submission; the rolling version only sees jobs
+  that finished before the day began, within 60 days. That takes MAPE from 8.65% to 11.36%
+  and R² from 0.738 to 0.660 (8.91% to 11.73% on peak). The comparison is approximate:
+  - the rolling run also gives cold-start users the all-user mean instead of skipping them
+    (0.86% of its jobs), and fits its scaling per window;
+  - its test set is 1.51M jobs in 85 daily windows against 1.59M here.
+- **UoPC on fresh per-job history beats every rolling model on MAPE, but not on R².** At
+  8.65% it is below the rolling benchmark's best, MoE XGBoost at 10.07%. Its R² of 0.738 is
+  below XGBoost's 0.810, the same pattern as on the rolling windows: small typical errors,
+  more large misses. The protocols differ, so this is not a ranking.
 
 ## Should power have its own tracked benchmark?
 
