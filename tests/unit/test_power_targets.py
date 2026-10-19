@@ -135,7 +135,8 @@ def test_rolling_power_recipes_share_one_protocol() -> None:
     """The comparison is only fair if every model sees the same windows and rows: the same
     dataset, split shape and metric target per power quantity. Model-specific knobs (k,
     theta) may differ. Eagle and Kestrel (#217) use F-DATA's split shape, on their own
-    tables, average power only."""
+    tables, average power only. Their embedding models (#219) read the same slice with a
+    computed embedding added, which keeps every row."""
     import importlib.resources as ir
     from pathlib import Path
 
@@ -149,8 +150,8 @@ def test_rolling_power_recipes_share_one_protocol() -> None:
         recipe = load_recipe(path)
         target = runner.recipe_target(recipe["metrics"])
         shapes.add(tuple(recipe["split"][k] for k in shared))
-        group = (target, recipe["dataset"]["table_path"])
-        models.setdefault(group, set()).add(recipe["model"]["id"])
+        table = recipe["dataset"]["table_path"].replace("_power_embedded/", "_power/")
+        models.setdefault((target, table), set()).add(recipe["model"]["id"])
     assert len(shapes) == 1, shapes
     fdata = "data/datasets/fdata_fugaku_uopc/data.parquet"
     assert set(models) == {
@@ -159,11 +160,21 @@ def test_rolling_power_recipes_share_one_protocol() -> None:
         ("avgpcon_per_node", "data/windows/nlr_eagle_power/data.parquet"),
         ("avgpcon_per_node", "data/windows/nlr_kestrel_power/data.parquet"),
     }
-    # Neither NLR source has a job embedding, so UoPC and embedding kNN run on F-DATA only.
-    no_embedding = models[("avgpcon_per_node", fdata)] - {
-        "model.job_power_uopc",
-        "model.job_runtime_embedding_knn",
-    }
-    for (_target, table), ids in models.items():
-        if "nlr_" in table:
-            assert ids == no_embedding, (table, ids)
+    # Every system runs the same models.
+    assert len({frozenset(ids) for ids in models.values()}) == 1, models
+
+
+def test_nlr_embedding_recipes_read_the_embedded_slice() -> None:
+    """Only the models that need an embedding read the embedded tables (#219)."""
+    import importlib.resources as ir
+    from pathlib import Path
+
+    from hpc_oda_commons.benchmark.recipes import load_recipe
+
+    root = Path(str(ir.files("hpc_oda_commons") / "recipes" / "job-power"))
+    needs_embedding = {"model.job_power_uopc", "model.job_runtime_embedding_knn"}
+    for system in ("eagle", "kestrel"):
+        for path in sorted(root.glob(f"*_rolling_avg_{system}.yml")):
+            recipe = load_recipe(path)
+            embedded = recipe["dataset"]["table_path"].endswith("_power_embedded/data.parquet")
+            assert embedded == (recipe["model"]["id"] in needs_embedding), path.name
