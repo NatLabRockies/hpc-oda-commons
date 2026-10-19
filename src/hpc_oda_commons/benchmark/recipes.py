@@ -74,6 +74,14 @@ def validate_recipe(payload: dict[str, Any], *, path: Path | None = None) -> Non
                 path=str(path) if path else None,
             )
         method = str(split.get("method", ""))
+        cutoff_only = sorted(k for k in ("node_count", "max_alloc_ratio") if k in split)
+        if cutoff_only and method != "cutoff":
+            # Other protocols would ignore them silently; they vary the paper protocol only.
+            raise SchemaValidationError(
+                schema_id=RECIPE_SCHEMA_ID,
+                message=f"split.{', split.'.join(cutoff_only)} only apply to split.method: cutoff",
+                path=str(path) if path else None,
+            )
         if method == "cutoff":
             # The schema's "format": "date" is advisory under jsonschema, so check it here:
             # a typo'd cutoff would otherwise fail deep in the model, or move the test set.

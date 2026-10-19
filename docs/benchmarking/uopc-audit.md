@@ -1,8 +1,8 @@
 # UoPC audit — our implementation against the paper and the authors' code
 
 **Status:** dev note, 2026-10-19. The [proposed work](#proposed-work) is tracked in
-[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222); item 2 (the corrections) is
-done, and results are unchanged so far.
+[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222). Item 2 (the corrections) and
+item 3 (the reproduction reruns, [results](uopc.md#variants-padded-jobs-and-node-count)) are done.
 
 This note checks the Commons' UoPC against its sources, prompted by the question "did we
 reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
@@ -172,8 +172,17 @@ Two consequences:
 - history older than 60 days is dropped.
 
 The reproduction uses everything finished before each job's submission. UoPC gains most from
-a user's latest near-identical jobs, so this is the likely main cause of 11.36% against
-9.93%. It has not been measured separately from the node-count change.
+a user's latest near-identical jobs. **Measured (#222 item 3):** per requested node, the
+reproduction scores 8.65% / R² 0.738, against the rolling UoPC's 11.36% / 0.660 on the same
+target. So the cutoff costs about 2.7 points, give or take the cold-start fallback and the
+slightly different test sets.
+
+The reproduction's 9.93% against 11.36% mixed two effects that partly cancel. Dividing by
+requested nodes lowers MAPE (9.93% → 8.65%); the cutoff raises it (8.65% → 11.36%).
+
+Without the padded jobs, the reproduction scores 10.34% / 0.751. That matches the paper's
+MAPE, but its R² is below the paper's 0.80, so the padded jobs don't explain the whole R²
+difference.
 
 ## The authors' code
 

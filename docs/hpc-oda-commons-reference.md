@@ -546,6 +546,8 @@ The package ships five recipes:
 | `mlp_rolling.yml` | MLP | Rolling (20 windows, 6h, 7d) | Feed-forward MLP runtime benchmark |
 | `uopc_maxpcon.yml` | Job Power (UoPC) | Fixed 80/20 | Per-user kNN power (`maxpcon`) prediction |
 | `job-power/uopc_paper_reproduction.yml` | Job Power (UoPC) | Cutoff 2024-02-01 | UoPC paper reproduction on F-DATA |
+| `job-power/uopc_paper_reproduction_unpadded.yml` | Job Power (UoPC) | Cutoff 2024-02-01 | Reproduction without heavily padded jobs |
+| `job-power/uopc_paper_reproduction_requested.yml` | Job Power (UoPC) | Cutoff 2024-02-01 | Reproduction per requested node |
 | `job-power/uopc_paper_sensitivity.yml` | Job Power (UoPC) | Cutoff, θ × k sweep | UoPC sensitivity analysis |
 
 ### 8.3 Result Bundles

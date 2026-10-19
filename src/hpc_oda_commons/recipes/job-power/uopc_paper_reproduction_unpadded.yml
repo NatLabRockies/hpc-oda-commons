@@ -1,0 +1,47 @@
+# UoPC paper reproduction without F-DATA's most padded jobs (#222).
+# The paper's figures show no jobs below ~10 W per allocated node, but the public F-DATA
+# files hold ~150k test jobs allocated 24x or 48x the nodes they requested (~2-4 W per
+# allocated node). max_alloc_ratio: 12 drops every job allocated more than 12x its request,
+# from history and test, to match the paper's apparent data. Otherwise identical to
+# uopc_paper_reproduction.yml. Results: docs/benchmarking/uopc.md.
+#
+# Prepare the data first (5 monthly files, ~3.9 GB):
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml
+
+recipe_id: recipe.job_power.uopc_paper_reproduction_unpadded
+
+problem_domain:
+  - job-power-prediction
+
+schema_version: oda.job.v0.2.0
+
+dataset:
+  id: fdata_fugaku_uopc
+  table_path: data/datasets/fdata_fugaku_uopc/data.parquet
+
+model:
+  id: model.job_power_uopc
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: avgpcon_per_node
+  - name: rmse
+    target: avgpcon_per_node
+  - name: mape
+    target: avgpcon_per_node
+  - name: r2
+    target: avgpcon_per_node
+
+split:
+  method: cutoff
+  test_start: "2024-02-01"
+  theta: 500
+  k: 5
+  max_alloc_ratio: 12
+
+run:
+  output_dir: runs
+  overwrite: false
+  extras:
+    save_predictions: true

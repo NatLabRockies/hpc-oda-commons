@@ -53,6 +53,9 @@ PAPER_THETA_VALUES: tuple[int, ...] = (50, 100, 200, 500, 1000, 2000, 5000)
 PAPER_K_VALUES: tuple[int, ...] = (5, 10, 20, 50)
 # The two targets the paper protocol predicts, both in watts per allocated node.
 PAPER_TARGETS: tuple[str, ...] = ("avgpcon_per_node", "maxpcon_per_node")
+# Divisors the paper protocol's targets may use: the paper's allocated nodes, or requested
+# nodes as in the rolling benchmark (#222).
+PAPER_NODE_COUNTS: tuple[str, ...] = ("allocated", "requested")
 
 
 @dataclass
@@ -80,6 +83,10 @@ class _PaperPreparedData:
     global_max_cumsum: np.ndarray
     user_avg_cumsum: dict[str, np.ndarray]
     user_max_cumsum: dict[str, np.ndarray]
+    # Jobs dropped for an allocated/requested node ratio above ``max_alloc_ratio`` (#222),
+    # and the node count the targets divide by.
+    rows_dropped_alloc_ratio: int = 0
+    node_count: str = "allocated"
 
 
 def _one_blas_thread(method):
@@ -102,6 +109,30 @@ def _one_blas_thread(method):
 
 def _cumsum_from_zero(values: np.ndarray) -> np.ndarray:
     return np.concatenate(([0.0], np.cumsum(values, dtype=np.float64)))
+
+
+def _check_paper_variant(node_count: str, max_alloc_ratio: float | None) -> None:
+    if node_count not in PAPER_NODE_COUNTS:
+        raise ValueError(
+            f"node_count must be one of {list(PAPER_NODE_COUNTS)}, got {node_count!r}."
+        )
+    if max_alloc_ratio is not None and not (math.isfinite(max_alloc_ratio) and max_alloc_ratio > 0):
+        raise ValueError(f"max_alloc_ratio must be a positive number, got {max_alloc_ratio!r}.")
+
+
+def _paper_target_labels(node_count: str) -> list[str]:
+    nodes = "nnuma" if node_count == "allocated" else "num_nodes_req"
+    return [f"avgpcon/{nodes}", f"maxpcon/{nodes}"]
+
+
+def _paper_variant_summary(
+    prepared: _PaperPreparedData, max_alloc_ratio: float | None
+) -> dict[str, Any]:
+    return {
+        "node_count": prepared.node_count,
+        "max_alloc_ratio": max_alloc_ratio,
+        "rows_dropped_alloc_ratio": prepared.rows_dropped_alloc_ratio,
+    }
 
 
 @dataclass(frozen=True)
@@ -389,7 +420,11 @@ class JobPowerUopcModel:
         rows: list[dict[str, Any]],
         *,
         test_start: str,
+        node_count: str = "allocated",
+        max_alloc_ratio: float | None = None,
     ) -> _PaperPreparedData:
+        _check_paper_variant(node_count, max_alloc_ratio)
+        rows_dropped_alloc_ratio = 0
         cutoff = datetime.fromisoformat(test_start).replace(tzinfo=timezone.utc).timestamp()
 
         job_ids: list[Any] = []
@@ -436,11 +471,27 @@ class JobPowerUopcModel:
             except (TypeError, ValueError):
                 continue
 
+            num_nodes_req = _feature_float(row.get("num_nodes_req"))
+            # The paper's data appears to lack F-DATA's most padded jobs (allocated 24x or
+            # 48x what they requested), so a variant drops them from history and test alike
+            # (#222). A job without a requested count can't be judged and is kept.
+            if (
+                max_alloc_ratio is not None
+                and num_nodes_req > 0
+                and nnuma / num_nodes_req > max_alloc_ratio
+            ):
+                rows_dropped_alloc_ratio += 1
+                continue
+
             # The paper's targets: whole-job power over allocated nodes (nnuma), per its
             # text and figures. Not the prepared avgpcon_per_node columns, which divide by
-            # requested nodes because nnuma can be padded (#204).
-            avg_target = avgpcon / nnuma
-            max_target = maxpcon / nnuma
+            # requested nodes because nnuma can be padded (#204). The ``requested`` variant
+            # divides as those columns do, to compare with the rolling benchmark (#222).
+            nodes = nnuma if node_count == "allocated" else num_nodes_req
+            if nodes <= 0:
+                continue
+            avg_target = avgpcon / nodes
+            max_target = maxpcon / nodes
 
             if (
                 not math.isfinite(submit)
@@ -557,6 +608,8 @@ class JobPowerUopcModel:
                 user: _cumsum_from_zero(max_target_arr[indices])
                 for user, indices in user_rows.items()
             },
+            rows_dropped_alloc_ratio=rows_dropped_alloc_ratio,
+            node_count=node_count,
         )
 
     @_one_blas_thread
@@ -567,6 +620,8 @@ class JobPowerUopcModel:
         test_start: str = PAPER_TEST_START,
         theta: int = PAPER_THETA,
         k: int = PAPER_K,
+        node_count: str = "allocated",
+        max_alloc_ratio: float | None = None,
         metric_defs: list[dict[str, Any]] | None = None,
         verbose: bool = False,
         capture_artifacts: bool = False,
@@ -604,6 +659,8 @@ class JobPowerUopcModel:
         prepared = self._prepare_paper_data(
             rows,
             test_start=test_start,
+            node_count=node_count,
+            max_alloc_ratio=max_alloc_ratio,
         )
 
         job_id_arr = prepared.job_id_arr
@@ -811,10 +868,8 @@ class JobPowerUopcModel:
                 "theta": theta,
                 "k": k,
                 "test_start": test_start,
-                "targets": [
-                    "avgpcon/nnuma",
-                    "maxpcon/nnuma",
-                ],
+                "targets": _paper_target_labels(prepared.node_count),
+                **_paper_variant_summary(prepared, max_alloc_ratio),
                 "features": "emb+znum",
                 "predictor": "KNeighborsClassifier",
             },
@@ -831,10 +886,7 @@ class JobPowerUopcModel:
                 "theta": theta,
                 "k": k,
                 "test_start": test_start,
-                "targets": [
-                    "avgpcon/nnuma",
-                    "maxpcon/nnuma",
-                ],
+                "targets": _paper_target_labels(prepared.node_count),
             }
 
         return result
@@ -847,6 +899,8 @@ class JobPowerUopcModel:
         test_start: str = PAPER_TEST_START,
         theta_values: tuple[int, ...] = PAPER_THETA_VALUES,
         k_values: tuple[int, ...] = PAPER_K_VALUES,
+        node_count: str = "allocated",
+        max_alloc_ratio: float | None = None,
         metric_defs: list[dict[str, Any]] | None = None,
         verbose: bool = False,
         capture_artifacts: bool = False,
@@ -888,6 +942,8 @@ class JobPowerUopcModel:
         prepared = self._prepare_paper_data(
             rows,
             test_start=test_start,
+            node_count=node_count,
+            max_alloc_ratio=max_alloc_ratio,
         )
 
         user_arr = prepared.user_arr
@@ -1096,10 +1152,8 @@ class JobPowerUopcModel:
                 "test_start": test_start,
                 "primary_predictor": "KNeighborsClassifier",
                 "ablation_predictor": "KNeighborsRegressor",
-                "targets": [
-                    "avgpcon/nnuma",
-                    "maxpcon/nnuma",
-                ],
+                "targets": _paper_target_labels(prepared.node_count),
+                **_paper_variant_summary(prepared, max_alloc_ratio),
                 "features": "emb+znum",
                 "history_rule": "same user with edt < query adt",
             },

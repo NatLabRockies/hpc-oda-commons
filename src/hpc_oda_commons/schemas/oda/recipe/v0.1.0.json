@@ -83,7 +83,9 @@
           "items": { "type": "integer", "minimum": 1 },
           "minItems": 1,
           "uniqueItems": true
-        }
+        },
+        "node_count": { "type": "string", "enum": ["allocated", "requested"] },
+        "max_alloc_ratio": { "type": "number", "exclusiveMinimum": 0 }
       },
       "required": ["method"],
       "allOf": [
