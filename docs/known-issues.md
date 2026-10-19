@@ -189,3 +189,17 @@ test months included, because the authors' reference code does. This is a small 
 in the feature scale only; no target value leaks. It is kept so the numbers stay comparable
 with the paper. A deployment would fit the scaling on history alone. See
 [UoPC reproduction](benchmarking/uopc.md#known-deviations).
+
+## Note — on macOS, torch and XGBoost crash in one process
+
+**Status:** workaround · **Tracking:** [#219](https://github.com/NatLabRockies/hpc-oda-commons/issues/219)
+
+The `embed` extra installs torch. torch and scikit-learn each ship their own OpenMP runtime
+(`libomp.dylib`). On macOS, a process that imports torch and then fits XGBoost segfaults.
+In this repo that happens in the unit tests, and in a benchmark whose model imports torch
+before a tree model fits. Installing torch also changes what embedding kNN's
+`backend: auto` picks, from numpy to torch.
+
+Keep the `embed` extra in its own environment. Compute embeddings there, then run
+benchmarks and the test suite in an environment without torch. The power benchmarks in
+[Power prediction on Eagle and Kestrel](benchmarking/power-nlr.md) were run that way.

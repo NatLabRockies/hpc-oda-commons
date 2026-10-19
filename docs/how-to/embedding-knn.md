@@ -45,6 +45,10 @@ hpc-oda embed <in.parquet> --out <out.parquet> \
   --model microsoft/harrier-oss-v1-0.6b --format prose --cache-dir .hpc_oda/embed-cache
 ```
 
+Install the `embed` extra in its own environment. On macOS, torch and XGBoost crash in one
+process, and torch changes the backend `backend: auto` picks
+([known issues](../known-issues.md#note--on-macos-torch-and-xgboost-crash-in-one-process)).
+
 **What gets embedded (leakage rule):** only **submission-time** fields — job name,
 partition/queue, account, user, requested walltime/nodes/cores/GPUs/memory, science
 field, machine, submit time. The target and post-hoc fields (`runtime_seconds`,
