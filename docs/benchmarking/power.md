@@ -84,7 +84,9 @@ reproduction](uopc.md) and 11.36% here. The two protocols differ: there each job
 predicted from all its user's earlier jobs, per allocated node; here every model retrains
 once a day on the previous 60 days, per requested node. Per requested node, the paper
 protocol scores 8.65%, so the day-level cutoff costs UoPC about 2.7 points
-([variants](uopc.md#variants-padded-jobs-and-node-count)).
+([variants](uopc.md#variants-padded-jobs-and-node-count)). These UoPC rows use the default
+`zscore` features; `split.uopc_features: balanced` scores 10.80% / 0.682 and 11.15% / 0.651
+([feature modes](uopc.md#feature-modes)).
 
 **Wall times are not comparable between models.** The rolling-tabular models spend most of
 their time building each day's OHE + SVD preprocessing, one day at a time. The average-power

@@ -1,8 +1,11 @@
 # UoPC audit — our implementation against the paper and the authors' code
 
 **Status:** dev note, 2026-10-19. The [proposed work](#proposed-work) is tracked in
-[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222). Item 2 (the corrections) and
-item 3 (the reproduction reruns, [results](uopc.md#variants-padded-jobs-and-node-count)) are done.
+[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222). Done:
+- item 2, the corrections;
+- item 3, the reproduction reruns ([results](uopc.md#variants-padded-jobs-and-node-count));
+- item 4, scoped down to feature modes ([results](uopc.md#feature-modes)). It does not
+  include the paper-style embedding.
 
 This note checks the Commons' UoPC against its sources, prompted by the question "did we
 reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
@@ -161,8 +164,15 @@ Kestrel there is no frequency column (it is constant after filling), and the emb
 ours: harrier-oss-v1-0.6b over partition, qos, account, user, requested walltime, nodes,
 cores, GPUs, and the submit weekday and hour.
 
-**What we know of the effect:** the reproduction's 9.93% matches the paper's 10%, so on
-F-DATA the difference may not matter much. It has not been tested.
+**Measured (#222 item 4):** the scaling does hold UoPC back. A `balanced` mode scores better
+everywhere tried:
+- the unpadded reproduction: 9.75% / R² 0.766, against 10.34% / 0.751;
+- the rolling F-DATA UoPC: 10.80% / 0.682, against 11.36% / 0.660;
+- Eagle and Kestrel, by 0.6 and 1.6 points.
+
+The balanced mode adds log2 nodes and scaled frequency, weighted to about one job-name
+distance. On Eagle and Kestrel the z-scored columns are worse than the embedding alone.
+R² stays below the paper's 0.80 on its apparent data.
 
 ## Deviation 3 — the rolling history cutoff
 
