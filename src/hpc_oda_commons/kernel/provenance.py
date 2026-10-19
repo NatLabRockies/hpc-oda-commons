@@ -62,6 +62,10 @@ def pip_freeze_minimal() -> list[str]:
         return []
 
 
+# build_provenance's default: read the commit from the checkout when it is called.
+_FROM_CHECKOUT = object()
+
+
 def build_provenance(
     *,
     input_schema: str,
@@ -70,16 +74,21 @@ def build_provenance(
     project_root: Path | None = None,
     capture_packages: bool = False,
     source_hash: str | None = None,
+    git_commit: str | None | object = _FROM_CHECKOUT,
 ) -> dict:
+    """``git_commit`` defaults to the checkout's ``HEAD`` now. A long run passes the commit
+    it captured at start instead, since the checkout can move while it trains (#215)."""
     hashed_inputs: list[HashedInput] = [hash_input(p, content=True) for p in inputs]
     env_pkgs: list[str] = pip_freeze_minimal() if capture_packages else []
+    if git_commit is _FROM_CHECKOUT:
+        git_commit = git_commit_if_available(project_root)
 
     return {
         "schema_versions": {"input": input_schema, "result": result_schema},
         "environment": {"python": python_version(), "packages": env_pkgs},
         "code": {
             "package_version": package_version(),
-            "git_commit": git_commit_if_available(project_root),
+            "git_commit": git_commit,
             "source_hash": source_hash,
         },
         "inputs": [
