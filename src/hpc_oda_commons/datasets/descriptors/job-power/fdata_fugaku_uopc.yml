@@ -89,7 +89,8 @@ targets:
       # on, but nnuma counts the allocated node shape, which Fugaku can pad: 1-node,
       # 48-core jobs are recorded with nnuma = 48 and would read ~2 W per node. So divide
       # by requested nodes, which match the nodes used. Null for a job requesting no
-      # nodes (#204). The UoPC paper protocol divides by nnuma itself, as the paper does.
+      # nodes (#204). The UoPC paper protocol does the same by default; only its node_count:
+      # allocated option divides by nnuma, as the paper does (#228).
       avgpcon_per_node: { derive: "avgpcon / num_nodes_req" }
       maxpcon_per_node: { derive: "maxpcon / num_nodes_req" }
       embedding: { from: embedding }

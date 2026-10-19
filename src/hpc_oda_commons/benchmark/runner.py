@@ -23,6 +23,7 @@ from hpc_oda_commons.models.job_power_uopc.model import (
     PAPER_THETA,
     PAPER_THETA_VALUES,
     UOPC_DEFAULT_FEATURES,
+    UOPC_DEFAULT_NODE_COUNT,
     JobPowerUopcConfig,
     JobPowerUopcModel,
 )
@@ -215,7 +216,7 @@ def run_cutoff_uopc(
     k = int(split.get("k", PAPER_K))
     sweep = "theta_values" in split or "k_values" in split
     # Variants that separate the paper's data and target from ours (#222).
-    node_count = str(split.get("node_count", "allocated"))
+    node_count = str(split.get("node_count", UOPC_DEFAULT_NODE_COUNT))
     max_alloc_ratio = (
         float(split["max_alloc_ratio"]) if split.get("max_alloc_ratio") is not None else None
     )

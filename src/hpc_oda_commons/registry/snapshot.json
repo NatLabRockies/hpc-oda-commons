@@ -278,7 +278,7 @@
       "entry_type": "recipe",
       "name": "UoPC Paper Reproduction (Fugaku, Job Power Prediction)",
       "version": "0.1.0",
-      "description": "Reproduces the UoPC paper (Antici et al., IEEE 11017729) on F-DATA Dec 2023-Apr 2024: jobs submitted from 2024-02-01 are scored on avgpcon and maxpcon per node, with per-user-mean and global-mean baselines.",
+      "description": "Reproduces the UoPC paper (Antici et al., IEEE 11017729) on F-DATA Dec 2023-Apr 2024: jobs submitted from 2024-02-01 are scored on avgpcon and maxpcon per requested node with balanced features, with per-user-mean and global-mean baselines. The authors' setup (per allocated node) is a separate comparison recipe.",
       "problem_domain": ["job-power-prediction"],
       "supported_sources": ["public_dataset"],
       "input_schema_version": "oda.job.v0.2.0",

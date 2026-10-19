@@ -148,9 +148,9 @@ F-DATA's `nnuma` (allocated nodes) can exceed the nodes a job ran on, while `avg
 `maxpcon` sum only those nodes. In the UoPC test months, 137k jobs (8.6%, 11 users) request
 and use 1 node with 48 cores, draw ~91 W, and show `nnuma` = 48: per allocated node they
 read 1.9 W. The Commons' per-node power targets (`avgpcon_per_node`, `maxpcon_per_node` on
-both Fugaku descriptors) therefore divide by requested nodes. The UoPC paper protocol still
-divides by `nnuma`, as the paper does; its write-up reports the results with and without
-these jobs ([UoPC reproduction](benchmarking/uopc.md#results)).
+both Fugaku descriptors) therefore divide by requested nodes, and so does the UoPC
+reproduction since #228. Only its paper-comparison recipes divide by `nnuma`, as the paper
+does ([why](benchmarking/uopc.md#nodes-requested-not-allocated)).
 
 ## Note — Eagle's and Kestrel's energy readings include impossible per-node power
 
@@ -183,16 +183,17 @@ short jobs (median 2 s).
 
 **Status:** informational · **Tracking:** [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125)
 
-The UoPC paper protocol (`model.job_power_uopc` with `split.method: cutoff`) z-scores its
-numeric features (cores, nodes and CPU frequency requested) over the whole usable dataset,
-test months included. The scaling is the Commons' adaptation; the paper scales nothing.
+With `zscore` features, the UoPC paper protocol (`model.job_power_uopc` with
+`split.method: cutoff`) z-scores its numeric features (cores, nodes and CPU frequency
+requested) over the whole usable dataset, test months included. Since #228 only the
+paper-comparison recipes use `zscore`; the default, `balanced`, fits on history only. The scaling is the Commons' adaptation; the paper scales nothing.
 This is a look-ahead in the feature scale only, with no target leak, and it is immaterial:
 - fitting on the history before 2024-02-01 instead moves frequency's gap from 2.03 to 2.02;
 - the std. devs. of cores and nodes would be about 16% smaller, still negligible next to
   job-name distances.
 
 A deployment would fit the scaling on history alone. See
-[UoPC reproduction](benchmarking/uopc.md#known-deviations).
+[UoPC reproduction](benchmarking/uopc.md#known-deviations-from-the-paper).
 
 ## Note — on macOS, torch and XGBoost crash in one process
 

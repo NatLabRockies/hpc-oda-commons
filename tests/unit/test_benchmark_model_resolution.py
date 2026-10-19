@@ -809,7 +809,7 @@ def test_benchmark_uopc_paper_reproduction_routing(
             test_start: str,
             theta: int,
             k: int,
-            node_count: str = "allocated",
+            node_count: str = "requested",
             max_alloc_ratio: float | None = None,
             features: str = "balanced",
             metric_defs: list[dict[str, object]] | None = None,
@@ -820,9 +820,9 @@ def test_benchmark_uopc_paper_reproduction_routing(
             assert test_start == "2024-02-01"
             assert theta == 500
             assert k == 5
-            # A recipe without the #222 keys gets the paper's data and target, and the
-            # default features.
-            assert (node_count, max_alloc_ratio, features) == ("allocated", None, "balanced")
+            # A recipe without the #222 keys gets the defaults: all jobs, per requested
+            # node, balanced features (#228).
+            assert (node_count, max_alloc_ratio, features) == ("requested", None, "balanced")
             _ = metric_defs
             _ = verbose
             _ = capture_artifacts
@@ -897,7 +897,7 @@ def test_run_cutoff_uopc_sensitivity_exposes_summary_metrics(
             test_start="2024-02-01",
             theta_values=(50, 100, 200, 500, 1000, 2000, 5000),
             k_values=(5, 10, 20, 50),
-            node_count="allocated",
+            node_count="requested",
             max_alloc_ratio=None,
             features="balanced",
             metric_defs=None,
@@ -1024,7 +1024,7 @@ def test_run_cutoff_uopc_sweep_headline_is_the_declared_cell(
     assert payload["run_config"] == {
         "protocol": "paper_sensitivity",
         "test_start": "2024-02-01",
-        "node_count": "allocated",
+        "node_count": "requested",
         "max_alloc_ratio": None,
         "features": "balanced",
         "theta_values": [50],

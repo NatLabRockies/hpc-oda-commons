@@ -25,9 +25,10 @@ split on NLR Eagle and Kestrel: [Power prediction on Eagle and Kestrel](power-nl
   training jobs, as the rolling baseline would, and reports how many in `rows_fallback`.
 
 This differs from the [UoPC paper reproduction](uopc.md) on purpose: the paper scores each
-job against everything its user finished before submission (an online protocol), and
-divides by allocated nodes, while here every model, UoPC included, retrains once per day
-on the previous 60 days and divides by requested nodes.
+job against everything its user finished before submission (an online protocol), while here
+every model, UoPC included, retrains once per day on the previous 60 days. Both divide by
+requested nodes. The paper divides by allocated nodes, which F-DATA pads
+([why we don't](uopc.md#nodes-requested-not-allocated)).
 
 ## Results
 

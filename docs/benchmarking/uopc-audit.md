@@ -7,8 +7,13 @@
 - item 4, scoped down to feature modes ([results](uopc.md#feature-modes)). It does not
   include the paper-style embedding.
 
-`balanced` became UoPC's default, with the paper-reproduction recipes pinned to `zscore`.
-Item 5, the F-DATA job-name ablation, was dropped as unnecessary for now.
+`balanced` became UoPC's default (#227). Item 5, the F-DATA job-name ablation, was dropped
+as unnecessary for now.
+
+**Follow-up ([#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228)):** our
+reproduction now uses only choices we can defend: per requested node, `balanced` features,
+all jobs. The authors' setup (per allocated node, `zscore`) is kept as a labelled comparison
+recipe. See [Our choices, and why](uopc.md#our-choices-and-why).
 
 This note checks the Commons' UoPC against its sources, prompted by the question "did we
 reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
@@ -120,11 +125,14 @@ their `nnuma` differently. The JPCP code reads a non-Zenodo export (`CR-STR-*` c
 UNIX timestamps), which supports this. We can't tell which.
 
 **Consequences:**
-- The reproduction's target definition is right.
-- The reproduction scores ~150k jobs (9.4% of its test set) the paper apparently did not.
+- Dividing by allocated nodes matches the paper, but on the public files it gives ~150k jobs
+  a ~2 W target the paper's data apparently never had. Since #228 our reproduction divides
+  by requested nodes, and the paper's divisor is kept only for a labelled comparison.
+- The paper-setup comparison scores ~150k jobs (9.4% of its test set) the paper apparently did not.
   They are easy to predict, because neighbours are padded the same way, so they inflate R².
   Excluding the 48× jobs gives 10.25% / 0.762 on average power and 10.51% / 0.746 on peak.
-- The benchmark's per-requested-node numbers are on a different target from both papers.
+- Our numbers (benchmark and reproduction) are on a different target from both papers, by
+  design.
 
 ## Deviation 2 — features and encoding
 

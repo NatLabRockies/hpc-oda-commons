@@ -162,19 +162,25 @@ def test_balanced_is_the_default() -> None:
     assert prepared.features_mode == "balanced"
 
 
-def test_paper_reproduction_recipes_pin_zscore() -> None:
-    """Their published results use zscore, so they stay reproducible after the switch."""
+def test_bundled_cutoff_recipes_say_their_features() -> None:
+    """Our recipes use balanced; only the paper-comparison ones pin zscore (#228)."""
     from pathlib import Path
 
     import hpc_oda_commons
     from hpc_oda_commons.benchmark.recipes import load_recipe
 
-    recipes = sorted(
-        (Path(hpc_oda_commons.__file__).parent / "recipes" / "job-power").glob("uopc_paper_*.yml")
-    )
-    assert len(recipes) == 5
-    for recipe in recipes:
-        assert load_recipe(recipe)["split"]["uopc_features"] == "zscore", recipe.name
+    root = Path(hpc_oda_commons.__file__).parent / "recipes" / "job-power"
+    features = {
+        recipe.name: load_recipe(recipe)["split"]["uopc_features"]
+        for recipe in sorted(root.glob("uopc_paper_*.yml"))
+    }
+    assert features == {
+        "uopc_paper_reproduction.yml": "balanced",
+        "uopc_paper_reproduction_paper_setup.yml": "zscore",
+        "uopc_paper_reproduction_unpadded.yml": "zscore",
+        "uopc_paper_sensitivity.yml": "balanced",
+        "uopc_paper_sensitivity_smoke.yml": "balanced",
+    }
 
 
 def test_unknown_mode_is_an_error() -> None:

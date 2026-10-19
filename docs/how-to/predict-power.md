@@ -59,7 +59,8 @@ allocated nodes. For F-DATA it is the **requested** nodes (`num_nodes_req`): Fug
 allocated count (`nnuma`) can be padded past the nodes a job runs on, while its power sums
 only those. In the UoPC test months, 137k jobs (8.6%) request 1 node and 48 cores but show
 `nnuma` = 48, and their ~91 W would read as 1.9 W per allocated node. The UoPC paper
-divides by `nnuma`, so the [paper reproduction](../benchmarking/uopc.md) still does.
+divides by `nnuma`. Our [paper reproduction](../benchmarking/uopc.md#nodes-requested-not-allocated)
+divides by requested nodes, and keeps the paper's divisor only for comparison.
 
 ## Datasets with power
 

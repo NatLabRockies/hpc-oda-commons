@@ -3,7 +3,8 @@
 # files hold ~150k test jobs allocated 24x or 48x the nodes they requested (~2-4 W per
 # allocated node). max_alloc_ratio: 12 drops every job allocated more than 12x its request,
 # from history and test, to match the paper's apparent data. Otherwise identical to
-# uopc_paper_reproduction.yml. Results: docs/benchmarking/uopc.md.
+# uopc_paper_reproduction_paper_setup.yml: a comparison with the paper, not our result.
+# Results: docs/benchmarking/uopc.md.
 #
 # Prepare the data first (5 monthly files, ~3.9 GB):
 #   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml
@@ -35,8 +36,9 @@ metrics:
 
 split:
   method: cutoff
-  # The published reproduction results use zscore features; balanced is the model
-  # default since #222 (docs/benchmarking/uopc.md#feature-modes).
+  # The authors' setup, for comparison with the paper only (#228): per allocated node, as
+  # the paper divides, with the zscore features the earlier reproduction used.
+  node_count: allocated
   uopc_features: zscore
   test_start: "2024-02-01"
   theta: 500

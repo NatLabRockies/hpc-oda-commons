@@ -8,6 +8,13 @@ far the numbers can be trusted. Tracking issue:
 [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125). The
 [UoPC audit](uopc-audit.md) checks it against the full paper and the authors' code.
 
+Our reproduction keeps the paper's protocol but uses only choices we can defend, even where
+the authors' differ ([#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228)). It
+divides power by **nodes requested**, not allocated, and uses **balanced** features
+([Our choices, and why](#our-choices-and-why)). The authors' exact setup runs separately, as a
+labelled [comparison with the paper](#comparison-with-the-paper-the-authors-setup), not as our
+result.
+
 Job-power prediction is outside the runtime benchmark ([methodology](methodology.md)); this
 is a one-model study, not a leaderboard.
 
@@ -18,21 +25,77 @@ is a one-model study, not a leaderboard.
 | | `fixed` — the Commons adaptation | `cutoff` — the paper protocol |
 |---|---|---|
 | Recipe | `job-runtime/uopc_maxpcon.yml` | `job-power/uopc_paper_reproduction.yml`, `uopc_paper_sensitivity.yml` |
-| Target | `maxpcon` (W, whole job) | `avgpcon` **and** `maxpcon` divided by allocated nodes |
-| Features | job name (label-encoded), cores and nodes requested | F-DATA's job `embedding` plus z-scored cores, nodes and CPU frequency requested (an adaptation; see [Known deviations](#known-deviations)) |
+| Target | `maxpcon` (W, whole job) | `avgpcon` **and** `maxpcon` per **requested** node (the paper: per allocated node) |
+| Features | job name (label-encoded), cores and nodes requested | F-DATA's job `embedding` + `balanced` log2 nodes and frequency (the paper: one embedded string) |
 | Predictor | kNN regressor (mean of the k neighbours) | kNN **classifier** (majority vote), as in the authors' tool, on targets rounded to whole watts |
 | Test set | last 20% of jobs by end time | every job submitted on or after `test_start` |
 | History for a test job | every earlier job by that user, by end time | that user's jobs that **finished before it was submitted** |
 | Context | newest `theta` = 50 | newest `theta` = 500 |
 | Data | a hand-placed raw Fugaku file | `dataset.job_power.fdata_fugaku_uopc` via `datasets prepare` |
 
-The adaptation is unchanged by this work; the paper protocol is new. A third mode,
-`split.method: rolling`, scores the same paper model on the shared rolling windows next to
-every other model ([Power prediction benchmark](power.md)). That mode reads the prepared
-`avgpcon_per_node`/`maxpcon_per_node` columns, per requested node, like every other model.
-The paper protocol computes its own targets per allocated node (`nnuma`), as the paper does,
-so the two modes' numbers are not on the same target
-([why](../known-issues.md#note--f-datas-allocated-node-counts-can-be-padded)).
+The adaptation is unchanged by this work. A third mode, `split.method: rolling`, scores the
+same model on the shared rolling windows next to every other model
+([Power prediction benchmark](power.md)). It uses the same target and features as the
+reproduction, so their numbers differ only by protocol.
+
+## Our choices, and why
+
+### Nodes requested, not allocated
+
+**The paper divides by allocated nodes** (F-DATA's `nnuma`); its text and figures both show
+it. **We divide by requested nodes** (`nnumr`), because on the public F-DATA files the
+allocated count is often padded past the nodes a job ran on. Power is summed over only the
+nodes the job ran on (all five months, 2.93M jobs):
+
+| | Jobs with `nnuma` > requested (727,508, 24.8%) |
+|---|---:|
+| Nodes the job ran on (`nnumu`) = requested | 95.3% |
+| Nodes the job ran on = allocated | 0.0% |
+| Median W per requested / used / allocated node | 91.8 / 91.9 / **1.9** |
+| Share below 20 W per allocated node | 71.6% |
+
+- **The clearest case:** 410,740 jobs request 1 node and 48 cores, run on 1 node and draw
+  ~92 W, but record `nnuma` = 48. Per allocated node they read 1.9 W, which no Fugaku node
+  draws even idle. Per requested node they read ~92 W, like every other job.
+- **Requested nodes are the right count:**
+  - they match the nodes a job ran on for ~96% of all jobs;
+  - they are known at submission, so a per-node prediction × requested nodes gives the
+    job's total before it runs;
+  - they are the divisor every other model in the Commons uses ([power.md](power.md)).
+- **Dividing by allocated nodes would flatter the result.** The padded jobs become an
+  isolated, easy-to-predict cluster at ~2 W. On the same jobs and features, that lifts R²
+  from 0.738 to 0.837. It also wrecks percentage baselines: the per-user mean scores 60%
+  MAPE per allocated node against 14% per requested node
+  ([Variants](#variants-padded-jobs-and-node-count)).
+- **We keep these jobs.** They are real production jobs. Dividing by requested nodes gives
+  them their real ~90 W per node; dropping them would make the test easier.
+- **It isn't the paper's data either.** The paper's figures show no jobs below ~10 W per
+  allocated node, so its export appears to lack these jobs. Dividing the public files by
+  allocated nodes therefore isn't the paper's setup
+  ([Known deviations](#known-deviations-from-the-paper)).
+
+### Balanced features
+
+F-DATA's `embedding` is the paper's encoder (all-MiniLM-L6-v2) over the original user, job
+name and environment ([F-DATA's generation script](https://github.com/francescoantici/F-DATA/blob/main/generation_scripts/generate_derived_features.py)). It does not include cores, nodes or frequency, so UoPC adds
+them as numbers.
+- **The earlier `zscore` scaling** let frequency decide every neighbour (its two values sit
+  2.03 apart, more than any two job names) and made the node count invisible: a few
+  whole-machine jobs inflate its spread, so 1 → 16 nodes added 0.024.
+- **`balanced`** adds `0.2 × log2(nodes)` and frequency scaled to 0–0.8, each about one
+  typical job-name distance (0.84). Frequency's range is fitted on history only.
+- It scored best everywhere tried ([Feature modes](#feature-modes)).
+
+### What we keep from the paper
+
+- the test set (jobs submitted from 2024-02-01);
+- the history rule (the user's jobs finished before submission, newest θ = 500);
+- k = 5, and skipping users with fewer than k such jobs;
+- kNN-classifier voting. Per-node power is rounded to whole watts so it can be a class
+  label; the rounding is ours.
+
+θ = 500 and k = 5 were chosen on the authors' setup. A rerun of the sweep on our settings is
+pending ([#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228)).
 
 ## Running it
 
@@ -40,9 +103,21 @@ so the two modes' numbers are not on the same target
 # ~3.9 GB: the five F-DATA monthly files for Dec 2023 - Apr 2024
 hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml
 
+# Our reproduction, and the theta x k sweep, on our settings
 hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml
 hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity.yml
+
+# The authors' setup, for comparison with the paper only
+hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction_paper_setup.yml
+hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction_unpadded.yml
 ```
+
+| Recipe | Node count | Features | Jobs |
+|---|---|---|---|
+| `uopc_paper_reproduction.yml` (**ours**) | requested | `balanced` | all |
+| `uopc_paper_sensitivity.yml` | requested | `balanced` | all |
+| `uopc_paper_reproduction_paper_setup.yml` | allocated | `zscore` | all |
+| `uopc_paper_reproduction_unpadded.yml` | allocated | `zscore` | without jobs allocated >12× their request |
 
 The reproduction writes `predictions.parquet`: one row per scored job with both targets'
 truth and prediction, the two baselines' predictions, and the job's history and context
@@ -55,7 +130,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
 ## The protocol in detail
 
 - **Rows.** A job is usable when it has `avgpcon`, `maxpcon`, an `embedding`, submit and end
-  times, and at least one allocated node. Targets are watts per allocated node.
+  times, and a positive node count. Targets are watts per requested node (`node_count`;
+  `allocated` divides by `nnuma` instead).
 - **Test set.** Jobs submitted on or after `test_start` (2024-02-01), scored in submission
   order. Everything before the cutoff serves only as history.
 - **History.** For a test job, the same user's jobs whose end time is strictly before its
@@ -63,8 +139,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   than `k` such jobs is skipped (counted in `rows_skipped`).
 - **Context.** The newest `theta` jobs of that history, by end time.
 - **Prediction.** A `KNeighborsClassifier(k)` fitted on the context, with targets rounded
-  to whole watts as classes, as in the authors' implementation. Average and peak power are
-  fitted separately.
+  to whole watts as classes, as in the authors' tool. Average and peak power are fitted
+  separately.
 - **Baselines.** For the same scored jobs: the mean of the user's whole eligible history
   (per-user mean), and the mean of every job anyone finished before submission (global
   mean). Both use only past information.
@@ -74,8 +150,10 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   cell also reports a kNN-**regressor** prediction (the mean of the same neighbours) as an
   ablation of the classifier vote. The headline is the classifier at θ = 500, k = 5.
 
-## Known deviations
+## Known deviations from the paper
 
+- **Node count (deliberate).** We divide by requested nodes; the paper divides by allocated
+  nodes. See [Nodes requested, not allocated](#nodes-requested-not-allocated).
 - **Features are an adaptation.** The paper describes a job by the string "job name, cores
   requested, nodes requested, requested frequency, environment". It leaves out the user,
   since each model is per-user, and embeds the string with all-MiniLM-L6-v2. The public job
@@ -99,8 +177,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
       similar job names.
   - The scaling is the Commons' choice (#203); the paper scales nothing. It does hold UoPC
     back: `split.uopc_features: balanced` scores better on every protocol and system tried
-    ([Feature modes](#feature-modes)). `balanced` is the model's default since #222. The
-    paper-reproduction recipes pin `zscore`, which the results on this page use.
+    ([Feature modes](#feature-modes)). `balanced` has been the default since #222, and our
+    reproduction uses it (#228). `zscore` remains only in the paper-comparison recipes.
   - **We don't embed F-DATA ourselves.** The paper's string can't be rebuilt from public
     data: the job names and environments are anonymised IDs (`jnam_2111729`), which would
     carry no name meaning and would make unrelated IDs look alike.
@@ -108,7 +186,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   the padded jobs, the best features reach R² 0.766 and 0.753, against the paper's 0.80 and
   0.79. The paper's features rely on the real job names, which public F-DATA doesn't have,
   so the gap may not be closable on public data.
-- **Feature scaling sees the test period.** The z-scores use the whole usable dataset,
+- **`zscore` scaling sees the test period.** This applies only to the paper-comparison
+  recipes; `balanced` fits frequency's range on history only. The z-scores use the whole usable dataset,
   test months included: a look-ahead in the feature scale only, with no target leak.
   Fitting on the history before 2024-02-01 instead would barely change anything:
   - frequency's gap would be 2.02 rather than 2.03;
@@ -121,7 +200,7 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   whole watts first; the rounding is ours. The regressor ablation in the sweep shows what
   voting costs.
 - **The paper's data lacks the most padded jobs.** The paper divides by allocated nodes, as
-  this protocol does. Its Fig. 4 shows the same small bars at ~11, 15 and 22 W that our
+  the paper-setup recipe does. Its Fig. 4 shows the same small bars at ~11, 15 and 22 W that our
   test period has per allocated node, from jobs allocated 4–8× the nodes they requested.
   But its lowest bar is ~11 W. Our test period has 150,015 jobs below 5 W: 139,074 with
   1 node requested and `nnuma` = 48, and 10,941 at 24×. So this protocol scores ~150k jobs
@@ -158,11 +237,27 @@ A run counts as a reproduction if it lands within a few points of UoPC's row.
 
 ## Results
 
-Run on 2026-10-16 on an Apple M3 Max (14 cores, 38 GB) with the bundled recipes, at commit
-76f4f0f. The reproduction took 28 minutes (about 1 ms per scored job, single-threaded) and
-peaked at ~20 GB resident.
+### Our reproduction (θ = 500, k = 5)
 
-### Paper reproduction (θ = 500, k = 5)
+**Pending.** `uopc_paper_reproduction.yml`, per requested node with `balanced` features, has
+not been run yet ([#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228)). It
+takes ~30 minutes.
+
+The closest results so far, on all jobs per requested node:
+- with `zscore` features, 8.65% / R² 0.738 on average power and 8.91% / 0.718 on peak
+  ([Variants](#variants-padded-jobs-and-node-count));
+- `balanced` scored better than `zscore` in every other setting tried
+  ([Feature modes](#feature-modes)).
+
+### Comparison with the paper: the authors' setup
+
+The results below use the authors' setup, `uopc_paper_reproduction_paper_setup.yml`: per
+allocated node, with `zscore` features. They were the published headline until #228. They
+show that the method reproduces, but they aren't our result.
+
+They ran on 2026-10-16 on an Apple M3 Max (14 cores, 38 GB) at commit 76f4f0f, as
+`uopc_paper_reproduction.yml` with those settings. The run took 28 minutes (about 1 ms per
+scored job, single-threaded) and peaked at ~20 GB resident.
 
 1,591,115 test jobs from 764 users were submitted on or after 2024-02-01. 1,587,516 were
 scored; 3,599 (0.23%) were skipped as cold starts, with fewer than k = 5 prior jobs by
@@ -220,6 +315,9 @@ several times. The Commons' own power targets divide by requested nodes instead
 ([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204)).
 
 ### Sensitivity sweep (θ × k)
+
+This sweep ran on the authors' setup (per allocated node, `zscore`), at 76f4f0f. A rerun on
+our settings is pending ([#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228)).
 
 The full grid took 2 h 15 min (7 to 51 minutes per θ, the most at θ = 5000) and peaked at
 ~17 GB resident. Each cell shows MAPE / R² on average power per allocated node.
@@ -313,30 +411,30 @@ What the grid shows:
 
 Two reruns separate what makes our numbers differ from the paper's and from the rolling
 benchmark ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222)). Each is
-the reproduction above with one setting changed:
+the authors' setup above with one setting changed:
 
 | Recipe | Changed setting | Jobs used | Test jobs | Scored |
 |---|---|---:|---:|---:|
-| `uopc_paper_reproduction.yml` | — | 2,930,414 | 1,591,115 | 1,587,516 |
+| `uopc_paper_reproduction_paper_setup.yml` | — | 2,930,414 | 1,591,115 | 1,587,516 |
 | `uopc_paper_reproduction_unpadded.yml` | `max_alloc_ratio: 12` | 2,488,780 | 1,443,390 | 1,439,792 |
-| `uopc_paper_reproduction_requested.yml` | `node_count: requested` | 2,930,414 | 1,591,115 | 1,587,516 |
+| per requested node (its recipe became the headline's node count in #228) | `node_count: requested` | 2,930,414 | 1,591,115 | 1,587,516 |
 
 They ran on 2026-10-19 at d1e11c8, ~32 minutes each, peaking at 12 and 16 GB.
 `max_alloc_ratio: 12` dropped 441,634 jobs from history and test: 410,740 allocated 48× their
-request, 30,855 at 24×, and 39 others.
+request, 30,855 at 24×, and 39 others. Every row below uses `zscore` features.
 
 | Target | Run | MAE | RMSE | MAPE | R² | Per-user mean MAPE / R² |
 |---|---|---:|---:|---:|---:|---:|
 | Average | Paper (Table I) | | | 10% | 0.80 | |
-| | Reproduction (per allocated node) | 6.36 | 16.14 | 9.93% | 0.837 | 60.27% / 0.771 |
+| | Authors' setup (per allocated node) | 6.36 | 16.14 | 9.93% | 0.837 | 60.27% / 0.771 |
 | | Unpadded (per allocated node) | 7.07 | 17.01 | **10.34%** | **0.751** | 23.02% / 0.693 |
 | | Per requested node | 6.30 | 15.97 | **8.65%** | **0.738** | 14.30% / 0.729 |
-| | Rolling benchmark UoPC (per requested node, [power.md](power.md)) | 8.01 | 18.13 | 11.36% | 0.660 | — |
+| | Rolling benchmark UoPC with `zscore` (per requested node) | 8.01 | 18.13 | 11.36% | 0.660 | — |
 | Peak | Paper (Table I) | | | 10% | 0.79 | |
-| | Reproduction | 6.72 | 17.77 | 10.17% | 0.826 | 61.77% / 0.769 |
+| | Authors' setup | 6.72 | 17.77 | 10.17% | 0.826 | 61.77% / 0.769 |
 | | Unpadded | 7.41 | 18.62 | **10.54%** | **0.737** | 23.81% / 0.686 |
 | | Per requested node | 6.67 | 17.56 | **8.91%** | **0.718** | 15.01% / 0.719 |
-| | Rolling benchmark UoPC | 8.60 | 20.04 | 11.73% | 0.629 | — |
+| | Rolling benchmark UoPC with `zscore` | 8.60 | 20.04 | 11.73% | 0.629 | — |
 
 What they show:
 
@@ -346,7 +444,7 @@ What they show:
   had lifted our R² above the paper's; without them it sits below. Better-balanced features
   narrow that gap but don't close it ([Feature modes](#feature-modes)).
 - **Dividing by requested nodes lowers MAPE and R² alike.** It scores the same jobs as the
-  reproduction. MAPE drops from 9.93% to 8.65% because the ~2 W padded targets, where a
+  authors' setup. MAPE drops from 9.93% to 8.65% because the ~2 W padded targets, where a
   small miss is a large percentage, become ~90 W. R² drops from 0.837 to 0.738 because
   those same jobs no longer form an easy, isolated cluster. The per-user mean's 60% MAPE
   falls to 14%, confirming that it came from the padded jobs.
@@ -370,7 +468,7 @@ rolling protocols ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issue
 
 | Mode | Features |
 |---|---|
-| `zscore` | the job embedding + z-scored cores, nodes and frequency requested (the paper-reproduction recipes, which pin it) |
+| `zscore` | the job embedding + z-scored cores, nodes and frequency requested (the paper-comparison recipes) |
 | `embedding` | the job embedding alone |
 | `balanced` (default since #222) | the embedding + `0.2 × log2(nodes requested)` + `0.8 × frequency scaled to [0, 1]` |
 
