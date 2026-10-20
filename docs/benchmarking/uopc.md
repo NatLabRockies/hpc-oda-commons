@@ -90,13 +90,14 @@ them as numbers.
 
 - the test set (jobs submitted from 2024-02-01);
 - the history rule (the user's jobs finished before submission, newest θ = 500);
-- k = 5, and skipping users with fewer than k such jobs;
+- skipping users with fewer than k such jobs;
 - kNN-classifier voting. Per-node power is rounded to whole watts so it can be a class
   label; the rounding is ours.
 
-θ = 500 and k = 5 were chosen on the authors' setup. On our settings the
-[sweep](#sensitivity-sweep-θ--k) confirms θ = 500; k = 10–20 would score about 0.4 points
-better than k = 5. We keep the paper's k = 5.
+The paper's k = 5 is not kept. Its θ = 500 and k = 5 were chosen on the authors' setup. On
+our settings the [sweep](#sensitivity-sweep-θ--k) confirms θ = 500 but puts k = 20 about 0.4
+points of MAPE ahead of k = 5, so we use **k = 20**, in this protocol and in the rolling
+benchmark. The paper-comparison recipes keep k = 5.
 
 ## Running it
 
@@ -149,7 +150,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   test job's neighbours are found once per θ, up to the largest k, and reused for every k.
   A cell scores only jobs with at least k prior jobs, so coverage falls as k grows. Each
   cell also reports a kNN-**regressor** prediction (the mean of the same neighbours) as an
-  ablation of the classifier vote. The headline is the classifier at θ = 500, k = 5.
+  ablation of the classifier vote. The headline is the classifier at θ = 500, k = 20 (the
+  paper-comparison recipes: k = 5).
 
 ## Known deviations from the paper
 
@@ -238,48 +240,58 @@ A run counts as a reproduction if it lands within a few points of UoPC's row.
 
 ## Results
 
-### Our reproduction (θ = 500, k = 5)
+### Our reproduction (θ = 500, k = 20)
 
-`uopc_paper_reproduction.yml`: per requested node, `balanced` features, all jobs. It ran on
-2026-10-19 on an Apple M3 Max (14 cores, 38 GB) at commit 8d914e7. It took 27 minutes.
+`uopc_paper_reproduction.yml`: per requested node, `balanced` features, k = 20, all jobs. It
+ran on 2026-10-20 on an Apple M3 Max (14 cores, 38 GB) at commit cd78524. It took 27
+minutes.
 
-1,591,115 test jobs from 764 users were submitted on or after 2024-02-01. 1,587,516 were
-scored; 3,599 (0.23%) were skipped as cold starts, with fewer than k = 5 prior jobs by
+1,591,115 test jobs from 764 users were submitted on or after 2024-02-01. 1,581,909 were
+scored; 9,206 (0.58%) were skipped as cold starts, with fewer than k = 20 prior jobs by
 their user.
 
 | Target (W per requested node) | Model | MAE | RMSE | MAPE | R² |
 |---|---|---:|---:|---:|---:|
-| Average (`avgpcon`) | **UoPC** | **6.11** | **15.50** | **8.29%** | **0.753** |
-| | Per-user mean | 9.57 | 16.24 | 14.30% | 0.729 |
-| | Global mean | 25.85 | 31.25 | 37.32% | −0.002 |
-| Peak (`maxpcon`) | **UoPC** | **6.39** | **16.94** | **8.47%** | **0.737** |
-| | Per-user mean | 10.25 | 17.54 | 15.01% | 0.719 |
-| | Global mean | 26.24 | 33.07 | 36.34% | −0.001 |
+| Average (`avgpcon`) | **UoPC** | **5.71** | **14.98** | **7.82%** | **0.770** |
+| | Per-user mean | 9.53 | 16.20 | 14.27% | 0.731 |
+| | Global mean | 25.84 | 31.25 | 37.30% | −0.002 |
+| Peak (`maxpcon`) | **UoPC** | **6.00** | **16.41** | **8.06%** | **0.754** |
+| | Per-user mean | 10.21 | 17.48 | 14.98% | 0.720 |
+| | Global mean | 26.23 | 33.06 | 36.31% | −0.001 |
 
 **Against the paper (10% / 0.80 and 10% / 0.79).** MAPE is lower and R² is lower. The
 target is not the paper's: per requested node, not per allocated node, so the two can't be
-compared exactly. With `zscore` features, the same target scores 8.65% / 0.738 and 8.91% /
-0.718 ([Variants](#variants-padded-jobs-and-node-count)), so `balanced` gains 0.4 points of
-MAPE and 0.02 of R².
+compared exactly.
 
-**Padded jobs no longer matter.** Per requested node, the 147,719 scored jobs allocated more
+**What each of our choices adds**, on this target and all jobs:
+
+| Features, k | Average MAPE / R² | Peak MAPE / R² |
+|---|---:|---:|
+| `zscore`, k = 5 ([Variants](#variants-padded-jobs-and-node-count)) | 8.65% / 0.738 | 8.91% / 0.718 |
+| `balanced`, k = 5 (run at 8d914e7) | 8.29% / 0.753 | 8.47% / 0.737 |
+| **`balanced`, k = 20** | **7.82% / 0.770** | **8.06% / 0.754** |
+
+k = 20 also skips 5,607 more short-history jobs than k = 5. Those are hard jobs (about 20%
+MAPE), but too few to account for more than ~0.05 points of the gain.
+
+**Padded jobs no longer matter.** Per requested node, the 147,671 scored jobs allocated more
 than 12× their request have their real target, a median of 91.7 W. They are still easy to
 predict (1.1% MAPE): they are uniform one- and two-node jobs from 11 users. Without them
-UoPC scores 9.02% / 0.753 on average power and 9.21% / 0.738 on peak. MAPE rises because
+UoPC scores 8.51% / 0.769 on average power and 8.75% / 0.754 on peak. MAPE rises because
 easy jobs are gone, but R² doesn't move. Per allocated node, excluding the padded jobs
 lowered R² from 0.837 to 0.762 ([padded allocations](#comparison-with-the-paper-the-authors-setup)).
 
-The median absolute percentage error is 1.6%, and 86.9% of jobs are within 10%. As with the
-authors' setup, the mean is carried by a tail: the 90th percentile is 18%.
+The median absolute percentage error is 1.5%, and 88.1% of jobs are within 10%. As with the
+authors' setup, the mean is carried by a tail: the 90th percentile is 14%.
 
-**Cold starts and short histories.** 95.4% of scored jobs had a full θ = 500 context.
+**Cold starts and short histories.** 95.7% of scored jobs had a full θ = 500 context.
 Error falls as a user's history grows:
 
 | User's prior jobs | Jobs | UoPC MAPE | Per-user mean MAPE |
 |---|---:|---:|---:|
-| 5–49 | 13,623 | 19.7% | 23.1% |
-| 50–499 | 60,094 | 15.0% | 20.4% |
-| 500+ | 1,513,799 | 7.9% | 14.0% |
+| 20–49 | 8,016 | 20.8% | 22.9% |
+| 50–499 | 60,094 | 14.9% | 20.4% |
+| 500+ | 1,513,799 | 7.5% | 14.0% |
 
 ### Comparison with the paper: the authors' setup
 
@@ -349,9 +361,10 @@ several times. The Commons' own power targets divide by requested nodes instead
 ### Sensitivity sweep (θ × k)
 
 `uopc_paper_sensitivity.yml`, on our settings: per requested node, `balanced` features, all
-jobs. It ran on 2026-10-19 at 8d914e7. The full grid took 2 h 12 min (8 to 51 minutes per θ,
-the most at θ = 5000). Each cell shows MAPE / R² on average power per requested node; the
-paper's θ = 500, k = 5 and the best classifier cell are in bold.
+jobs. It ran on 2026-10-19 at 8d914e7, with k = 5 as the headline; the grid itself doesn't depend
+on the headline. The full grid took 2 h 12 min (8 to 51 minutes per θ, the most at
+θ = 5000). Each cell shows MAPE / R² on average power per requested node. The paper's
+θ = 500, k = 5 and ours, θ = 500, k = 20 (also the best classifier cell), are in bold.
 
 **Classifier** (the paper's predictor, a majority vote over rounded watts):
 
@@ -415,11 +428,11 @@ What the grid shows:
 
 - **θ = 500 still holds.** MAPE falls from 9.6% at θ = 50 to 7.7–8.3% for θ = 500–2000, and
   θ = 5000 is slightly worse again. Going past 500 gains nothing on average power.
-- **k = 5 no longer quite does.** At θ = 500, k = 10 and k = 20 score 7.73% / 0.775 and
-  7.70% / 0.776, against 8.12% / 0.757 at k = 5. The best classifier cell is θ = 500, k = 20.
-  On peak power, k = 20 is also ~0.3 points better than k = 5. The reproduction keeps the
-  paper's k = 5, so its headline is about 0.4 points of MAPE and 0.02 of R² short of the
-  best cell.
+- **k = 5 does not, so we use k = 20.** At θ = 500, k = 10 and k = 20 score 7.73% / 0.775
+  and 7.70% / 0.776, against 8.12% / 0.757 at k = 5. The best classifier cell is θ = 500,
+  k = 20. On peak power, k = 20 is also ~0.3 points better than k = 5. We chose k = 20 from
+  this grid alone and use it on every dataset, including Eagle and Kestrel, where it was not
+  tuned ([power-nlr.md](power-nlr.md)).
 - **The spike at k = θ/10 is gone.** On the authors' setup the classifier jumped to ~19% at
   (50, 5), (100, 10), (200, 20) and (500, 50), all from the padded users' ~2 W targets
   (below). Per requested node every row is smooth.
@@ -427,8 +440,9 @@ What the grid shows:
   in every cell (0.73–0.82 against 0.68–0.78). The two MAPEs are within 0.5 points either
   way. Without the ~2 W targets, the regressor's MAPE no longer climbs with k; its best R² is
   0.822, at θ = 2000, k = 50.
-- **The headline cell differs from the reproduction run** (8.12% against 8.29% at θ = 500,
-  k = 5) because of exact ties, as on the authors' setup (below): about 0.2 points.
+- **The grid's cells differ slightly from the reproduction runs** because of exact ties, as
+  on the authors' setup (below): 7.70% against 7.82% at θ = 500, k = 20, and 8.12% against
+  8.29% at k = 5.
 
 #### On the authors' setup
 
@@ -593,6 +607,9 @@ rolling protocols ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issue
 
 Each run below is a bundled recipe plus one `uopc_features` key. The variant recipes are not
 bundled. They ran on 2026-10-19 at 935e58a, and the `zscore` rows are the earlier results.
+Every run in this section uses k = 5, the default until #228; our results at k = 20 are in
+[Our reproduction](#our-reproduction-θ--500-k--20), [power.md](power.md) and
+[power-nlr.md](power-nlr.md).
 
 **Unpadded reproduction** (`uopc_paper_reproduction_unpadded.yml`, the paper's apparent data):
 
@@ -607,8 +624,8 @@ bundled. They ran on 2026-10-19 at 935e58a, and the `zscore` rows are the earlie
 | | `embedding` | 8.26 | 19.97 | 11.93% | 0.697 |
 | | **`balanced`** | **7.09** | **18.02** | **9.93%** | **0.753** |
 
-**Our reproduction** (`uopc_paper_reproduction.yml`, per requested node, all jobs; the
-`balanced` rows are [our reproduction](#our-reproduction-θ--500-k--5), run at 8d914e7):
+**Per requested node, all jobs** (`uopc_paper_reproduction.yml` at k = 5; the `balanced`
+rows ran at 8d914e7):
 
 | Target | Features | MAE | RMSE | MAPE | R² |
 |---|---|---:|---:|---:|---:|
