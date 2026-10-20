@@ -236,3 +236,143 @@ def test_a_table_without_the_target_is_rejected() -> None:
 
     with pytest.raises(CeilingError, match="runtime_seconds"):
         compute_ceiling(table, feature_fields=["submit_time"])
+
+
+# --- power targets and list-valued features (#230) -----------------------------------
+
+
+@pytest.mark.parametrize(
+    "list_type", [pa.list_(pa.float32()), pa.list_(pa.float32(), 2)], ids=["list", "fixed"]
+)
+def test_identical_embeddings_share_a_signature(list_type: pa.DataType) -> None:
+    emb = [[1.0, 0.0], [0.5, 0.5], [1.0, 0.0], None, [0.5, 0.5000001], None]
+    # Split across chunks, with a sliced chunk, as Arrow hands them over.
+    full = pa.array(emb, type=list_type)
+    column = pa.chunked_array([full.slice(0, 2), full.slice(2, 4)])
+    codes = signature_codes(pa.table({"embedding": column}), ["embedding"])
+
+    assert codes[0] == codes[2]  # equal vectors
+    assert codes[3] == codes[5] == 0  # nulls are one value
+    assert len({codes[0], codes[1], codes[4], codes[3]}) == 4  # any differing element splits
+
+
+def test_an_embedding_refines_the_signature() -> None:
+    """Jobs the shared fields can't tell apart, but whose embeddings differ, split up."""
+    rows = _jobs(4)
+    for i, row in enumerate(rows):
+        row["user"] = "u"
+        row["embedding"] = [float(i % 2), 0.0]
+    table = _table(rows)
+    assert len(set(signature_codes(table, ["user"]))) == 1
+    assert len(set(signature_codes(table, ["user", "embedding"]))) == 2
+
+
+def test_ceiling_bounds_the_named_target_and_records_it() -> None:
+    rows = _jobs(96)
+    for i, row in enumerate(rows):
+        row["avgpcon_per_node"] = None if i % 7 == 0 else float(90 + (i % 4))
+    result = compute_ceiling(
+        _table(rows),
+        feature_fields=["partition", "user"],
+        n_windows=4,
+        test_window_hours=6,
+        training_lookback_days=1,
+        target_field="avgpcon_per_node",
+        with_backoff=False,
+    )
+    assert result["target_field"] == "avgpcon_per_node"
+    # Jobs without a reading are never scored, as in the benchmark.
+    windowed = [
+        r
+        for r in rows
+        if r["submit_time"] >= rows[-1]["submit_time"].replace(minute=0) - dt.timedelta(hours=18)
+    ]
+    assert result["scored_rows"] == sum(r["avgpcon_per_node"] is not None for r in windowed)
+    assert 0 <= result["floor"]["mae"] < 4
+
+
+def _power_parquet(tmp_path) -> str:
+    import pyarrow.parquet as pq
+
+    rows = _jobs(96)
+    for i, row in enumerate(rows):
+        row["avgpcon_per_node"] = float(90 + (i % 4))
+        row["embedding"] = [float(i % 3), 1.0]
+        row["freq_req"] = 2200.0
+    path = tmp_path / "data.parquet"
+    pq.write_table(_table(rows), path)
+    return str(path)
+
+
+def test_cli_ceiling_on_a_power_target_with_extra_features(tmp_path) -> None:
+    import json
+
+    from typer.testing import CliRunner
+
+    from hpc_oda_commons.qst.cli import app
+
+    out = tmp_path / "power.ceiling.json"
+    args = ["datasets", "ceiling", _power_parquet(tmp_path), "--out", str(out)]
+    args += ["--target", "avgpcon_per_node", "--n-windows", "4", "--test-window-hours", "6"]
+    args += ["--training-lookback-days", "1", "--extra-feature", "embedding"]
+    result = CliRunner().invoke(app, [*args, "--extra-feature", "freq_req"])
+
+    assert result.exit_code == 0, result.output
+    written = json.loads(out.read_text())
+    assert written["target_field"] == "avgpcon_per_node"
+    assert {"embedding", "freq_req", "partition", "user"} <= set(written["feature_fields"])
+
+
+def test_cli_ceiling_refuses_the_target_as_a_feature(tmp_path) -> None:
+    from typer.testing import CliRunner
+
+    from hpc_oda_commons.qst.cli import app
+
+    args = ["datasets", "ceiling", _power_parquet(tmp_path), "--target", "avgpcon_per_node"]
+    result = CliRunner().invoke(app, [*args, "--extra-feature", "avgpcon_per_node"])
+    assert result.exit_code == 1
+    assert "cannot also be a feature" in result.output
+
+
+def test_equal_embeddings_match_across_chunks_with_and_without_null_elements() -> None:
+    """Arrow returns float64 for a chunk with a null element and float32 otherwise."""
+    with_null = pa.array([[1.0, 0.0], [None, 2.0]], type=pa.list_(pa.float32()))
+    without = pa.array([[1.0, 0.0]], type=pa.list_(pa.float32()))
+    codes = signature_codes(
+        pa.table({"embedding": pa.chunked_array([with_null, without])}), ["embedding"]
+    )
+    assert codes[0] == codes[2]
+    assert codes[1] != codes[0]
+
+
+def test_signature_codes_agree_on_a_subset_of_rows() -> None:
+    """The feature-cost pass recodes a taken subset; it must group rows exactly the same."""
+    emb = pa.chunked_array(
+        [
+            pa.array([[1.0, None], [1.0, 0.0]], type=pa.list_(pa.float32())),
+            pa.array([[1.0, 0.0], [2.0, 0.0], [1.0, None]], type=pa.list_(pa.float32())),
+        ]
+    )
+    table = pa.table({"embedding": emb})
+    rows = np.array([0, 2, 3, 4])
+    full = signature_codes(table, ["embedding"])[rows]
+    taken = signature_codes(table.take(pa.array(rows)), ["embedding"])
+    assert len(np.unique(full)) == len(np.unique(taken)) == len(np.unique(full * 100 + taken))
+
+
+def test_feature_costs_are_never_negative() -> None:
+    """Dropping a feature merges groups, so a floor without it can only be higher."""
+    rows = _jobs(96)
+    for i, row in enumerate(rows):
+        row["avgpcon_per_node"] = float(90 + (i * 7) % 11)
+        row["embedding"] = [float(i % 4), 0.0]
+    result = compute_ceiling(
+        _table(rows),
+        feature_fields=["embedding", "partition", "user"],
+        n_windows=4,
+        test_window_hours=6,
+        training_lookback_days=1,
+        target_field="avgpcon_per_node",
+        with_backoff=False,
+    )
+    assert all(c["cost"] >= 0 for c in result["feature_cost"])

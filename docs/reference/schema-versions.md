@@ -47,6 +47,7 @@ Optional fields and enum values have been added to v0.1.0 schemas in place, as b
 - `oda.mapping.v0.1.0`: field options `null_values` (#206) and `null_when` (#209).
 - `oda.recipe.v0.1.0`: `split.node_count` (`allocated` | `requested`) and `split.max_alloc_ratio`, both for `method: cutoff` only, and `split.uopc_features` (`zscore` | `embedding` | `balanced`) for `model.job_power_uopc` under `cutoff` or `rolling` (#222).
 - `oda.result.v0.1.0`: `provenance.code.code_changed_during_run`, written by `hpc-oda benchmark` (#215). `provenance.code` already allowed extra fields, so the schema file is unchanged.
+- `oda.ceiling.v0.1.0`: `target_field`, the column the floor bounds; absent means `runtime_seconds` (#230).
 - Semantics, not shape: a recipe's shared metric `target` is now the column the model predicts, and a model that cannot predict it fails the run (#204). Every bundled recipe already named its model's target.
 
 Schema IDs follow the pattern `oda.<type>.v<MAJOR>.<MINOR>.<PATCH>`. Schema files are stored as JSON Schema (Draft 2020-12) under `src/hpc_oda_commons/schemas/oda/`.

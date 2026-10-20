@@ -382,6 +382,17 @@ def datasets_ceiling(
     dataset_id: Annotated[
         str | None, typer.Option("--dataset-id", help="Label recorded on the analysis.")
     ] = None,
+    target: Annotated[
+        str, typer.Option("--target", help="Column the floor bounds, e.g. avgpcon_per_node.")
+    ] = "runtime_seconds",
+    extra_feature: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--extra-feature",
+            help="A column some benchmarked model reads beyond the shared allowlist (repeatable), "
+            "e.g. embedding. The floor bounds a model only if its signature holds every input.",
+        ),
+    ] = None,
 ) -> None:
     """Compute the minimum error any submit-time predictor could achieve on this table.
 
@@ -395,17 +406,23 @@ def datasets_ceiling(
     from datetime import datetime, timezone
 
     from hpc_oda_commons.kernel.validate import validate_json
-    from hpc_oda_commons.models.feature_policy import RUNTIME_PREDICTION_FEATURE_FIELDS
+    from hpc_oda_commons.models.feature_policy import feature_allowlist
 
     stem = dataset_id.split(".")[-1] if dataset_id else table_path.parent.name
     table = pq.read_table(table_path)
     try:
+        fields = sorted(feature_allowlist(extra_feature or (), target=target))
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+    try:
         result = compute_ceiling(
             table,
-            feature_fields=sorted(RUNTIME_PREDICTION_FEATURE_FIELDS),
+            feature_fields=fields,
             n_windows=n_windows,
             test_window_hours=test_window_hours,
             training_lookback_days=training_lookback_days,
+            target_field=target,
         )
     except CeilingError as exc:
         console.print(f"[red]Cannot analyse {table_path}: {exc}[/red]")
@@ -420,9 +437,12 @@ def datasets_ceiling(
     out_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
 
     fl, sizes = result["floor"], result["floor"]["group_sizes"]
+    # Runtime floors are thousands of seconds; power floors are a few watts per node.
+    places = 0 if fl["mae"] >= 100 else 2
     console.print(f"[bold]{result['dataset_id']}[/bold]: {result['scored_rows']:,} scored rows")
     console.print(
-        f"  floor  MAE [green]{fl['mae']:,.0f}[/green]  RMSE [green]{fl['rmse']:,.0f}[/green]  "
+        f"  floor  MAE [green]{fl['mae']:,.{places}f}[/green]  "
+        f"RMSE [green]{fl['rmse']:,.{places}f}[/green]  "
         f"over {fl['signatures']:,} signatures"
     )
     console.print(
@@ -439,7 +459,7 @@ def datasets_ceiling(
         best = cm["best_lookback"]
         s = cm["sweep"][best]
         console.print(
-            f"  causal memorization best at [cyan]{best}[/cyan]: MAE {s['mae']:,.0f} "
+            f"  causal memorization best at [cyan]{best}[/cyan]: MAE {s['mae']:,.{places}f} "
             f"(coverage {s['coverage'] * 100:.0f}%)"
         )
     console.print(f"  → {out_path}")

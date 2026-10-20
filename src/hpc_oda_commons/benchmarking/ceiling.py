@@ -65,9 +65,48 @@ def _column_codes(column: pa.ChunkedArray) -> np.ndarray:
     Nulls are a value here, not missing data: two jobs that both omitted a field are
     indistinguishable in exactly the way this analysis is about.
     """
+    if pa.types.is_list(column.type) or pa.types.is_fixed_size_list(column.type):
+        return _list_column_codes(column)
     encoded = pc.dictionary_encode(column.combine_chunks())
     idx = encoded.indices.fill_null(-1).to_numpy(zero_copy_only=False)
     return idx.astype(np.int64) + 1
+
+
+def _list_column_codes(column: pa.ChunkedArray) -> np.ndarray:
+    """Codes for a list-valued column, such as a job embedding: equal lists, equal codes.
+
+    Arrow cannot dictionary-encode lists, so each row's values are hashed as raw bytes and
+    the hashes compacted. Two embeddings are the same feature value only when every element
+    is identical, which is what "indistinguishable" means for a model that reads them. Nulls
+    get code 0, as elsewhere.
+    """
+    hashes = np.zeros(len(column), dtype=np.int64)
+    valid = np.zeros(len(column), dtype=bool)
+    row = 0
+    for chunk in column.chunks:
+        if pa.types.is_fixed_size_list(chunk.type):
+            width = chunk.type.list_size
+            offsets = np.arange(chunk.offset, chunk.offset + len(chunk) + 1) * width
+        else:
+            offsets = chunk.offsets.to_numpy(zero_copy_only=False).astype(np.int64)
+        # A chunk is often a slice of a much larger array, and .values ignores the slice, so
+        # convert only this chunk's span. One dtype for every chunk: Arrow hands back float64
+        # for a span holding any null element and the stored type otherwise, and equal
+        # vectors must hash equally.
+        first, last = int(offsets[0]), int(offsets[-1])
+        values = chunk.values.slice(first, last - first).to_numpy(zero_copy_only=False)
+        values = values.astype(np.float64, copy=False)
+        offsets = offsets - first
+        nulls = chunk.is_null().to_numpy(zero_copy_only=False)
+        for i in range(len(chunk)):
+            if not nulls[i]:
+                hashes[row + i] = hash(values[offsets[i] : offsets[i + 1]].tobytes())
+                valid[row + i] = True
+        row += len(chunk)
+    codes = np.zeros(len(column), dtype=np.int64)
+    if valid.any():
+        codes[valid] = np.unique(hashes[valid], return_inverse=True)[1].astype(np.int64) + 1
+    return codes
 
 
 def signature_codes(table: pa.Table, fields: list[str]) -> np.ndarray:
@@ -76,11 +115,15 @@ def signature_codes(table: pa.Table, fields: list[str]) -> np.ndarray:
     Combined pairwise and re-compacted at each step, so the code space stays bounded by the
     row count instead of by the product of cardinalities.
     """
-    if not fields:
-        return np.zeros(table.num_rows, dtype=np.int64)
-    codes = _column_codes(table.column(fields[0]))
-    for name in fields[1:]:
-        nxt = _column_codes(table.column(name))
+    return _combine_codes([_column_codes(table.column(name)) for name in fields], table.num_rows)
+
+
+def _combine_codes(per_field: list[np.ndarray], n_rows: int) -> np.ndarray:
+    """Dense codes for the combination of already-coded fields (see ``signature_codes``)."""
+    if not per_field:
+        return np.zeros(n_rows, dtype=np.int64)
+    codes = per_field[0]
+    for nxt in per_field[1:]:
         combined = codes * (int(nxt.max()) + 1) + nxt
         codes = np.unique(combined, return_inverse=True)[1].astype(np.int64)
     return codes
@@ -344,17 +387,25 @@ def compute_ceiling(
     if scored.size == 0:
         raise CeilingError("no scored rows: every rolling test window is empty")
 
-    full = signature_codes(table, present)
+    # Each field is coded once over the whole table and every signature is combined from
+    # those codes. Recoding a taken subset instead is slower and, for a list column such as
+    # an embedding past 4 GiB of values, wrong: pyarrow 23's take returns other rows'
+    # values there (see docs/known-issues.md).
+    field_codes = {f: _column_codes(table.column(f)) for f in present}
+
+    def codes_for(fields: list[str]) -> np.ndarray:
+        return _combine_codes([field_codes[f] for f in fields], table.num_rows)
+
+    full = codes_for(present)
     floor = grouped_floor(y[scored], full[scored])
 
     # Per-feature information cost: how much the floor rises without that feature. This
     # also orders the backoff -- cheapest first -- so the fallback gives up least.
-    scored_table = table.take(pa.array(scored))
     y_scored = y[scored]
     costs = []
     for f in present:
         others = [x for x in present if x != f]
-        alt = grouped_floor(y_scored, signature_codes(scored_table, others)) if others else None
+        alt = grouped_floor(y_scored, codes_for(others)[scored]) if others else None
         rise = (alt.mae - floor.mae) if alt else float("nan")
         costs.append({"feature": f, "floor_mae_without": alt.mae if alt else None, "cost": rise})
     costs.sort(key=lambda c: c["cost"] if c["cost"] == c["cost"] else -1.0)
@@ -363,7 +414,7 @@ def compute_ceiling(
     codes_by_level = [full]
     for k in range(1, min(4, len(present))):
         kept = [f for f in present if f not in set(backoff_order[:k])]
-        codes_by_level.append(signature_codes(table, kept) if kept else np.zeros_like(full))
+        codes_by_level.append(codes_for(kept) if kept else np.zeros_like(full))
 
     sweep = {}
     for label, days in lookbacks:
@@ -378,6 +429,7 @@ def compute_ceiling(
             "training_lookback_days": training_lookback_days,
         },
         "scored_rows": int(scored.size),
+        "target_field": target_field,
         "feature_fields": present,
         "floor": {
             "mae": floor.mae,

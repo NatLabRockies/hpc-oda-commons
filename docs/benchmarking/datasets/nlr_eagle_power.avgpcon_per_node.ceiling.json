@@ -1,0 +1,139 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 89,
+    "test_window_hours": 24,
+    "training_lookback_days": 60
+  },
+  "scored_rows": 490260,
+  "target_field": "avgpcon_per_node",
+  "feature_fields": [
+    "account",
+    "embedding",
+    "num_cores_req",
+    "num_gpus_req",
+    "num_nodes_req",
+    "partition",
+    "qos",
+    "requested_memory_mib",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 29.146334416274335,
+    "rmse": 54.10742920515614,
+    "signatures": 22657,
+    "group_sizes": {
+      "min": 1,
+      "median": 1.0,
+      "max": 5676,
+      "singleton_row_share": 0.024411536735609675
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "account",
+      "floor_mae_without": 29.146334416274332,
+      "cost": -3.552713678800501e-15
+    },
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 29.146334416274335,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_gpus_req",
+      "floor_mae_without": 29.146334416274335,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_nodes_req",
+      "floor_mae_without": 29.146334416274335,
+      "cost": 0.0
+    },
+    {
+      "feature": "partition",
+      "floor_mae_without": 29.146334416274335,
+      "cost": 0.0
+    },
+    {
+      "feature": "qos",
+      "floor_mae_without": 29.146334416274335,
+      "cost": 0.0
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 29.146334416274335,
+      "cost": 0.0
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 29.146334416274335,
+      "cost": 0.0
+    },
+    {
+      "feature": "requested_memory_mib",
+      "floor_mae_without": 29.686818627001124,
+      "cost": 0.5404842107267882
+    },
+    {
+      "feature": "embedding",
+      "floor_mae_without": 40.31567807235185,
+      "cost": 11.169343656077515
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 101.67159689789928,
+        "coverage": 2.0397340186839635e-06,
+        "rows": 490260
+      },
+      "10d": {
+        "mae": 90.90543614588557,
+        "coverage": 0.01987516827805654,
+        "rows": 490260
+      },
+      "30d": {
+        "mae": 90.12859641740448,
+        "coverage": 0.05805490963978297,
+        "rows": 490260
+      },
+      "60d": {
+        "mae": 90.41900411336925,
+        "coverage": 0.08369028678660302,
+        "rows": 490260
+      },
+      "120d": {
+        "mae": 91.57092083085412,
+        "coverage": 0.1457124790927263,
+        "rows": 490260
+      },
+      "all": {
+        "mae": 91.62235794493547,
+        "coverage": 0.14794802757720393,
+        "rows": 490260
+      }
+    },
+    "best_lookback": "30d",
+    "backoff_order": [
+      "account",
+      "num_cores_req",
+      "num_gpus_req",
+      "num_nodes_req",
+      "partition",
+      "qos",
+      "requested_seconds",
+      "user",
+      "requested_memory_mib",
+      "embedding"
+    ],
+    "backoff_at_best": {
+      "mae": 90.12859641740448,
+      "coverage": 0.05805490963978297,
+      "rows": 490260
+    }
+  },
+  "dataset_id": "dataset.job_runtime.nlr_eagle",
+  "generated_at": "2026-10-20T15:23:06.285214Z"
+}
