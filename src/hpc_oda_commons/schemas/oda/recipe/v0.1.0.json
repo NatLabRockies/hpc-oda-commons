@@ -86,7 +86,8 @@
         },
         "node_count": { "type": "string", "enum": ["allocated", "requested"] },
         "max_alloc_ratio": { "type": "number", "exclusiveMinimum": 0 },
-        "uopc_features": { "type": "string", "enum": ["zscore", "embedding", "balanced"] }
+        "uopc_features": { "type": "string", "enum": ["zscore", "embedding", "balanced"] },
+        "predictor": { "type": "string", "enum": ["vote", "mean", "median"] }
       },
       "required": ["method"],
       "allOf": [

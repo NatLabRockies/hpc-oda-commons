@@ -21,11 +21,14 @@ from hpc_oda_commons.models.job_power_uopc.model import (
     PAPER_TARGETS,
     PAPER_THETA,
     PAPER_THETA_VALUES,
+    SWEEP_COLUMNS,
     UOPC_DEFAULT_FEATURES,
     UOPC_DEFAULT_K,
     UOPC_DEFAULT_NODE_COUNT,
+    UOPC_DEFAULT_PREDICTOR,
     JobPowerUopcConfig,
     JobPowerUopcModel,
+    check_uopc_predictor,
 )
 from hpc_oda_commons.models.job_power_uopc.rolling import (
     JobPowerUopcRollingConfig,
@@ -202,8 +205,8 @@ def run_cutoff_uopc(
 
     With ``theta_values``/``k_values`` this is the sensitivity sweep, otherwise one
     reproduction at ``theta``/``k``. The result schema takes one metric set, so the sweep
-    reports the classifier's avgpcon-per-node metrics at the ``theta``/``k`` the recipe
-    names (the reproduction's configuration by default) as its headline, and keeps the
+    reports ``predictor``'s metrics at the ``theta``/``k`` the recipe names (the
+    reproduction's configuration by default) as its headline, and keeps the
     whole grid in metrics.json. A headline outside the grid is an error rather than a
     silent pick, since it is what the leaderboard shows.
     """
@@ -215,6 +218,8 @@ def run_cutoff_uopc(
     theta = int(split.get("theta", PAPER_THETA))
     k = int(split.get("k", UOPC_DEFAULT_K))
     sweep = "theta_values" in split or "k_values" in split
+    predictor = str(split.get("predictor", UOPC_DEFAULT_PREDICTOR))
+    check_uopc_predictor(predictor)
     # Variants that separate the paper's data and target from ours (#222).
     node_count = str(split.get("node_count", UOPC_DEFAULT_NODE_COUNT))
     max_alloc_ratio = (
@@ -247,7 +252,7 @@ def run_cutoff_uopc(
             verbose=verbose,
             capture_artifacts=capture_artifacts,
         )
-        headline = eval_payload["results"][str(theta)][str(k)]["classifier"][target]
+        headline = eval_payload["results"][str(theta)][str(k)][SWEEP_COLUMNS[predictor]][target]
         if not headline:
             raise ValueError(
                 f"No test job had {k} prior jobs at theta={theta}, so the headline is empty."
@@ -261,7 +266,7 @@ def run_cutoff_uopc(
             "headline": {
                 "theta": theta,
                 "k": k,
-                "predictor": "KNeighborsClassifier",
+                "predictor": predictor,
                 "target": target,
             },
         }
@@ -272,6 +277,7 @@ def run_cutoff_uopc(
             theta=theta,
             k=k,
             **variant,
+            predictor=predictor,
             metric_defs=metric_defs,
             verbose=verbose,
             capture_artifacts=capture_artifacts,
@@ -283,7 +289,7 @@ def run_cutoff_uopc(
             **variant,
             "theta": theta,
             "k": k,
-            "predictor": "KNeighborsClassifier",
+            "predictor": predictor,
             "headline_target": target,
         }
 
@@ -764,6 +770,7 @@ def run_rolling_uopc(
             k=int(split.get("k", defaults.k)),
             embedding_field=str(split.get("embedding_field", defaults.embedding_field)),
             features=str(split.get("uopc_features", defaults.features)),
+            predictor=str(split.get("predictor", defaults.predictor)),
         )
     )
     return _run_rolling_model_evaluate(

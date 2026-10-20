@@ -1,7 +1,8 @@
 # UoPC theta x k sensitivity sweep (Antici et al., IEEE 11017729) through the Commons
 # benchmark, on the same data and cutoff as uopc_paper_reproduction.yml. metrics.json holds
-# the whole grid (classifier voting, plus the kNN-regressor ablation) and cold-start counts;
-# the headline metrics are the classifier at theta/k below. See docs/benchmarking/power/uopc.md.
+# the whole grid, scored by each predictor (classifier = the authors' vote, regressor = the
+# mean, median), and cold-start counts; the headline metrics are the predictor at theta/k
+# below. See docs/benchmarking/power/uopc.md.
 #
 # Prepare the data first (5 monthly files, ~3.9 GB):
 #   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml
@@ -43,6 +44,8 @@ split:
   # The headline result; must be in the grid above. k = 20 is ours (#228); the paper's is 5.
   theta: 500
   k: 20
+  # Which predictor's column is the headline; every cell is scored by all three (#241).
+  predictor: median
 
 run:
   output_dir: runs

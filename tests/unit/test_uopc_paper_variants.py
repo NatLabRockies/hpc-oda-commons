@@ -177,11 +177,17 @@ def test_headline_reproduction_uses_our_settings() -> None:
     [
         (
             "uopc_paper_reproduction_paper_setup.yml",
-            {"node_count": "allocated", "uopc_features": "zscore", "k": 5},
+            {"node_count": "allocated", "uopc_features": "zscore", "k": 5, "predictor": "vote"},
         ),
         (
             "uopc_paper_reproduction_unpadded.yml",
-            {"node_count": "allocated", "uopc_features": "zscore", "k": 5, "max_alloc_ratio": 12},
+            {
+                "node_count": "allocated",
+                "uopc_features": "zscore",
+                "k": 5,
+                "predictor": "vote",
+                "max_alloc_ratio": 12,
+            },
         ),
     ],
 )

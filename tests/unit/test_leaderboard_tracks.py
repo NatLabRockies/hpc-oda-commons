@@ -11,6 +11,7 @@ from hpc_oda_commons.benchmark.results import build_leaderboard
 from hpc_oda_commons.benchmark.tracks import build_tables
 from hpc_oda_commons.benchmarking.hpc.matrix import Card
 from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
+from hpc_oda_commons.models.job_power_uopc.model import UOPC_DEFAULT_PREDICTOR
 from hpc_oda_commons.tools.report import render_leaderboard_html, render_runs_html
 
 POWER_SPLIT = {"n_windows": 89, "test_window_hours": 24, "training_lookback_days": 60}
@@ -167,8 +168,13 @@ def test_the_roster_comes_from_the_ceiling_files(power_runs) -> None:
         ({"summary": {**POWER_SPLIT, "n_windows": 3}}, "n_windows=3"),
         ({"recipe_id": "recipe.job_power.uopc_rolling_avg_pm100__balanced"}, "not a bundled"),
         ({"run_config": {**POWER_SPLIT, "k": 5, "theta": 500}}, "stale: ran with k=5"),
+        # Written before the predictor setting existed, so it voted (#241).
+        (
+            {"run_config": {**POWER_SPLIT, "k": 20, "theta": 500}},
+            "stale: ran with predictor=vote",
+        ),
     ],
-    ids=["paper-protocol", "smoke-run", "ad-hoc-recipe", "stale-config"],
+    ids=["paper-protocol", "smoke-run", "ad-hoc-recipe", "stale-config", "predates-predictor"],
 )
 def test_only_the_benchmark_protocol_counts(power_runs, kwargs: dict, reason: str) -> None:
     runs, ceilings = power_runs
@@ -184,6 +190,22 @@ def test_only_the_benchmark_protocol_counts(power_runs, kwargs: dict, reason: st
     assert reason in reasons[str(bundle)]
     table = _table(leaderboard, "avgpcon_per_node")
     assert "model.job_power_uopc" not in {r["model"] for r in table["rows"]}
+
+
+def test_a_bundle_on_the_recipes_predictor_counts(power_runs) -> None:
+    runs, ceilings = power_runs
+    config = {**POWER_SPLIT, "k": 20, "theta": 500, "predictor": UOPC_DEFAULT_PREDICTOR}
+    _bundle(
+        runs,
+        recipe_id="recipe.job_power.uopc_rolling_avg_pm100",
+        model="model.job_power_uopc",
+        mae=130.0,
+        run_config=config,
+    )
+    leaderboard = build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
+
+    table = _table(leaderboard, "avgpcon_per_node")
+    assert "model.job_power_uopc" in {r["model"] for r in table["rows"]}
 
 
 def test_a_rerun_replaces_its_cell_and_is_named(power_runs) -> None:

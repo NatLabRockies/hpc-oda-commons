@@ -44,6 +44,9 @@ split:
   # The paper's theta and k.
   theta: 500
   k: 5
+  # The authors' rule (#241): KNeighborsClassifier over power rounded to whole watts. Our
+  # result predicts from the neighbours' values instead.
+  predictor: vote
   max_alloc_ratio: 12
 
 run:

@@ -8,11 +8,12 @@ Adapted from https://github.com/francescoantici/UoPC:
 Two protocols live here. ``evaluate_fixed`` is the original Commons adaptation (fraction
 split, label-encoded job features, kNN regressor). ``evaluate_paper_reproduction`` and
 ``evaluate_paper_sensitivity`` follow the paper's protocol (Antici et al., IEEE 11017729):
-a date cutoff, per-node targets, and kNN-classifier voting as in the authors' tool. By
-default they use only choices the Commons can defend, even where the authors' differ
-(#228): targets per requested node, because F-DATA pads its allocated counts, and
-``balanced`` features. The authors' setup (``node_count: allocated``,
-``uopc_features: zscore``) stays available for comparison with the paper
+a date cutoff, per-node targets and per-user kNN. By default they use only choices the
+Commons can defend, even where the authors' differ (#228, #241): targets per requested
+node, because F-DATA pads its allocated counts, ``balanced`` features, and the median of the
+neighbours' values rather than the authors' vote over whole watts. The authors' setup
+(``node_count: allocated``, ``uopc_features: zscore``, ``predictor: vote``) stays
+available for comparison with the paper
 (docs/benchmarking/power/uopc.md, docs/benchmarking/power/uopc-audit.md). Recipes pick the paper
 protocol with ``split.method: cutoff``.
 """
@@ -79,6 +80,20 @@ UOPC_DEFAULT_FEATURES = "balanced"
 # always 48 x nodes.
 BALANCED_NODE_WEIGHT = 0.2
 BALANCED_FREQUENCY_WEIGHT = 0.8
+# How UoPC turns its k neighbours into a prediction (#241):
+# - vote: the authors' rule, KNeighborsClassifier over targets rounded to whole watts. When
+#   the neighbours' values differ the vote is a tie, which scipy's mode breaks to the lowest
+#   value, so it under-predicts wherever a user's jobs vary (PM100: bias -129 W). Kept for
+#   the paper-comparison recipes only;
+# - mean: the mean of the neighbours' values (KNeighborsRegressor);
+# - median (default): their median. On the F-DATA reproduction protocol (theta 500, k 20) it
+#   has the lowest MAE, the benchmark's metric, on both targets: average 5.44 W against the
+#   mean's 5.58 and the vote's 5.71. Chosen there only, as k was (#228); k = 20 still holds.
+UOPC_PREDICTORS: tuple[str, ...] = ("vote", "mean", "median")
+UOPC_DEFAULT_PREDICTOR = "median"
+# The sweep's column for each predictor. "classifier" and "regressor" predate #241 and are
+# kept so earlier sweep bundles read the same way.
+SWEEP_COLUMNS: dict[str, str] = {"vote": "classifier", "mean": "regressor", "median": "median"}
 
 
 @dataclass
@@ -172,6 +187,42 @@ _FEATURE_LABELS = {
     "embedding": "emb",
     "balanced": "emb+balanced(log2 nodes, frequency)",
 }
+
+
+def check_uopc_predictor(predictor: str) -> None:
+    if predictor not in UOPC_PREDICTORS:
+        raise ValueError(f"predictor must be one of {list(UOPC_PREDICTORS)}, got {predictor!r}.")
+
+
+def uopc_predict(
+    context_features: np.ndarray,
+    context_targets: tuple[np.ndarray, ...],
+    query_features: np.ndarray,
+    *,
+    k: int,
+    predictor: str,
+) -> list[np.ndarray]:
+    """Predict each target for every query from its k nearest context rows (#241).
+
+    ``vote`` fits one KNeighborsClassifier per target on whole watts, as the authors' tool
+    does. ``mean`` and ``median`` share one neighbour search across the targets; it is the
+    search KNeighborsClassifier makes, so all three see the same neighbours.
+    """
+    if predictor == "vote":
+        preds = []
+        for target in context_targets:
+            model = KNeighborsClassifier(n_neighbors=k)
+            model.fit(context_features, np.rint(target).astype(np.int64))
+            preds.append(model.predict(query_features).astype(np.float64))
+        return preds
+    search = KNeighborsRegressor(n_neighbors=k)
+    search.fit(context_features, np.zeros(len(context_features), dtype=np.float64))
+    neighbours = search.kneighbors(query_features, return_distance=False)
+    reduce = np.mean if predictor == "mean" else np.median
+    return [
+        reduce(np.asarray(target, dtype=np.float64)[neighbours], axis=1)
+        for target in context_targets
+    ]
 
 
 def _check_paper_variant(node_count: str, max_alloc_ratio: float | None) -> None:
@@ -698,6 +749,7 @@ class JobPowerUopcModel:
         node_count: str = UOPC_DEFAULT_NODE_COUNT,
         max_alloc_ratio: float | None = None,
         features: str = UOPC_DEFAULT_FEATURES,
+        predictor: str = UOPC_DEFAULT_PREDICTOR,
         metric_defs: list[dict[str, Any]] | None = None,
         verbose: bool = False,
         capture_artifacts: bool = False,
@@ -713,7 +765,8 @@ class JobPowerUopcModel:
         - test jobs: adt >= test_start
         - history: same-user jobs with edt < query adt
         - context: newest ``theta`` eligible jobs by completion time
-        - predictor: KNeighborsClassifier with rounded integer targets
+        - predictor: ``median`` of the k neighbours by default (``predictor``; see
+          UOPC_PREDICTORS); ``vote`` is the authors' KNeighborsClassifier on whole watts
 
         The headline metrics are avgpcon per node. With ``capture_artifacts`` the
         avgpcon predictions go out as ``_y_true``/``_y_pred`` and every job's
@@ -732,6 +785,7 @@ class JobPowerUopcModel:
             {**metric_def, "target": "maxpcon_per_node"} for metric_def in resolved_metric_defs
         ]
 
+        check_uopc_predictor(predictor)
         prepared = self._prepare_paper_data(
             rows,
             test_start=test_start,
@@ -815,23 +869,16 @@ class JobPowerUopcModel:
             global_mean_avg_pred = float(prepared.global_avg_cumsum[global_pos] / global_pos)
             global_mean_max_pred = float(prepared.global_max_cumsum[global_pos] / global_pos)
 
-            # The authors' tool predicts with KNeighborsClassifier. A classifier
-            # needs discrete labels, so continuous per-node power is rounded to
-            # whole watts first; the rounding is ours. Fit the two paper targets
-            # independently on the same eligible history context.
-            avg_model = KNeighborsClassifier(n_neighbors=k)
-            avg_model.fit(
+            # Both paper targets from the same eligible history context. With ``vote``,
+            # the authors' KNeighborsClassifier, per-node power is rounded to whole watts
+            # first, since a classifier needs discrete labels; the rounding is ours.
+            avg_pred, max_pred = uopc_predict(
                 features[context],
-                np.rint(avg_target_arr[context]).astype(np.int64),
+                (avg_target_arr[context], max_target_arr[context]),
+                features[j : j + 1],
+                k=k,
+                predictor=predictor,
             )
-            avg_pred = avg_model.predict(features[j : j + 1])
-
-            max_model = KNeighborsClassifier(n_neighbors=k)
-            max_model.fit(
-                features[context],
-                np.rint(max_target_arr[context]).astype(np.int64),
-            )
-            max_pred = max_model.predict(features[j : j + 1])
 
             avg_y_true.append(float(avg_target_arr[j]))
             avg_y_pred.append(float(avg_pred[0]))
@@ -948,7 +995,7 @@ class JobPowerUopcModel:
                 "targets": _paper_target_labels(prepared.node_count),
                 **_paper_variant_summary(prepared, max_alloc_ratio),
                 "features": _FEATURE_LABELS[prepared.features_mode],
-                "predictor": "KNeighborsClassifier",
+                "predictor": predictor,
             },
         }
 
@@ -988,8 +1035,8 @@ class JobPowerUopcModel:
         For each theta and query job, nearest neighbors are retrieved once up to
         max(k_values). Those ordered neighbors are then reused for every k.
 
-        Classifier voting is the faithful UoPC prediction rule. A mean-based
-        regressor prediction is reported separately as an ablation.
+        Every cell is scored by each predictor in UOPC_PREDICTORS, from the same
+        neighbours, under the column names in SWEEP_COLUMNS (#241).
         """
         if not theta_values:
             raise ValueError("theta_values must not be empty.")
@@ -1056,6 +1103,12 @@ class JobPowerUopcModel:
                         "max_pred": [],
                     },
                     "regressor": {
+                        "avg_true": [],
+                        "avg_pred": [],
+                        "max_true": [],
+                        "max_pred": [],
+                    },
+                    "median": {
                         "avg_true": [],
                         "avg_pred": [],
                         "max_true": [],
@@ -1145,6 +1198,8 @@ class JobPowerUopcModel:
                         max_neighbor_targets,
                         k,
                     )
+                    avg_median_pred = float(np.median(avg_neighbor_targets[:k]))
+                    max_median_pred = float(np.median(max_neighbor_targets[:k]))
 
                     avg_true = float(avg_target_arr[j])
                     max_true = float(max_target_arr[j])
@@ -1159,6 +1214,11 @@ class JobPowerUopcModel:
                     bucket["regressor"]["max_true"].append(max_true)
                     bucket["regressor"]["max_pred"].append(max_regressor_pred)
 
+                    bucket["median"]["avg_true"].append(avg_true)
+                    bucket["median"]["avg_pred"].append(avg_median_pred)
+                    bucket["median"]["max_true"].append(max_true)
+                    bucket["median"]["max_pred"].append(max_median_pred)
+
             theta_timings[theta] = time.perf_counter() - theta_start
 
         total_seconds = time.perf_counter() - total_start
@@ -1172,7 +1232,7 @@ class JobPowerUopcModel:
                 bucket = accumulators[(theta, k)]
                 configuration: dict[str, Any] = {}
 
-                for predictor in ("classifier", "regressor"):
+                for predictor in SWEEP_COLUMNS.values():
                     values = bucket[predictor]
 
                     avg_true = values["avg_true"]
@@ -1229,8 +1289,7 @@ class JobPowerUopcModel:
                 "k_values": list(k_values),
                 "max_neighbors": max_k,
                 "test_start": test_start,
-                "primary_predictor": "KNeighborsClassifier",
-                "ablation_predictor": "KNeighborsRegressor",
+                "predictor_columns": dict(SWEEP_COLUMNS),
                 "targets": _paper_target_labels(prepared.node_count),
                 **_paper_variant_summary(prepared, max_alloc_ratio),
                 "features": _FEATURE_LABELS[prepared.features_mode],
