@@ -195,20 +195,6 @@ This is a look-ahead in the feature scale only, with no target leak, and it is i
 A deployment would fit the scaling on history alone. See
 [UoPC reproduction](benchmarking/power/uopc.md#known-deviations-from-the-paper).
 
-## Note — PM100 power includes co-located jobs for 2.3% of jobs
-
-**Status:** accepted · **Tracking:** [#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)
-
-PM100's `node_power_consumption` is the power of the job's nodes, not of the job. When two
-jobs run on one node at the same time, each one's reading includes the other's draw.
-Comparing every job's node list and run time, 5,396 of 231,238 jobs (2.3%) overlapped
-another job on a node. All of them allowed sharing (`shared = OK`); no job that held whole
-nodes ever overlapped. PM100 has no column that flags them, unlike Kestrel's
-`shared_job_count`, which its descriptor uses to null shared jobs' power.
-
-They are kept in the power benchmark and their targets are as recorded. Excluding them would
-need the overlap computed during preparation, which no descriptor option does today.
-
 ## Note — on macOS, torch and XGBoost crash in one process
 
 **Status:** workaround · **Tracking:** [#219](https://github.com/NatLabRockies/hpc-oda-commons/issues/219)
