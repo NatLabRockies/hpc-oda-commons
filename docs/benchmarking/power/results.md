@@ -3,7 +3,7 @@
 Every model predicting **power per node** on one shared rolling protocol, on every power
 dataset. Job-power prediction is becoming a tracked benchmark
 ([#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)); this page is where its
-results live. How to run any model on power: [Predict job power](../../how-to/predict-power.md).
+results live, and [Methodology](methodology.md) records what was decided and why. How to run any model on power: [Predict job power](../../how-to/predict-power.md).
 UoPC's own paper protocol is a separate, one-model study: [UoPC reproduction](uopc.md).
 
 ## Protocol
@@ -39,7 +39,7 @@ by allocated nodes, which F-DATA pads ([why we don't](uopc.md#nodes-requested-no
 
 | Dataset | Data | Targets | Test period (UTC) | Jobs scored | Users | Top user's share |
 |---|---|---|---|---:|---:|---:|
-| [F-DATA](#f-data) (Fugaku) | `dataset.job_power.fdata_fugaku_uopc`: Dec 2023 – Apr 2024, the five months the UoPC paper uses | average, peak | from ~2024-02-01, the paper's test period | 1,510,726 | | |
+| [F-DATA](#f-data) (Fugaku) | `dataset.job_power.fdata_fugaku_uopc`: Dec 2023 – Apr 2024, the five months the UoPC paper uses | average, peak | 2024-02-02 14:00 – 2024-05-01 14:00 (the paper's starts on 2024-02-01) | 1,510,726 | | |
 | [Eagle](#eagle-and-kestrel) (NLR) | `dataset.job_runtime.nlr_eagle`, sliced 2023-05-01 – 2023-09-30 | average | 2023-07-03 16:00 – 2023-09-30 16:00 | 490,260 | 428 | 9.0% |
 | [Kestrel](#eagle-and-kestrel) (NLR) | `dataset.job_runtime.nlr_kestrel`, sliced 2025-08-01 – 2026-01-01 | average | 2025-10-05 06:00 – 2026-01-02 06:00 | 638,081 | 475 | 11.8% |
 
