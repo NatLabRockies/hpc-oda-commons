@@ -33,15 +33,16 @@ metrics:
 
 split:
   method: cutoff
-  # The published reproduction results use zscore features; balanced is the model
-  # default since #222 (docs/benchmarking/uopc.md#feature-modes).
-  uopc_features: zscore
+  # Our settings (#228): per requested node, because F-DATA pads allocated counts, and
+  # balanced features. Both are the model's defaults; stated here so the recipe says them.
+  node_count: requested
+  uopc_features: balanced
   test_start: "2024-02-01"
   theta_values: [50, 100, 200, 500, 1000, 2000, 5000]
   k_values: [5, 10, 20, 50]
-  # The headline result; must be in the grid above.
+  # The headline result; must be in the grid above. k = 20 is ours (#228); the paper's is 5.
   theta: 500
-  k: 5
+  k: 20
 
 run:
   output_dir: runs

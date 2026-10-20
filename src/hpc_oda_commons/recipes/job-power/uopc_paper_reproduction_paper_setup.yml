@@ -1,13 +1,13 @@
-# UoPC paper reproduction per requested node (#222).
-# Divides power by requested nodes, as the rolling benchmark's avgpcon_per_node does, so
-# its numbers are on the same target as uopc_rolling_avg.yml; what remains between the two
-# is mostly the history cutoff. Otherwise identical to uopc_paper_reproduction.yml.
-# Results: docs/benchmarking/uopc.md.
+# UoPC paper reproduction on the authors' setup, for comparison with the paper (#228).
+# Identical to uopc_paper_reproduction.yml except that power is divided by allocated nodes,
+# as the paper does, and features are zscore. F-DATA pads allocated counts, so ~150k test
+# jobs read ~2 W per node here; our own result is uopc_paper_reproduction.yml.
+# docs/benchmarking/uopc.md#comparison-with-the-paper.
 #
 # Prepare the data first (5 monthly files, ~3.9 GB):
 #   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml
 
-recipe_id: recipe.job_power.uopc_paper_reproduction_requested
+recipe_id: recipe.job_power.uopc_paper_reproduction_paper_setup
 
 problem_domain:
   - job-power-prediction
@@ -34,13 +34,14 @@ metrics:
 
 split:
   method: cutoff
-  # The published reproduction results use zscore features; balanced is the model
-  # default since #222 (docs/benchmarking/uopc.md#feature-modes).
+  # The authors' setup, for comparison with the paper only (#228): per allocated node, as
+  # the paper divides, with the zscore features the earlier reproduction used.
+  node_count: allocated
   uopc_features: zscore
   test_start: "2024-02-01"
+  # The paper's theta and k.
   theta: 500
   k: 5
-  node_count: requested
 
 run:
   output_dir: runs

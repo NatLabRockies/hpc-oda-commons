@@ -162,19 +162,25 @@ def test_balanced_is_the_default() -> None:
     assert prepared.features_mode == "balanced"
 
 
-def test_paper_reproduction_recipes_pin_zscore() -> None:
-    """Their published results use zscore, so they stay reproducible after the switch."""
+def test_bundled_cutoff_recipes_say_their_features() -> None:
+    """Our recipes use balanced; only the paper-comparison ones pin zscore (#228)."""
     from pathlib import Path
 
     import hpc_oda_commons
     from hpc_oda_commons.benchmark.recipes import load_recipe
 
-    recipes = sorted(
-        (Path(hpc_oda_commons.__file__).parent / "recipes" / "job-power").glob("uopc_paper_*.yml")
-    )
-    assert len(recipes) == 5
-    for recipe in recipes:
-        assert load_recipe(recipe)["split"]["uopc_features"] == "zscore", recipe.name
+    root = Path(hpc_oda_commons.__file__).parent / "recipes" / "job-power"
+    features = {
+        recipe.name: load_recipe(recipe)["split"]["uopc_features"]
+        for recipe in sorted(root.glob("uopc_paper_*.yml"))
+    }
+    assert features == {
+        "uopc_paper_reproduction.yml": "balanced",
+        "uopc_paper_reproduction_paper_setup.yml": "zscore",
+        "uopc_paper_reproduction_unpadded.yml": "zscore",
+        "uopc_paper_sensitivity.yml": "balanced",
+        "uopc_paper_sensitivity_smoke.yml": "balanced",
+    }
 
 
 def test_unknown_mode_is_an_error() -> None:
@@ -221,3 +227,24 @@ def test_recipe_rejects_an_unknown_mode() -> None:
     split = {"method": "rolling", "n_windows": 3, "uopc_features": "tfidf"}
     with pytest.raises(SchemaValidationError):
         validate_recipe(_recipe("model.job_power_uopc", split))
+
+
+def test_k_20_is_ours_and_5_the_papers() -> None:
+    """The sweep on our settings favours k = 20 (#228); the paper-comparison recipes keep 5."""
+    import inspect
+    from pathlib import Path
+
+    import hpc_oda_commons
+    from hpc_oda_commons.benchmark.recipes import load_recipe
+    from hpc_oda_commons.models.job_power_uopc.model import PAPER_K, UOPC_DEFAULT_K
+
+    assert (UOPC_DEFAULT_K, PAPER_K) == (20, 5)
+    assert JobPowerUopcRollingConfig().k == UOPC_DEFAULT_K
+    signature = inspect.signature(JobPowerUopcModel.evaluate_paper_reproduction)
+    assert signature.parameters["k"].default == UOPC_DEFAULT_K
+
+    root = Path(hpc_oda_commons.__file__).parent / "recipes" / "job-power"
+    ks = {recipe.name: load_recipe(recipe)["split"]["k"] for recipe in root.glob("uopc_*.yml")}
+    paper = {"uopc_paper_reproduction_paper_setup.yml", "uopc_paper_reproduction_unpadded.yml"}
+    assert {name: k for name, k in ks.items() if name in paper} == dict.fromkeys(paper, PAPER_K)
+    assert set(ks) - paper and all(ks[name] == UOPC_DEFAULT_K for name in set(ks) - paper)

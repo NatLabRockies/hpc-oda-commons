@@ -141,8 +141,8 @@ def test_uopc_paper_reproduction_smoke() -> None:
     assert result["summary"]["theta"] == 5
     assert result["summary"]["k"] == 2
     assert result["summary"]["targets"] == [
-        "avgpcon/nnuma",
-        "maxpcon/nnuma",
+        "avgpcon/num_nodes_req",
+        "maxpcon/num_nodes_req",
     ]
 
     assert result["summary"]["predictor"] == "KNeighborsClassifier"
@@ -484,7 +484,7 @@ def test_paper_baselines_match_a_brute_force_mean() -> None:
     assert records
 
     def per_node(row: dict, field: str) -> float:
-        return row[field] / row["num_nodes_alloc"]
+        return row[field] / row["num_nodes_req"]
 
     for record in records:
         submit = record["submit_time"]

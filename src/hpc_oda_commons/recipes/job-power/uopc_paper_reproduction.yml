@@ -1,7 +1,8 @@
-# UoPC paper reproduction (Antici et al., IEEE 11017729) through the Commons benchmark.
-# Scores every job submitted on/after test_start, predicting avgpcon and maxpcon per node
-# from the user's newest `theta` finished jobs. Results and how they compare with the paper:
-# docs/benchmarking/uopc.md (#125).
+# UoPC paper reproduction (Antici et al., IEEE 11017729) through the Commons benchmark: the
+# paper's protocol with only the choices we can defend (#228). Scores every job submitted
+# on/after test_start, predicting avgpcon and maxpcon per requested node from the user's
+# newest `theta` finished jobs. uopc_paper_reproduction_paper_setup.yml runs the authors'
+# setup for comparison. Results, and why they differ: docs/benchmarking/uopc.md (#125).
 #
 # Prepare the data first (5 monthly files, ~3.9 GB):
 #   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml
@@ -33,12 +34,15 @@ metrics:
 
 split:
   method: cutoff
-  # The published reproduction results use zscore features; balanced is the model
-  # default since #222 (docs/benchmarking/uopc.md#feature-modes).
-  uopc_features: zscore
+  # Our settings (#228): per requested node, because F-DATA pads allocated counts, and
+  # balanced features. Both are the model's defaults; stated here so the recipe says them.
+  node_count: requested
+  uopc_features: balanced
   test_start: "2024-02-01"
+  # theta is the paper's. k = 20 is ours: the sweep on these settings puts it ~0.4 MAPE
+  # points ahead of the paper's k = 5 (#228).
   theta: 500
-  k: 5
+  k: 20
 
 run:
   output_dir: runs

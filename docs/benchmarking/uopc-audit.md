@@ -7,8 +7,15 @@
 - item 4, scoped down to feature modes ([results](uopc.md#feature-modes)). It does not
   include the paper-style embedding.
 
-`balanced` became UoPC's default, with the paper-reproduction recipes pinned to `zscore`.
-Item 5, the F-DATA job-name ablation, was dropped as unnecessary for now.
+`balanced` became UoPC's default (#227). Item 5, the F-DATA job-name ablation, was dropped
+as unnecessary for now.
+
+**Follow-up ([#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228)):** our
+reproduction now uses only choices we can defend: per requested node, `balanced` features,
+k = 20 (from the θ × k sweep on these settings), all jobs. It scores 7.82% / R² 0.770 on
+average power and 8.06% / 0.754 on peak. The
+authors' setup (per allocated node, `zscore`) is kept as a labelled comparison recipe. See
+[Our choices, and why](uopc.md#our-choices-and-why).
 
 This note checks the Commons' UoPC against its sources, prompted by the question "did we
 reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
@@ -120,11 +127,14 @@ their `nnuma` differently. The JPCP code reads a non-Zenodo export (`CR-STR-*` c
 UNIX timestamps), which supports this. We can't tell which.
 
 **Consequences:**
-- The reproduction's target definition is right.
-- The reproduction scores ~150k jobs (9.4% of its test set) the paper apparently did not.
+- Dividing by allocated nodes matches the paper, but on the public files it gives ~150k jobs
+  a ~2 W target the paper's data apparently never had. Since #228 our reproduction divides
+  by requested nodes, and the paper's divisor is kept only for a labelled comparison.
+- The paper-setup comparison scores ~150k jobs (9.4% of its test set) the paper apparently did not.
   They are easy to predict, because neighbours are padded the same way, so they inflate R².
   Excluding the 48× jobs gives 10.25% / 0.762 on average power and 10.51% / 0.746 on peak.
-- The benchmark's per-requested-node numbers are on a different target from both papers.
+- Our numbers (benchmark and reproduction) are on a different target from both papers, by
+  design.
 
 ## Deviation 2 — features and encoding
 
@@ -197,7 +207,8 @@ The reproduction uses everything finished before each job's submission. UoPC gai
 a user's latest near-identical jobs. **Measured (#222 item 3):** per requested node, the
 reproduction scores 8.65% / R² 0.738, against the rolling UoPC's 11.36% / 0.660 on the same
 target. So the cutoff costs about 2.7 points, give or take the cold-start fallback and the
-slightly different test sets.
+slightly different test sets. With `balanced` features and k = 20 (#228) it is 7.82% against
+10.29%, about 2.5 points.
 
 The reproduction's 9.93% against 11.36% mixed two effects that partly cancel. Dividing by
 requested nodes lowers MAPE (9.93% → 8.65%); the cutoff raises it (8.65% → 11.36%).

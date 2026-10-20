@@ -17,12 +17,13 @@ from hpc_oda_commons.kernel.metrics import (
 )
 from hpc_oda_commons.kernel.serialization import to_jsonable
 from hpc_oda_commons.models.job_power_uopc.model import (
-    PAPER_K,
     PAPER_K_VALUES,
     PAPER_TARGETS,
     PAPER_THETA,
     PAPER_THETA_VALUES,
     UOPC_DEFAULT_FEATURES,
+    UOPC_DEFAULT_K,
+    UOPC_DEFAULT_NODE_COUNT,
     JobPowerUopcConfig,
     JobPowerUopcModel,
 )
@@ -212,10 +213,10 @@ def run_cutoff_uopc(
     target = _require_target(set(PAPER_TARGETS), metric_defs, model="model.job_power_uopc (cutoff)")
     test_start = str(split["test_start"])
     theta = int(split.get("theta", PAPER_THETA))
-    k = int(split.get("k", PAPER_K))
+    k = int(split.get("k", UOPC_DEFAULT_K))
     sweep = "theta_values" in split or "k_values" in split
     # Variants that separate the paper's data and target from ours (#222).
-    node_count = str(split.get("node_count", "allocated"))
+    node_count = str(split.get("node_count", UOPC_DEFAULT_NODE_COUNT))
     max_alloc_ratio = (
         float(split["max_alloc_ratio"]) if split.get("max_alloc_ratio") is not None else None
     )

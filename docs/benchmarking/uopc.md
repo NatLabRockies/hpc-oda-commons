@@ -8,6 +8,13 @@ far the numbers can be trusted. Tracking issue:
 [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125). The
 [UoPC audit](uopc-audit.md) checks it against the full paper and the authors' code.
 
+Our reproduction keeps the paper's protocol but uses only choices we can defend, even where
+the authors' differ ([#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228)). It
+divides power by **nodes requested**, not allocated, and uses **balanced** features
+([Our choices, and why](#our-choices-and-why)). The authors' exact setup runs separately, as a
+labelled [comparison with the paper](#comparison-with-the-paper-the-authors-setup), not as our
+result.
+
 Job-power prediction is outside the runtime benchmark ([methodology](methodology.md)); this
 is a one-model study, not a leaderboard.
 
@@ -18,21 +25,79 @@ is a one-model study, not a leaderboard.
 | | `fixed` — the Commons adaptation | `cutoff` — the paper protocol |
 |---|---|---|
 | Recipe | `job-runtime/uopc_maxpcon.yml` | `job-power/uopc_paper_reproduction.yml`, `uopc_paper_sensitivity.yml` |
-| Target | `maxpcon` (W, whole job) | `avgpcon` **and** `maxpcon` divided by allocated nodes |
-| Features | job name (label-encoded), cores and nodes requested | F-DATA's job `embedding` plus z-scored cores, nodes and CPU frequency requested (an adaptation; see [Known deviations](#known-deviations)) |
+| Target | `maxpcon` (W, whole job) | `avgpcon` **and** `maxpcon` per **requested** node (the paper: per allocated node) |
+| Features | job name (label-encoded), cores and nodes requested | F-DATA's job `embedding` + `balanced` log2 nodes and frequency (the paper: one embedded string) |
 | Predictor | kNN regressor (mean of the k neighbours) | kNN **classifier** (majority vote), as in the authors' tool, on targets rounded to whole watts |
 | Test set | last 20% of jobs by end time | every job submitted on or after `test_start` |
 | History for a test job | every earlier job by that user, by end time | that user's jobs that **finished before it was submitted** |
 | Context | newest `theta` = 50 | newest `theta` = 500 |
 | Data | a hand-placed raw Fugaku file | `dataset.job_power.fdata_fugaku_uopc` via `datasets prepare` |
 
-The adaptation is unchanged by this work; the paper protocol is new. A third mode,
-`split.method: rolling`, scores the same paper model on the shared rolling windows next to
-every other model ([Power prediction benchmark](power.md)). That mode reads the prepared
-`avgpcon_per_node`/`maxpcon_per_node` columns, per requested node, like every other model.
-The paper protocol computes its own targets per allocated node (`nnuma`), as the paper does,
-so the two modes' numbers are not on the same target
-([why](../known-issues.md#note--f-datas-allocated-node-counts-can-be-padded)).
+The adaptation is unchanged by this work. A third mode, `split.method: rolling`, scores the
+same model on the shared rolling windows next to every other model
+([Power prediction benchmark](power.md)). It uses the same target and features as the
+reproduction, so their numbers differ only by protocol.
+
+## Our choices, and why
+
+### Nodes requested, not allocated
+
+**The paper divides by allocated nodes** (F-DATA's `nnuma`); its text and figures both show
+it. **We divide by requested nodes** (`nnumr`), because on the public F-DATA files the
+allocated count is often padded past the nodes a job ran on. Power is summed over only the
+nodes the job ran on (all five months, 2.93M jobs):
+
+| | Jobs with `nnuma` > requested (727,508, 24.8%) |
+|---|---:|
+| Nodes the job ran on (`nnumu`) = requested | 95.3% |
+| Nodes the job ran on = allocated | 0.0% |
+| Median W per requested / used / allocated node | 91.8 / 91.9 / **1.9** |
+| Share below 20 W per allocated node | 71.6% |
+
+- **The clearest case:** 410,740 jobs request 1 node and 48 cores, run on 1 node and draw
+  ~92 W, but record `nnuma` = 48. Per allocated node they read 1.9 W, which no Fugaku node
+  draws even idle. Per requested node they read ~92 W, like every other job.
+- **Requested nodes are the right count:**
+  - they match the nodes a job ran on for ~96% of all jobs;
+  - they are known at submission, so a per-node prediction × requested nodes gives the
+    job's total before it runs;
+  - they are the divisor every other model in the Commons uses ([power.md](power.md)).
+- **Dividing by allocated nodes would flatter the result.** The padded jobs become an
+  isolated, easy-to-predict cluster at ~2 W. On the same jobs and features, that lifts R²
+  from 0.738 to 0.837. It also wrecks percentage baselines: the per-user mean scores 60%
+  MAPE per allocated node against 14% per requested node
+  ([Variants](#variants-padded-jobs-and-node-count)).
+- **We keep these jobs.** They are real production jobs. Dividing by requested nodes gives
+  them their real ~90 W per node; dropping them would make the test easier.
+- **It isn't the paper's data either.** The paper's figures show no jobs below ~10 W per
+  allocated node, so its export appears to lack these jobs. Dividing the public files by
+  allocated nodes therefore isn't the paper's setup
+  ([Known deviations](#known-deviations-from-the-paper)).
+
+### Balanced features
+
+F-DATA's `embedding` is the paper's encoder (all-MiniLM-L6-v2) over the original user, job
+name and environment ([F-DATA's generation script](https://github.com/francescoantici/F-DATA/blob/main/generation_scripts/generate_derived_features.py)). It does not include cores, nodes or frequency, so UoPC adds
+them as numbers.
+- **The earlier `zscore` scaling** let frequency decide every neighbour (its two values sit
+  2.03 apart, more than any two job names) and made the node count invisible: a few
+  whole-machine jobs inflate its spread, so 1 → 16 nodes added 0.024.
+- **`balanced`** adds `0.2 × log2(nodes)` and frequency scaled to 0–0.8, each about one
+  typical job-name distance (0.84). Frequency's range is fitted on history only.
+- It scored best everywhere tried ([Feature modes](#feature-modes)).
+
+### What we keep from the paper
+
+- the test set (jobs submitted from 2024-02-01);
+- the history rule (the user's jobs finished before submission, newest θ = 500);
+- skipping users with fewer than k such jobs;
+- kNN-classifier voting. Per-node power is rounded to whole watts so it can be a class
+  label; the rounding is ours.
+
+The paper's k = 5 is not kept. Its θ = 500 and k = 5 were chosen on the authors' setup. On
+our settings the [sweep](#sensitivity-sweep-θ--k) confirms θ = 500 but puts k = 20 about 0.4
+points of MAPE ahead of k = 5, so we use **k = 20**, in this protocol and in the rolling
+benchmark. The paper-comparison recipes keep k = 5.
 
 ## Running it
 
@@ -40,9 +105,21 @@ so the two modes' numbers are not on the same target
 # ~3.9 GB: the five F-DATA monthly files for Dec 2023 - Apr 2024
 hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml
 
+# Our reproduction, and the theta x k sweep, on our settings
 hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml
 hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity.yml
+
+# The authors' setup, for comparison with the paper only
+hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction_paper_setup.yml
+hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction_unpadded.yml
 ```
+
+| Recipe | Node count | Features | Jobs |
+|---|---|---|---|
+| `uopc_paper_reproduction.yml` (**ours**) | requested | `balanced` | all |
+| `uopc_paper_sensitivity.yml` | requested | `balanced` | all |
+| `uopc_paper_reproduction_paper_setup.yml` | allocated | `zscore` | all |
+| `uopc_paper_reproduction_unpadded.yml` | allocated | `zscore` | without jobs allocated >12× their request |
 
 The reproduction writes `predictions.parquet`: one row per scored job with both targets'
 truth and prediction, the two baselines' predictions, and the job's history and context
@@ -55,7 +132,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
 ## The protocol in detail
 
 - **Rows.** A job is usable when it has `avgpcon`, `maxpcon`, an `embedding`, submit and end
-  times, and at least one allocated node. Targets are watts per allocated node.
+  times, and a positive node count. Targets are watts per requested node (`node_count`;
+  `allocated` divides by `nnuma` instead).
 - **Test set.** Jobs submitted on or after `test_start` (2024-02-01), scored in submission
   order. Everything before the cutoff serves only as history.
 - **History.** For a test job, the same user's jobs whose end time is strictly before its
@@ -63,8 +141,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   than `k` such jobs is skipped (counted in `rows_skipped`).
 - **Context.** The newest `theta` jobs of that history, by end time.
 - **Prediction.** A `KNeighborsClassifier(k)` fitted on the context, with targets rounded
-  to whole watts as classes, as in the authors' implementation. Average and peak power are
-  fitted separately.
+  to whole watts as classes, as in the authors' tool. Average and peak power are fitted
+  separately.
 - **Baselines.** For the same scored jobs: the mean of the user's whole eligible history
   (per-user mean), and the mean of every job anyone finished before submission (global
   mean). Both use only past information.
@@ -72,10 +150,13 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   test job's neighbours are found once per θ, up to the largest k, and reused for every k.
   A cell scores only jobs with at least k prior jobs, so coverage falls as k grows. Each
   cell also reports a kNN-**regressor** prediction (the mean of the same neighbours) as an
-  ablation of the classifier vote. The headline is the classifier at θ = 500, k = 5.
+  ablation of the classifier vote. The headline is the classifier at θ = 500, k = 20 (the
+  paper-comparison recipes: k = 5).
 
-## Known deviations
+## Known deviations from the paper
 
+- **Node count (deliberate).** We divide by requested nodes; the paper divides by allocated
+  nodes. See [Nodes requested, not allocated](#nodes-requested-not-allocated).
 - **Features are an adaptation.** The paper describes a job by the string "job name, cores
   requested, nodes requested, requested frequency, environment". It leaves out the user,
   since each model is per-user, and embeds the string with all-MiniLM-L6-v2. The public job
@@ -99,8 +180,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
       similar job names.
   - The scaling is the Commons' choice (#203); the paper scales nothing. It does hold UoPC
     back: `split.uopc_features: balanced` scores better on every protocol and system tried
-    ([Feature modes](#feature-modes)). `balanced` is the model's default since #222. The
-    paper-reproduction recipes pin `zscore`, which the results on this page use.
+    ([Feature modes](#feature-modes)). `balanced` has been the default since #222, and our
+    reproduction uses it (#228). `zscore` remains only in the paper-comparison recipes.
   - **We don't embed F-DATA ourselves.** The paper's string can't be rebuilt from public
     data: the job names and environments are anonymised IDs (`jnam_2111729`), which would
     carry no name meaning and would make unrelated IDs look alike.
@@ -108,7 +189,8 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   the padded jobs, the best features reach R² 0.766 and 0.753, against the paper's 0.80 and
   0.79. The paper's features rely on the real job names, which public F-DATA doesn't have,
   so the gap may not be closable on public data.
-- **Feature scaling sees the test period.** The z-scores use the whole usable dataset,
+- **`zscore` scaling sees the test period.** This applies only to the paper-comparison
+  recipes; `balanced` fits frequency's range on history only. The z-scores use the whole usable dataset,
   test months included: a look-ahead in the feature scale only, with no target leak.
   Fitting on the history before 2024-02-01 instead would barely change anything:
   - frequency's gap would be 2.02 rather than 2.03;
@@ -121,7 +203,7 @@ The F-DATA window is a separate dataset from the runtime benchmark's `fdata_fuga
   whole watts first; the rounding is ours. The regressor ablation in the sweep shows what
   voting costs.
 - **The paper's data lacks the most padded jobs.** The paper divides by allocated nodes, as
-  this protocol does. Its Fig. 4 shows the same small bars at ~11, 15 and 22 W that our
+  the paper-setup recipe does. Its Fig. 4 shows the same small bars at ~11, 15 and 22 W that our
   test period has per allocated node, from jobs allocated 4–8× the nodes they requested.
   But its lowest bar is ~11 W. Our test period has 150,015 jobs below 5 W: 139,074 with
   1 node requested and `nnuma` = 48, and 10,941 at 24×. So this protocol scores ~150k jobs
@@ -158,11 +240,68 @@ A run counts as a reproduction if it lands within a few points of UoPC's row.
 
 ## Results
 
-Run on 2026-10-16 on an Apple M3 Max (14 cores, 38 GB) with the bundled recipes, at commit
-76f4f0f. The reproduction took 28 minutes (about 1 ms per scored job, single-threaded) and
-peaked at ~20 GB resident.
+### Our reproduction (θ = 500, k = 20)
 
-### Paper reproduction (θ = 500, k = 5)
+`uopc_paper_reproduction.yml`: per requested node, `balanced` features, k = 20, all jobs. It
+ran on 2026-10-20 on an Apple M3 Max (14 cores, 38 GB) at commit cd78524. It took 27
+minutes.
+
+1,591,115 test jobs from 764 users were submitted on or after 2024-02-01. 1,581,909 were
+scored; 9,206 (0.58%) were skipped as cold starts, with fewer than k = 20 prior jobs by
+their user.
+
+| Target (W per requested node) | Model | MAE | RMSE | MAPE | R² |
+|---|---|---:|---:|---:|---:|
+| Average (`avgpcon`) | **UoPC** | **5.71** | **14.98** | **7.82%** | **0.770** |
+| | Per-user mean | 9.53 | 16.20 | 14.27% | 0.731 |
+| | Global mean | 25.84 | 31.25 | 37.30% | −0.002 |
+| Peak (`maxpcon`) | **UoPC** | **6.00** | **16.41** | **8.06%** | **0.754** |
+| | Per-user mean | 10.21 | 17.48 | 14.98% | 0.720 |
+| | Global mean | 26.23 | 33.06 | 36.31% | −0.001 |
+
+**Against the paper (10% / 0.80 and 10% / 0.79).** MAPE is lower and R² is lower. The
+target is not the paper's: per requested node, not per allocated node, so the two can't be
+compared exactly.
+
+**What each of our choices adds**, on this target and all jobs:
+
+| Features, k | Average MAPE / R² | Peak MAPE / R² |
+|---|---:|---:|
+| `zscore`, k = 5 ([Variants](#variants-padded-jobs-and-node-count)) | 8.65% / 0.738 | 8.91% / 0.718 |
+| `balanced`, k = 5 (run at 8d914e7) | 8.29% / 0.753 | 8.47% / 0.737 |
+| **`balanced`, k = 20** | **7.82% / 0.770** | **8.06% / 0.754** |
+
+k = 20 also skips 5,607 more short-history jobs than k = 5. Those are hard jobs (about 20%
+MAPE), but too few to account for more than ~0.05 points of the gain.
+
+**Padded jobs no longer matter.** Per requested node, the 147,671 scored jobs allocated more
+than 12× their request have their real target, a median of 91.7 W. They are still easy to
+predict (1.1% MAPE): they are uniform one- and two-node jobs from 11 users. Without them
+UoPC scores 8.51% / 0.769 on average power and 8.75% / 0.754 on peak. MAPE rises because
+easy jobs are gone, but R² doesn't move. Per allocated node, excluding the padded jobs
+lowered R² from 0.837 to 0.762 ([padded allocations](#comparison-with-the-paper-the-authors-setup)).
+
+The median absolute percentage error is 1.5%, and 88.1% of jobs are within 10%. As with the
+authors' setup, the mean is carried by a tail: the 90th percentile is 14%.
+
+**Cold starts and short histories.** 95.7% of scored jobs had a full θ = 500 context.
+Error falls as a user's history grows:
+
+| User's prior jobs | Jobs | UoPC MAPE | Per-user mean MAPE |
+|---|---:|---:|---:|
+| 20–49 | 8,016 | 20.8% | 22.9% |
+| 50–499 | 60,094 | 14.9% | 20.4% |
+| 500+ | 1,513,799 | 7.5% | 14.0% |
+
+### Comparison with the paper: the authors' setup
+
+The results below use the authors' setup, `uopc_paper_reproduction_paper_setup.yml`: per
+allocated node, with `zscore` features. They were the published headline until #228. They
+show that the method reproduces, but they aren't our result.
+
+They ran on 2026-10-16 on an Apple M3 Max (14 cores, 38 GB) at commit 76f4f0f, as
+`uopc_paper_reproduction.yml` with those settings. The run took 28 minutes (about 1 ms per
+scored job, single-threaded) and peaked at ~20 GB resident.
 
 1,591,115 test jobs from 764 users were submitted on or after 2024-02-01. 1,587,516 were
 scored; 3,599 (0.23%) were skipped as cold starts, with fewer than k = 5 prior jobs by
@@ -221,8 +360,97 @@ several times. The Commons' own power targets divide by requested nodes instead
 
 ### Sensitivity sweep (θ × k)
 
-The full grid took 2 h 15 min (7 to 51 minutes per θ, the most at θ = 5000) and peaked at
-~17 GB resident. Each cell shows MAPE / R² on average power per allocated node.
+`uopc_paper_sensitivity.yml`, on our settings: per requested node, `balanced` features, all
+jobs. It ran on 2026-10-19 at 8d914e7, with k = 5 as the headline; the grid itself doesn't depend
+on the headline. The full grid took 2 h 12 min (8 to 51 minutes per θ, the most at
+θ = 5000). Each cell shows MAPE / R² on average power per requested node. The paper's
+θ = 500, k = 5 and ours, θ = 500, k = 20 (also the best classifier cell), are in bold.
+
+**Classifier** (the paper's predictor, a majority vote over rounded watts):
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 9.58% / 0.710 | 9.59% / 0.715 | 9.67% / 0.713 | 10.30% / 0.681 |
+| 100 | 9.21% / 0.722 | 9.11% / 0.730 | 9.07% / 0.732 | 9.33% / 0.713 |
+| 200 | 8.71% / 0.736 | 8.49% / 0.750 | 8.45% / 0.751 | 8.77% / 0.734 |
+| 500 | **8.12% / 0.757** | 7.73% / 0.775 | **7.70% / 0.776** | 7.85% / 0.767 |
+| 1000 | 8.23% / 0.752 | 7.80% / 0.776 | 7.72% / 0.776 | 7.81% / 0.768 |
+| 2000 | 8.30% / 0.744 | 7.82% / 0.773 | 7.83% / 0.772 | 7.84% / 0.774 |
+| 5000 | 8.62% / 0.725 | 8.00% / 0.756 | 7.91% / 0.760 | 8.07% / 0.756 |
+
+**Regressor** (the mean of the same neighbours, an ablation):
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 9.45% / 0.745 | 9.48% / 0.746 | 9.62% / 0.744 | 10.53% / 0.727 |
+| 100 | 9.01% / 0.759 | 8.96% / 0.763 | 9.03% / 0.761 | 9.29% / 0.753 |
+| 200 | 8.50% / 0.779 | 8.39% / 0.784 | 8.37% / 0.785 | 8.56% / 0.778 |
+| 500 | 7.83% / 0.802 | 7.70% / 0.808 | 7.70% / 0.809 | 7.81% / 0.805 |
+| 1000 | 7.92% / 0.803 | 7.79% / 0.811 | 7.70% / 0.816 | 7.77% / 0.815 |
+| 2000 | 7.93% / 0.804 | 7.79% / 0.813 | 7.70% / 0.819 | 7.73% / 0.822 |
+| 5000 | 8.14% / 0.790 | 8.04% / 0.798 | 7.94% / 0.804 | 8.01% / 0.805 |
+
+<details>
+<summary>Peak power (maxpcon per requested node)</summary>
+
+Classifier:
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 9.71% / 0.699 | 9.81% / 0.697 | 9.81% / 0.700 | 10.70% / 0.657 |
+| 100 | 9.37% / 0.703 | 9.27% / 0.714 | 9.24% / 0.717 | 9.45% / 0.703 |
+| 200 | 8.84% / 0.721 | 8.73% / 0.730 | 8.67% / 0.732 | 8.92% / 0.722 |
+| 500 | 8.20% / 0.744 | 7.92% / 0.757 | 7.87% / 0.758 | 8.07% / 0.751 |
+| 1000 | 8.39% / 0.740 | 8.10% / 0.756 | 7.97% / 0.758 | 7.98% / 0.755 |
+| 2000 | 8.21% / 0.743 | 8.07% / 0.756 | 8.04% / 0.756 | 7.96% / 0.759 |
+| 5000 | 8.42% / 0.723 | 8.00% / 0.741 | 7.83% / 0.746 | 7.92% / 0.745 |
+
+Regressor:
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 9.68% / 0.731 | 9.71% / 0.732 | 9.91% / 0.729 | 10.97% / 0.710 |
+| 100 | 9.18% / 0.745 | 9.16% / 0.748 | 9.24% / 0.747 | 9.52% / 0.741 |
+| 200 | 8.70% / 0.763 | 8.63% / 0.768 | 8.62% / 0.769 | 8.82% / 0.764 |
+| 500 | 8.04% / 0.785 | 7.92% / 0.792 | 7.95% / 0.792 | 8.08% / 0.789 |
+| 1000 | 8.21% / 0.785 | 8.09% / 0.793 | 8.01% / 0.798 | 8.10% / 0.799 |
+| 2000 | 8.16% / 0.791 | 8.03% / 0.801 | 7.94% / 0.807 | 7.99% / 0.809 |
+| 5000 | 8.21% / 0.775 | 8.11% / 0.784 | 8.03% / 0.790 | 8.13% / 0.791 |
+
+</details>
+
+**Coverage.** A cell scores only jobs whose user has at least k prior jobs: 99.77% of test
+jobs at k = 5, 99.61% at 10, 99.42% at 20 and 98.92% at 50. Of the 1,591,115 test jobs, 812
+have no prior job by their user, and 3,599, 6,133, 9,206 and 17,222 have fewer than 5, 10,
+20 and 50. The median user history is 28,779 jobs.
+
+What the grid shows:
+
+- **θ = 500 still holds.** MAPE falls from 9.6% at θ = 50 to 7.7–8.3% for θ = 500–2000, and
+  θ = 5000 is slightly worse again. Going past 500 gains nothing on average power.
+- **k = 5 does not, so we use k = 20.** At θ = 500, k = 10 and k = 20 score 7.73% / 0.775
+  and 7.70% / 0.776, against 8.12% / 0.757 at k = 5. The best classifier cell is θ = 500,
+  k = 20. On peak power, k = 20 is also ~0.3 points better than k = 5. We chose k = 20 from
+  this grid alone and use it on every dataset, including Eagle and Kestrel, where it was not
+  tuned ([power-nlr.md](power-nlr.md)).
+- **The spike at k = θ/10 is gone.** On the authors' setup the classifier jumped to ~19% at
+  (50, 5), (100, 10), (200, 20) and (500, 50), all from the padded users' ~2 W targets
+  (below). Per requested node every row is smooth.
+- **Voting on rounded watts still costs R², but not MAPE.** The regressor has the higher R²
+  in every cell (0.73–0.82 against 0.68–0.78). The two MAPEs are within 0.5 points either
+  way. Without the ~2 W targets, the regressor's MAPE no longer climbs with k; its best R² is
+  0.822, at θ = 2000, k = 50.
+- **The grid's cells differ slightly from the reproduction runs** because of exact ties, as
+  on the authors' setup (below): 7.70% against 7.82% at θ = 500, k = 20, and 8.12% against
+  8.29% at k = 5.
+
+#### On the authors' setup
+
+The first sweep ran per allocated node with `zscore` features, at 76f4f0f, and is kept for
+the comparison with the paper. Like the paper's, it put θ = 500, k = 5 close to the best. The
+full grid took 2 h 15 min (7 to 51 minutes per θ, the most at θ = 5000) and peaked at ~17 GB
+resident. Each cell shows MAPE / R² on average power per allocated node; coverage is the same
+as above.
 
 **Classifier** (the paper's predictor, a majority vote over rounded watts):
 
@@ -277,12 +505,7 @@ Regressor:
 
 </details>
 
-**Coverage.** A cell scores only jobs whose user has at least k prior jobs: 99.77% of test
-jobs at k = 5, 99.61% at 10, 99.42% at 20 and 98.92% at 50. Of the 1,591,115 test jobs, 812
-have no prior job by their user, and 3,599, 6,133, 9,206 and 17,222 have fewer than 5, 10,
-20 and 50. The median user history is 28,779 jobs.
-
-What the grid shows:
+What that grid showed:
 
 - **θ matters more than k.** MAPE falls from 15–19% at θ = 50 to 9.3–10.7% for
   θ = 500–2000 with k ≤ 20. θ = 5000 is slightly worse on every metric: the oldest history hurts more
@@ -313,30 +536,30 @@ What the grid shows:
 
 Two reruns separate what makes our numbers differ from the paper's and from the rolling
 benchmark ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222)). Each is
-the reproduction above with one setting changed:
+the authors' setup above with one setting changed:
 
 | Recipe | Changed setting | Jobs used | Test jobs | Scored |
 |---|---|---:|---:|---:|
-| `uopc_paper_reproduction.yml` | — | 2,930,414 | 1,591,115 | 1,587,516 |
+| `uopc_paper_reproduction_paper_setup.yml` | — | 2,930,414 | 1,591,115 | 1,587,516 |
 | `uopc_paper_reproduction_unpadded.yml` | `max_alloc_ratio: 12` | 2,488,780 | 1,443,390 | 1,439,792 |
-| `uopc_paper_reproduction_requested.yml` | `node_count: requested` | 2,930,414 | 1,591,115 | 1,587,516 |
+| per requested node (its recipe became the headline's node count in #228) | `node_count: requested` | 2,930,414 | 1,591,115 | 1,587,516 |
 
 They ran on 2026-10-19 at d1e11c8, ~32 minutes each, peaking at 12 and 16 GB.
 `max_alloc_ratio: 12` dropped 441,634 jobs from history and test: 410,740 allocated 48× their
-request, 30,855 at 24×, and 39 others.
+request, 30,855 at 24×, and 39 others. Every row below uses `zscore` features.
 
 | Target | Run | MAE | RMSE | MAPE | R² | Per-user mean MAPE / R² |
 |---|---|---:|---:|---:|---:|---:|
 | Average | Paper (Table I) | | | 10% | 0.80 | |
-| | Reproduction (per allocated node) | 6.36 | 16.14 | 9.93% | 0.837 | 60.27% / 0.771 |
+| | Authors' setup (per allocated node) | 6.36 | 16.14 | 9.93% | 0.837 | 60.27% / 0.771 |
 | | Unpadded (per allocated node) | 7.07 | 17.01 | **10.34%** | **0.751** | 23.02% / 0.693 |
 | | Per requested node | 6.30 | 15.97 | **8.65%** | **0.738** | 14.30% / 0.729 |
-| | Rolling benchmark UoPC (per requested node, [power.md](power.md)) | 8.01 | 18.13 | 11.36% | 0.660 | — |
+| | Rolling benchmark UoPC with `zscore` (per requested node) | 8.01 | 18.13 | 11.36% | 0.660 | — |
 | Peak | Paper (Table I) | | | 10% | 0.79 | |
-| | Reproduction | 6.72 | 17.77 | 10.17% | 0.826 | 61.77% / 0.769 |
+| | Authors' setup | 6.72 | 17.77 | 10.17% | 0.826 | 61.77% / 0.769 |
 | | Unpadded | 7.41 | 18.62 | **10.54%** | **0.737** | 23.81% / 0.686 |
 | | Per requested node | 6.67 | 17.56 | **8.91%** | **0.718** | 15.01% / 0.719 |
-| | Rolling benchmark UoPC | 8.60 | 20.04 | 11.73% | 0.629 | — |
+| | Rolling benchmark UoPC with `zscore` | 8.60 | 20.04 | 11.73% | 0.629 | — |
 
 What they show:
 
@@ -346,7 +569,7 @@ What they show:
   had lifted our R² above the paper's; without them it sits below. Better-balanced features
   narrow that gap but don't close it ([Feature modes](#feature-modes)).
 - **Dividing by requested nodes lowers MAPE and R² alike.** It scores the same jobs as the
-  reproduction. MAPE drops from 9.93% to 8.65% because the ~2 W padded targets, where a
+  authors' setup. MAPE drops from 9.93% to 8.65% because the ~2 W padded targets, where a
   small miss is a large percentage, become ~90 W. R² drops from 0.837 to 0.738 because
   those same jobs no longer form an easy, isolated cluster. The per-user mean's 60% MAPE
   falls to 14%, confirming that it came from the padded jobs.
@@ -370,7 +593,7 @@ rolling protocols ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issue
 
 | Mode | Features |
 |---|---|
-| `zscore` | the job embedding + z-scored cores, nodes and frequency requested (the paper-reproduction recipes, which pin it) |
+| `zscore` | the job embedding + z-scored cores, nodes and frequency requested (the paper-comparison recipes) |
 | `embedding` | the job embedding alone |
 | `balanced` (default since #222) | the embedding + `0.2 × log2(nodes requested)` + `0.8 × frequency scaled to [0, 1]` |
 
@@ -384,6 +607,9 @@ rolling protocols ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issue
 
 Each run below is a bundled recipe plus one `uopc_features` key. The variant recipes are not
 bundled. They ran on 2026-10-19 at 935e58a, and the `zscore` rows are the earlier results.
+Every run in this section uses k = 5, the default until #228; our results at k = 20 are in
+[Our reproduction](#our-reproduction-θ--500-k--20), [power.md](power.md) and
+[power-nlr.md](power-nlr.md).
 
 **Unpadded reproduction** (`uopc_paper_reproduction_unpadded.yml`, the paper's apparent data):
 
@@ -397,6 +623,16 @@ bundled. They ran on 2026-10-19 at 935e58a, and the `zscore` rows are the earlie
 | | `zscore` | 7.41 | 18.62 | 10.54% | 0.737 |
 | | `embedding` | 8.26 | 19.97 | 11.93% | 0.697 |
 | | **`balanced`** | **7.09** | **18.02** | **9.93%** | **0.753** |
+
+**Per requested node, all jobs** (`uopc_paper_reproduction.yml` at k = 5; the `balanced`
+rows ran at 8d914e7):
+
+| Target | Features | MAE | RMSE | MAPE | R² |
+|---|---|---:|---:|---:|---:|
+| Average | `zscore` | 6.30 | 15.97 | 8.65% | 0.738 |
+| | **`balanced`** | **6.11** | **15.50** | **8.29%** | **0.753** |
+| Peak | `zscore` | 6.67 | 17.56 | 8.91% | 0.718 |
+| | **`balanced`** | **6.39** | **16.94** | **8.47%** | **0.737** |
 
 **Rolling benchmark UoPC** (`uopc_rolling_*.yml`, [power.md](power.md),
 [power-nlr.md](power-nlr.md)):
@@ -419,9 +655,9 @@ bundled. They ran on 2026-10-19 at 935e58a, and the `zscore` rows are the earlie
 What they show:
 
 - **`balanced` is best everywhere tried.**
-  - On F-DATA it gains 0.6 MAPE points and about 0.02 R² over `zscore`, in both protocols
-    and on both targets.
-  - The reproduction drops below the paper's 10% MAPE.
+  - On F-DATA it gains 0.4–0.6 MAPE points and about 0.02 R² over `zscore`, in both
+    protocols, on both targets and with either node count.
+  - The unpadded reproduction drops below the paper's 10% MAPE.
   - The rolling UoPC reaches 10.80%, between XGBoost (11.05%) and MoE XGBoost (10.07%) on
     average power. Its R² of 0.682 is still well below theirs (0.81 and 0.78).
 - **On F-DATA the numbers carry real information.** `embedding` alone is worst there,

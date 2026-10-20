@@ -54,10 +54,22 @@ def test_requested_node_count_divides_by_requested_nodes() -> None:
     assert prepared.node_count == "requested"
 
 
-def test_allocated_node_count_is_the_default() -> None:
+def test_requested_node_count_is_the_default() -> None:
+    """Allocated counts can be padded, so the default is what we can defend (#228)."""
     rows = _rows()
     by_id = {r["job_id"]: r for r in rows}
     prepared = JobPowerUopcModel()._prepare_paper_data(rows, test_start=_START)
+    assert prepared.node_count == "requested"
+    expected = [by_id[j]["maxpcon"] / by_id[j]["num_nodes_req"] for j in prepared.job_id_arr]
+    assert prepared.max_target_arr.tolist() == pytest.approx(expected)
+
+
+def test_allocated_node_count_divides_by_allocated_nodes() -> None:
+    rows = _rows()
+    by_id = {r["job_id"]: r for r in rows}
+    prepared = JobPowerUopcModel()._prepare_paper_data(
+        rows, test_start=_START, node_count="allocated"
+    )
 
     expected = [by_id[j]["maxpcon"] / by_id[j]["num_nodes_alloc"] for j in prepared.job_id_arr]
     assert prepared.max_target_arr.tolist() == pytest.approx(expected)
@@ -142,19 +154,38 @@ def test_variant_keys_are_errors_outside_cutoff(key: str) -> None:
         validate_recipe(payload)
 
 
-@pytest.mark.parametrize(
-    ("recipe", "expected"),
-    [
-        ("uopc_paper_reproduction_unpadded.yml", {"max_alloc_ratio": 12}),
-        ("uopc_paper_reproduction_requested.yml", {"node_count": "requested"}),
-    ],
-)
-def test_bundled_variant_recipes(recipe: str, expected: dict) -> None:
+def _bundled_split(name: str) -> dict:
     from pathlib import Path
 
     import hpc_oda_commons
 
     root = Path(hpc_oda_commons.__file__).parent / "recipes" / "job-power"
-    split = load_recipe(root / recipe)["split"]
-    headline = load_recipe(root / "uopc_paper_reproduction.yml")["split"]
-    assert split == {**headline, **expected}
+    return load_recipe(root / name)["split"]
+
+
+def test_headline_reproduction_uses_our_settings() -> None:
+    """Per requested node, balanced features, k = 20, all jobs (#228)."""
+    split = _bundled_split("uopc_paper_reproduction.yml")
+    assert split["k"] == 20
+    assert split["node_count"] == "requested"
+    assert split["uopc_features"] == "balanced"
+    assert "max_alloc_ratio" not in split
+
+
+@pytest.mark.parametrize(
+    ("recipe", "expected"),
+    [
+        (
+            "uopc_paper_reproduction_paper_setup.yml",
+            {"node_count": "allocated", "uopc_features": "zscore", "k": 5},
+        ),
+        (
+            "uopc_paper_reproduction_unpadded.yml",
+            {"node_count": "allocated", "uopc_features": "zscore", "k": 5, "max_alloc_ratio": 12},
+        ),
+    ],
+)
+def test_paper_comparison_recipes_differ_from_the_headline_only_as_stated(
+    recipe: str, expected: dict
+) -> None:
+    assert _bundled_split(recipe) == {**_bundled_split("uopc_paper_reproduction.yml"), **expected}

@@ -34,7 +34,7 @@ split:
   test_window_hours: 24
   training_lookback_days: 60
   theta: 500
-  k: 5
+  k: 20
 
 run:
   output_dir: runs

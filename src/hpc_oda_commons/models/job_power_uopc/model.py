@@ -8,11 +8,13 @@ Adapted from https://github.com/francescoantici/UoPC:
 Two protocols live here. ``evaluate_fixed`` is the original Commons adaptation (fraction
 split, label-encoded job features, kNN regressor). ``evaluate_paper_reproduction`` and
 ``evaluate_paper_sensitivity`` follow the paper's protocol (Antici et al., IEEE 11017729):
-a date cutoff, per-allocated-node targets, and kNN-classifier voting as in the authors'
-tool. The features are an adaptation, not the paper's: F-DATA's job embedding plus z-scored
-numeric requests, where the paper embeds a string of the job's submission fields
-(docs/benchmarking/uopc-audit.md). Recipes pick the paper protocol with
-``split.method: cutoff``.
+a date cutoff, per-node targets, and kNN-classifier voting as in the authors' tool. By
+default they use only choices the Commons can defend, even where the authors' differ
+(#228): targets per requested node, because F-DATA pads its allocated counts, and
+``balanced`` features. The authors' setup (``node_count: allocated``,
+``uopc_features: zscore``) stays available for comparison with the paper
+(docs/benchmarking/uopc.md, docs/benchmarking/uopc-audit.md). Recipes pick the paper
+protocol with ``split.method: cutoff``.
 """
 
 from __future__ import annotations
@@ -49,13 +51,20 @@ _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
 PAPER_TEST_START = "2024-02-01"
 PAPER_THETA = 500
 PAPER_K = 5
+# Our k (#228). The theta x k sweep on our settings (per requested node, balanced features)
+# keeps theta = 500 but puts k = 20 ~0.4 MAPE points ahead of the paper's k = 5 on both
+# targets. PAPER_K stays for the paper-comparison recipes.
+UOPC_DEFAULT_K = 20
 PAPER_THETA_VALUES: tuple[int, ...] = (50, 100, 200, 500, 1000, 2000, 5000)
 PAPER_K_VALUES: tuple[int, ...] = (5, 10, 20, 50)
-# The two targets the paper protocol predicts, both in watts per allocated node.
+# The two targets the paper protocol predicts, both in watts per node.
 PAPER_TARGETS: tuple[str, ...] = ("avgpcon_per_node", "maxpcon_per_node")
-# Divisors the paper protocol's targets may use: the paper's allocated nodes, or requested
-# nodes as in the rolling benchmark (#222).
+# Divisors the paper protocol's targets may use (#222). The default is requested nodes, as
+# in the rolling benchmark: F-DATA pads allocated counts (410,740 one-node jobs record 48),
+# while power sums only the nodes a job ran on, which match its request (#228). Allocated
+# nodes are the paper's divisor, kept for comparison with it.
 PAPER_NODE_COUNTS: tuple[str, ...] = ("allocated", "requested")
+UOPC_DEFAULT_NODE_COUNT = "requested"
 # How UoPC turns a job into the vector its kNN compares (#222):
 # - zscore: the job embedding plus z-scored cores, nodes and frequency requested, as the
 #   paper reproduction's published results use;
@@ -100,7 +109,7 @@ class _PaperPreparedData:
     # Jobs dropped for an allocated/requested node ratio above ``max_alloc_ratio`` (#222),
     # and the node count the targets divide by.
     rows_dropped_alloc_ratio: int = 0
-    node_count: str = "allocated"
+    node_count: str = UOPC_DEFAULT_NODE_COUNT
     features_mode: str = UOPC_DEFAULT_FEATURES
 
 
@@ -474,7 +483,7 @@ class JobPowerUopcModel:
         rows: list[dict[str, Any]],
         *,
         test_start: str,
-        node_count: str = "allocated",
+        node_count: str = UOPC_DEFAULT_NODE_COUNT,
         max_alloc_ratio: float | None = None,
         features: str = UOPC_DEFAULT_FEATURES,
     ) -> _PaperPreparedData:
@@ -539,10 +548,10 @@ class JobPowerUopcModel:
                 rows_dropped_alloc_ratio += 1
                 continue
 
-            # The paper's targets: whole-job power over allocated nodes (nnuma), per its
-            # text and figures. Not the prepared avgpcon_per_node columns, which divide by
-            # requested nodes because nnuma can be padded (#204). The ``requested`` variant
-            # divides as those columns do, to compare with the rolling benchmark (#222).
+            # Whole-job power per node. By default per requested node, like the prepared
+            # avgpcon_per_node columns, because nnuma can be padded (#204, #228). The
+            # paper divides by allocated nodes (nnuma), per its text and figures; that
+            # stays available as node_count="allocated" for comparison with it.
             nodes = nnuma if node_count == "allocated" else num_nodes_req
             if nodes <= 0:
                 continue
@@ -685,8 +694,8 @@ class JobPowerUopcModel:
         *,
         test_start: str = PAPER_TEST_START,
         theta: int = PAPER_THETA,
-        k: int = PAPER_K,
-        node_count: str = "allocated",
+        k: int = UOPC_DEFAULT_K,
+        node_count: str = UOPC_DEFAULT_NODE_COUNT,
         max_alloc_ratio: float | None = None,
         features: str = UOPC_DEFAULT_FEATURES,
         metric_defs: list[dict[str, Any]] | None = None,
@@ -699,8 +708,8 @@ class JobPowerUopcModel:
         existing HPC ODA UoPC adaptation and its defaults are unchanged.
 
         Reproduction protocol:
-        - targets: avgpcon / nnuma and maxpcon / nnuma
-        - features: embedding + globally z-scored (cnumr, nnumr, freq_req)
+        - targets: avgpcon and maxpcon per requested node by default (``node_count``)
+        - features: ``balanced`` by default (``features``; see UOPC_FEATURE_MODES)
         - test jobs: adt >= test_start
         - history: same-user jobs with edt < query adt
         - context: newest ``theta`` eligible jobs by completion time
@@ -967,7 +976,7 @@ class JobPowerUopcModel:
         test_start: str = PAPER_TEST_START,
         theta_values: tuple[int, ...] = PAPER_THETA_VALUES,
         k_values: tuple[int, ...] = PAPER_K_VALUES,
-        node_count: str = "allocated",
+        node_count: str = UOPC_DEFAULT_NODE_COUNT,
         max_alloc_ratio: float | None = None,
         features: str = UOPC_DEFAULT_FEATURES,
         metric_defs: list[dict[str, Any]] | None = None,

@@ -133,8 +133,8 @@ def test_per_node_power_divides_by_requested_nodes_not_a_padded_allocation(
 ) -> None:
     """Fugaku can record more allocated nodes (nnuma) than a job runs on: 1-node, 48-core
     jobs show nnuma = 48 while their power is one node's. The prepared per-node targets
-    divide by requested nodes; the paper protocol still divides by nnuma, as the paper
-    does (#204)."""
+    divide by requested nodes, and so does the paper protocol by default (#228); its
+    node_count="allocated" option divides by nnuma, as the paper does (#204)."""
     (target,) = load_descriptor(_UOPC).targets
     raw = tmp_path / "24_02.parquet"
     _fdata_month(raw, nnuma=[48, 2, 2, 2, 2, 2])
@@ -145,8 +145,11 @@ def test_per_node_power_divides_by_requested_nodes_not_a_padded_allocation(
     assert rows[0]["avgpcon_per_node"] == 100.0  # 200 W over 2 requested nodes, not 48
     assert rows[0]["maxpcon_per_node"] == 150.0
 
-    prepared = JobPowerUopcModel()._prepare_paper_data(rows, test_start="2024-02-01")
-    assert prepared.avg_target_arr[0] == 200.0 / 48
+    model = JobPowerUopcModel()
+    prepared = model._prepare_paper_data(rows, test_start="2024-02-01")
+    assert prepared.avg_target_arr[0] == 100.0
+    paper = model._prepare_paper_data(rows, test_start="2024-02-01", node_count="allocated")
+    assert paper.avg_target_arr[0] == 200.0 / 48
 
 
 def test_fugaku_runtime_window_carries_power_without_changing_its_rows(tmp_path: Path) -> None:
