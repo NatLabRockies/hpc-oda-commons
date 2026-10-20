@@ -12,8 +12,9 @@ as unnecessary for now.
 
 **Follow-up ([#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228)):** our
 reproduction now uses only choices we can defend: per requested node, `balanced` features,
-all jobs. The authors' setup (per allocated node, `zscore`) is kept as a labelled comparison
-recipe. See [Our choices, and why](uopc.md#our-choices-and-why).
+all jobs. It scores 8.29% / R² 0.753 on average power and 8.47% / 0.737 on peak. The
+authors' setup (per allocated node, `zscore`) is kept as a labelled comparison recipe. See
+[Our choices, and why](uopc.md#our-choices-and-why).
 
 This note checks the Commons' UoPC against its sources, prompted by the question "did we
 reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
@@ -205,7 +206,8 @@ The reproduction uses everything finished before each job's submission. UoPC gai
 a user's latest near-identical jobs. **Measured (#222 item 3):** per requested node, the
 reproduction scores 8.65% / R² 0.738, against the rolling UoPC's 11.36% / 0.660 on the same
 target. So the cutoff costs about 2.7 points, give or take the cold-start fallback and the
-slightly different test sets.
+slightly different test sets. With `balanced` features (#228) it is 8.29% against 10.80%,
+about 2.5 points.
 
 The reproduction's 9.93% against 11.36% mixed two effects that partly cancel. Dividing by
 requested nodes lowers MAPE (9.93% → 8.65%); the cutoff raises it (8.65% → 11.36%).

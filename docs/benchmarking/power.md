@@ -89,15 +89,15 @@ fields directly.
 **Peak is a little harder than average.** MAE is higher for every model, and MAPE is up to
 0.4 points higher for the five strongest.
 
-**This is not the paper's number.** UoPC scores 9.93% MAPE in the [paper
-reproduction](uopc.md) and 10.80% here. The two protocols differ:
-- the reproduction predicts each job from all its user's earlier jobs, per allocated node,
-  with `zscore` features;
-- here every model retrains once a day on the previous 60 days, per requested node.
+**This is not the paper's number.** UoPC scores 8.29% MAPE in the [paper
+reproduction](uopc.md#our-reproduction-θ--500-k--5) and 10.80% here. Both divide by requested
+nodes and use `balanced` features; only the protocol differs:
+- the reproduction predicts each job from all its user's jobs that finished before it was
+  submitted;
+- here every model retrains once a day on the previous 60 days.
 
-The day-level cutoff is the main cost. With the same target and `zscore` features, the paper
-protocol scores 8.65% and the rolling one 11.36%, about 2.7 points apart
-([variants](uopc.md#variants-padded-jobs-and-node-count)).
+That day-level cutoff costs about 2.5 points (2.7 with `zscore` features: 8.65% against
+11.36%, [variants](uopc.md#variants-padded-jobs-and-node-count)).
 
 **Wall times are not comparable between models.** The rolling-tabular models spend most of
 their time building each day's OHE + SVD preprocessing, one day at a time. The average-power
