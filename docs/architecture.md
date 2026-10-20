@@ -48,7 +48,7 @@ Raw Input (slurmctld.log / jobs.parquet)
     numpy / torch / faiss). Reuses `rolling_tabular` split + `kernel.metrics`.
   - `job_power_uopc/` -- user-based online power prediction (UoPC): the Commons adaptation on a
     fixed chronological split (`evaluate_fixed()`), and the paper protocol on a date cutoff
-    (`evaluate_paper_reproduction()`, `evaluate_paper_sensitivity()`; see `docs/benchmarking/uopc.md`),
+    (`evaluate_paper_reproduction()`, `evaluate_paper_sensitivity()`; see `docs/benchmarking/power/uopc.md`),
     and `rolling.py` (`JobPowerUopcRollingModel`) for the shared rolling windows
 - **Targets** -- every model predicts the recipe's metric target (`runtime_seconds` by default):
   the runner sets `target_field` on target-configurable models and fails a model that cannot

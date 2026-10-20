@@ -13,7 +13,7 @@ default they use only choices the Commons can defend, even where the authors' di
 (#228): targets per requested node, because F-DATA pads its allocated counts, and
 ``balanced`` features. The authors' setup (``node_count: allocated``,
 ``uopc_features: zscore``) stays available for comparison with the paper
-(docs/benchmarking/uopc.md, docs/benchmarking/uopc-audit.md). Recipes pick the paper
+(docs/benchmarking/power/uopc.md, docs/benchmarking/power/uopc-audit.md). Recipes pick the paper
 protocol with ``split.method: cutoff``.
 """
 

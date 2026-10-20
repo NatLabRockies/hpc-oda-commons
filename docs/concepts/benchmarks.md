@@ -17,10 +17,10 @@ Built-in v0.1 recipes:
 - `src/hpc_oda_commons/recipes/job-runtime/mlp_rolling.yml` -- MLP, rolling
 - `src/hpc_oda_commons/recipes/job-runtime/embedding_knn_rolling.yml` -- embedding kNN, rolling (needs an embedded dataset)
 - `src/hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml` -- UoPC power prediction, fixed split
-- `src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml` -- the UoPC paper protocol, cutoff split ([UoPC reproduction](../benchmarking/uopc.md))
+- `src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml` -- the UoPC paper protocol, cutoff split ([UoPC reproduction](../benchmarking/power/uopc.md))
 - `src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity.yml` -- the paper's θ × k sweep, cutoff split
-- `src/hpc_oda_commons/recipes/job-power/<model>_rolling_{avg,peak}.yml` -- every model, UoPC included, predicting average or peak power per node on one rolling protocol ([Power prediction benchmark](../benchmarking/power.md))
-- `src/hpc_oda_commons/recipes/job-power/<model>_rolling_avg_{eagle,kestrel}.yml` -- the same models predicting average power per node on NLR Eagle and Kestrel, on the same split shape ([Power prediction on Eagle and Kestrel](../benchmarking/power-nlr.md))
+- `src/hpc_oda_commons/recipes/job-power/<model>_rolling_{avg,peak}.yml` -- every model, UoPC included, predicting average or peak power per node on one rolling protocol ([Power prediction benchmark](../benchmarking/power/results.md))
+- `src/hpc_oda_commons/recipes/job-power/<model>_rolling_avg_{eagle,kestrel}.yml` -- the same models predicting average power per node on NLR Eagle and Kestrel, on the same split shape ([Power prediction on Eagle and Kestrel](../benchmarking/power/results.md#eagle-and-kestrel))
 
 See the [Recipes Reference](../reference/recipes.md) for the full format specification with annotated examples.
 
@@ -61,7 +61,7 @@ This enforces strict temporal separation -- the model never sees future data dur
 
 ### Cutoff Split
 
-Every job submitted on or after a date (`test_start`) is a test job; everything earlier is history only. Used with `model.job_power_uopc` to reproduce the UoPC paper, which scores each test job against the jobs its user had finished before it was submitted -- an online protocol rather than a retraining schedule. See [UoPC reproduction](../benchmarking/uopc.md).
+Every job submitted on or after a date (`test_start`) is a test job; everything earlier is history only. Used with `model.job_power_uopc` to reproduce the UoPC paper, which scores each test job against the jobs its user had finished before it was submitted -- an online protocol rather than a retraining schedule. See [UoPC reproduction](../benchmarking/power/uopc.md).
 
 **Parameters:**
 - `test_start` (required): ISO date, quoted in YAML

@@ -7,7 +7,7 @@ mean (for RMSE). See [`methodology.md`](methodology.md) for the definition and
 [#169](https://github.com/NatLabRockies/hpc-oda-commons/issues/169) for what is deliberately
 excluded.
 
-Machine-readable form: `datasets/<dataset>.ceiling.json`, regenerable with
+Machine-readable form: `docs/benchmarking/datasets/<dataset>.ceiling.json`, regenerable with
 
 ```
 hpc-oda datasets ceiling <windowed-parquet> --dataset-id <ds> \

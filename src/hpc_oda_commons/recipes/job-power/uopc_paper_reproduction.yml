@@ -2,7 +2,7 @@
 # paper's protocol with only the choices we can defend (#228). Scores every job submitted
 # on/after test_start, predicting avgpcon and maxpcon per requested node from the user's
 # newest `theta` finished jobs. uopc_paper_reproduction_paper_setup.yml runs the authors'
-# setup for comparison. Results, and why they differ: docs/benchmarking/uopc.md (#125).
+# setup for comparison. Results, and why they differ: docs/benchmarking/power/uopc.md (#125).
 #
 # Prepare the data first (5 monthly files, ~3.9 GB):
 #   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml

@@ -3,7 +3,7 @@
 This is the tracked decision log for the full runtime-prediction benchmark (all runtime
 models × all usable datasets). It records **what we decided and why**, so the benchmark is
 reproducible and our choices are explainable. Per-dataset specifics live in the
-[dataset cards](datasets/) (`<id>.card.json` + `<id>.md`), which are the single source of
+[dataset cards](../datasets/) (`<id>.card.json` + `<id>.md`), which are the single source of
 truth consumed by the benchmark runner.
 
 Status: **Phase 1** — characterization + decision records + the `characterize` tool. The
@@ -13,7 +13,7 @@ benchmark-matrix runner and the HPC runner are later phases.
 
 Six runtime-prediction models: `job_runtime_baseline`, `job_runtime_tfidf_knn`,
 `job_runtime_random_forest`, `job_runtime_xgboost`, `job_runtime_mlp`,
-`job_runtime_embedding_knn`. (`job_power_uopc` is power prediction — out of scope; see [UoPC reproduction](uopc.md).) The
+`job_runtime_embedding_knn`. (`job_power_uopc` is power prediction, which is its own track: see [power results](../power/results.md).) The
 embedding model additionally requires a one-time `hpc-oda embed` pass per dataset (reused
 across runs).
 
@@ -167,7 +167,7 @@ is flagged **unhealthy** and the dataset is escalated (seek other months / widen
 **Reproducibility:** the whole thing is deterministic — `hpc-oda datasets characterize
 <parquet>` regenerates the identical card from the prepared table + these parameters.
 
-Exemplar: [`fresco_stampede1`](datasets/fresco_stampede1.md) — healthy span 2013-01-11 →
+Exemplar: [`fresco_stampede1`](../datasets/fresco_stampede1.md) — healthy span 2013-01-11 →
 2018-01-17; chosen window **2016-10-19 → 2017-01-16** (gap-free); the one missing block
 (2018-01-13→15) sits at the span edge, correctly outside the window.
 
@@ -231,7 +231,7 @@ without it a floor cannot be judged tight or vacuous.
 
 **Reproducibility.** Unlike every fitted-model metric in this repo, the ceiling is exactly
 reproducible across machines: no fitting, no BLAS, no thread-order summation. It is not
-subject to the caveat in [`known-issues.md`](../known-issues.md).
+subject to the caveat in [`known-issues.md`](../../known-issues.md).
 
 **What it revealed.** Across the 20 benchmark datasets the best model captures a median **75%**
 of the available headroom, and the ordering inverts the raw leaderboard — `pwa_hpc2n` looks
@@ -241,7 +241,7 @@ earlier — which is a deployable strategy rather than a bound, and which beats 
 models on 9 of 20 datasets (#171). Sweeping its lookback also showed the fixed
 `training_lookback_days: 120` is optimal for only 6 of 20 datasets (#170).
 
-Per-dataset results are tracked as `datasets/<dataset>.ceiling.json`, with a cross-dataset
+Per-dataset results are tracked as `docs/benchmarking/datasets/<dataset>.ceiling.json`, with a cross-dataset
 summary in [`ceilings.md`](ceilings.md).
 
 **Deliberately not included:** leave-one-out. It is neither the floor (the optimal function has

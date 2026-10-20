@@ -24,7 +24,7 @@ import pyarrow.compute as pc
 
 CARD_SCHEMA_VERSION = "oda.dataset_card.v0.1.0"
 
-# Defaults for the health gate + window rule (see docs/benchmarking/methodology.md).
+# Defaults for the health gate + window rule (see docs/benchmarking/runtime/methodology.md).
 DEFAULT_ANCHOR = 0.80
 DEFAULT_TRAIN_DAYS = 60
 # Ninety days of scoring, raised from 30 (#191). Thirty could not contain an allocation

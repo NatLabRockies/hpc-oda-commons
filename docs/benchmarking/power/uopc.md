@@ -15,7 +15,7 @@ divides power by **nodes requested**, not allocated, and uses **balanced** featu
 labelled [comparison with the paper](#comparison-with-the-paper-the-authors-setup), not as our
 result.
 
-Job-power prediction is outside the runtime benchmark ([methodology](methodology.md)); this
+Job-power prediction is outside the runtime benchmark ([methodology](../runtime/methodology.md)); this
 is a one-model study, not a leaderboard.
 
 ## Two protocols, one model
@@ -35,7 +35,7 @@ is a one-model study, not a leaderboard.
 
 The adaptation is unchanged by this work. A third mode, `split.method: rolling`, scores the
 same model on the shared rolling windows next to every other model
-([Power prediction benchmark](power.md)). It uses the same target and features as the
+([Power prediction benchmark](results.md)). It uses the same target and features as the
 reproduction, so their numbers differ only by protocol.
 
 ## Our choices, and why
@@ -61,7 +61,7 @@ nodes the job ran on (all five months, 2.93M jobs):
   - they match the nodes a job ran on for ~96% of all jobs;
   - they are known at submission, so a per-node prediction × requested nodes gives the
     job's total before it runs;
-  - they are the divisor every other model in the Commons uses ([power.md](power.md)).
+  - they are the divisor every other model in the Commons uses ([power results](results.md)).
 - **Dividing by allocated nodes would flatter the result.** The padded jobs become an
   isolated, easy-to-predict cluster at ~2 W. On the same jobs and features, that lifts R²
   from 0.738 to 0.837. It also wrecks percentage baselines: the per-user mean scores 60%
@@ -319,7 +319,7 @@ their user.
 **It reproduces.** 9.9% MAPE on average power (10.2% on peak) matches the paper's 10%. R²
 is higher than the paper's (0.837 against 0.80, and 0.826 against 0.79). That is
 consistent with the ~150k heavily padded jobs this test set contains and the paper's
-apparently does not ([Known deviations](#known-deviations)). Those jobs are easy to
+apparently does not ([Known deviations](#known-deviations-from-the-paper)). Those jobs are easy to
 predict. But they don't account for the whole gap: with every job allocated more than 12×
 its request dropped, R² is 0.751 and 0.737, *below* the paper's
 ([Variants](#variants-padded-jobs-and-node-count)). Better-balanced features narrow the gap
@@ -432,7 +432,7 @@ What the grid shows:
   and 7.70% / 0.776, against 8.12% / 0.757 at k = 5. The best classifier cell is θ = 500,
   k = 20. On peak power, k = 20 is also ~0.3 points better than k = 5. We chose k = 20 from
   this grid alone and use it on every dataset, including Eagle and Kestrel, where it was not
-  tuned ([power-nlr.md](power-nlr.md)).
+  tuned ([Eagle and Kestrel](results.md#eagle-and-kestrel)).
 - **The spike at k = θ/10 is gone.** On the authors' setup the classifier jumped to ~19% at
   (50, 5), (100, 10), (200, 20) and (500, 50), all from the padded users' ~2 W targets
   (below). Per requested node every row is smooth.
@@ -608,8 +608,7 @@ rolling protocols ([#222](https://github.com/NatLabRockies/hpc-oda-commons/issue
 Each run below is a bundled recipe plus one `uopc_features` key. The variant recipes are not
 bundled. They ran on 2026-10-19 at 935e58a, and the `zscore` rows are the earlier results.
 Every run in this section uses k = 5, the default until #228; our results at k = 20 are in
-[Our reproduction](#our-reproduction-θ--500-k--20), [power.md](power.md) and
-[power-nlr.md](power-nlr.md).
+[Our reproduction](#our-reproduction-θ--500-k--20) and the [power results](results.md).
 
 **Unpadded reproduction** (`uopc_paper_reproduction_unpadded.yml`, the paper's apparent data):
 
@@ -634,8 +633,7 @@ rows ran at 8d914e7):
 | Peak | `zscore` | 6.67 | 17.56 | 8.91% | 0.718 |
 | | **`balanced`** | **6.39** | **16.94** | **8.47%** | **0.737** |
 
-**Rolling benchmark UoPC** (`uopc_rolling_*.yml`, [power.md](power.md),
-[power-nlr.md](power-nlr.md)):
+**Rolling benchmark UoPC** (`uopc_rolling_*.yml`, [power results](results.md)):
 
 | Data | Features | MAE | RMSE | MAPE | R² |
 |---|---|---:|---:|---:|---:|
@@ -677,18 +675,10 @@ What they show:
 - **Runs peaked at 15–21 GB.** The first balanced reproduction slowed to a crawl alongside
   another 8 GB process and was rerun.
 
-## Should power have its own tracked benchmark?
+## Is this protocol the power benchmark?
 
-Yes, but not with this protocol. Per-node power is clearly predictable from a user's
-history: R² is 0.84–0.88 and MAPE ~9–10%, well ahead of the per-user mean (0.67–0.77). That
-headroom is enough to rank models. But this protocol is UoPC's own: it refits a model per
-job against that user's history, which most models in the Commons do not support. A
-tracked benchmark should use the shared rolling protocol that every model runs on
-([power prediction](power.md), #204), with:
-
-- targets per requested node, because F-DATA's allocated counts are padded;
-- average power as the headline, because peak means different things across datasets
-  ([power sources](../datasets/power-sources.md));
-- this reproduction kept as the UoPC reference result.
-
-Whether to make it a leaderboard track should wait for the rolling results.
+No. Job-power prediction is becoming a tracked benchmark
+([#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)), but on the shared
+rolling protocol every model runs on ([power results](results.md)), not on this one. This
+protocol is UoPC's own: it refits a model per job against that user's history, which most
+models in the Commons do not support. The reproduction stays as UoPC's reference result.

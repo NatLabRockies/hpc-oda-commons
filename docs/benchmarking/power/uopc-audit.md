@@ -20,7 +20,7 @@ authors' setup (per allocated node, `zscore`) is kept as a labelled comparison r
 This note checks the Commons' UoPC against its sources, prompted by the question "did we
 reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
 (`split.method: cutoff`, [uopc.md](uopc.md)) and the rolling benchmark version
-(`split.method: rolling`, [power.md](power.md), [power-nlr.md](power-nlr.md)).
+(`split.method: rolling`, [power results](results.md)).
 
 ## Summary
 
@@ -260,14 +260,14 @@ difference.
 
 | Where | Claim | What's true |
 |---|---|---|
-| `models/job_power_uopc/model.py:506` and `docs/benchmarking/uopc.md:79` | Global z-scoring is done "as the authors' code does" | It's in neither the paper nor the authors' repositories; it's our adaptation |
+| `models/job_power_uopc/model.py:506` and `docs/benchmarking/power/uopc.md:79` | Global z-scoring is done "as the authors' code does" | It's in neither the paper nor the authors' repositories; it's our adaptation |
 | `model.py:679`, `uopc.md:22`, `uopc.md:82` | Rounding to integer classes follows the authors' implementation | The classifier follows their code; the rounding is ours, needed for fractional per-node targets |
 | `model.py:436-437` | The `nnuma` division follows "the authors' code" | The UoPC code has no division. The paper text and figures, and the JPCP code, support allocated nodes. |
 | `model.py:1` | "per-user kNN regression" | The paper mode uses a classifier |
 | `uopc.md:92-95` | The paper's tables are behind the paywall and not recorded | Table I is above |
 | `uopc.md:121` | "Our test set is larger than the paper's 'more than 700k jobs'" | The paper says >1.3M jobs and >700 users; ours is 1.59M jobs and 764 users |
 | `uopc.md:120` | Agreement with an "unsourced figure in the original contribution (MAPE 10.10%, R² 0.833)" | Still unsourced; compare with Table I instead |
-| `docs/benchmarking/power-nlr.md:90` | F-DATA's job name **and requested CPU frequency** may explain its lower error | On F-DATA the tree models use only `name`, `num_cores_req`, `num_nodes_req`, `requested_seconds` and `user`. `freq_req` is outside the feature allowlist, and `jobenv_req` isn't mapped. Only UoPC uses frequency. |
+| `docs/benchmarking/power/results.md:90` | F-DATA's job name **and requested CPU frequency** may explain its lower error | On F-DATA the tree models use only `name`, `num_cores_req`, `num_nodes_req`, `requested_seconds` and `user`. `freq_req` is outside the feature allowlist, and `jobenv_req` isn't mapped. Only UoPC uses frequency. |
 
 ## Frequency and environment as features for the other models
 
@@ -308,7 +308,7 @@ Embedding the anonymised tokens would also create false similarity: `jnam_211172
 3. Making UoPC's extra numeric columns configurable in both modes, including none, so a run
    can use the embedding alone, as the paper does.
 4. Embedding with `sentence-transformers/all-MiniLM-L6-v2` in a separate environment with the
-   `embed` extra ([why](../known-issues.md#note--on-macos-torch-and-xgboost-crash-in-one-process)).
+   `embed` extra ([why](../../known-issues.md#note--on-macos-torch-and-xgboost-crash-in-one-process)).
    There are 242,481 distinct strings across the 2.93M jobs. Time a sample first.
 
 Comparing it with the current features and with F-DATA's embedding alone would show how much

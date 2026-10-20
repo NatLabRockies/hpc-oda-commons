@@ -5,7 +5,7 @@ benchmark. A card records each dataset's characterization (span, job rate, tempo
 health, feature cardinality, runtime distribution) and the chosen 3-month rolling-benchmark
 window (with rationale), so the choices are explainable and repeatable for others.
 
-See ``docs/benchmarking/methodology.md`` for the agreed methodology.
+See ``docs/benchmarking/runtime/methodology.md`` for the agreed methodology.
 """
 
 from hpc_oda_commons.benchmarking.cards import build_card, render_card_markdown, write_card
