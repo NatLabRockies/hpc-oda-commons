@@ -11,14 +11,15 @@ UoPC's own paper protocol is a separate, one-model study: [UoPC reproduction](uo
 The same for every dataset
 ([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204),
 [#217](https://github.com/NatLabRockies/hpc-oda-commons/issues/217),
-[#219](https://github.com/NatLabRockies/hpc-oda-commons/issues/219)):
+[#219](https://github.com/NatLabRockies/hpc-oda-commons/issues/219),
+[#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)):
 
 - **Split:** 89 daily windows ending at the last submit, with 60 days of training lookback.
 - **Targets:** `avgpcon_per_node` on every dataset, and `maxpcon_per_node` where the source
-  records peak power (F-DATA). Watts per requested node, not per allocated node as in the
-  UoPC paper: F-DATA's allocated count can be padded
-  ([why](../../how-to/predict-power.md#per-node-power)). Only jobs with a power reading are
-  trained on and scored.
+  records peak power (F-DATA and PM100). Watts per node the job ran on: requested nodes on
+  F-DATA, whose allocated count can be padded, not allocated nodes as in the UoPC paper
+  ([why](../../how-to/predict-power.md#per-node-power), [per dataset](methodology.md#targets)).
+  Only jobs with a power reading are trained on and scored.
 - **Models:** baseline (window mean), signature memorizer, TF-IDF + kNN, embedding + kNN,
   UoPC (θ = 500, k = 20, `balanced` features), XGBoost, Random Forest and MoE XGBoost, each
   with its default configuration (`recipes/job-power/<model>_rolling_*.yml`). MLP is left
@@ -42,6 +43,7 @@ by allocated nodes, which F-DATA pads ([why we don't](uopc.md#nodes-requested-no
 | [F-DATA](#f-data) (Fugaku) | `dataset.job_power.fdata_fugaku_uopc`: Dec 2023 – Apr 2024, the five months the UoPC paper uses | average, peak | 2024-02-02 14:00 – 2024-05-01 14:00 (the paper's starts on 2024-02-01) | 1,510,726 | | |
 | [Eagle](#eagle-and-kestrel) (NLR) | `dataset.job_runtime.nlr_eagle`, sliced 2023-05-01 – 2023-09-30 | average | 2023-07-03 16:00 – 2023-09-30 16:00 | 490,260 | 428 | 9.0% |
 | [Kestrel](#eagle-and-kestrel) (NLR) | `dataset.job_runtime.nlr_kestrel`, sliced 2025-08-01 – 2026-01-01 | average | 2025-10-05 06:00 – 2026-01-02 06:00 | 638,081 | 475 | 11.8% |
+| [PM100](#pm100) (Marconi100) | `dataset.job_runtime.pm100`, all of it: May – Oct 2020 | average, peak | 2020-07-17 04:00 – 2020-10-14 04:00 | 142,206 | 380 | 20.8% |
 
 The counts are over the jobs the runs scored.
 
@@ -56,15 +58,20 @@ The counts are over the jobs the runs scored.
   - Kestrel never wound down, so it runs its last 89 days. The runtime benchmark's Kestrel
     window (2025-03-29 to 06-26) was rejected: one user submitted 59.5% of its 1.36M jobs
     with power.
+- **PM100** tests on its last 89 days. It is a May–Oct 2020 extract with no wind-down, and
+  needs no slice. Its window touches a missing block at its first day, kept as a recorded
+  exception ([methodology](methodology.md#health-gate)). Three test days have no submissions,
+  so 86 of its 89 windows score.
 
 **The job embedding.** UoPC and embedding + kNN read a job embedding.
 - **F-DATA** provides one.
-- **Eagle and Kestrel** have none, and no job names or scripts. So `hpc-oda embed`
+- **Eagle, Kestrel and PM100** have none, and no job names or scripts. So `hpc-oda embed`
   (harrier-oss-v1-0.6b, prose) encodes each job's submission fields: partition, qos,
-  account, user, requested walltime, nodes, cores and GPUs, and the weekday and hour of
-  submission. These are the fields the other models already see.
+  account, user, requested walltime, nodes, cores and GPUs where the source has them, and
+  the weekday and hour of submission. These are the fields the other models already see,
+  plus the submission time.
 - UoPC's `balanced` features add log2 of the requested nodes and the requested CPU
-  frequency. Neither NLR source has frequency, so that column is 0 there.
+  frequency. Only F-DATA has frequency, so that column is 0 elsewhere.
 
 ## Results
 
@@ -84,16 +91,20 @@ embedding and requested frequency.
 | F-DATA | peak | 26.05 | 2.55 | 7.54 | 2.61 | 146,137 | 5.8% | 7.63 |
 | Eagle | average | 92.78 | 29.15 | 54.11 | 40.32 | 22,657 | 2.4% | 64.27 |
 | Kestrel | average | 163.08 | 27.60 | 59.58 | 46.14 | 24,451 | 2.0% | 86.21 |
+| PM100 | average | 148.24 | 88.65 | 139.74 | 117.14 | 19,750 | 7.4% | 131.20 |
+| PM100 | peak | 205.48 | 119.90 | 185.79 | 160.39 | 19,750 | 7.4% | 181.93 |
 
-- **The best models capture 80% of the headroom on F-DATA, but 45% on Eagle and 57% on
-  Kestrel.** Raw MAE can't show that, since a Kestrel node draws several times a Fugaku
+- **The best models capture 80% of the headroom on F-DATA, 57% on Kestrel, 45% on Eagle and
+  29% on PM100.** Raw MAE can't show that, since a Kestrel node draws several times a Fugaku
   node's power.
-- **On Eagle and Kestrel, a large part of what the floor allows comes from the time of
-  submission.** The embedding there encodes the weekday and hour a job was submitted, which
-  no other model sees. Without it, on the shared fields alone, the floor is 40 and 46 W
-  rather than 29 and 28. On F-DATA the embedding adds little (2.61 against 2.55 W): it holds
-  the job environment, beyond fields the other models already have.
-- **The floors are not vacuous.** At most 5.8% of scored jobs are alone in their signature,
+- **On Eagle, Kestrel and PM100 the embedding lowers the floor a lot.** There it encodes the
+  weekday and hour a job was submitted, which no other model sees. Without it, on the shared
+  fields alone, the floors are 40, 46 and 117 W rather than 29, 28 and 89. A finer signature
+  always lowers the floor, though, because it splits jobs into smaller groups whether or not
+  the extra field carries real information. So the floor can't say how much of that a model
+  could actually use. On F-DATA the embedding adds little (2.61 against 2.55 W): it holds the
+  job environment, beyond fields the other models already have.
+- **The floors are not vacuous.** At most 7.4% of scored jobs are alone in their signature,
   where the floor can't constrain them. A floor is a bound, though, not a score some model
   is known to reach.
 
@@ -268,6 +279,62 @@ of their time building each day's OHE + SVD preprocessing. XGBoost built it; MoE
 under 3 hours: 68 minutes for Eagle and 1 h 50 min for Kestrel. UoPC and embedding + kNN
 took 46 minutes more, plus 29 minutes to embed the two slices.
 
+### PM100
+
+Run on 2026-10-20 on an Apple M3 Max (14 cores, 38 GB) at commit 20a7ab3, one recipe at a
+time ([#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)). Every model scored
+the same 142,206 jobs, in the 86 of 89 daily windows that have test jobs. UoPC predicted the
+window mean for 6,105 of them (4.3%), users with fewer than k = 20 training jobs. Best value
+in each column in bold.
+
+**Average power (`avgpcon_per_node`, W per node)**
+
+| Model | MAE | RMSE | MAPE | R² | Headroom | Wall time |
+|---|---:|---:|---:|---:|---:|---:|
+| XGBoost | **131.20** | **177.06** | 18.14% | **0.144** | **29%** | 5 min† |
+| Signature memorizer | 131.94 | 185.15 | **17.59%** | 0.064 | 27% | 74 s |
+| Random Forest | 132.06 | 178.29 | 18.27% | 0.132 | 27% | 8 min |
+| MoE XGBoost | 133.10 | 179.66 | 18.43% | 0.119 | 25% | 16 min† |
+| Embedding + kNN | 147.05 | 197.85 | 20.19% | −0.068 | 2% | 2 min |
+| Baseline (window mean) | 148.24 | 191.97 | 19.85% | −0.006 | 0% | 24 s |
+| TF-IDF + kNN | 148.33 | 199.16 | 20.69% | −0.083 | 0% | 79 s |
+| UoPC (θ = 500, k = 20) | 180.80 | 249.77 | 21.95% | −0.703 | −55% | 32 s |
+
+**Peak power (`maxpcon_per_node`, W per node)**
+
+| Model | MAE | RMSE | MAPE | R² | Headroom | Wall time |
+|---|---:|---:|---:|---:|---:|---:|
+| Signature memorizer | **181.93** | 255.60 | **21.94%** | 0.093 | **28%** | 74 s |
+| XGBoost | 182.03 | **242.52** | 22.99% | **0.184** | 27% | 5 min† |
+| Random Forest | 182.83 | 243.75 | 23.06% | 0.176 | 26% | 2 min† |
+| MoE XGBoost | 185.48 | 246.85 | 23.42% | 0.154 | 23% | 17 min† |
+| TF-IDF + kNN | 202.07 | 268.37 | 25.37% | 0.001 | 4% | 77 s |
+| Embedding + kNN | 205.33 | 272.74 | 25.80% | −0.032 | 0% | 2 min |
+| Baseline (window mean) | 205.48 | 269.38 | 25.28% | −0.007 | 0% | 23 s |
+| UoPC (θ = 500, k = 20) | 237.55 | 326.20 | 26.47% | −0.477 | −37% | 31 s |
+
+† Read every day's preprocessing from the store that the Random Forest (average) run had
+just filled ([#213](https://github.com/NatLabRockies/hpc-oda-commons/issues/213)).
+
+**PM100 has the least to learn of the four.** The best model's MAE is 11% below the window
+mean's (131 against 148 W per node), and R² is at most 0.18. The models capture 29% of the
+headroom on average power and 28% on peak.
+
+**Memorizing is as good as fitting here.** The signature memorizer found an exact match for
+87% of PM100's jobs, more than on any other dataset. It is within 1 W of XGBoost's MAE on
+average power and has the best MAE and MAPE on peak, though its R² is lower: it misses the
+jobs it hasn't seen. XGBoost, Random Forest and MoE XGBoost are within 2 W of each other on
+average power and 3.5 W on peak.
+
+**UoPC is worse than predicting the window mean**, on both targets: R² −0.70 and −0.48, and
+negative headroom. The two other kNN models, on the same embedding or on TF-IDF, are level
+with the baseline. Why UoPC does worse than both is not established. Its k = 20 was chosen on
+F-DATA and not tuned here ([methodology](methodology.md#models-in-scope)).
+
+**Peak is harder than average**, more so than on F-DATA: MAPE is 4–6 points higher for every
+model. PM100's peak is the peak of the summed node trace, not F-DATA's per-node peak, so the
+two peak tables are not comparable ([methodology](methodology.md#targets)).
+
 ## How the runs were done
 
 ### F-DATA
@@ -337,3 +404,28 @@ hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/<model>_rolling_avg_<sys
 
 Each recipe's header gives its system's `--start` and `--end`, and its embed step if it
 has one.
+
+### PM100
+
+- **Prepare and embed.** `datasets prepare` took 33 s. `hpc-oda embed` encoded PM100's
+  35,470 distinct descriptions in 12 minutes (6.2 GB peak, on the Apple GPU), in a separate
+  environment with the `embed` extra
+  ([why](../../known-issues.md#note--on-macos-torch-and-xgboost-crash-in-one-process)). The
+  embedded table holds the prepared table's 231,238 jobs in the same order, with the same
+  power values.
+- **A smoke run first.** Each model ran 3 windows and scored the same 2,115 jobs, exactly the
+  jobs with power in those windows.
+- **One run at a time.** The 16 runs took 64 minutes and peaked at 8.8 GB (embedding + kNN).
+  `window_n_jobs` was left at the recipes' default.
+- **One commit, one source hash** (20a7ab3) for all sixteen bundles.
+
+Reproduce any row with:
+
+```
+hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/pm100.yml
+# UoPC and embedding + kNN only, in an environment with the `embed` extra:
+hpc-oda embed data/datasets/pm100/data.parquet \
+  --out data/windows/pm100_power_embedded/data.parquet \
+  --model microsoft/harrier-oss-v1-0.6b --format prose
+hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/<model>_rolling_{avg,peak}_pm100.yml
+```

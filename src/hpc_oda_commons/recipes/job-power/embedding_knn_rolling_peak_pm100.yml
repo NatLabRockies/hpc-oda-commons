@@ -1,0 +1,53 @@
+# Embedding kNN predicting peak power per node on PM100 (Marconi100, #230), on the
+# power benchmark's rolling protocol: 89 daily windows, 60 days of history
+# (docs/benchmarking/power/methodology.md). The windows end at the table's last submit,
+# so they test PM100's last 89 days, 2020-07-17 to 2020-10-14.
+#
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/pm100.yml
+#
+# PM100 ships no job embedding, so one is computed from the submission fields
+# (partition, qos, user, requested walltime, nodes and cores, weekday and hour of
+# submission). The embedded table keeps every row, so it scores the same jobs.
+#
+#   hpc-oda embed data/datasets/pm100/data.parquet \
+#     --out data/windows/pm100_power_embedded/data.parquet \
+#     --model microsoft/harrier-oss-v1-0.6b --format prose      # needs the `embed` extra
+#
+# Every model in recipes/job-power/*_rolling_{avg,peak}_pm100.yml uses the same split and
+# rows.
+
+recipe_id: recipe.job_power.embedding_knn_rolling_peak_pm100
+
+problem_domain:
+  - job-power-prediction
+
+schema_version: oda.job.v0.2.0
+
+dataset:
+  id: pm100
+  table_path: data/windows/pm100_power_embedded/data.parquet
+
+model:
+  id: model.job_runtime_embedding_knn
+  version: "0.1.0"
+
+metrics:
+  - name: mae
+    target: maxpcon_per_node
+  - name: rmse
+    target: maxpcon_per_node
+  - name: mape
+    target: maxpcon_per_node
+  - name: r2
+    target: maxpcon_per_node
+
+split:
+  method: rolling
+  n_windows: 89
+  test_window_hours: 24
+  training_lookback_days: 60
+  k: 5
+
+run:
+  output_dir: runs
+  overwrite: false

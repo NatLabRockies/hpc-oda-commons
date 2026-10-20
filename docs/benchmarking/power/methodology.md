@@ -6,7 +6,7 @@ benchmark is reproducible and our choices are explainable. The numbers live on o
 [Results](results.md). The decisions were agreed in
 [#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230).
 
-Status: **decision log and error ceilings.** Still to come under #230: PM100, and a check that
+Status: **decision log, error ceilings, four datasets.** Still to come under #230: a check that
 the leaderboard keeps power separate from runtime ([Open items](#open-items)).
 
 ## Models in scope
@@ -70,17 +70,22 @@ finished before submission. That protocol stays a one-model study,
 
 ## Targets
 
-- **Headline: average power per requested node** (`avgpcon_per_node`), on every dataset.
-- **Second table: peak power per requested node** (`maxpcon_per_node`), only where the source
-  records peak (F-DATA today). Peak means different things across sources: F-DATA reports
-  each node's own peak, PM100 the peak of the summed trace
+- **Headline: average power per node** (`avgpcon_per_node`), on every dataset.
+- **Second table: peak power per node** (`maxpcon_per_node`), only where the source records
+  peak (F-DATA and PM100). Peak means different things across sources: F-DATA reports each
+  node's own peak, PM100 the peak of the summed trace
   ([power sources](../../datasets/power-sources.md#summary)). Comparing them across datasets
   would compare definitions, not models.
-- **Per requested node, not per allocated node.** F-DATA pads its allocated counts: 410,740
-  one-node jobs record 48 allocated nodes. Power sums only the nodes a job ran on, which match
-  its request for ~96% of jobs and never match the padded count. Requested nodes are also
-  known at submission ([known issues](../../known-issues.md#note--f-datas-allocated-node-counts-can-be-padded),
-  [why](uopc.md#nodes-requested-not-allocated)).
+- **Per node the job ran on.** A job's power sums the nodes it ran on, so that is the divisor.
+  Each source records it differently:
+
+  | Dataset | Divisor | Why |
+  |---|---|---|
+  | F-DATA | requested nodes | F-DATA pads its allocated counts: 410,740 one-node jobs record 48. The nodes a job ran on match its request for ~96% of jobs and never match the padded count ([known issues](../../known-issues.md#note--f-datas-allocated-node-counts-can-be-padded), [why](uopc.md#nodes-requested-not-allocated)) |
+  | PM100 | allocated nodes | the power trace sums exactly the allocated nodes; they equal the request for 99.92% of jobs |
+  | Eagle, Kestrel | nodes used | the energy reading covers the nodes the job used |
+
+  Agreed on #230.
 - **Only jobs with a power reading** are trained on and scored. Readings no node could
   produce are nulled per dataset by the descriptor (`trim_quantiles`,
   [known issues](../../known-issues.md#note--eagles-and-kestrels-energy-readings-include-impossible-per-node-power)).
@@ -151,6 +156,7 @@ UoPC paper's test period, and the NLR systems are chosen against their wind-down
 | F-DATA | the 89 days to its last submit | it matches the UoPC paper's test period, so the two protocols can be compared |
 | Eagle | the last 89 days before its wind-down | its real last 89 days had 122k jobs from 159 users, one with 41.8% |
 | Kestrel | its last 89 days | it never wound down. The runtime benchmark's Kestrel window was rejected: one user submitted 59.5% of its jobs with power |
+| PM100 | its last 89 days | it is a May–Oct 2020 extract with no wind-down, and only just long enough: 89 test days plus the 60-day lookback need 149 of its ~160 days |
 
 The dates, users and top user's share of each test period are on the
 [results page](results.md#datasets). Each window starts 60 days before its test period, for
@@ -169,6 +175,7 @@ days before the test period to the last submit.
 | F-DATA | 2,930,414 | 19,847 | 2024-02-10 – 02-12, 2024-04-01 – 04-03 | **fails; kept as an exception** |
 | Eagle | 833,525 | 5,071 | none | passes |
 | Kestrel | 1,190,332 | 5,173 | none (two before the window, in July 2025) | passes |
+| PM100 | 231,238 | 1,161 | 2020-05-14 – 05-18, ending on the window's first day | **fails at the edge; kept as an exception** |
 
 **F-DATA is kept as a recorded exception.** The runtime rule treats outages and lost records
 alike, because the two usually can't be told apart. Here they can. On each of the six days
@@ -185,6 +192,13 @@ What they cost:
 Shifting the window would lose the comparison with the paper and rerun every F-DATA result.
 A deployed predictor would face the same outages. Agreed on #230.
 
+**PM100 is kept as a recorded exception too.** Its window begins at 2020-05-18 04:00 UTC, the
+last day of a 5-day missing block. Only the earliest test windows reach back that far, and
+they lose part of one training day. The window cannot move: the data ends in October. Three
+single test days have no submissions (2020-08-02, 08-03 and 08-09); they are under the 3-day
+threshold, so they are not a missing block, and they leave 86 of the 89 windows scoring.
+Agreed on #230.
+
 Reproduce the gate from a prepared table:
 
 ```python
@@ -197,7 +211,8 @@ table = table.filter(pc.is_valid(table.column("avgpcon_per_node")))
 print(characterize_table(table)["gaps"])  # then keep the blocks inside the window above
 ```
 
-For Eagle and Kestrel, read the sliced tables in `data/windows/nlr_{eagle,kestrel}_power/`.
+For Eagle and Kestrel, read the sliced tables in `data/windows/nlr_{eagle,kestrel}_power/`;
+for PM100, `data/datasets/pm100/data.parquet`.
 
 ## Dataset roster
 
@@ -205,7 +220,12 @@ From the public sources with per-job power ([power sources](../../datasets/power
 
 - **In:** F-DATA (`fdata_fugaku_uopc`, its five UoPC months), NLR Eagle (`nlr_eagle`) and NLR
   Kestrel (`nlr_kestrel`, CPU nodes, shared nodes excluded).
-- **Next:** PM100 (`pm100`), mapped with average and peak power: 231k jobs, May–Oct 2020.
+- **Shared nodes on PM100 are kept.** 5,396 jobs (2.3%) ran on a node at the same time as
+  another job, so their node's power includes the other job's. PM100 does not flag them, as
+  Kestrel does; they were found by overlapping node lists and run times. At 2.3% they are kept
+  and recorded as a limitation, rather than excluded with new code (agreed on #230;
+  [known issues](../../known-issues.md#note--pm100-power-includes-co-located-jobs-for-23-of-jobs)).
+- **In since #230:** PM100 (`pm100`), with average and peak power: 231k jobs, May–Oct 2020.
 - **Waiting on mapping:** Lassen (power needs a join) and Adastra (needs cleaning).
 - **Not used:** `nrel_eagle`, the same machine as `nlr_eagle` from another source, as in the
   runtime benchmark. Sources not registered or not usable are listed on the power sources page.
@@ -224,7 +244,6 @@ From the public sources with per-job power ([power sources](../../datasets/power
 
 ## Open items
 
-- **PM100:** window, recipes, runs (#230).
 - **Leaderboard:** check that power bundles are tabled separately from runtime (#230).
 - **A lookback axis**, as in the runtime benchmark.
 - **The HPC runner** (`bench-matrix`) is runtime-only; power runs locally from recipes.
