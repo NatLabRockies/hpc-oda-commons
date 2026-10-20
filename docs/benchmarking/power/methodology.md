@@ -6,8 +6,8 @@ benchmark is reproducible and our choices are explainable. The numbers live on o
 [Results](results.md). The decisions were agreed in
 [#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230).
 
-Status: **decision log.** Still to come under #230: power error ceilings, PM100, and a check
-that the leaderboard keeps power separate from runtime ([Open items](#open-items)).
+Status: **decision log and error ceilings.** Still to come under #230: PM100, and a check that
+the leaderboard keeps power separate from runtime ([Open items](#open-items)).
 
 ## Models in scope
 
@@ -98,8 +98,47 @@ are reported beside it.
   useful on typical jobs.
 
 **Across datasets, MAE is not comparable**: a Fugaku node draws ~90 W and a Kestrel node
-~590 W. The cross-dataset view will be the share of available headroom each model captures,
-against a power error ceiling ([open item](#open-items)).
+~590 W. The cross-dataset view is the share of the available headroom each model captures,
+against each dataset's [error ceiling](#error-ceilings).
+
+## Error ceilings
+
+The runtime benchmark's ceiling, applied to power
+([runtime methodology](../runtime/methodology.md#calibrating-the-numbers-the-error-ceiling)).
+Jobs whose inputs are identical can't be told apart, so for each dataset and target the
+lowest MAE any predictor could reach is that of predicting each group's median. It is exact,
+needs no fitting, and is the same on every machine.
+
+**The signature is every input any benchmarked model reads**, not only the shared submission
+fields as on runtime. UoPC and embedding + kNN also read a job embedding, and UoPC the
+requested frequency. On F-DATA the embedding encodes the job environment; on Eagle and
+Kestrel ours encodes the weekday and hour of submission. With a signature that omits them,
+those two models could in principle beat the "floor". With every input in it, the floor
+bounds all eight models and headroom captured never exceeds 100%. Two jobs share an
+embedding only if every element is identical. Agreed on #230.
+
+The cost is a lower, finer floor where the extra inputs carry information. The ceiling file
+records each feature's cost, so the floor without the embedding is also on record.
+
+**Headroom captured** = (baseline MAE − model MAE) / (baseline MAE − floor MAE), where the
+baseline is the window mean. 0% is the baseline, 100% the floor.
+
+The ceilings use the benchmark's own windows and score exactly its rows: only jobs with a
+reading of the target. Results: [How much accuracy is available](results.md#how-much-accuracy-is-available).
+Regenerate with:
+
+```
+hpc-oda datasets ceiling data/datasets/fdata_fugaku_uopc/data.parquet \
+  --target avgpcon_per_node --dataset-id dataset.job_power.fdata_fugaku_uopc \
+  --n-windows 89 --test-window-hours 24 --training-lookback-days 60 \
+  --extra-feature embedding --extra-feature freq_req \
+  --out docs/benchmarking/datasets/fdata_fugaku_uopc.avgpcon_per_node.ceiling.json
+```
+
+The same with `--target maxpcon_per_node`, and for Eagle and Kestrel on
+`data/windows/nlr_{eagle,kestrel}_power_embedded/data.parquet` (the tables UoPC and
+embedding + kNN read) as `nlr_{eagle,kestrel}_power.avgpcon_per_node.ceiling.json`. A field
+a table lacks, such as frequency on Eagle, is left out of its signature.
 
 ## Window selection
 
@@ -185,8 +224,6 @@ From the public sources with per-job power ([power sources](../../datasets/power
 
 ## Open items
 
-- **Power error ceilings:** `hpc-oda datasets ceiling --target` and a ceiling per dataset, for
-  the cross-dataset view (#230).
 - **PM100:** window, recipes, runs (#230).
 - **Leaderboard:** check that power bundles are tabled separately from runtime (#230).
 - **A lookback axis**, as in the runtime benchmark.

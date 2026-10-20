@@ -22,7 +22,7 @@ Predicting a job's average (and, where recorded, peak) power per node. Becoming 
 benchmark ([#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)).
 
 - [Methodology](power/methodology.md): the decision log — models, configuration, targets,
-  ranking, window selection and its health gate, dataset roster.
+  ranking, error ceilings, window selection and its health gate, dataset roster.
 - [Results](power/results.md): every model on every power dataset, on one rolling protocol.
 - [UoPC reproduction](power/uopc.md): the UoPC paper's own protocol, a one-model study.
 - [UoPC audit](power/uopc-audit.md): our UoPC checked against the paper and the authors' code.

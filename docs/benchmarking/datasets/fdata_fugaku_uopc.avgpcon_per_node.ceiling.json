@@ -1,0 +1,118 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 89,
+    "test_window_hours": 24,
+    "training_lookback_days": 60
+  },
+  "scored_rows": 1510726,
+  "target_field": "avgpcon_per_node",
+  "feature_fields": [
+    "embedding",
+    "freq_req",
+    "name",
+    "num_cores_req",
+    "num_nodes_req",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 2.550755807388805,
+    "rmse": 7.113108291693786,
+    "signatures": 146137,
+    "group_sizes": {
+      "min": 1,
+      "median": 1.0,
+      "max": 32848,
+      "singleton_row_share": 0.057934397104438526
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 2.550755807388805,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_nodes_req",
+      "floor_mae_without": 2.550755807388805,
+      "cost": 0.0
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 2.550755807388805,
+      "cost": 0.0
+    },
+    {
+      "feature": "name",
+      "floor_mae_without": 2.5508045878200534,
+      "cost": 4.8780431248562905e-05
+    },
+    {
+      "feature": "freq_req",
+      "floor_mae_without": 2.553167804939111,
+      "cost": 0.0024119975503062996
+    },
+    {
+      "feature": "embedding",
+      "floor_mae_without": 2.6105236117877912,
+      "cost": 0.059767804398986435
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 2.8363000884097542,
+      "cost": 0.2855442810209494
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 19.40357699886266,
+        "coverage": 0.38658830257770105,
+        "rows": 1510726
+      },
+      "10d": {
+        "mae": 16.70656210646763,
+        "coverage": 0.5047301760875235,
+        "rows": 1510726
+      },
+      "30d": {
+        "mae": 16.40094237793507,
+        "coverage": 0.5378844343712891,
+        "rows": 1510726
+      },
+      "60d": {
+        "mae": 16.615759541975027,
+        "coverage": 0.5431818873839466,
+        "rows": 1510726
+      },
+      "120d": {
+        "mae": 16.417363500683788,
+        "coverage": 0.5459315587340127,
+        "rows": 1510726
+      },
+      "all": {
+        "mae": 16.41448580437634,
+        "coverage": 0.5459315587340127,
+        "rows": 1510726
+      }
+    },
+    "best_lookback": "30d",
+    "backoff_order": [
+      "num_cores_req",
+      "num_nodes_req",
+      "user",
+      "name",
+      "freq_req",
+      "embedding",
+      "requested_seconds"
+    ],
+    "backoff_at_best": {
+      "mae": 16.333468553993615,
+      "coverage": 0.5378844343712891,
+      "rows": 1510726
+    }
+  },
+  "dataset_id": "dataset.job_power.fdata_fugaku_uopc",
+  "generated_at": "2026-10-20T15:19:09.978692Z"
+}

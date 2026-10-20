@@ -70,6 +70,38 @@ The counts are over the jobs the runs scored.
 
 <!-- results:power-rolling -->
 
+### How much accuracy is available
+
+Each dataset's **error floor** is the lowest MAE any predictor could reach from the jobs'
+inputs ([methodology](methodology.md#error-ceilings)). Jobs whose inputs are all identical
+can't be told apart, so the best any model can do is predict each such group's median. The
+signature is every input any model here reads: the shared submission fields, plus the job
+embedding and requested frequency.
+
+| Dataset | Target | Baseline MAE | Floor MAE | Floor RMSE | Floor without the embedding | Signatures | Rows alone | Best model MAE |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| F-DATA | average | 25.57 | 2.55 | 7.11 | 2.61 | 146,137 | 5.8% | 7.17 |
+| F-DATA | peak | 26.05 | 2.55 | 7.54 | 2.61 | 146,137 | 5.8% | 7.63 |
+| Eagle | average | 92.78 | 29.15 | 54.11 | 40.32 | 22,657 | 2.4% | 64.27 |
+| Kestrel | average | 163.08 | 27.60 | 59.58 | 46.14 | 24,451 | 2.0% | 86.21 |
+
+- **The best models capture 80% of the headroom on F-DATA, but 45% on Eagle and 57% on
+  Kestrel.** Raw MAE can't show that, since a Kestrel node draws several times a Fugaku
+  node's power.
+- **On Eagle and Kestrel, a large part of what the floor allows comes from the time of
+  submission.** The embedding there encodes the weekday and hour a job was submitted, which
+  no other model sees. Without it, on the shared fields alone, the floor is 40 and 46 W
+  rather than 29 and 28. On F-DATA the embedding adds little (2.61 against 2.55 W): it holds
+  the job environment, beyond fields the other models already have.
+- **The floors are not vacuous.** At most 5.8% of scored jobs are alone in their signature,
+  where the floor can't constrain them. A floor is a bound, though, not a score some model
+  is known to reach.
+
+**Headroom captured** in the tables below is
+(baseline MAE − model MAE) / (baseline MAE − floor MAE): the share of the error between
+predicting the window mean and the floor that a model removes. Unlike MAE, it compares across
+datasets. The files are `docs/benchmarking/datasets/<dataset>.<target>.ceiling.json`.
+
 ### F-DATA
 
 Run on 2026-10-16 and 17 on an Apple M3 Max (14 cores, 38 GB), one recipe at a time.
@@ -86,29 +118,29 @@ features ([feature modes](uopc.md#feature-modes)).
 
 **Average power (`avgpcon_per_node`, W per node)**
 
-| Model | MAE | RMSE | MAPE | R² | Wall time |
-|---|---:|---:|---:|---:|---:|
-| UoPC (θ = 500, k = 20) | **7.17** | 16.87 | 10.29% | 0.706 | 5 min |
-| MoE XGBoost | 7.19 | 14.75 | **10.07%** | 0.775 | 3.0 h |
-| XGBoost | 7.68 | **13.54** | 11.05% | **0.810** | 2.6 h |
-| Random Forest | 7.78 | 14.71 | 11.10% | 0.776 | 2.4 h |
-| Embedding + kNN | 8.03 | 17.83 | 11.11% | 0.671 | 3.4 h |
-| TF-IDF + kNN | 13.62 | 24.46 | 18.48% | 0.382 | 65 min |
-| Signature memorizer | 15.47 | 25.02 | 20.88% | 0.353 | 28 min |
-| Baseline (window mean) | 25.57 | 31.17 | 35.51% | −0.004 | 4 min |
+| Model | MAE | RMSE | MAPE | R² | Headroom | Wall time |
+|---|---:|---:|---:|---:|---:|---:|
+| UoPC (θ = 500, k = 20) | **7.17** | 16.87 | 10.29% | 0.706 | **80%** | 5 min |
+| MoE XGBoost | 7.19 | 14.75 | **10.07%** | 0.775 | **80%** | 3.0 h |
+| XGBoost | 7.68 | **13.54** | 11.05% | **0.810** | 78% | 2.6 h |
+| Random Forest | 7.78 | 14.71 | 11.10% | 0.776 | 77% | 2.4 h |
+| Embedding + kNN | 8.03 | 17.83 | 11.11% | 0.671 | 76% | 3.4 h |
+| TF-IDF + kNN | 13.62 | 24.46 | 18.48% | 0.382 | 52% | 65 min |
+| Signature memorizer | 15.47 | 25.02 | 20.88% | 0.353 | 44% | 28 min |
+| Baseline (window mean) | 25.57 | 31.17 | 35.51% | −0.004 | 0% | 4 min |
 
 **Peak power (`maxpcon_per_node`, W per node)**
 
-| Model | MAE | RMSE | MAPE | R² | Wall time |
-|---|---:|---:|---:|---:|---:|
-| UoPC (θ = 500, k = 20) | **7.63** | 18.38 | 10.68% | 0.688 | 5 min |
-| MoE XGBoost | 7.72 | 16.58 | **10.43%** | 0.746 | 67 min† |
-| XGBoost | 7.98 | **14.69** | 11.43% | **0.801** | 34 min† |
-| Random Forest | 7.98 | 15.54 | 11.17% | 0.777 | 71 min† |
-| Embedding + kNN | 8.23 | 19.09 | 11.15% | 0.663 | 3.5 h |
-| TF-IDF + kNN | 14.38 | 26.66 | 18.90% | 0.343 | 1.5 h |
-| Signature memorizer | 15.86 | 26.77 | 19.43% | 0.338 | 29 min |
-| Baseline (window mean) | 26.05 | 32.95 | 34.62% | −0.003 | 6 min |
+| Model | MAE | RMSE | MAPE | R² | Headroom | Wall time |
+|---|---:|---:|---:|---:|---:|---:|
+| UoPC (θ = 500, k = 20) | **7.63** | 18.38 | 10.68% | 0.688 | **78%** | 5 min |
+| MoE XGBoost | 7.72 | 16.58 | **10.43%** | 0.746 | **78%** | 67 min† |
+| XGBoost | 7.98 | **14.69** | 11.43% | **0.801** | 77% | 34 min† |
+| Random Forest | 7.98 | 15.54 | 11.17% | 0.777 | 77% | 71 min† |
+| Embedding + kNN | 8.23 | 19.09 | 11.15% | 0.663 | 76% | 3.5 h |
+| TF-IDF + kNN | 14.38 | 26.66 | 18.90% | 0.343 | 50% | 1.5 h |
+| Signature memorizer | 15.86 | 26.77 | 19.43% | 0.338 | 43% | 29 min |
+| Baseline (window mean) | 26.05 | 32.95 | 34.62% | −0.003 | 0% | 6 min |
 
 † Read every day's preprocessing from the store (#213); see the wall-time note below.
 
@@ -164,29 +196,29 @@ and better on Kestrel. With the earlier `zscore` features and k = 5 it scored 24
 
 **Eagle (`avgpcon_per_node`, W per node; 490,260 jobs)**
 
-| Model | MAE | RMSE | MAPE | R² | Wall time |
-|---|---:|---:|---:|---:|---:|
-| XGBoost | **64.27** | **90.09** | **20.33%** | **0.322** | 27 min |
-| MoE XGBoost | 64.81 | 92.13 | 20.54% | 0.291 | 11 min† |
-| Random Forest | 66.16 | 94.28 | 21.13% | 0.258 | 9 min† |
-| Signature memorizer | 66.61 | 97.99 | 20.73% | 0.198 | 6 min |
-| Embedding + kNN | 77.41 | 109.83 | 24.48% | −0.008 | 14 min |
-| TF-IDF + kNN | 78.12 | 115.84 | 24.39% | −0.121 | 14 min |
-| UoPC (θ = 500, k = 20) | 81.10 | 120.75 | 25.21% | −0.218 | 2 min |
-| Baseline (window mean) | 92.78 | 109.81 | 30.02% | −0.007 | 2 min |
+| Model | MAE | RMSE | MAPE | R² | Headroom | Wall time |
+|---|---:|---:|---:|---:|---:|---:|
+| XGBoost | **64.27** | **90.09** | **20.33%** | **0.322** | **45%** | 27 min |
+| MoE XGBoost | 64.81 | 92.13 | 20.54% | 0.291 | 44% | 11 min† |
+| Random Forest | 66.16 | 94.28 | 21.13% | 0.258 | 42% | 9 min† |
+| Signature memorizer | 66.61 | 97.99 | 20.73% | 0.198 | 41% | 6 min |
+| Embedding + kNN | 77.41 | 109.83 | 24.48% | −0.008 | 24% | 14 min |
+| TF-IDF + kNN | 78.12 | 115.84 | 24.39% | −0.121 | 23% | 14 min |
+| UoPC (θ = 500, k = 20) | 81.10 | 120.75 | 25.21% | −0.218 | 18% | 2 min |
+| Baseline (window mean) | 92.78 | 109.81 | 30.02% | −0.007 | 0% | 2 min |
 
 **Kestrel (`avgpcon_per_node`, W per node; 638,081 jobs)**
 
-| Model | MAE | RMSE | MAPE | R² | Wall time |
-|---|---:|---:|---:|---:|---:|
-| MoE XGBoost | **86.21** | 129.46 | **19.41%** | 0.468 | 15 min† |
-| XGBoost | 90.04 | **127.93** | 21.20% | **0.481** | 43 min |
-| Random Forest | 101.59 | 150.62 | 23.30% | 0.280 | 15 min† |
-| UoPC (θ = 500, k = 20) | 101.83 | 166.89 | 23.08% | 0.116 | 3 min |
-| Signature memorizer | 112.61 | 161.41 | 26.56% | 0.173 | 8 min |
-| Embedding + kNN | 113.12 | 167.20 | 25.26% | 0.113 | 26 min |
-| TF-IDF + kNN | 113.26 | 171.75 | 25.05% | 0.064 | 27 min |
-| Baseline (window mean) | 163.08 | 179.36 | 36.10% | −0.021 | 3 min |
+| Model | MAE | RMSE | MAPE | R² | Headroom | Wall time |
+|---|---:|---:|---:|---:|---:|---:|
+| MoE XGBoost | **86.21** | 129.46 | **19.41%** | 0.468 | **57%** | 15 min† |
+| XGBoost | 90.04 | **127.93** | 21.20% | **0.481** | 54% | 43 min |
+| Random Forest | 101.59 | 150.62 | 23.30% | 0.280 | 45% | 15 min† |
+| UoPC (θ = 500, k = 20) | 101.83 | 166.89 | 23.08% | 0.116 | 45% | 3 min |
+| Signature memorizer | 112.61 | 161.41 | 26.56% | 0.173 | 37% | 8 min |
+| Embedding + kNN | 113.12 | 167.20 | 25.26% | 0.113 | 37% | 26 min |
+| TF-IDF + kNN | 113.26 | 171.75 | 25.05% | 0.064 | 37% | 27 min |
+| Baseline (window mean) | 163.08 | 179.36 | 36.10% | −0.021 | 0% | 3 min |
 
 † Read every day's preprocessing from the store that the XGBoost run had just filled
 ([#213](https://github.com/NatLabRockies/hpc-oda-commons/issues/213)).

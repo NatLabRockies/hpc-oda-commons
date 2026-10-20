@@ -208,3 +208,19 @@ before a tree model fits. Installing torch also changes what embedding kNN's
 Keep the `embed` extra in its own environment. Compute embeddings there, then run
 benchmarks and the test suite in an environment without torch. The power benchmarks in
 [Power prediction on Eagle and Kestrel](benchmarking/power/results.md#eagle-and-kestrel) were run that way.
+
+## Note — pyarrow's `take` returns wrong values on a list column past 4 GiB
+
+**Status:** worked around · **Tracking:** [#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)
+
+With pyarrow 23.0.0, `Table.take` on F-DATA's `embedding` column (`list<float>`, 384 values
+per job, 2.93M jobs) returned the right rows up to 2³⁰ values (4 GiB) and other rows' values
+after that. Nothing raised. The power ceiling's feature-cost pass took a subset of the table
+this way and its first run reported negative costs, which is impossible.
+
+`hpc-oda datasets ceiling` no longer takes subsets: it codes each field once over the whole
+table and indexes the codes. Dataset preparation filters F-DATA's embedding too, but one
+monthly source file at a time, well under 4 GiB; a check of 2,102 prepared rows against the
+raw files found every embedding intact. `datasets slice` runs before `embed`, so the Eagle
+and Kestrel embeddings are never filtered. Avoid `take` and `filter` on list columns that
+large, or check the result.

@@ -22,6 +22,7 @@
         },
         "scored_rows": {"type": "integer", "minimum": 0},
         "feature_fields": {"type": "array", "items": {"type": "string"}},
+        "target_field": {"type": "string", "description": "The column the floor bounds; runtime_seconds when absent (files before #230)."},
         "floor": {
             "type": "object",
             "description": "Exact minimum error over all functions of the feature signature. Not an estimate: a group of one contributes zero error because a function mapping that signature to that value exists.",
