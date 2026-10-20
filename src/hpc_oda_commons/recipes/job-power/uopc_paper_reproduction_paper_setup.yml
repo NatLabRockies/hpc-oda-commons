@@ -2,7 +2,7 @@
 # Identical to uopc_paper_reproduction.yml except that power is divided by allocated nodes,
 # as the paper does, and features are zscore. F-DATA pads allocated counts, so ~150k test
 # jobs read ~2 W per node here; our own result is uopc_paper_reproduction.yml.
-# docs/benchmarking/uopc.md#comparison-with-the-paper.
+# docs/benchmarking/power/uopc.md#comparison-with-the-paper-the-authors-setup.
 #
 # Prepare the data first (5 monthly files, ~3.9 GB):
 #   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml

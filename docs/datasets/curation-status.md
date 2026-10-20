@@ -58,7 +58,7 @@ All strict-validate against `oda.job.v0.2.0`.
 > **Note — `nrel_eagle` and `nlr_eagle` are the same machine** (NREL's Eagle), from two
 > sources with overlapping years. For benchmarks/aggregates use **only `nlr_eagle`** (more
 > recent, longer span) to avoid double-counting one machine. See
-> [`../benchmarking/methodology.md`](../benchmarking/methodology.md).
+> [`../benchmarking/runtime/methodology.md`](../benchmarking/runtime/methodology.md).
 
 ## Remaining runtime datasets
 

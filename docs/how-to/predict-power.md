@@ -59,7 +59,7 @@ allocated nodes. For F-DATA it is the **requested** nodes (`num_nodes_req`): Fug
 allocated count (`nnuma`) can be padded past the nodes a job runs on, while its power sums
 only those. In the UoPC test months, 137k jobs (8.6%) request 1 node and 48 cores but show
 `nnuma` = 48, and their ~91 W would read as 1.9 W per allocated node. The UoPC paper
-divides by `nnuma`. Our [paper reproduction](../benchmarking/uopc.md#nodes-requested-not-allocated)
+divides by `nnuma`. Our [paper reproduction](../benchmarking/power/uopc.md#nodes-requested-not-allocated)
 divides by requested nodes, and keeps the paper's divisor only for comparison.
 
 ## Datasets with power
@@ -109,7 +109,7 @@ Neither source has a job embedding, so UoPC and embedding kNN read the slice wit
 computed by `hpc-oda embed`. Run that step in a separate environment with the `embed`
 extra ([why](../known-issues.md#note--on-macos-torch-and-xgboost-crash-in-one-process)).
 Each recipe's header gives its system's slice, and its embed step if it has one. Results are in
-[Power prediction on Eagle and Kestrel](../benchmarking/power-nlr.md).
+[Power prediction on Eagle and Kestrel](../benchmarking/power/results.md#eagle-and-kestrel).
 
 The leaderboard shows power errors in W/node and picks the best value of each metric per
 target, so runtime and power results in one runs folder are never ranked against each
@@ -122,6 +122,6 @@ rows the other models are scored on. A test job's context is its user's newest `
 training-window jobs; features are scaled on training rows only. A user with fewer than `k`
 training jobs gets the window's mean target (the rolling baseline's prediction), counted in
 `summary.rows_fallback`, so no row the other models score is dropped. The paper's own
-date-cutoff protocol is described in [UoPC reproduction](../benchmarking/uopc.md).
+date-cutoff protocol is described in [UoPC reproduction](../benchmarking/power/uopc.md).
 
-Results for all models: [Power prediction benchmark](../benchmarking/power.md).
+Results for all models: [Power prediction benchmark](../benchmarking/power/results.md).

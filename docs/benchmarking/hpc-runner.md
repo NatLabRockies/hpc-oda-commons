@@ -2,7 +2,7 @@
 
 Runs the full runtime-prediction benchmark — **every model on every usable dataset** — on
 a Slurm cluster. It turns the tracked dataset cards
-([`methodology.md`](methodology.md), `datasets/*.card.json`) plus a **local, gitignored**
+([`runtime/methodology.md`](runtime/methodology.md), `datasets/*.card.json`) plus a **local, gitignored**
 site config into per-cell Slurm recipes and sbatch scripts, then slices each dataset to
 its 90-day window ready to stage to the cluster.
 
@@ -247,7 +247,7 @@ to 0.02% — float summation order under threading, per [`known-issues.md`](../k
 
 ## Benchmark configuration
 
-The generated recipes encode the agreed methodology (see [`methodology.md`](methodology.md)):
+The generated recipes encode the agreed methodology (see [`methodology.md`](runtime/methodology.md)):
 rolling split, `n_windows=120`, `test_window_hours=6`, `training_lookback_days=120` — the
 card's 90-day window (60 days train + 30 days test) extended 60 days earlier so the earliest
 windows have their full lookback, with no capping or sampling. Metrics: `mae`, `rmse` on

@@ -4,7 +4,7 @@
 # allocated node). max_alloc_ratio: 12 drops every job allocated more than 12x its request,
 # from history and test, to match the paper's apparent data. Otherwise identical to
 # uopc_paper_reproduction_paper_setup.yml: a comparison with the paper, not our result.
-# Results: docs/benchmarking/uopc.md.
+# Results: docs/benchmarking/power/uopc.md.
 #
 # Prepare the data first (5 monthly files, ~3.9 GB):
 #   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml

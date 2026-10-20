@@ -298,7 +298,7 @@ def datasets_characterize(
     """Characterize a prepared dataset's health, pick its 3-month benchmark window, write a card.
 
     Emits ``<stem>.card.json`` (machine-readable, consumed by the benchmark runner) and
-    ``<stem>.md`` (human-readable) under ``--out``. See docs/benchmarking/methodology.md.
+    ``<stem>.md`` (human-readable) under ``--out``. See docs/benchmarking/runtime/methodology.md.
     """
     stem = dataset_id.split(".")[-1] if dataset_id else table_path.parent.name
     did = dataset_id or f"dataset.job_runtime.{stem}"
@@ -390,7 +390,7 @@ def datasets_ceiling(
     calibrates every model score: an MAE means little without knowing how much accuracy was
     available. Also measures causal memorization -- predicting from same-signature jobs that
     finished earlier -- across a range of lookbacks, which is a deployable strategy rather
-    than a bound. See docs/benchmarking/methodology.md.
+    than a bound. See docs/benchmarking/runtime/methodology.md.
     """
     from datetime import datetime, timezone
 

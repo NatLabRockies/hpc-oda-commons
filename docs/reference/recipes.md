@@ -10,13 +10,13 @@
 | `mlp_rolling.yml` | MLP | Rolling (20 windows, 6h, 7d) | Feed-forward neural network example |
 | `embedding_knn_rolling.yml` | Embedding + kNN | Rolling (20 windows, 6h, 7d) | Embedding-space kNN (needs an embedded dataset; see `hpc-oda embed`) |
 | `uopc_maxpcon.yml` | UoPC (power) | Fixed | Per-user online power prediction example |
-| `job-power/uopc_paper_reproduction.yml` | UoPC (power) | Cutoff (2024-02-01, θ=500, k=20) | Our UoPC reproduction on F-DATA: per requested node, `balanced` features — see [UoPC reproduction](../benchmarking/uopc.md) |
+| `job-power/uopc_paper_reproduction.yml` | UoPC (power) | Cutoff (2024-02-01, θ=500, k=20) | Our UoPC reproduction on F-DATA: per requested node, `balanced` features — see [UoPC reproduction](../benchmarking/power/uopc.md) |
 | `job-power/uopc_paper_reproduction_paper_setup.yml` | UoPC (power) | Cutoff, `node_count: allocated`, `zscore` | The authors' setup, for comparison with the paper only (#228) |
 | `job-power/uopc_paper_reproduction_unpadded.yml` | UoPC (power) | Cutoff, authors' setup + `max_alloc_ratio: 12` | The authors' setup without jobs allocated >12× their request, which the paper's data lacks (#222) |
 | `job-power/uopc_paper_sensitivity.yml` | UoPC (power) | Cutoff, θ × k sweep | The paper's sensitivity grid on our settings; headline at θ=500, k=20 |
 | `job-power/uopc_paper_sensitivity_smoke.yml` | UoPC (power) | Cutoff, 1 × 2 sweep | Quick end-to-end check of the sweep |
-| `job-power/<model>_rolling_{avg,peak}.yml` | Eight models (all but MLP) | Rolling (89 windows, 24h, 60d) | Average or peak power per node on one shared protocol — see [Power prediction benchmark](../benchmarking/power.md) |
-| `job-power/<model>_rolling_avg_{eagle,kestrel}.yml` | Eight models (all but MLP) | Rolling (89 windows, 24h, 60d) | Average power per node on NLR Eagle (Jul–Sep 2023) and Kestrel (Oct–Dec 2025), on tables cut with `hpc-oda datasets slice`; UoPC and embedding kNN read them with an embedding from `hpc-oda embed` — see [Power prediction on Eagle and Kestrel](../benchmarking/power-nlr.md) |
+| `job-power/<model>_rolling_{avg,peak}.yml` | Eight models (all but MLP) | Rolling (89 windows, 24h, 60d) | Average or peak power per node on one shared protocol — see [Power prediction benchmark](../benchmarking/power/results.md) |
+| `job-power/<model>_rolling_avg_{eagle,kestrel}.yml` | Eight models (all but MLP) | Rolling (89 windows, 24h, 60d) | Average power per node on NLR Eagle (Jul–Sep 2023) and Kestrel (Oct–Dec 2025), on tables cut with `hpc-oda datasets slice`; UoPC and embedding kNN read them with an embedding from `hpc-oda embed` — see [Power prediction on Eagle and Kestrel](../benchmarking/power/results.md#eagle-and-kestrel) |
 | `moe_xgboost_rolling.yml` | MoE XGBoost | Rolling (20 windows, 6h, 7d) | Mixture-of-experts routing example |
 | `kestrel_moe_best_rolling.yml` | MoE XGBoost | Rolling (120 windows, 6h, 120d) | The best measured configuration — see [Reproducing the reference result](#reproducing-the-reference-result) |
 
@@ -76,7 +76,7 @@ run:
 - `train_fraction` (float, required): fraction of data for training (e.g., `0.8`)
 - `seed` (int, required): random seed for reproducibility
 
-**`cutoff`** -- Every job submitted on or after a date is a test job; everything earlier is history only. Used with `model.job_power_uopc` to run the UoPC paper protocol ([UoPC reproduction](../benchmarking/uopc.md)).
+**`cutoff`** -- Every job submitted on or after a date is a test job; everything earlier is history only. Used with `model.job_power_uopc` to run the UoPC paper protocol ([UoPC reproduction](../benchmarking/power/uopc.md)).
 - `test_start` (ISO date, required): the cutoff, e.g. `"2024-02-01"` (quote it, so YAML keeps it a string)
 - `theta` (int, default `500`) / `k` (int, default `20`; the paper's is `5`): history size and neighbour count; with a sweep they name the headline cell
 - `theta_values` / `k_values` (lists of int, optional): run the θ × k sensitivity grid instead of one reproduction; the headline `theta`/`k` must be in the grid

@@ -150,7 +150,7 @@ and use 1 node with 48 cores, draw ~91 W, and show `nnuma` = 48: per allocated n
 read 1.9 W. The Commons' per-node power targets (`avgpcon_per_node`, `maxpcon_per_node` on
 both Fugaku descriptors) therefore divide by requested nodes, and so does the UoPC
 reproduction since #228. Only its paper-comparison recipes divide by `nnuma`, as the paper
-does ([why](benchmarking/uopc.md#nodes-requested-not-allocated)).
+does ([why](benchmarking/power/uopc.md#nodes-requested-not-allocated)).
 
 ## Note — Eagle's and Kestrel's energy readings include impossible per-node power
 
@@ -193,7 +193,7 @@ This is a look-ahead in the feature scale only, with no target leak, and it is i
   job-name distances.
 
 A deployment would fit the scaling on history alone. See
-[UoPC reproduction](benchmarking/uopc.md#known-deviations-from-the-paper).
+[UoPC reproduction](benchmarking/power/uopc.md#known-deviations-from-the-paper).
 
 ## Note — on macOS, torch and XGBoost crash in one process
 
@@ -207,4 +207,4 @@ before a tree model fits. Installing torch also changes what embedding kNN's
 
 Keep the `embed` extra in its own environment. Compute embeddings there, then run
 benchmarks and the test suite in an environment without torch. The power benchmarks in
-[Power prediction on Eagle and Kestrel](benchmarking/power-nlr.md) were run that way.
+[Power prediction on Eagle and Kestrel](benchmarking/power/results.md#eagle-and-kestrel) were run that way.

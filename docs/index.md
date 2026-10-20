@@ -22,6 +22,8 @@
 
 **I want to understand the design** -- [Architecture](architecture.md) | [Benchmarks](concepts/benchmarks.md)
 
+**I want benchmark results** -- [Benchmarking: runtime and power tracks](benchmarking/README.md)
+
 ## 10-Minute Workflow
 
 ```bash

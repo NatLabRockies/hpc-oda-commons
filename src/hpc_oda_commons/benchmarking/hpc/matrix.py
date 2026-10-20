@@ -21,7 +21,7 @@ from pathlib import Path
 from hpc_oda_commons.benchmarking.characterize import DEFAULT_TEST_DAYS
 from hpc_oda_commons.benchmarking.hpc.config import SiteConfig
 
-# --- Benchmark configuration (the agreed methodology; see docs/benchmarking/methodology.md) ---
+# --- Benchmark configuration (the agreed methodology; see docs/benchmarking/runtime/methodology.md) ---
 
 # Six runtime-prediction models. ``job_power_uopc`` is power prediction — out of scope.
 RUNTIME_MODELS: tuple[str, ...] = (

@@ -46,7 +46,7 @@ The toolkit ships eight models -- seven for job runtime and one for job power:
 - `model.job_runtime_tfidf_knn` -- text similarity via TF-IDF + k-nearest neighbors
 - `model.job_runtime_embedding_knn` -- kNN over precomputed dense embeddings (see `hpc-oda embed`)
 - `model.job_runtime_moe_xgboost` -- per-(user, wallclock-bin) XGBoost experts routed inside the shared rolling window
-- `model.job_power_uopc` -- job power prediction via per-user kNN (fixed split, the paper protocol with a cutoff split, or the shared rolling windows; see `docs/benchmarking/uopc.md`)
+- `model.job_power_uopc` -- job power prediction via per-user kNN (fixed split, the paper protocol with a cutoff split, or the shared rolling windows; see `docs/benchmarking/power/uopc.md`)
 
 Every runtime model can also predict power: the recipe's metric target is the column it
 predicts. With rolling UoPC, `summary.rows_fallback` in `metrics.json` counts test jobs whose
