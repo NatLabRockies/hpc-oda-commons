@@ -164,8 +164,9 @@ def _bundled_split(name: str) -> dict:
 
 
 def test_headline_reproduction_uses_our_settings() -> None:
-    """Per requested node, balanced features, all jobs (#228)."""
+    """Per requested node, balanced features, k = 20, all jobs (#228)."""
     split = _bundled_split("uopc_paper_reproduction.yml")
+    assert split["k"] == 20
     assert split["node_count"] == "requested"
     assert split["uopc_features"] == "balanced"
     assert "max_alloc_ratio" not in split
@@ -176,11 +177,11 @@ def test_headline_reproduction_uses_our_settings() -> None:
     [
         (
             "uopc_paper_reproduction_paper_setup.yml",
-            {"node_count": "allocated", "uopc_features": "zscore"},
+            {"node_count": "allocated", "uopc_features": "zscore", "k": 5},
         ),
         (
             "uopc_paper_reproduction_unpadded.yml",
-            {"node_count": "allocated", "uopc_features": "zscore", "max_alloc_ratio": 12},
+            {"node_count": "allocated", "uopc_features": "zscore", "k": 5, "max_alloc_ratio": 12},
         ),
     ],
 )

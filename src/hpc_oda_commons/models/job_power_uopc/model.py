@@ -51,6 +51,10 @@ _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
 PAPER_TEST_START = "2024-02-01"
 PAPER_THETA = 500
 PAPER_K = 5
+# Our k (#228). The theta x k sweep on our settings (per requested node, balanced features)
+# keeps theta = 500 but puts k = 20 ~0.4 MAPE points ahead of the paper's k = 5 on both
+# targets. PAPER_K stays for the paper-comparison recipes.
+UOPC_DEFAULT_K = 20
 PAPER_THETA_VALUES: tuple[int, ...] = (50, 100, 200, 500, 1000, 2000, 5000)
 PAPER_K_VALUES: tuple[int, ...] = (5, 10, 20, 50)
 # The two targets the paper protocol predicts, both in watts per node.
@@ -690,7 +694,7 @@ class JobPowerUopcModel:
         *,
         test_start: str = PAPER_TEST_START,
         theta: int = PAPER_THETA,
-        k: int = PAPER_K,
+        k: int = UOPC_DEFAULT_K,
         node_count: str = UOPC_DEFAULT_NODE_COUNT,
         max_alloc_ratio: float | None = None,
         features: str = UOPC_DEFAULT_FEATURES,

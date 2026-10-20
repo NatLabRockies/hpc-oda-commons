@@ -39,8 +39,10 @@ split:
   node_count: requested
   uopc_features: balanced
   test_start: "2024-02-01"
+  # theta is the paper's. k = 20 is ours: the sweep on these settings puts it ~0.4 MAPE
+  # points ahead of the paper's k = 5 (#228).
   theta: 500
-  k: 5
+  k: 20
 
 run:
   output_dir: runs

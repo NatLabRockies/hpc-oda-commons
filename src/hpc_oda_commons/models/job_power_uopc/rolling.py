@@ -36,6 +36,7 @@ from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
 from hpc_oda_commons.models.job_power_uopc.model import (
     _FEATURE_LABELS,
     UOPC_DEFAULT_FEATURES,
+    UOPC_DEFAULT_K,
     _one_blas_thread,
     balanced_numeric_features,
     check_uopc_features,
@@ -53,7 +54,7 @@ class JobPowerUopcRollingConfig:
     submit_time_field: str = "submit_time"
     end_time_field: str = "end_time"
     theta: int = 500
-    k: int = 5
+    k: int = UOPC_DEFAULT_K
     user_field: str = "user"
     embedding_field: str = "embedding"
     # The reproduction's numeric features: requested cores, nodes and frequency. The paper

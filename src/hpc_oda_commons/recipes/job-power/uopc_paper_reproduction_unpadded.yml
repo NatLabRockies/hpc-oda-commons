@@ -41,6 +41,7 @@ split:
   node_count: allocated
   uopc_features: zscore
   test_start: "2024-02-01"
+  # The paper's theta and k.
   theta: 500
   k: 5
   max_alloc_ratio: 12

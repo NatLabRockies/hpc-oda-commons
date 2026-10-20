@@ -34,9 +34,9 @@ split:
   uopc_features: balanced
   test_start: "2024-02-01"
   theta_values: [50]
-  k_values: [5, 10]
+  k_values: [5, 20]
   theta: 50
-  k: 5
+  k: 20
 
 run:
   output_dir: runs
