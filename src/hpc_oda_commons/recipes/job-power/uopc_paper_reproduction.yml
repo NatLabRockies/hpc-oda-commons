@@ -43,6 +43,9 @@ split:
   # points ahead of the paper's k = 5 (#228).
   theta: 500
   k: 20
+  # Ours: the median of the k neighbours' values, not the authors' vote over whole watts.
+  # It has the lowest MAE on both targets of the three predictors (#241).
+  predictor: median
 
 run:
   output_dir: runs

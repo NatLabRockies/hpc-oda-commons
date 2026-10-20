@@ -8,6 +8,9 @@ import pyarrow.parquet as pq
 import pytest
 
 from hpc_oda_commons.models.job_power_uopc.model import (
+    SWEEP_COLUMNS,
+    UOPC_DEFAULT_PREDICTOR,
+    UOPC_PREDICTORS,
     JobPowerUopcModel,
     _classifier_prediction_from_neighbor_targets,
     _nearest_neighbor_indices_and_distances,
@@ -145,7 +148,7 @@ def test_uopc_paper_reproduction_smoke() -> None:
         "maxpcon/num_nodes_req",
     ]
 
-    assert result["summary"]["predictor"] == "KNeighborsClassifier"
+    assert result["summary"]["predictor"] == UOPC_DEFAULT_PREDICTOR
 
     for target in ("avgpcon_per_node", "maxpcon_per_node"):
         for metric in ("mae", "rmse", "mape", "r2"):
@@ -270,7 +273,8 @@ def test_nearest_neighbor_retrieval_caps_at_available_history() -> None:
     assert len(distances) == 3
 
 
-def test_uopc_paper_sensitivity_matches_reproduction() -> None:
+@pytest.mark.parametrize("predictor", UOPC_PREDICTORS)
+def test_uopc_paper_sensitivity_matches_reproduction(predictor: str) -> None:
     rows = []
 
     for idx in range(20):
@@ -306,6 +310,7 @@ def test_uopc_paper_sensitivity_matches_reproduction() -> None:
         test_start="2024-02-01",
         theta=5,
         k=2,
+        predictor=predictor,
         metric_defs=metric_defs,
     )
 
@@ -317,7 +322,7 @@ def test_uopc_paper_sensitivity_matches_reproduction() -> None:
         metric_defs=metric_defs,
     )
 
-    classifier = sensitivity["results"]["5"]["2"]["classifier"]
+    classifier = sensitivity["results"]["5"]["2"][SWEEP_COLUMNS[predictor]]
 
     assert classifier["rows_scored"] == reproduction["summary"]["rows_scored"]
 
@@ -375,7 +380,8 @@ def test_prepare_paper_data_matches_reproduction_protocol() -> None:
     assert prepared.max_target_arr[0] == pytest.approx(60.0)
 
 
-def test_uopc_sensitivity_reuses_neighbors_for_multiple_k() -> None:
+@pytest.mark.parametrize("predictor", UOPC_PREDICTORS)
+def test_uopc_sensitivity_reuses_neighbors_for_multiple_k(predictor: str) -> None:
     rows = []
 
     # 30 January history jobs + 10 February test jobs.
@@ -430,10 +436,11 @@ def test_uopc_sensitivity_reuses_neighbors_for_multiple_k() -> None:
             test_start="2024-02-01",
             theta=20,
             k=k,
+            predictor=predictor,
             metric_defs=metric_defs,
         )
 
-        classifier = sensitivity["results"]["20"][str(k)]["classifier"]
+        classifier = sensitivity["results"]["20"][str(k)][SWEEP_COLUMNS[predictor]]
 
         assert classifier["rows_scored"] == reproduction["summary"]["rows_scored"]
 
@@ -536,21 +543,22 @@ def test_paper_modes_emit_only_artifact_keys_run_extras_strips() -> None:
     assert not [k for k in sweep if k.startswith("_")]
 
 
-def test_uopc_fits_its_tiny_knns_single_threaded(monkeypatch) -> None:
+@pytest.mark.parametrize("predictor", UOPC_PREDICTORS)
+def test_uopc_fits_its_tiny_knns_single_threaded(monkeypatch, predictor: str) -> None:
     """Millions of tiny fits must not each start a thread pool across every core: that cost
     the F-DATA reproduction 4.7x in thread synchronisation (two-thirds kernel time)."""
-    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
     from threadpoolctl import threadpool_info
 
     seen: list[int] = []
-    original = KNeighborsClassifier.fit
+    for cls in (KNeighborsClassifier, KNeighborsRegressor):
 
-    def recording_fit(self, *args, **kwargs):
-        seen.extend(pool["num_threads"] for pool in threadpool_info())
-        return original(self, *args, **kwargs)
+        def recording_fit(self, *args, _original=cls.fit, **kwargs):
+            seen.extend(pool["num_threads"] for pool in threadpool_info())
+            return _original(self, *args, **kwargs)
 
-    monkeypatch.setattr(KNeighborsClassifier, "fit", recording_fit)
+        monkeypatch.setattr(cls, "fit", recording_fit)
     JobPowerUopcModel().evaluate_paper_reproduction(
-        _paper_rows(), test_start="2024-02-01", theta=10, k=3
+        _paper_rows(), test_start="2024-02-01", theta=10, k=3, predictor=predictor
     )
     assert seen and set(seen) == {1}

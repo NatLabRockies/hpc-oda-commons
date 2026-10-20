@@ -1,4 +1,4 @@
-# UoPC (per-user kNN classifier) predicting average power per node, on the shared rolling
+# UoPC (per-user kNN) predicting average power per node, on the shared rolling
 # protocol (#204): 89 daily windows ending at the last submit, so testing starts
 # around 2024-02-01 like the UoPC paper reproduction, with 60 days of history.
 # Every model in recipes/job-power/*_rolling_*.yml uses the same split and rows.
@@ -35,6 +35,9 @@ split:
   training_lookback_days: 60
   theta: 500
   k: 20
+  # The median of the k neighbours' values (#241); the authors' vote over whole watts
+  # under-predicts wherever a user's jobs vary.
+  predictor: median
 
 run:
   output_dir: runs

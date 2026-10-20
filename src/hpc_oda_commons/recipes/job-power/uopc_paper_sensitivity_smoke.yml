@@ -37,6 +37,7 @@ split:
   k_values: [5, 20]
   theta: 50
   k: 20
+  predictor: median
 
 run:
   output_dir: runs

@@ -1,7 +1,8 @@
 # UoPC paper reproduction on the authors' setup, for comparison with the paper (#228).
 # Identical to uopc_paper_reproduction.yml except that power is divided by allocated nodes,
-# as the paper does, and features are zscore. F-DATA pads allocated counts, so ~150k test
-# jobs read ~2 W per node here; our own result is uopc_paper_reproduction.yml.
+# as the paper does, features are zscore, and the paper's k = 5 neighbours vote over whole
+# watts. F-DATA pads allocated counts, so ~150k test jobs read ~2 W per node here; our own
+# result is uopc_paper_reproduction.yml.
 # docs/benchmarking/power/uopc.md#comparison-with-the-paper-the-authors-setup.
 #
 # Prepare the data first (5 monthly files, ~3.9 GB):
@@ -42,6 +43,9 @@ split:
   # The paper's theta and k.
   theta: 500
   k: 5
+  # The authors' rule (#241): KNeighborsClassifier over power rounded to whole watts. Our
+  # result predicts from the neighbours' values instead.
+  predictor: vote
 
 run:
   output_dir: runs

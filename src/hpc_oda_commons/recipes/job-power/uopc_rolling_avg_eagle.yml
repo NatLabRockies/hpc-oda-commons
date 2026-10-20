@@ -1,4 +1,4 @@
-# UoPC (per-user kNN classifier) predicting average power per node on NLR Eagle (#219), on the
+# UoPC (per-user kNN) predicting average power per node on NLR Eagle (#219), on the
 # rolling protocol of #217: 89 daily windows, 60 days of history. The windows
 # end at the table's last submit, so the table is sliced first to end 2023-09-30, the last
 # full quarter before Eagle wound down.
@@ -49,6 +49,9 @@ split:
   training_lookback_days: 60
   theta: 500
   k: 20
+  # The median of the k neighbours' values (#241); the authors' vote over whole watts
+  # under-predicts wherever a user's jobs vary.
+  predictor: median
 
 run:
   output_dir: runs

@@ -21,9 +21,9 @@ The same for every dataset
   ([why](../../how-to/predict-power.md#per-node-power), [per dataset](methodology.md#targets)).
   Only jobs with a power reading are trained on and scored.
 - **Models:** baseline (window mean), signature memorizer, TF-IDF + kNN, embedding + kNN,
-  UoPC (θ = 500, k = 20, `balanced` features), XGBoost, Random Forest and MoE XGBoost, each
-  with its default configuration (`recipes/job-power/<model>_rolling_*.yml`). MLP is left
-  out, as it is from the runtime fleet run ([methodology](../runtime/methodology.md)): it
+  UoPC (θ = 500, k = 20, `balanced` features, the median of its neighbours), XGBoost, Random
+  Forest and MoE XGBoost, each with its default configuration
+  (`recipes/job-power/<model>_rolling_*.yml`). MLP is left out, as it is from the runtime fleet run ([methodology](../runtime/methodology.md)): it
   measured weaker than the other rolling-tabular models across the board on runtime, and on
   F-DATA it cost ~130 s per window (over 3 h per target). `model.job_runtime_mlp` still
   predicts power when a recipe names it.
@@ -122,16 +122,19 @@ training jobs. Best value in each column in bold.
 
 UoPC's rows use its `balanced` features, the default since
 [#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222), and k = 20, the default
-since [#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228). They were rerun on
-2026-10-20 at cd78524. At k = 5 it scored 10.80% / 0.682 (average) and 11.15% / 0.651 (peak)
-with `balanced` features, and 11.36% / 0.660 and 11.73% / 0.629 with the earlier `zscore`
-features ([feature modes](uopc.md#feature-modes)).
+since [#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228), and predict the
+median of the k neighbours, the default since [#241](https://github.com/NatLabRockies/hpc-oda-commons/issues/241). They were rerun on 2026-10-20 at 4ee97bb.
+With the authors' vote over whole watts ([why not](uopc.md#the-median-of-the-neighbours-not-a-vote))
+UoPC scored MAE 7.17 / 10.29% / 0.706 (average) and 7.63 / 10.68% / 0.688 (peak). At k = 5
+with the vote it scored 10.80% / 0.682 and 11.15% / 0.651 with `balanced` features, and
+11.36% / 0.660 and 11.73% / 0.629 with the earlier `zscore` features
+([feature modes](uopc.md#feature-modes)).
 
 **Average power (`avgpcon_per_node`, W per node)**
 
 | Model | MAE | RMSE | MAPE | R² | Headroom | Wall time |
 |---|---:|---:|---:|---:|---:|---:|
-| UoPC (θ = 500, k = 20) | **7.17** | 16.87 | 10.29% | 0.706 | **80%** | 5 min |
+| UoPC (θ = 500, k = 20) | **7.10** | 16.53 | 10.57% | 0.718 | **80%** | 5 min |
 | MoE XGBoost | 7.19 | 14.75 | **10.07%** | 0.775 | **80%** | 3.0 h |
 | XGBoost | 7.68 | **13.54** | 11.05% | **0.810** | 78% | 2.6 h |
 | Random Forest | 7.78 | 14.71 | 11.10% | 0.776 | 77% | 2.4 h |
@@ -144,8 +147,8 @@ features ([feature modes](uopc.md#feature-modes)).
 
 | Model | MAE | RMSE | MAPE | R² | Headroom | Wall time |
 |---|---:|---:|---:|---:|---:|---:|
-| UoPC (θ = 500, k = 20) | **7.63** | 18.38 | 10.68% | 0.688 | **78%** | 5 min |
-| MoE XGBoost | 7.72 | 16.58 | **10.43%** | 0.746 | **78%** | 67 min† |
+| UoPC (θ = 500, k = 20) | **7.44** | 18.03 | 10.73% | 0.700 | **79%** | 5 min |
+| MoE XGBoost | 7.72 | 16.58 | **10.43%** | 0.746 | 78% | 67 min† |
 | XGBoost | 7.98 | **14.69** | 11.43% | **0.801** | 77% | 34 min† |
 | Random Forest | 7.98 | 15.54 | 11.17% | 0.777 | 77% | 71 min† |
 | Embedding + kNN | 8.23 | 19.09 | 11.15% | 0.663 | 76% | 3.5 h |
@@ -160,9 +163,10 @@ targets. Plain XGBoost has the lowest RMSE and the highest R², so it makes fewe
 misses. The three tree models are within about a point of MAPE of each other.
 
 **UoPC is level on typical jobs and further behind on large errors.**
-- **Typical jobs:** it has the lowest MAE on both targets, just ahead of MoE XGBoost, and
-  the second-best MAPE, within 0.25 points of MoE XGBoost's.
-- **Large errors:** its RMSE is about 25% higher than XGBoost's, and its R² is 0.71 and 0.69
+- **Typical jobs:** it has the lowest MAE on both targets, ahead of MoE XGBoost (7.10 against
+  7.19 W, and 7.44 against 7.72), and the second-best MAPE, 0.3–0.5 points behind MoE
+  XGBoost's.
+- **Large errors:** its RMSE is about 22% higher than XGBoost's, and its R² is 0.72 and 0.70
   against about 0.8.
 - **Embedding + kNN,** the other model that reads F-DATA's job embedding, is behind it.
 
@@ -172,15 +176,15 @@ fields directly.
 **Peak is a little harder than average.** MAE is higher for every model, and MAPE is up to
 0.4 points higher for the five strongest.
 
-**This is not the paper's number.** UoPC scores 7.82% MAPE in the [paper
-reproduction](uopc.md#our-reproduction-θ--500-k--20) and 10.29% here. Both divide by requested
-nodes and use `balanced` features with k = 20; only the protocol differs:
+**This is not the paper's number.** UoPC scores 7.63% MAPE in the [paper
+reproduction](uopc.md#our-reproduction-θ--500-k--20) and 10.57% here. Both divide by requested
+nodes and use `balanced` features, k = 20 and the median; only the protocol differs:
 - the reproduction predicts each job from all its user's jobs that finished before it was
   submitted;
 - here every model retrains once a day on the previous 60 days.
 
-That day-level cutoff costs about 2.5 points (2.7 with `zscore` features and k = 5: 8.65%
-against 11.36%, [variants](uopc.md#variants-padded-jobs-and-node-count)).
+That day-level cutoff costs about 2.9 points (2.7 with `zscore` features, k = 5 and the vote:
+8.65% against 11.36%, [variants](uopc.md#variants-padded-jobs-and-node-count)).
 
 **Wall times are not comparable between models.** The rolling-tabular models spend most of
 their time building each day's OHE + SVD preprocessing, one day at a time. The average-power
@@ -198,12 +202,14 @@ jobs (1.6%). Best value in each column in bold.
 
 UoPC's rows use its `balanced` features, the default since
 [#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222), and k = 20, the default
-since [#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228). They were rerun on
-2026-10-20 at cd78524. k = 20 comes from the θ × k sweep on F-DATA
-([uopc.md](uopc.md#sensitivity-sweep-θ--k)) and was not tuned on these systems. At k = 5 UoPC
-scored 23.54% / −0.075 on Eagle and 24.69% / −0.015 on Kestrel, so k = 20 is worse on Eagle
-and better on Kestrel. With the earlier `zscore` features and k = 5 it scored 24.15% /
-−0.141 and 26.27% / −0.157 ([feature modes](uopc.md#feature-modes)).
+since [#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228), and predict the
+median of the k neighbours, the default since [#241](https://github.com/NatLabRockies/hpc-oda-commons/issues/241). They were rerun on 2026-10-20 at 4ee97bb.
+k = 20 and the median were chosen on F-DATA ([uopc.md](uopc.md#our-choices-and-why)) and not
+tuned on these systems. With the authors' vote at k = 20 UoPC scored MAE 81.10 / 25.21% /
+−0.218 on Eagle and 101.83 / 23.08% / 0.116 on Kestrel: the median lowers MAE on both, but
+raises MAPE on Eagle. At k = 5 with the vote it scored 23.54% / −0.075 and 24.69% / −0.015.
+With the earlier `zscore` features and k = 5 it scored 24.15% / −0.141 and 26.27% / −0.157
+([feature modes](uopc.md#feature-modes)).
 
 **Eagle (`avgpcon_per_node`, W per node; 490,260 jobs)**
 
@@ -215,7 +221,7 @@ and better on Kestrel. With the earlier `zscore` features and k = 5 it scored 24
 | Signature memorizer | 66.61 | 97.99 | 20.73% | 0.198 | 41% | 6 min |
 | Embedding + kNN | 77.41 | 109.83 | 24.48% | −0.008 | 24% | 14 min |
 | TF-IDF + kNN | 78.12 | 115.84 | 24.39% | −0.121 | 23% | 14 min |
-| UoPC (θ = 500, k = 20) | 81.10 | 120.75 | 25.21% | −0.218 | 18% | 2 min |
+| UoPC (θ = 500, k = 20) | 80.16 | 120.80 | 25.97% | −0.219 | 20% | 2 min |
 | Baseline (window mean) | 92.78 | 109.81 | 30.02% | −0.007 | 0% | 2 min |
 
 **Kestrel (`avgpcon_per_node`, W per node; 638,081 jobs)**
@@ -224,8 +230,8 @@ and better on Kestrel. With the earlier `zscore` features and k = 5 it scored 24
 |---|---:|---:|---:|---:|---:|---:|
 | MoE XGBoost | **86.21** | 129.46 | **19.41%** | 0.468 | **57%** | 15 min† |
 | XGBoost | 90.04 | **127.93** | 21.20% | **0.481** | 54% | 43 min |
+| UoPC (θ = 500, k = 20) | 95.63 | 156.45 | 22.17% | 0.223 | 50% | 3 min |
 | Random Forest | 101.59 | 150.62 | 23.30% | 0.280 | 45% | 15 min† |
-| UoPC (θ = 500, k = 20) | 101.83 | 166.89 | 23.08% | 0.116 | 45% | 3 min |
 | Signature memorizer | 112.61 | 161.41 | 26.56% | 0.173 | 37% | 8 min |
 | Embedding + kNN | 113.12 | 167.20 | 25.26% | 0.113 | 37% | 26 min |
 | TF-IDF + kNN | 113.26 | 171.75 | 25.05% | 0.064 | 37% | 27 min |
@@ -260,13 +266,13 @@ above the baseline's: its large misses cost more than predicting the window mean
 On F-DATA it was ahead of the memorizer.
 
 **The embedding models add nothing here.** On F-DATA, embedding + kNN and UoPC were level
-with XGBoost and Random Forest: 11.11% and 10.29% MAPE, against 11.05% and 11.10%.
-- **Here they are 4–6 points behind the best model.** On Eagle, embedding + kNN is level
+with XGBoost and Random Forest: 11.11% and 10.57% MAPE, against 11.05% and 11.10%.
+- **Here they are 3–6 points behind the best model.** On Eagle, embedding + kNN is level
   with TF-IDF + kNN and UoPC a little behind both; all three trail the signature memorizer
-  on MAE. On Kestrel, UoPC is level with Random Forest on MAE and MAPE and ahead of the
-  memorizer, but behind both on RMSE and R².
+  on MAE. On Kestrel, UoPC is ahead of Random Forest and the memorizer on MAE and MAPE, but
+  behind Random Forest on RMSE and R².
 - **UoPC's R² is below zero on Eagle** (−0.22, with its RMSE above the window mean's), and
-  0.12 on Kestrel.
+  0.22 on Kestrel.
 - **The embeddings carry different information.** Ours carries only the submission fields
   the other models use directly. F-DATA's comes from the source and includes the real job
   names. So this measures the methods on these systems, not on F-DATA's inputs.
@@ -284,7 +290,8 @@ took 46 minutes more, plus 29 minutes to embed the two slices.
 Run on 2026-10-20 on an Apple M3 Max (14 cores, 38 GB) at commit 20a7ab3, one recipe at a
 time ([#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)). Every model scored
 the same 142,206 jobs, in the 86 of 89 daily windows that have test jobs. UoPC predicted the
-window mean for 6,105 of them (4.3%), users with fewer than k = 20 training jobs. Best value
+window mean for 6,105 of them (4.3%), users with fewer than k = 20 training jobs. UoPC's rows
+were rerun on 2026-10-20 at 4ee97bb with the median predictor ([#241](https://github.com/NatLabRockies/hpc-oda-commons/issues/241)). Best value
 in each column in bold.
 
 **Average power (`avgpcon_per_node`, W per node)**
@@ -295,10 +302,10 @@ in each column in bold.
 | Signature memorizer | 131.94 | 185.15 | **17.59%** | 0.064 | 27% | 74 s |
 | Random Forest | 132.06 | 178.29 | 18.27% | 0.132 | 27% | 8 min |
 | MoE XGBoost | 133.10 | 179.66 | 18.43% | 0.119 | 25% | 16 min† |
+| UoPC (θ = 500, k = 20) | 145.22 | 205.57 | 18.79% | −0.154 | 5% | 30 s |
 | Embedding + kNN | 147.05 | 197.85 | 20.19% | −0.068 | 2% | 2 min |
 | Baseline (window mean) | 148.24 | 191.97 | 19.85% | −0.006 | 0% | 24 s |
 | TF-IDF + kNN | 148.33 | 199.16 | 20.69% | −0.083 | 0% | 79 s |
-| UoPC (θ = 500, k = 20) | 180.80 | 249.77 | 21.95% | −0.703 | −55% | 32 s |
 
 **Peak power (`maxpcon_per_node`, W per node)**
 
@@ -308,10 +315,10 @@ in each column in bold.
 | XGBoost | 182.03 | **242.52** | 22.99% | **0.184** | 27% | 5 min† |
 | Random Forest | 182.83 | 243.75 | 23.06% | 0.176 | 26% | 2 min† |
 | MoE XGBoost | 185.48 | 246.85 | 23.42% | 0.154 | 23% | 17 min† |
+| UoPC (θ = 500, k = 20) | 198.78 | 276.60 | 23.56% | −0.062 | 8% | 36 s |
 | TF-IDF + kNN | 202.07 | 268.37 | 25.37% | 0.001 | 4% | 77 s |
 | Embedding + kNN | 205.33 | 272.74 | 25.80% | −0.032 | 0% | 2 min |
 | Baseline (window mean) | 205.48 | 269.38 | 25.28% | −0.007 | 0% | 23 s |
-| UoPC (θ = 500, k = 20) | 237.55 | 326.20 | 26.47% | −0.477 | −37% | 31 s |
 
 † Read every day's preprocessing from the store that the Random Forest (average) run had
 just filled ([#213](https://github.com/NatLabRockies/hpc-oda-commons/issues/213)).
@@ -326,10 +333,13 @@ average power and has the best MAE and MAPE on peak, though its R² is lower: it
 jobs it hasn't seen. XGBoost, Random Forest and MoE XGBoost are within 2 W of each other on
 average power and 3.5 W on peak.
 
-**UoPC is worse than predicting the window mean**, on both targets: R² −0.70 and −0.48, and
-negative headroom. The two other kNN models, on the same embedding or on TF-IDF, are level
-with the baseline. Why UoPC does worse than both is not established. Its k = 20 was chosen on
-F-DATA and not tuned here ([methodology](methodology.md#models-in-scope)).
+**UoPC barely beats the window mean.** Its MAE is 2% and 3% below the baseline's (5% and 8%
+of the headroom), the best of the three kNN models, but its RMSE is above the baseline's and
+its R² below zero (−0.15 and −0.06). With the authors' vote it was far worse than the mean,
+at MAE 180.80 and 237.55 and R² −0.70 and −0.48. That vote breaks ties to the lowest
+neighbour, and a PM100 user's jobs vary over hundreds of watts ([#241](https://github.com/NatLabRockies/hpc-oda-commons/issues/241)). Its k = 20
+and the median were chosen on F-DATA and not tuned here
+([methodology](methodology.md#models-in-scope)).
 
 **Peak is harder than average**, more so than on F-DATA: MAPE is 4–6 points higher for every
 model. PM100's peak is the peak of the summed node trace, not F-DATA's per-node peak, so the

@@ -1,4 +1,4 @@
-# UoPC (per-user kNN classifier) predicting average power per node on PM100 (Marconi100, #230), on the
+# UoPC (per-user kNN) predicting average power per node on PM100 (Marconi100, #230), on the
 # power benchmark's rolling protocol: 89 daily windows, 60 days of history
 # (docs/benchmarking/power/methodology.md). The windows end at the table's last submit,
 # so they test PM100's last 89 days, 2020-07-17 to 2020-10-14.
@@ -48,6 +48,9 @@ split:
   training_lookback_days: 60
   theta: 500
   k: 20
+  # The median of the k neighbours' values (#241); the authors' vote over whole watts
+  # under-predicts wherever a user's jobs vary.
+  predictor: median
 
 run:
   output_dir: runs

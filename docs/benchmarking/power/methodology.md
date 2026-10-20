@@ -24,10 +24,13 @@ Eight models, each with its default configuration:
 The `job_runtime_*` models predict whatever column their recipe's metrics name, so the same
 models serve both tracks ([Predict job power](../../how-to/predict-power.md)).
 
-**UoPC runs at θ = 500, k = 20, with `balanced` features.** k = 20 comes from the θ × k sweep
-on F-DATA ([UoPC sweep](uopc.md#sensitivity-sweep-θ--k)). It was chosen there once and is used
-on every dataset, not tuned on each dataset's results. On Eagle it scores worse than k = 5,
-and that is reported as it is.
+**UoPC runs at θ = 500, k = 20, with `balanced` features, and predicts the median of its k
+neighbours.** k = 20 comes from the θ × k sweep on F-DATA
+([UoPC sweep](uopc.md#sensitivity-sweep-θ--k)). The median replaced the authors' vote over
+whole watts, which breaks ties to the lowest neighbour ([#241](https://github.com/NatLabRockies/hpc-oda-commons/issues/241),
+[why](uopc.md#the-median-of-the-neighbours-not-a-vote)). Both were chosen once, on the F-DATA
+reproduction protocol, and are used on every dataset, not tuned on each dataset's results.
+On Eagle k = 20 scores worse than k = 5, and that is reported as it is.
 
 **MLP is excluded**, as from the runtime fleet run
 ([runtime methodology](../runtime/methodology.md#models-in-scope)). It measured weaker than the

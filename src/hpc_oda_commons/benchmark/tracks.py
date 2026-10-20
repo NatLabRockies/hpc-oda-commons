@@ -44,6 +44,10 @@ POWER_PROTOCOL: dict[str, int] = {
     "training_lookback_days": 60,
 }
 
+# What a bundle ran with for a setting added after it was written, so the stale check below
+# still sees it. UoPC voted over whole watts until the predictor setting existed (#241).
+_BEFORE_SETTING_EXISTED: dict[str, Any] = {"predictor": "vote"}
+
 
 @dataclass(frozen=True)
 class Track:
@@ -201,8 +205,9 @@ def exclusion_reason(
     # A bundle run before its recipe changed is not the benchmark's cell any more.
     config = metrics.get("run_config") or {}
     for key, value in (recipe.get("split") or {}).items():
-        if key in config and key not in POWER_PROTOCOL and config[key] != value:
-            return f"stale: ran with {key}={config[key]}, the recipe now says {value}"
+        ran = config.get(key, _BEFORE_SETTING_EXISTED.get(key))
+        if ran is not None and key not in POWER_PROTOCOL and ran != value:
+            return f"stale: ran with {key}={ran}, the recipe now says {value}"
     return None
 
 

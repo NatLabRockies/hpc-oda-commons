@@ -9,6 +9,7 @@ import pytest
 import typer
 
 from hpc_oda_commons.benchmark import runner
+from hpc_oda_commons.models.job_power_uopc.model import UOPC_DEFAULT_PREDICTOR
 from hpc_oda_commons.qst import cli
 
 
@@ -812,6 +813,7 @@ def test_benchmark_uopc_paper_reproduction_routing(
             node_count: str = "requested",
             max_alloc_ratio: float | None = None,
             features: str = "balanced",
+            predictor: str = "median",
             metric_defs: list[dict[str, object]] | None = None,
             verbose: bool = False,
             capture_artifacts: bool = False,
@@ -820,9 +822,14 @@ def test_benchmark_uopc_paper_reproduction_routing(
             assert test_start == "2024-02-01"
             assert theta == 500
             assert k == 5
-            # A recipe without the #222 keys gets the defaults: all jobs, per requested
-            # node, balanced features (#228).
-            assert (node_count, max_alloc_ratio, features) == ("requested", None, "balanced")
+            # A recipe without the #222/#241 keys gets the defaults: all jobs, per requested
+            # node, balanced features (#228), the neighbours' median (#241).
+            assert (node_count, max_alloc_ratio, features, predictor) == (
+                "requested",
+                None,
+                "balanced",
+                UOPC_DEFAULT_PREDICTOR,
+            )
             _ = metric_defs
             _ = verbose
             _ = capture_artifacts
@@ -959,6 +966,7 @@ def test_run_cutoff_uopc_sensitivity_exposes_summary_metrics(
             "k_values": [5, 10],
             "theta": 50,
             "k": 5,
+            "predictor": "vote",
         },
         metric_defs=[
             {"name": "mae", "target": "avgpcon_per_node"},
@@ -986,7 +994,11 @@ class _FakeSweepModel:
 
     def evaluate_paper_sensitivity(self, rows, *, test_start, theta_values, k_values, **_):
         def cell(mae: float) -> dict[str, object]:
-            return {"classifier": {"avgpcon_per_node": {"mae": mae, "rmse": mae * 2}}}
+            # A distinguishable result per predictor column: vote, mean, median.
+            return {
+                column: {"avgpcon_per_node": {"mae": mae + offset, "rmse": (mae + offset) * 2}}
+                for column, offset in (("classifier", 0.0), ("regressor", 0.25), ("median", 0.5))
+            }
 
         return {
             "results": {"50": {"5": cell(6.5), "10": cell(7.5)}},
@@ -1001,11 +1013,16 @@ _SWEEP_METRICS = [
 ]
 
 
+@pytest.mark.parametrize(
+    ("predictor", "mae"), [(None, 8.0), ("vote", 7.5), ("mean", 7.75), ("median", 8.0)]
+)
 def test_run_cutoff_uopc_sweep_headline_is_the_declared_cell(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, predictor: str | None, mae: float
 ) -> None:
-    """The headline is the theta/k the recipe names, not whichever cell sorts first."""
+    """The headline is the theta/k and predictor the recipe names (the median by default,
+    #241), not whichever cell sorts first."""
     monkeypatch.setattr(runner, "JobPowerUopcModel", _FakeSweepModel)
+    choice = {} if predictor is None else {"predictor": predictor}
 
     metrics, payload, _ = runner.run_cutoff_uopc(
         [{"dummy": 1}],
@@ -1016,11 +1033,12 @@ def test_run_cutoff_uopc_sweep_headline_is_the_declared_cell(
             "k_values": [5, 10],
             "theta": 50,
             "k": 10,
+            **choice,
         },
         metric_defs=_SWEEP_METRICS,
     )
 
-    assert metrics == {"mae": 7.5, "rmse": 15.0}
+    assert metrics == {"mae": mae, "rmse": mae * 2}
     assert payload["run_config"] == {
         "protocol": "paper_sensitivity",
         "test_start": "2024-02-01",
@@ -1032,7 +1050,7 @@ def test_run_cutoff_uopc_sweep_headline_is_the_declared_cell(
         "headline": {
             "theta": 50,
             "k": 10,
-            "predictor": "KNeighborsClassifier",
+            "predictor": predictor or UOPC_DEFAULT_PREDICTOR,
             "target": "avgpcon_per_node",
         },
     }

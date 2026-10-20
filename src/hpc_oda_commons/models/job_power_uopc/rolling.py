@@ -7,14 +7,14 @@ to be scored on exactly their windows and rows instead:
 - **Windows** come from ``build_rolling_splits``: train on jobs that finished in the
   lookback before the split, test on jobs submitted in the following window.
 - **Context.** A test job's context is its user's newest ``theta`` *training* jobs, by end
-  time. Within one window every test job of a user shares that context, so one classifier
-  is fitted per (window, user) rather than per job.
+  time. Within one window every test job of a user shares that context, so one kNN is
+  fitted per (window, user) rather than per job.
 - **Features** are the paper reproduction's adaptation, not the paper's own: the job
   embedding plus requested cores, nodes and CPU frequency, z-scored on the window's
   training rows. Unlike the paper protocol there is no look-ahead: test-period statistics
   never touch the scaling.
-- **Prediction** is ``KNeighborsClassifier``, as in the authors' tool, on targets rounded to
-  whole units so they can be classes.
+- **Prediction** is the median of the k neighbours' values by default (``predictor``, #241).
+  ``vote`` is the authors' ``KNeighborsClassifier`` on targets rounded to whole units.
 - **Cold start.** The other models score every test job; UoPC cannot score a user with
   fewer than ``k`` training jobs. Those jobs get the window's mean target, the rolling
   baseline's prediction, so every model is scored on the same rows. How many needed it is
@@ -29,7 +29,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from sklearn.neighbors import KNeighborsClassifier
 from tqdm import tqdm
 
 from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
@@ -37,9 +36,12 @@ from hpc_oda_commons.models.job_power_uopc.model import (
     _FEATURE_LABELS,
     UOPC_DEFAULT_FEATURES,
     UOPC_DEFAULT_K,
+    UOPC_DEFAULT_PREDICTOR,
     _one_blas_thread,
     balanced_numeric_features,
     check_uopc_features,
+    check_uopc_predictor,
+    uopc_predict,
 )
 from hpc_oda_commons.models.rolling_tabular.split import _epoch_or_nan, build_rolling_splits
 
@@ -64,6 +66,8 @@ class JobPowerUopcRollingConfig:
     # balanced (default: log2 nodes and frequency, weighted), zscore (the numeric_fields
     # above) or embedding (none); see model.UOPC_FEATURE_MODES (#222).
     features: str = UOPC_DEFAULT_FEATURES
+    # median (default), mean or vote, the authors' rule; see model.UOPC_PREDICTORS (#241).
+    predictor: str = UOPC_DEFAULT_PREDICTOR
     nodes_field: str = "num_nodes_req"
     frequency_field: str = "freq_req"
 
@@ -85,6 +89,7 @@ class JobPowerUopcRollingModel:
         self.config = config or JobPowerUopcRollingConfig()
         self.target_field = self.config.target_field
         check_uopc_features(self.config.features)
+        check_uopc_predictor(self.config.predictor)
         feature_fields = {
             self.config.embedding_field,
             *self.config.numeric_fields,
@@ -202,6 +207,7 @@ class JobPowerUopcRollingModel:
                 "theta": cfg.theta,
                 "k": cfg.k,
                 "features": _FEATURE_LABELS[cfg.features],
+                "predictor": cfg.predictor,
                 "target_field": self.target_field,
             },
         }
@@ -261,9 +267,13 @@ class JobPowerUopcRollingModel:
                 preds = np.full(len(queries), window_mean)
                 fallback += len(queries)
             else:
-                model = KNeighborsClassifier(n_neighbors=cfg.k)
-                model.fit(features(context), np.rint(target[context]).astype(np.int64))
-                preds = model.predict(features(queries)).astype(np.float64)
+                (preds,) = uopc_predict(
+                    features(context),
+                    (target[context],),
+                    features(queries),
+                    k=cfg.k,
+                    predictor=cfg.predictor,
+                )
             y_true.extend(float(v) for v in target[queries])
             y_pred.extend(float(v) for v in preds)
         return y_true, y_pred, fallback
