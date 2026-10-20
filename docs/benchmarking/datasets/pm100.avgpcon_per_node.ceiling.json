@@ -1,0 +1,118 @@
+{
+  "schema_version": "oda.ceiling.v0.1.0",
+  "split": {
+    "n_windows": 89,
+    "test_window_hours": 24,
+    "training_lookback_days": 60
+  },
+  "scored_rows": 142206,
+  "target_field": "avgpcon_per_node",
+  "feature_fields": [
+    "embedding",
+    "num_cores_req",
+    "num_nodes_req",
+    "partition",
+    "qos",
+    "requested_seconds",
+    "user"
+  ],
+  "floor": {
+    "mae": 88.64789370040475,
+    "rmse": 139.7361629726446,
+    "signatures": 19750,
+    "group_sizes": {
+      "min": 1,
+      "median": 1.0,
+      "max": 1702,
+      "singleton_row_share": 0.07350604053274827
+    }
+  },
+  "feature_cost": [
+    {
+      "feature": "num_cores_req",
+      "floor_mae_without": 88.64789370040475,
+      "cost": 0.0
+    },
+    {
+      "feature": "num_nodes_req",
+      "floor_mae_without": 88.64789370040475,
+      "cost": 0.0
+    },
+    {
+      "feature": "partition",
+      "floor_mae_without": 88.64789370040475,
+      "cost": 0.0
+    },
+    {
+      "feature": "qos",
+      "floor_mae_without": 88.64789370040475,
+      "cost": 0.0
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 88.64789370040475,
+      "cost": 0.0
+    },
+    {
+      "feature": "user",
+      "floor_mae_without": 88.64789370040475,
+      "cost": 0.0
+    },
+    {
+      "feature": "embedding",
+      "floor_mae_without": 117.1441644570073,
+      "cost": 28.496270756602556
+    }
+  ],
+  "causal_memorization": {
+    "sweep": {
+      "1d": {
+        "mae": 147.77156839697938,
+        "coverage": 0.0,
+        "rows": 142206
+      },
+      "10d": {
+        "mae": 145.5607590638077,
+        "coverage": 0.08053809262619017,
+        "rows": 142206
+      },
+      "30d": {
+        "mae": 148.3308407678488,
+        "coverage": 0.13926275965852355,
+        "rows": 142206
+      },
+      "60d": {
+        "mae": 151.93364176023067,
+        "coverage": 0.1640366791837194,
+        "rows": 142206
+      },
+      "120d": {
+        "mae": 156.59733489799757,
+        "coverage": 0.18804410503073007,
+        "rows": 142206
+      },
+      "all": {
+        "mae": 159.70325734427757,
+        "coverage": 0.19587781106282434,
+        "rows": 142206
+      }
+    },
+    "best_lookback": "10d",
+    "backoff_order": [
+      "num_cores_req",
+      "num_nodes_req",
+      "partition",
+      "qos",
+      "requested_seconds",
+      "user",
+      "embedding"
+    ],
+    "backoff_at_best": {
+      "mae": 145.5607590638077,
+      "coverage": 0.08053809262619017,
+      "rows": 142206
+    }
+  },
+  "dataset_id": "dataset.job_runtime.pm100",
+  "generated_at": "2026-10-20T19:14:45.734365Z"
+}

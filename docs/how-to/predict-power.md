@@ -111,6 +111,10 @@ extra ([why](../known-issues.md#note--on-macos-torch-and-xgboost-crash-in-one-pr
 Each recipe's header gives its system's slice, and its embed step if it has one. Results are in
 [Power prediction on Eagle and Kestrel](../benchmarking/power/results.md#eagle-and-kestrel).
 
+On PM100, `recipes/job-power/<model>_rolling_{avg,peak}_pm100.yml` run them on both targets.
+PM100's prepared table needs no slice; UoPC and embedding kNN read it with an embedding added
+(`data/windows/pm100_power_embedded/`). Results: [PM100](../benchmarking/power/results.md#pm100).
+
 The leaderboard shows power errors in W/node and picks the best value of each metric per
 target, so runtime and power results in one runs folder are never ranked against each
 other.
