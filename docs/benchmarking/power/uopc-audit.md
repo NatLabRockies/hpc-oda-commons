@@ -12,10 +12,17 @@ as unnecessary for now.
 
 **Follow-up ([#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228)):** our
 reproduction now uses only choices we can defend: per requested node, `balanced` features,
-k = 20 (from the θ × k sweep on these settings), all jobs. It scores 7.82% / R² 0.770 on
-average power and 8.06% / 0.754 on peak. The
+k = 20 (from the θ × k sweep on these settings), all jobs. With the vote it scored 7.82% /
+R² 0.770 on average power and 8.06% / 0.754 on peak. The
 authors' setup (per allocated node, `zscore`) is kept as a labelled comparison recipe. See
 [Our choices, and why](uopc.md#our-choices-and-why).
+
+**Follow-up ([#241](https://github.com/NatLabRockies/hpc-oda-commons/issues/241)):** our UoPC predicts the median of its k neighbours'
+values instead of the authors' vote over whole watts, in both protocols. The vote breaks
+ties to the lowest neighbour, so it under-predicts wherever a user's jobs vary. The
+paper-comparison recipes keep the vote. See
+[The median of the neighbours, not a vote](uopc.md#the-median-of-the-neighbours-not-a-vote).
+The tables below predate both follow-ups unless they say otherwise.
 
 This note checks the Commons' UoPC against its sources, prompted by the question "did we
 reproduce UoPC faithfully?". It covers both of our modes: the paper reproduction
@@ -208,7 +215,7 @@ a user's latest near-identical jobs. **Measured (#222 item 3):** per requested n
 reproduction scores 8.65% / R² 0.738, against the rolling UoPC's 11.36% / 0.660 on the same
 target. So the cutoff costs about 2.7 points, give or take the cold-start fallback and the
 slightly different test sets. With `balanced` features and k = 20 (#228) it is 7.82% against
-10.29%, about 2.5 points.
+10.29%, about 2.5 points; with the median as well (#241), 7.63% against 10.57%, about 2.9.
 
 The reproduction's 9.93% against 11.36% mixed two effects that partly cancel. Dividing by
 requested nodes lowers MAPE (9.93% → 8.65%); the cutoff raises it (8.65% → 11.36%).
@@ -228,7 +235,7 @@ difference.
 - The classifier only accepts integer-valued targets. F-DATA's whole-job `avgpcon` is
   integer, but any per-node value is not, so fitting would fail (checked on a toy example).
   Our rounding to whole watts is needed to use a classifier at all; it isn't copied from the
-  authors.
+  authors. Only the paper-comparison recipes still vote ([#241](https://github.com/NatLabRockies/hpc-oda-commons/issues/241)).
 - `predict.py` imports `predictive_models.knn`, but the file is `KNN.py`. That works only on
   case-insensitive filesystems.
 
