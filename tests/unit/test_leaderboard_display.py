@@ -8,7 +8,7 @@ from hpc_oda_commons.benchmark.leaderboard_display import (
     prepare_leaderboard_rows,
     short_registry_id,
 )
-from hpc_oda_commons.tools.report.html import render_leaderboard_html
+from hpc_oda_commons.tools.report.html import render_runs_html
 
 
 def test_infer_prediction_target_from_definitions() -> None:
@@ -68,7 +68,7 @@ def test_prepare_leaderboard_rows_marks_best_metric() -> None:
     )
 
 
-def test_render_leaderboard_html_uses_target_and_hides_hash_columns() -> None:
+def test_render_runs_html_uses_target_and_hides_hash_columns() -> None:
     leaderboard = {
         "generated_at": "2026-06-01T00:00:00Z",
         "runs_dir": "/tmp/runs",
@@ -84,7 +84,7 @@ def test_render_leaderboard_html_uses_target_and_hides_hash_columns() -> None:
         ],
     }
 
-    html = render_leaderboard_html(leaderboard)
+    html = render_runs_html(leaderboard)
     assert "Target" in html
     assert "job runtime" in html
     assert "Code Hash" not in html
@@ -92,7 +92,7 @@ def test_render_leaderboard_html_uses_target_and_hides_hash_columns() -> None:
     assert format_duration(120.0) in html
 
 
-def test_render_leaderboard_html_aligns_columns_when_metric_missing() -> None:
+def test_render_runs_html_aligns_columns_when_metric_missing() -> None:
     # Regression test for column misalignment: an entry missing an early metric
     # (mae) must render a dash under the MAE column and keep its rmse value under
     # the RMSE column, not shifted left.
@@ -119,7 +119,7 @@ def test_render_leaderboard_html_aligns_columns_when_metric_missing() -> None:
         ],
     }
 
-    html = render_leaderboard_html(leaderboard)
+    html = render_runs_html(leaderboard)
     partial_row = next(seg for seg in html.split("<tr>") if "partial" in seg)
     dash_idx = partial_row.index('class="metric muted">-')
     value_idx = partial_row.index(">999.0 W<")  # maxpcon is reported in watts

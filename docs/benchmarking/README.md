@@ -27,6 +27,12 @@ benchmark ([#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)).
 - [UoPC reproduction](power/uopc.md): the UoPC paper's own protocol, a one-model study.
 - [UoPC audit](power/uopc-audit.md): our UoPC checked against the paper and the authors' code.
 
+## Leaderboards
+
+`hpc-oda leaderboard` builds one table per target from a runs folder: a row per model, an
+average, and a column per dataset, each cell the headroom captured against that dataset's
+error ceiling ([reading the leaderboard](../how-to/interpret-results.md#reading-the-leaderboard)).
+
 ## Shared
 
 - [HPC runner](hpc-runner.md): running the benchmark matrix on a Slurm cluster (runtime

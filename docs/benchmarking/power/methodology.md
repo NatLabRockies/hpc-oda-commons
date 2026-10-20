@@ -6,8 +6,7 @@ benchmark is reproducible and our choices are explainable. The numbers live on o
 [Results](results.md). The decisions were agreed in
 [#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230).
 
-Status: **decision log, error ceilings, four datasets.** Still to come under #230: a check that
-the leaderboard keeps power separate from runtime ([Open items](#open-items)).
+Status: **decision log, error ceilings, four datasets, leaderboard** (#230, #237).
 
 ## Models in scope
 
@@ -105,6 +104,13 @@ are reported beside it.
 **Across datasets, MAE is not comparable**: a Fugaku node draws ~90 W and a Kestrel node
 ~590 W. The cross-dataset view is the share of the available headroom each model captures,
 against each dataset's [error ceiling](#error-ceilings).
+
+**The leaderboard** ranks the same way (#237). `hpc-oda leaderboard` has one table each for
+average and peak power, with a row per model and a column per dataset showing headroom
+captured and the MAE beneath. The average over datasets is shown only for models that ran
+on every one. Only bundles of this protocol, from the bundled recipes as they stand today,
+count; the rest are listed on `runs.html` with the reason
+([reading the leaderboard](../../how-to/interpret-results.md#reading-the-leaderboard)).
 
 ## Error ceilings
 
@@ -244,6 +250,5 @@ From the public sources with per-job power ([power sources](../../datasets/power
 
 ## Open items
 
-- **Leaderboard:** check that power bundles are tabled separately from runtime (#230).
 - **A lookback axis**, as in the runtime benchmark.
 - **The HPC runner** (`bench-matrix`) is runtime-only; power runs locally from recipes.

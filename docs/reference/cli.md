@@ -75,5 +75,8 @@ This reference covers the v0.1 `hpc-oda` commands.
 
 ## Leaderboard
 1. `hpc-oda leaderboard --runs <dir> --out <dir>`
-   Aggregates result bundles into `leaderboard.json` and `index.html`.
-   The HTML table includes Validated and Code Hash columns for integrity verification.
+   Writes `index.html` (one leaderboard per prediction target: a row per model, headroom
+   per dataset, an average), `runs.html` (every bundle, and why any was not counted) and
+   `leaderboard.json`. `--ceilings <dir>` points at the error ceilings and dataset cards
+   (default `docs/benchmarking/datasets`). See
+   [Reading the leaderboard](../how-to/interpret-results.md#reading-the-leaderboard).

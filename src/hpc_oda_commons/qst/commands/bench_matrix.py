@@ -578,8 +578,9 @@ def bench_matrix_aggregate(
         typer.Option("--out", help="Leaderboard output dir (default: <plan-dir>/leaderboard)."),
     ] = None,
 ) -> None:
-    """Build the leaderboard from collected result bundles."""
+    """Build the leaderboards (index.html, runs.html, leaderboard.json) from collected bundles."""
     from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
+    from hpc_oda_commons.tools.report import write_leaderboard_pages
 
     _plan, resolved = _load_plan_dir(plan_dir)
     runs_dir = runs or (resolved / "collected-runs")
@@ -590,6 +591,7 @@ def bench_matrix_aggregate(
     leaderboard = build_leaderboard(runs_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     json_path = write_leaderboard(leaderboard, out_dir)
+    write_leaderboard_pages(leaderboard, out_dir)
     n = len(leaderboard.get("entries", []))
     superseded = leaderboard.get("superseded", [])
     console.print(f"[green]Aggregated[/green] {n} benchmark cells → [cyan]{json_path}[/cyan]")

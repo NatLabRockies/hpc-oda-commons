@@ -115,9 +115,10 @@ On PM100, `recipes/job-power/<model>_rolling_{avg,peak}_pm100.yml` run them on b
 PM100's prepared table needs no slice; UoPC and embedding kNN read it with an embedding added
 (`data/windows/pm100_power_embedded/`). Results: [PM100](../benchmarking/power/results.md#pm100).
 
-The leaderboard shows power errors in W/node and picks the best value of each metric per
-target, so runtime and power results in one runs folder are never ranked against each
-other.
+The leaderboard has one table per target, so runtime and power results in one runs folder
+are never ranked against each other. Each power cell is headroom captured against the
+dataset's error ceiling, with the MAE in W/node beneath
+([reading the leaderboard](interpret-results.md#reading-the-leaderboard)).
 
 ## UoPC on the same windows
 

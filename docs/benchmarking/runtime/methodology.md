@@ -244,6 +244,13 @@ models on 9 of 20 datasets (#171). Sweeping its lookback also showed the fixed
 Per-dataset results are tracked as `docs/benchmarking/datasets/<dataset>.ceiling.json`, with a cross-dataset
 summary in [`ceilings.md`](ceilings.md).
 
+**The leaderboard** (#237) has one runtime table: a row per model, a column per dataset,
+each cell the walk-forward policy's MAE. It will show headroom captured and an average
+across datasets, as the power tables do, once the runtime ceilings are regenerated on the
+current protocol (#238). They were computed on 120 × 6 h windows, while the cells now run
+the cards' windows past a 20-window burn-in, so the two are measured on different rows
+([reading the leaderboard](../../how-to/interpret-results.md#reading-the-leaderboard)).
+
 **Deliberately not included:** leave-one-out. It is neither the floor (the optimal function has
 no "leave out" in its definition) nor achievable (a row's peers include jobs that ran *after*
 it, so it is not causal), so it answers neither question.

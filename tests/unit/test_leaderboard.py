@@ -4,7 +4,7 @@ from pathlib import Path
 
 from hpc_oda_commons.benchmark.results import build_leaderboard, write_leaderboard
 from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
-from hpc_oda_commons.tools.report import render_leaderboard_html
+from hpc_oda_commons.tools.report import render_leaderboard_html, render_runs_html
 
 
 def _make_bundle(
@@ -75,8 +75,10 @@ def test_write_leaderboard_and_html(tmp_path: Path) -> None:
     assert json_path.exists()
     html = render_leaderboard_html(leaderboard)
     assert "hpc-oda leaderboard" in html
-    assert "Target" in html
-    assert "Code Hash" not in html
+    assert 'href="runs.html"' in html
+    runs_html = render_runs_html(leaderboard)
+    assert "Target" in runs_html
+    assert "Code Hash" not in runs_html
 
 
 def test_build_leaderboard_skips_invalid_bundle(tmp_path: Path) -> None:

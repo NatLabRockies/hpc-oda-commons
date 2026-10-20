@@ -53,7 +53,7 @@ hpc-oda leaderboard --runs runs --out leaderboard
 | `hpc-oda analyze --data <path>` | Quick baseline analysis with HTML report | `reports/analysis-<id>/` |
 | `hpc-oda benchmark <recipe.yml>` | Run a benchmark recipe | `runs/benchmark-<timestamp>/` |
 | `hpc-oda benchmark -v <recipe.yml>` | Benchmark with verbose progress | Same, with console output |
-| `hpc-oda leaderboard --runs <dir> --out <dir>` | Aggregate results into comparison table | `leaderboard.json` + `index.html` |
+| `hpc-oda leaderboard --runs <dir> --out <dir>` | One leaderboard per target, plus every run | `leaderboard.json` + `index.html` + `runs.html` |
 | `hpc-oda record-hash` | Record source hash for current git commit | `integrity/known_hashes.json` |
 | `hpc-oda browse` | List registry entries (adapters, models, recipes) | Console output |
 | `hpc-oda info <entry_id>` | Show metadata for a registry entry | Console output |
@@ -144,4 +144,4 @@ All output directories are gitignored:
 - `data/ingested/<adapter>/<run_id>/` -- Parquet table, manifest, quality report
 - `runs/<run_id>/` -- Result bundle (result.json, metrics.json, provenance.json)
 - `reports/analysis-<id>/` -- Analysis report (JSON + HTML)
-- `leaderboard/` -- Leaderboard output (leaderboard.json + index.html)
+- `leaderboard/` -- Leaderboard output (leaderboard.json, index.html, runs.html)

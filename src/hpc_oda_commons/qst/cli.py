@@ -93,7 +93,7 @@ from hpc_oda_commons.schema.validator import (
 from hpc_oda_commons.tools.report import (
     render_analysis_html,
     render_leaderboard_console,
-    render_leaderboard_html,
+    write_leaderboard_pages,
 )
 
 app = typer.Typer(add_completion=False, help="hpc-oda-commons Quickstart Toolkit (v0.1)")
@@ -1109,24 +1109,32 @@ def leaderboard(
     out: Annotated[
         Path, typer.Option("--out", exists=False, help="Output directory for leaderboard.")
     ] = Path("leaderboard"),
+    ceilings: Annotated[
+        Path,
+        typer.Option(
+            "--ceilings",
+            help="Directory of error ceilings and dataset cards, for headroom and rosters.",
+        ),
+    ] = Path("docs/benchmarking/datasets"),
 ) -> None:
     """
-    Generate leaderboard.json + index.html from result bundles under runs/.
+    Generate leaderboard.json, index.html and runs.html from result bundles under runs/.
+
+    index.html has one leaderboard per target: a row per model, its average headroom, and a
+    column per dataset. runs.html lists every bundle and why any was not counted.
     """
     runs_dir = runs if runs.is_absolute() else Path.cwd() / runs
     out_dir = out if out.is_absolute() else Path.cwd() / out
 
-    leaderboard_data = build_leaderboard(runs_dir)
+    leaderboard_data = build_leaderboard(runs_dir, ceilings_dir=ceilings, cards_dir=ceilings)
     json_path = write_leaderboard(leaderboard_data, out_dir)
-
-    html = render_leaderboard_html(leaderboard_data)
-    html_path = out_dir / "index.html"
-    html_path.write_text(html, encoding="utf-8")
+    html_path, runs_path = write_leaderboard_pages(leaderboard_data, out_dir)
 
     render_leaderboard_console(leaderboard_data, console=console)
 
     console.print(f"[green]Leaderboard JSON[/green]: {json_path}")
     console.print(f"[green]Leaderboard HTML[/green]: {html_path}")
+    console.print(f"[green]Every run[/green]: {runs_path}")
 
 
 @app.command("record-hash")
