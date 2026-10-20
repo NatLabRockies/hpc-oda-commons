@@ -30,3 +30,7 @@ def test_leaderboard_generation(tmp_project: Path, repo_root: Path) -> None:
     out_dir = tmp_project / "leaderboard"
     assert (out_dir / "leaderboard.json").exists()
     assert (out_dir / "index.html").exists()
+    # The tiny recipe is not a benchmark cell, so it is listed on runs.html with its reason.
+    runs_html = (out_dir / "runs.html").read_text(encoding="utf-8")
+    assert "baseline_tiny" in runs_html
+    assert "not counted" in runs_html

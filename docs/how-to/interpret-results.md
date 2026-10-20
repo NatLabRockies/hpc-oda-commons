@@ -137,14 +137,17 @@ Use provenance to verify two results were produced under comparable conditions: 
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
 
-This produces `leaderboard.json` (machine-readable) and `index.html` (human-readable table). The leaderboard sorts all result bundles by creation time and shows recipe, model, dataset hash, and metrics side by side.
+This writes three files:
 
-Open `index.html` in a browser to compare runs visually. Look for:
-- Which model achieves the lowest MAE/RMSE. The highlighted best is chosen **per prediction target**, so a runtime result is never ranked against a power result; power errors are shown in W/node (or W)
-- Whether the same dataset hash was used across runs (apples-to-apples comparison)
-- Whether results show `Validated = yes` (code matches a known-good commit)
-- Whether results share the same `Code Hash` (identical code was used)
-- How metrics trend over time as models or data change
+- **`index.html`: one leaderboard per prediction target** (job runtime, average power, peak power), built like the MTEB leaderboard. Each row is a model, then its **Average**, then one column per dataset.
+  - **Each cell is headroom captured**: (baseline MAE − model MAE) / (baseline MAE − floor MAE). The baseline is the window mean on that dataset, and the floor is the dataset's error ceiling (`docs/benchmarking/datasets/*.ceiling.json`). 0% means no better than the window mean, 100% reaches the floor, and a negative value is worse than the window mean. The MAE is shown beneath.
+  - **Why not raw MAE:** it isn't comparable across datasets. A Fugaku node draws ~90 W and a Kestrel node ~590 W, and runtime errors differ as much between machines. Within a dataset, headroom orders models exactly as MAE does.
+  - **The average** covers every dataset in the table, and is shown only for models that ran on all of them. Otherwise the row says how many it ran ("3/4 datasets") and sits below the ranked rows.
+  - **Runtime** shows MAE only for now: its ceilings predate the current runtime protocol ([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)). Its cells use the walk-forward choice among lookback arms ([methodology](../benchmarking/runtime/methodology.md)).
+- **`runs.html`: every result bundle, one row each.** This is for checking runs, not for ranking them. Each row says whether it counted on a leaderboard, and if not, why: another protocol (the UoPC paper reproduction), a smoke run, an ad hoc recipe, a bundle run before its recipe changed, or one replaced by a newer run.
+- **`leaderboard.json`** (format `oda.leaderboard.v0.2.0`): `tables` per target, `excluded` with reasons, and the per-bundle `entries`.
+
+Only runs of a target's own benchmark protocol count: for power, the bundled `recipes/job-power/*_rolling_*.yml` on 89 × 24 h windows with a 60-day lookback; for runtime, the `bench-matrix` configuration. `--ceilings` points at the ceilings and dataset cards (default `docs/benchmarking/datasets`).
 
 ## Analysis Reports
 

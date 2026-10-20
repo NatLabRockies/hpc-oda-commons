@@ -20,6 +20,7 @@ from hpc_oda_commons.benchmark.arm_selection import (
     walk_forward,
 )
 from hpc_oda_commons.benchmark.leaderboard_display import infer_prediction_target
+from hpc_oda_commons.benchmark.tracks import DEFAULT_CEILINGS_DIR, build_tables
 from hpc_oda_commons.kernel.artifacts.result_bundle import (
     read_result_bundle,
     validate_result_bundle,
@@ -27,7 +28,9 @@ from hpc_oda_commons.kernel.artifacts.result_bundle import (
 from hpc_oda_commons.kernel.paths import ensure_dir
 from hpc_oda_commons.kernel.serialization import to_jsonable
 
-LEADERBOARD_FORMAT_VERSION = "oda.leaderboard.v0.1.0"
+# v0.2.0 (#237): adds ``tables`` (one per target: a row per model, a column per dataset)
+# and ``excluded``; ``entries`` and ``superseded`` are the per-bundle view, as before.
+LEADERBOARD_FORMAT_VERSION = "oda.leaderboard.v0.2.0"
 
 
 def _now_utc_iso() -> str:
@@ -78,8 +81,18 @@ def _cell_key(entry: dict[str, Any]) -> tuple[Any, ...]:
     return ("bundle", entry.get("bundle_dir"))
 
 
-def build_leaderboard(runs_dir: Path) -> dict[str, Any]:
-    """One entry per benchmark cell -- the newest bundle wins.
+def build_leaderboard(
+    runs_dir: Path,
+    *,
+    ceilings_dir: Path = DEFAULT_CEILINGS_DIR,
+    cards_dir: Path = DEFAULT_CEILINGS_DIR,
+) -> dict[str, Any]:
+    """The per-target leaderboards, and one entry per benchmark cell -- the newest bundle wins.
+
+    ``tables`` holds one leaderboard per prediction target (#237): a row per model and a
+    column per dataset, scored by headroom against ``ceilings_dir``'s error ceilings, from the
+    bundles that ran that target's benchmark protocol. ``excluded`` names every other bundle
+    and why. The runtime roster and protocol come from the dataset cards in ``cards_dir``.
 
     Bundles are written to ``runs/<dataset>/<model>/benchmark-<timestamp>/``, so a cell that
     runs twice leaves two of them. Re-running a cell is the normal repair path, and emitting
@@ -91,14 +104,23 @@ def build_leaderboard(runs_dir: Path) -> dict[str, Any]:
     timestamped directory, not the previous result.
     """
     entries: list[dict[str, Any]] = []
+    payloads: dict[str, dict[str, Any]] = {}
     for bundle_dir in _collect_bundle_dirs(runs_dir):
         try:
-            entries.append(build_leaderboard_entry(bundle_dir))
+            entry = build_leaderboard_entry(bundle_dir)
+            _result, metrics, _prov = read_result_bundle(bundle_dir, validate=False)
         except Exception:
             # Skip invalid bundles to keep report generation robust in v0.1
             continue
+        entries.append(entry)
+        payloads[str(entry["bundle_dir"])] = metrics
 
     entries.sort(key=lambda e: e.get("created_at") or "")
+    tables, excluded = build_tables(
+        [(entry, payloads[str(entry["bundle_dir"])]) for entry in entries],
+        ceilings_dir=ceilings_dir,
+        cards=_load_cards_or_none(cards_dir),
+    )
     newest: dict[tuple[Any, ...], dict[str, Any]] = {}
     superseded: list[dict[str, Any]] = []
     for entry in entries:  # ascending created_at, so a later bundle replaces an earlier one
@@ -112,6 +134,8 @@ def build_leaderboard(runs_dir: Path) -> dict[str, Any]:
         "schema_version": LEADERBOARD_FORMAT_VERSION,
         "generated_at": _now_utc_iso(),
         "runs_dir": str(runs_dir),
+        "tables": tables,
+        "excluded": excluded,
         "entries": kept,
         # Named, not silently dropped: the same rule as anywhere else the tooling narrows
         # coverage. A reader can see which runs were superseded and by what.
@@ -124,6 +148,16 @@ def build_leaderboard(runs_dir: Path) -> dict[str, Any]:
             for e in superseded
         ],
     }
+
+
+def _load_cards_or_none(cards_dir: Path) -> list[Any]:
+    """The runtime dataset cards, or none: a runs folder without them still gets power."""
+    from hpc_oda_commons.benchmarking.hpc.matrix import load_cards
+
+    try:
+        return load_cards(cards_dir)
+    except (FileNotFoundError, OSError, ValueError, KeyError):
+        return []
 
 
 def write_leaderboard(leaderboard: dict[str, Any], out_dir: Path) -> Path:

@@ -91,4 +91,4 @@ Adjust these in the recipe's `split:` section:
 ```bash
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
-Aggregates all result bundles under `runs/` into `leaderboard.json` and `index.html`.
+Aggregates the result bundles under `runs/` into `leaderboard.json`, `index.html` (one leaderboard per target) and `runs.html` (every bundle). The quickstart's tiny run is not a benchmark cell, so it appears on `runs.html` only ([reading the leaderboard](interpret-results.md#reading-the-leaderboard)).

@@ -85,7 +85,8 @@ The project uses a conventional directory structure for artifacts:
       metrics.json                   #   Detailed metrics
       provenance.json                #   Full provenance record
     leaderboard.json                 # Aggregated leaderboard
-    index.html                       # Rendered leaderboard
+    index.html                       # One leaderboard per target
+    runs.html                        # Every result bundle, counted or why not
   reports/
     analysis-<id>/                    # Analysis reports
       analysis.json                  #   Analysis data
@@ -227,7 +228,7 @@ The CLI is built on Typer and exposed as the `hpc-oda` command. It provides a co
 | `hpc-oda analyze --data <path>` | Analyze a local dataset with the baseline model and emit a report bundle (JSON + HTML). |
 | `hpc-oda validate <path>` | Validate artifacts against their schemas. Accepts result bundles, manifests, or Parquet files. |
 | `hpc-oda embed <parquet> --out <path>` | Serialize job rows to text and encode them into a dense `embedding` column (for `model.job_runtime_embedding_knn`). Writes an embedded Parquet + provenance manifest. `--model stub` needs no download; real models need the `embed` extra. |
-| `hpc-oda leaderboard --runs <dir> --out <dir>` | Aggregate result bundles from a runs directory into a leaderboard (JSON + HTML). Includes Validated and Code Hash columns. |
+| `hpc-oda leaderboard --runs <dir> --out <dir>` | One leaderboard per prediction target (a row per model, headroom per dataset, an average), plus `runs.html` listing every bundle and why any was not counted. |
 | `hpc-oda record-hash` | Record the current source code hash and git commit in `integrity/known_hashes.json`. Run after tests pass on a clean commit. |
 | `hpc-oda browse` | Browse the registry snapshot. Supports filters: `--tag`, `--type`, `--source`, `--input-schema`, `--output-schema`. |
 | `hpc-oda info <entry_id>` | Display detailed metadata for a registry entry (adapter, model, or recipe). |
@@ -567,13 +568,14 @@ Each benchmark run produces a result bundle directory containing three JSON file
 
 ### 8.4 Leaderboard
 
-The leaderboard system aggregates multiple result bundles into a sorted comparison:
+`hpc-oda leaderboard` (and `bench-matrix aggregate`) builds one leaderboard per prediction target (#237):
 
-1. Scans a runs directory for subdirectories containing `result.json`
-2. Validates each bundle
-3. Extracts key fields: creation time, recipe ID, model, dataset, metrics
-4. Sorts entries by creation time
-5. Writes `leaderboard.json` and renders `index.html` with a tabular view
+1. Scans a runs directory for subdirectories containing `result.json`, and validates each bundle.
+2. Keeps the bundles that ran a target's benchmark protocol (`benchmark/tracks.py`): the bundled power recipes on 89 × 24 h windows with a 60-day lookback and their current settings, or the runtime `bench-matrix` configuration. Every other bundle is listed in `excluded` with a reason.
+3. Groups them into cells by (target, dataset, model). The newest bundle per configuration wins, and runtime lookback arms are reduced by walk-forward selection (#190).
+4. Scores each cell by headroom captured, (baseline MAE − model MAE) / (baseline MAE − floor MAE), against the dataset's error ceiling; runtime shows MAE only until its ceilings match its protocol (#238).
+5. Averages headroom over each table's roster (the datasets with a ceiling for that target, or the runtime dataset cards), for models that ran on all of them.
+6. Writes `leaderboard.json` (`tables`, `excluded`, and the per-bundle `entries`), `index.html` (one table per target) and `runs.html` (every bundle).
 
 ---
 
@@ -824,7 +826,7 @@ The ultimate vision is enabling rigorous cross-site comparison of ODA methods. W
 | `oda.mdl.v0.1.0` | Metric Definition Language |
 | `oda.registry.v0.1.0` | Registry entry catalogue |
 
-Note: `oda.leaderboard.v0.1.0` is not a bundled JSON Schema. It is a version tag emitted in leaderboard output, defined by the `LEADERBOARD_FORMAT_VERSION` constant in `benchmark/results.py`.
+Note: `oda.leaderboard.v0.2.0` is not a bundled JSON Schema. It is a version tag emitted in leaderboard output, defined by the `LEADERBOARD_FORMAT_VERSION` constant in `benchmark/results.py`.
 
 ## Appendix B: CLI Command Quick Reference
 

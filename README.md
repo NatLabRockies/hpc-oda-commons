@@ -235,7 +235,7 @@ All transformations are recorded in the manifest's transformation ledger.
 | `hpc-oda run-baseline` | `runs/run-baseline-*/{result.json, metrics.json, provenance.json}` |
 | `hpc-oda benchmark <recipe>` | `runs/benchmark-*/{result.json, metrics.json, provenance.json}` |
 | `hpc-oda analyze --data ...` | `reports/analysis-*/{analysis.json, index.html}` |
-| `hpc-oda leaderboard ...` | `leaderboard/{leaderboard.json, index.html}` |
+| `hpc-oda leaderboard ...` | `leaderboard/{leaderboard.json, index.html, runs.html}` |
 
 ## Repo Layout
 

@@ -113,6 +113,12 @@ def format_duration(seconds: float) -> str:
     return f"{hours / 24:.1f} d"
 
 
+def format_headroom(value: float) -> str:
+    """Headroom captured as a whole percentage; a share that rounds to zero is 0%, not -0%."""
+    percent = round(100.0 * float(value))
+    return f"{percent + 0:d}%"
+
+
 def format_target_label(target: str | None) -> str:
     if not target:
         return "-"
