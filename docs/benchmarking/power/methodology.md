@@ -226,11 +226,12 @@ From the public sources with per-job power ([power sources](../../datasets/power
 
 - **In:** F-DATA (`fdata_fugaku_uopc`, its five UoPC months), NLR Eagle (`nlr_eagle`) and NLR
   Kestrel (`nlr_kestrel`, CPU nodes, shared nodes excluded).
-- **Shared nodes on PM100 are kept.** 5,396 jobs (2.3%) ran on a node at the same time as
-  another job, so their node's power includes the other job's. PM100 does not flag them, as
-  Kestrel does; they were found by overlapping node lists and run times. At 2.3% they are kept
-  and recorded as a limitation, rather than excluded with new code (agreed on #230;
-  [known issues](../../known-issues.md#note--pm100-power-includes-co-located-jobs-for-23-of-jobs)).
+- **PM100 has no node sharing to exclude.** Its extraction kept only jobs that ran
+  exclusively on their nodes ([Zenodo record](https://zenodo.org/records/10127767),
+  [extraction code](https://github.com/francescoantici/PM100-data)). Checked against node lists
+  and run times, 5,394 jobs touch another job on a node at their start or end, for at most
+  20 s (median 1 s): scheduler timing at the boundary, not two jobs sharing a node. An
+  earlier version of this page counted those as shared (#230).
 - **In since #230:** PM100 (`pm100`), with average and peak power: 231k jobs, May–Oct 2020.
 - **Waiting on mapping:** Lassen (power needs a join) and Adastra (needs cleaning).
 - **Not used:** `nrel_eagle`, the same machine as `nlr_eagle` from another source, as in the
