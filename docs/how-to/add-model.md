@@ -7,7 +7,10 @@ registry metadata and recipes.
 
 1. Implement a model class under `src/hpc_oda_commons/models/<name>/`. Name it for its
    method, not a task: its id is `model.<name>`, and recipes choose what it predicts.
-2. Add a registry entry in `src/hpc_oda_commons/registry/snapshot.json`.
+2. Add `model.yml` next to it: the model's title, version, class (`object`) and a
+   description of its method. The registry is built from it, the recipes that run the
+   model and its imports; describe only the method, since what the model is used for and
+   how it scores are generated.
 3. Add a recipe in `src/hpc_oda_commons/recipes/`.
 4. Add unit tests that exercise the model's public API (e.g., `fit()`/`predict()` for simple models, or `evaluate()` for rolling-window models).
 

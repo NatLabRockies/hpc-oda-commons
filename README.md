@@ -256,7 +256,7 @@ src/hpc_oda_commons/     Package implementation
   schema/                JSON Schema validation and quality rules
   schemas/               Bundled JSON Schema files
   datasets/              Bundled synthetic datasets
-  registry/              Offline registry snapshot
+  registry/              Registry, built from the package's model, recipe and dataset files
   recipes/               Bundled benchmark recipes (YAML)
   tools/                 HTML report generation
 tests/                   Unit + integration tests
