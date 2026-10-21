@@ -8,7 +8,7 @@ Describe what this change does and why.
 - [ ] Fix (`fix/*`)
 - [ ] Chore (`chore/*`)
 
-## DoD Gates Impact (v0.2 runtime prediction)
+## DoD Gates Impact
 
 - [ ] DoD-1 (install + `hpc-oda --help`) unaffected or updated tests accordingly
 - [ ] DoD-2 (`run-baseline` offline result bundle) unaffected or updated tests accordingly
@@ -20,12 +20,13 @@ Describe what this change does and why.
 
 - [ ] `ruff format . --check` passes
 - [ ] `ruff check .` passes
+- [ ] `python scripts/validate_recipes.py` passes
 - [ ] `make test` passes
 - [ ] `HPC_ODA_OFFLINE=1 make test-integration` passes
-- [ ] Docs updated if CLI behavior/output paths changed:
-  - [ ] README quickstart
-  - [ ] docs/how-to/quickstart.md
-  - [ ] docs/reference/cli.md (if applicable)
+- [ ] Generated pages regenerated if their sources changed (`make docs-cli`,
+      `hpc-oda models cards`, `hpc-oda datasets cards`; see CONTRIBUTING.md)
+- [ ] Docs updated if CLI behavior or output paths changed (docs/how-to/quickstart.md,
+      docs/agent-usage.md)
 - [ ] No sensitive data committed (no real logs, credentials, tokens)
 - [ ] Any new files are properly added to packaging (schemas/recipes/registry/datasets)
 

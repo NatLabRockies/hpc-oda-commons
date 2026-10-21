@@ -13,10 +13,11 @@ PR → review → merge. One issue per unit of work; everything references the i
 
 ## Where to contribute
 
-1. **Improve ingestion** -- enhance slurmctld parsing, add new adapters
+1. **Add datasets** -- write a descriptor for a public dataset ([how](docs/how-to/benchmark-your-data.md#2-describe-it))
 2. **Add models** -- implement new prediction models ([guide](docs/how-to/add-model.md))
 3. **Add recipes** -- create benchmark recipes ([recipe format](docs/reference/recipes.md))
-4. **Improve docs** -- expand guides, add examples
+4. **Improve ingestion** -- enhance slurmctld parsing, add new adapters
+5. **Improve docs** -- expand guides, add examples
 
 ---
 
@@ -28,16 +29,22 @@ pip install -e ".[dev]"
 
 | Command | What it runs |
 |---------|--------------|
-| `make test` | Unit tests (fast) |
-| `make test-integration` | Integration tests (requires `HPC_ODA_OFFLINE=1`) |
+| `make test` | Every test, unit and integration (`pytest -q`) |
+| `make test-integration` | The integration tests only; run them with `HPC_ODA_OFFLINE=1` |
 | `make lint` | `ruff check .` |
 | `make format` | `ruff format .` then `ruff check . --fix` |
+| `make precommit` | The pre-commit hooks on every file |
+| `make docs-cli` | Regenerate `docs/reference/cli.md` from the CLI's help text |
 
-CI additionally runs `ruff format . --check` (the formatter, not just the
-linter) and the unit suite on multiple Python versions, so see the quality gate
-in §6 before pushing. CI triggers on pull requests and pushes to `main`, with
-concurrency cancel-in-progress so superseded runs are cancelled when a branch is
-updated.
+The unit tests alone are `pytest -q -m "not integration"`, as CI runs them.
+
+Run these from the environment you installed into, so `pytest` and `ruff` import this
+checkout. The dev extra pins ruff to the version CI uses; reinstall (`pip install -e ".[dev]"`)
+when the pin changes, since a newer ruff also formats Python inside Markdown code blocks.
+
+CI runs the lint and format checks, the unit tests on Python 3.10, the recipe check, and the
+integration tests on Python 3.11 (§4). It triggers on pull requests and pushes to `main`, and
+cancels superseded runs when a branch is updated.
 
 ---
 
@@ -139,13 +146,30 @@ A change is "finished" (ready for PR) when **all** of the following hold:
   ```bash
   ruff format . --check
   ruff check .
+  python scripts/validate_recipes.py
   make test
   HPC_ODA_OFFLINE=1 make test-integration
   ```
+- Generated pages are regenerated if their sources changed (below).
 - CI is **green** on the PR before merge.
 
 Run the full set before pushing — `make lint` alone does **not** cover the
 formatter check that CI enforces.
+
+### Generated pages
+
+Some pages are written by code. Never edit them by hand: change their source, regenerate,
+and commit the result. A unit test fails when a committed page differs from what its
+generator writes.
+
+| Page | Regenerate with | After changing |
+|------|-----------------|----------------|
+| `docs/reference/cli.md` | `make docs-cli` | a command or its help text |
+| `docs/models/` | `hpc-oda models cards` | a model, its runner, its recipes, or the leaderboard |
+| `docs/datasets/cards/` | `hpc-oda datasets cards` | a descriptor, a runtime card, a ceiling, a recipe, or the leaderboard |
+| `site/leaderboard/` | `hpc-oda leaderboard --runs runs --out site/leaderboard` | the published results |
+
+After a new leaderboard, regenerate the model and dataset cards too, since they quote it.
 
 ---
 
@@ -175,7 +199,7 @@ Branch protection enforces this rather than relying on the honor system — see 
 - **Proportional complexity** — match the solution's complexity to the problem.
 - **No sensitive data** — never commit real site logs, paths, or credentials.
   Use synthetic/redacted fixtures only. Generated outputs (`data/`, `runs/`,
-  `reports/`, root `recipes/`) are gitignored.
+  `reports/`, `leaderboard/`, root `recipes/`) are gitignored.
 - **Ruff is the source of truth** for formatting and linting (line length 100,
   Python 3.10+).
 - **Known limitations** are tracked in `docs/known-issues.md` and linked to
@@ -188,7 +212,7 @@ Branch protection enforces this rather than relying on the honor system — see 
 `main` is a protected branch with these rules in effect:
 
 - **Required status checks** must pass before merge: Lint (ruff), Unit tests
-  (fast) (3.10), and Golden-path integration (DoD-1..DoD-4) (3.11).
+  (fast) (3.10), and Golden path integration (DoD-1..DoD-4) (3.11).
 - **Required review:** one approving review for contributors (non-admins).
 - **No direct pushes:** changes land via PR.
 - **Squash-merge only, linear history:** merge-commit and rebase-merge are

@@ -113,6 +113,27 @@ def test_target_to_mapping_spec() -> None:
     assert spec["fields"]["maxpcon"] == {"source": "maxpcon"}
 
 
+def test_hashed_fields_take_the_salt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """HPC_ODA_HASH_SALT salts a descriptor's hashed fields, as it does the ingest wizard's."""
+    assert target_to_mapping_spec(_target())["fields"]["user"]["transform"] == {
+        "type": "hash_identifier",
+        "salt_env": "HPC_ODA_HASH_SALT",
+    }
+
+    def users(name: str) -> list[str]:
+        out = tmp_path / name / "data.parquet"
+        normalize_target(_intermediate(tmp_path), _target(), out)
+        return pq.read_table(out, columns=["user"]).column("user").to_pylist()
+
+    monkeypatch.delenv("HPC_ODA_HASH_SALT", raising=False)
+    plain = users("plain")
+    monkeypatch.setenv("HPC_ODA_HASH_SALT", "a-secret")
+    salted = users("salted")
+    assert "alice" not in salted
+    assert salted != plain
+    assert salted[0] == salted[2]  # the same user still hashes to the same value
+
+
 def test_normalize_produces_canonical_schema_valid_table(tmp_path: Path) -> None:
     out = tmp_path / "out.parquet"
     summary = normalize_target(_intermediate(tmp_path), _target(), out)
