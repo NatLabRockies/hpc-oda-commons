@@ -20,21 +20,10 @@
 
 **I'm an AI agent** -- [Agent Guide](../CLAUDE.md) (routes to [usage](agent-usage.md) or development)
 
-**I need a reference** -- [CLI Reference](reference/cli.md) | [Recipes](reference/recipes.md) | [Schema Versions](reference/schema-versions.md)
+**I need a reference** -- [CLI Reference](reference/cli.md) | [Recipes](reference/recipes.md) | [Dataset descriptors](reference/descriptors.md) | [Schema Versions](reference/schema-versions.md)
 
 **I want to understand the design** -- [Architecture](architecture.md) | [Benchmarks](concepts/benchmarks.md)
 
-**I want benchmark results** -- [Benchmarking: runtime and power tracks](benchmarking/README.md)
+**I want benchmark results** -- [the published leaderboard](https://natlabrockies.github.io/hpc-oda-commons/leaderboard/) | [Model cards](models/README.md) | [Dataset cards](datasets/cards/README.md) | [Benchmarking: how the runtime and power tracks run](benchmarking/README.md)
 
-## The workflow for your own data
-
-```bash
-hpc-oda datasets prepare <descriptor.yml> --from <export folder>
-hpc-oda datasets characterize <prepared table> --out benchmark/datasets ...
-hpc-oda recipes write <descriptor.yml> --card <runtime card> --out recipes
-hpc-oda benchmark <recipe.yml>          # for each recipe
-hpc-oda leaderboard --runs runs --out leaderboard --ceilings benchmark/datasets --recipes recipes
-```
-
-[Benchmark your own data](how-to/benchmark-your-data.md) walks through each step, embedding
-and error ceilings included.
+**Something isn't working** -- [Known issues](known-issues.md)

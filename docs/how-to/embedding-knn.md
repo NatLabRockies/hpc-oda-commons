@@ -1,6 +1,6 @@
-# Embedding-based kNN runtime model
+# Embedding-based kNN model
 
-`model.embedding_knn` predicts `runtime_seconds` from the *k* nearest
+`model.embedding_knn` predicts its recipe's target (job runtime or power) from the *k* nearest
 historical jobs in a **precomputed dense embedding space**, under the repo's
 rolling-window evaluation. It is the embedding-space counterpart to
 `model.tfidf_knn` (which vectorizes text with TF-IDF internally): this
@@ -20,8 +20,8 @@ embedding column:
   product equals cosine similarity. Pre-normalizing at write time is fine too.
 
 `oda.job.v0.2.0` allows extra columns, so the embedding rides along in the same
-table and flows through `decode → normalize → prepare` unchanged. The column name is
-configurable via `embedding_field`.
+table. A source that ships one, such as F-DATA, maps it in its descriptor like any column
+(`embedding: { from: embedding }`). The column name is configurable via `embedding_field`.
 
 A deterministic synthetic example (with a real `FixedSizeList` embedding column) is
 available for testing:
@@ -61,19 +61,17 @@ requested — embedding them would leak the prediction target. Two formats: `pro
 | model | license | notes |
 |---|---|---|
 | `stub` | — | deterministic hashing, no download — offline/CI/pipeline checks (not semantic) |
-| `microsoft/harrier-oss-v1-0.6b` | **MIT** | **recommended default** — 1024-d, laptop-scale full runs |
+| `microsoft/harrier-oss-v1-0.6b` | **MIT** | **recommended real model** — 1024-d, laptop-scale full runs |
 | `nvidia/llama-embed-nemotron-8b` | research/gated | 4096-d max quality; GPU for scale |
 
-**Performance** (measured, this-laptop Apple MPS): harrier ≈ 78 rows/s (prose) → a
-full 1M-row table in ~3.5 h; nemotron-8b ≈ 9 rows/s → days locally, i.e. a GPU-node
-job. `--cache-dir` makes runs resumable (embedding is chunk-cached), so a long run
-survives interruption.
+**Time:** with harrier, a table of a million distinct jobs takes hours on a laptop;
+nemotron-8b needs a GPU node. `--cache-dir` makes runs resumable (embedding is chunk-cached),
+so a long run survives interruption.
 
-**De-duplication:** ODA corpora are heavily duplicated on submission-time text — on a
-representative 60-day production slice, 72% of jobs serialized to a text some other job
-already had. `hpc-oda embed` embeds each *distinct* text once and scatters its vector to
-every row that produced it, so wall-clock scales with the number of **unique** texts, not
-rows (~3.4× fewer forward passes on that slice). Output is unchanged, and identical jobs
+**De-duplication:** ODA corpora are heavily duplicated on submission-time text: many jobs
+serialize to a text some other job already had. `hpc-oda embed` embeds each *distinct* text
+once and scatters its vector to every row that produced it, so wall-clock scales with the
+number of **unique** texts, not rows. Output is unchanged, and identical jobs
 get bit-identical vectors (no fp16 batch-order drift). The manifest reports `row_count`,
 `unique_text_count`, and `duplicate_ratio`. Note this does **not** remove the duplicate
 *vectors* from the kNN corpus, so it is not a fix for cross-backend neighbour-tie
@@ -99,13 +97,18 @@ recommended by default; keep the serialization to submission-time prose.
 
 ## Run a benchmark
 
-Point a rolling recipe at your embedded dataset and run the benchmark offline:
+The bundled example recipe reads `data/ingested/jobs_parquet/embedded_jobs/data.parquet`, so
+embed to that path (or copy the recipe and change its `table_path`):
 
 ```bash
+hpc-oda embed data/ingested/jobs_parquet/<id>/data.parquet \
+  --out data/ingested/jobs_parquet/embedded_jobs/data.parquet --model stub
 HPC_ODA_OFFLINE=1 hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/embedding_knn_rolling.yml
 ```
 
-The recipe's `model.id` is `model.embedding_knn` with a rolling split.
+The recipe's `model.id` is `model.embedding_knn` with a rolling split. For a dataset of your
+own, `hpc-oda recipes write` writes the embedding model's recipes and prints the embed command
+([Benchmark your own data](benchmark-your-data.md)).
 The model is discoverable via `hpc-oda browse --type model`.
 
 ## Backends and devices
@@ -126,52 +129,30 @@ CPU faster, so measure before committing to a device.
 
 ## Configuration
 
-`EmbeddingKnnConfig` knobs (also settable under a recipe's `split`):
+The [model card](../models/embedding_knn.md) lists every setting and its default; each can be
+set under a recipe's `split`. Two need explaining:
 
-- `k` — neighbors (default 5).
-- `embedding_field` — column name (default `embedding`).
-- `weighting` — `similarity` (weight by clamped cosine, sum-normalized, uniform
-  fallback when all similarities are zero) or `uniform`.
-- `normalize` — L2-normalize embeddings (default true).
-- `log_target` — predict in log1p-space and invert (default false).
-- `backend` / `device` / `dtype` — engine selection (see above).
-- `sims_block_bytes` — peak bytes for one dense similarity block (default 2 GiB).
-  Search streams the query in blocks sized to this budget, so per-window memory is
-  `block × N_train` instead of `N_test × N_train` — the difference between a bounded
-  footprint and an out-of-memory kill on large corpora. Neighbor selection is
-  unaffected; similarity values match up to floating-point summation order (the
-  reproducibility caveat in [known-issues](../known-issues.md)).
-- `n_windows`, `test_window_hours`, `training_lookback_days`,
-  `submit_time_field`, `end_time_field` — the rolling schedule (shared with the
-  other rolling models via `rolling_tabular.split`).
+- `weighting` — `similarity` (weight by clamped cosine, sum-normalized, uniform fallback when
+  all similarities are zero) or `uniform`.
+- `sims_block_bytes` — peak bytes for one dense similarity block. Search streams the query in
+  blocks sized to this budget, so per-window memory is `block × N_train` instead of
+  `N_test × N_train`: the difference between a bounded footprint and an out-of-memory kill on
+  large corpora. Neighbor selection is unaffected; similarity values match up to
+  floating-point summation order (the reproducibility caveat in
+  [known-issues](../known-issues.md)).
 
 ## Accuracy
 
-Run both this model and `tfidf_knn` through the same rolling harness on your embedded
-dataset and compare MAE / RMSE — accuracy is dataset-dependent. What we found on a
-representative 60-day production slice (~632k SLURM jobs, `microsoft/harrier-oss-v1-0.6b`)
-is a useful starting point:
+Run this model and `tfidf_knn` through the same rolling harness on your embedded dataset and
+compare their MAE and RMSE: accuracy depends on the dataset. The leaderboard and the
+[model card](../models/embedding_knn.md) give the benchmark's results. What our experiments on
+production data suggest:
 
-**Recommended default: `prose` serialization with `log_target: true`.** It was the
-strongest configuration in every experiment (MAE ≈ 10,600 s), and neural embeddings beat
-the tf-idf baseline by ~11–15% MAE on the representative sample. `log_target` alone
-improved MAE ~8% (heavy-tailed runtimes).
-
-**What did *not* help: appending non-linguistic text.** Adding job-script diffs or the
-`work_dir` path to the embedded text *degraded* accuracy, even though it sharply cut the
-serialized-text duplicate rate:
-
-| variant | effect vs prose[log] |
-|---|---|
-| `work_dir` (whole path) | MAE flat (within noise), **RMSE +6%** |
-| `work_dir` tail-residual | MAE +3%, RMSE +5% |
-| script diff, on the 111k jobs it targets | **MAE +17% (log) to +46% (non-log), RMSE up to +70%** |
-
-The cause is fundamental: a natural-language embedder can't read `T300` as a temperature
-or a run index as a magnitude. The extra path/code tokens dominate the vector and break
-the (already good) prose neighbour structure, so kNN starts matching on path/code-token
-similarity, which correlates poorly with runtime. On real HPC data most duplicate jobs are
-**parameter sweeps** — identical submission and script, differing only in an input file or
-directory — so the runtime-determining information lives in file *contents* the export
-doesn't capture. Using that signal would require **numeric/structured feature extraction**
-(site-specific), not text embedding. Keep the serialization to submission-time prose.
+- **Use `prose` serialization with `log_target: true`.** It was the strongest configuration
+  we tried, and `log_target` helps on heavy-tailed runtimes.
+- **Don't append non-linguistic text.** Adding job-script diffs or the `work_dir` path to the
+  embedded text made accuracy worse, even though it cut the duplicate rate. A natural-language
+  embedder can't read `T300` as a temperature or a run index as a magnitude, so the extra
+  tokens dominate the vector and kNN starts matching on them. On real HPC data most duplicate
+  jobs are parameter sweeps, differing only in an input file the export doesn't capture. Using
+  that signal would take numeric, site-specific feature extraction, not text embedding.
