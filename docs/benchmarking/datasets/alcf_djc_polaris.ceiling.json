@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 120,
+    "scored_windows": 100
   },
-  "scored_rows": 23895,
+  "scored_rows": 15081,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "account",
     "award_category",
@@ -18,97 +21,97 @@
     "user"
   ],
   "floor": {
-    "mae": 2309.886754551161,
-    "rmse": 12530.543307696804,
-    "signatures": 1809,
+    "mae": 2555.84105828526,
+    "rmse": 12508.866960039726,
+    "signatures": 1577,
     "group_sizes": {
       "min": 1,
       "median": 2.0,
-      "max": 6309,
-      "singleton_row_share": 0.03096882192927391
+      "max": 825,
+      "singleton_row_share": 0.04024932033684769
     }
   },
   "feature_cost": [
     {
       "feature": "award_category",
-      "floor_mae_without": 2309.886754551161,
+      "floor_mae_without": 2555.84105828526,
       "cost": 0.0
     },
     {
       "feature": "machine",
-      "floor_mae_without": 2309.886754551161,
+      "floor_mae_without": 2555.84105828526,
       "cost": 0.0
     },
     {
       "feature": "num_cores_req",
-      "floor_mae_without": 2309.886754551161,
+      "floor_mae_without": 2555.84105828526,
       "cost": 0.0
     },
     {
       "feature": "num_nodes_req",
-      "floor_mae_without": 2309.886754551161,
+      "floor_mae_without": 2555.84105828526,
       "cost": 0.0
     },
     {
       "feature": "science_field",
-      "floor_mae_without": 2309.886754551161,
+      "floor_mae_without": 2555.84105828526,
       "cost": 0.0
     },
     {
       "feature": "account",
-      "floor_mae_without": 2311.464155681105,
-      "cost": 1.5774011299436097
+      "floor_mae_without": 2558.1760493335987,
+      "cost": 2.3349910483389067
     },
     {
       "feature": "queue",
-      "floor_mae_without": 2317.4000418497594,
-      "cost": 7.513287298598243
+      "floor_mae_without": 2563.6831111995225,
+      "cost": 7.842052914262695
     },
     {
       "feature": "user",
-      "floor_mae_without": 2441.33224523959,
-      "cost": 131.4454906884289
+      "floor_mae_without": 2742.6553942046285,
+      "cost": 186.81433591936866
     },
     {
       "feature": "requested_seconds",
-      "floor_mae_without": 2793.198493408663,
-      "cost": 483.31173885750195
+      "floor_mae_without": 3193.4045487699755,
+      "cost": 637.5634904847157
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 3705.4059426658296,
-        "coverage": 0.6780079514542792,
-        "rows": 23895
+        "mae": 4515.819176447185,
+        "coverage": 0.5914064054107818,
+        "rows": 15081
       },
       "10d": {
-        "mae": 3778.3996233521657,
-        "coverage": 0.8194601381042059,
-        "rows": 23895
+        "mae": 4302.039950931636,
+        "coverage": 0.7603607187852265,
+        "rows": 15081
       },
       "30d": {
-        "mae": 3735.593094789705,
-        "coverage": 0.8526888470391295,
-        "rows": 23895
+        "mae": 4149.652576089119,
+        "coverage": 0.7984881639148598,
+        "rows": 15081
       },
       "60d": {
-        "mae": 3629.1699100230176,
-        "coverage": 0.8729441305712492,
-        "rows": 23895
+        "mae": 3868.8321729328295,
+        "coverage": 0.8273324050129301,
+        "rows": 15081
       },
       "120d": {
-        "mae": 3345.027809165097,
-        "coverage": 0.8865871521238753,
-        "rows": 23895
+        "mae": 3891.000298388701,
+        "coverage": 0.843843246469067,
+        "rows": 15081
       },
       "all": {
-        "mae": 3367.196359070935,
-        "coverage": 0.8892655367231639,
-        "rows": 23895
+        "mae": 3926.035839798422,
+        "coverage": 0.8480869968834958,
+        "rows": 15081
       }
     },
-    "best_lookback": "120d",
+    "best_lookback": "60d",
     "backoff_order": [
       "award_category",
       "machine",
@@ -121,11 +124,11 @@
       "requested_seconds"
     ],
     "backoff_at_best": {
-      "mae": 3344.9142289181837,
-      "coverage": 0.8865871521238753,
-      "rows": 23895
+      "mae": 3868.8321729328295,
+      "coverage": 0.8273324050129301,
+      "rows": 15081
     }
   },
   "dataset_id": "alcf_djc_polaris",
-  "generated_at": "2026-08-26T22:39:45.051196Z"
+  "generated_at": "2026-10-21T03:08:44.357133Z"
 }

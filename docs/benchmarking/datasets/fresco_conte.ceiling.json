@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 120,
+    "scored_windows": 100
   },
-  "scored_rows": 57030,
+  "scored_rows": 49437,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "account",
     "queue",
@@ -13,69 +16,69 @@
     "user"
   ],
   "floor": {
-    "mae": 5515.036068735753,
-    "rmse": 35177.538887576105,
-    "signatures": 858,
+    "mae": 4869.517264397112,
+    "rmse": 32976.37194118283,
+    "signatures": 754,
     "group_sizes": {
       "min": 1,
-      "median": 4.0,
+      "median": 5.0,
       "max": 5342,
-      "singleton_row_share": 0.0034893915483079083
+      "singleton_row_share": 0.003580314339462346
     }
   },
   "feature_cost": [
     {
       "feature": "account",
-      "floor_mae_without": 5515.036068735753,
+      "floor_mae_without": 4869.517264397112,
       "cost": 0.0
     },
     {
       "feature": "queue",
-      "floor_mae_without": 5615.914781693846,
-      "cost": 100.87871295809236
+      "floor_mae_without": 4964.508728280438,
+      "cost": 94.9914638833261
     },
     {
       "feature": "user",
-      "floor_mae_without": 6478.2356128353495,
-      "cost": 963.1995440995961
+      "floor_mae_without": 5824.792220401723,
+      "cost": 955.2749560046113
     },
     {
       "feature": "requested_seconds",
-      "floor_mae_without": 7231.649886024899,
-      "cost": 1716.613817289146
+      "floor_mae_without": 6694.409652689282,
+      "cost": 1824.89238829217
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 9199.934201297563,
-        "coverage": 0.8148167631071366,
-        "rows": 57030
+        "mae": 8553.78198515282,
+        "coverage": 0.8129538604688796,
+        "rows": 49437
       },
       "10d": {
-        "mae": 8415.819516044186,
-        "coverage": 0.9267227774855339,
-        "rows": 57030
+        "mae": 7747.591803709772,
+        "coverage": 0.9266136699233368,
+        "rows": 49437
       },
       "30d": {
-        "mae": 7845.275355076275,
-        "coverage": 0.9530247238295634,
-        "rows": 57030
+        "mae": 7340.366668689443,
+        "coverage": 0.9534761413516192,
+        "rows": 49437
       },
       "60d": {
-        "mae": 8096.544345081536,
-        "coverage": 0.9596528143082588,
-        "rows": 57030
+        "mae": 7500.663207718915,
+        "coverage": 0.960252442502579,
+        "rows": 49437
       },
       "120d": {
-        "mae": 7672.916088023847,
-        "coverage": 0.9729089952656497,
-        "rows": 57030
+        "mae": 6923.773701883205,
+        "coverage": 0.9732588951594959,
+        "rows": 49437
       },
       "all": {
-        "mae": 7690.697483780466,
-        "coverage": 0.9733298264071542,
-        "rows": 57030
+        "mae": 6952.5660537653985,
+        "coverage": 0.9737241337459798,
+        "rows": 49437
       }
     },
     "best_lookback": "120d",
@@ -86,11 +89,11 @@
       "requested_seconds"
     ],
     "backoff_at_best": {
-      "mae": 7766.692048044889,
-      "coverage": 0.9729089952656497,
-      "rows": 57030
+      "mae": 7030.8628658696925,
+      "coverage": 0.9732588951594959,
+      "rows": 49437
     }
   },
   "dataset_id": "fresco_conte",
-  "generated_at": "2026-08-26T22:45:05.461017Z"
+  "generated_at": "2026-10-21T03:08:59.388212Z"
 }

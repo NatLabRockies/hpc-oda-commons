@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 116,
+    "scored_windows": 96
   },
-  "scored_rows": 328566,
+  "scored_rows": 262472,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "account",
     "num_cores_req",
@@ -18,94 +21,94 @@
     "user"
   ],
   "floor": {
-    "mae": 2776.167549289945,
-    "rmse": 16898.49722481763,
-    "signatures": 2699,
+    "mae": 2554.267198024932,
+    "rmse": 15483.95713931743,
+    "signatures": 2262,
     "group_sizes": {
       "min": 1,
       "median": 3.0,
-      "max": 141740,
-      "singleton_row_share": 0.0027726545047265998
+      "max": 114560,
+      "singleton_row_share": 0.003002224999238014
     }
   },
   "feature_cost": [
     {
       "feature": "num_nodes_req",
-      "floor_mae_without": 2776.167549289945,
+      "floor_mae_without": 2554.267198024932,
       "cost": 0.0
     },
     {
       "feature": "num_gpus_req",
-      "floor_mae_without": 2776.338011236707,
-      "cost": 0.17046194676231607
+      "floor_mae_without": 2554.466724069615,
+      "cost": 0.19952604468289792
     },
     {
       "feature": "requested_memory_mib",
-      "floor_mae_without": 2789.1093235453454,
-      "cost": 12.94177425540056
+      "floor_mae_without": 2565.288952726386,
+      "cost": 11.021754701454029
     },
     {
       "feature": "qos",
-      "floor_mae_without": 2791.7611834456397,
-      "cost": 15.593634155694872
-    },
-    {
-      "feature": "partition",
-      "floor_mae_without": 2794.41673210253,
-      "cost": 18.24918281258533
+      "floor_mae_without": 2567.200562345698,
+      "cost": 12.933364320766032
     },
     {
       "feature": "account",
-      "floor_mae_without": 2801.2519341623906,
-      "cost": 25.084384872445753
+      "floor_mae_without": 2574.67213645646,
+      "cost": 20.40493843152808
+    },
+    {
+      "feature": "partition",
+      "floor_mae_without": 2575.4411899174006,
+      "cost": 21.17399189246862
     },
     {
       "feature": "num_cores_req",
-      "floor_mae_without": 2822.781319430495,
-      "cost": 46.61377014055006
+      "floor_mae_without": 2619.687578103569,
+      "cost": 65.42038007863721
     },
     {
       "feature": "requested_seconds",
-      "floor_mae_without": 2926.514484152347,
-      "cost": 150.34693486240212
+      "floor_mae_without": 2702.3413164070835,
+      "cost": 148.07411838215148
     },
     {
       "feature": "user",
-      "floor_mae_without": 2997.654739078298,
-      "cost": 221.48718978835313
+      "floor_mae_without": 2852.056085982505,
+      "cost": 297.788887957573
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 7463.935834809445,
-        "coverage": 0.607062203636408,
-        "rows": 328566
+        "mae": 8187.9114019781155,
+        "coverage": 0.6159704654210735,
+        "rows": 262472
       },
       "10d": {
-        "mae": 5276.861196837165,
-        "coverage": 0.8116908018480306,
-        "rows": 328566
+        "mae": 5392.939926925539,
+        "coverage": 0.8548797586028224,
+        "rows": 262472
       },
       "30d": {
-        "mae": 6350.245433185418,
-        "coverage": 0.8536427993158148,
-        "rows": 328566
+        "mae": 6770.78959279466,
+        "coverage": 0.8953145478374837,
+        "rows": 262472
       },
       "60d": {
-        "mae": 6401.194985178016,
-        "coverage": 0.8709543896812209,
-        "rows": 328566
+        "mae": 6942.7846779847,
+        "coverage": 0.9035782864457923,
+        "rows": 262472
       },
       "120d": {
-        "mae": 6890.69184882185,
-        "coverage": 0.8941004242678792,
-        "rows": 328566
+        "mae": 7569.023846353135,
+        "coverage": 0.9107866743881252,
+        "rows": 262472
       },
       "all": {
-        "mae": 7331.30602831699,
-        "coverage": 0.8995757321207916,
-        "rows": 328566
+        "mae": 8120.612943475876,
+        "coverage": 0.9176407388216647,
+        "rows": 262472
       }
     },
     "best_lookback": "10d",
@@ -114,18 +117,18 @@
       "num_gpus_req",
       "requested_memory_mib",
       "qos",
-      "partition",
       "account",
+      "partition",
       "num_cores_req",
       "requested_seconds",
       "user"
     ],
     "backoff_at_best": {
-      "mae": 5290.576826269304,
-      "coverage": 0.8116908018480306,
-      "rows": 328566
+      "mae": 5410.432164192752,
+      "coverage": 0.8548797586028224,
+      "rows": 262472
     }
   },
   "dataset_id": "nlr_eagle",
-  "generated_at": "2026-08-26T22:47:14.047308Z"
+  "generated_at": "2026-10-21T03:09:26.978730Z"
 }

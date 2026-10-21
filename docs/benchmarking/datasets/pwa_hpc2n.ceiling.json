@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 104,
+    "scored_windows": 84
   },
-  "scored_rows": 8457,
+  "scored_rows": 7293,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "num_cores_req",
     "partition",
@@ -13,72 +16,72 @@
     "user"
   ],
   "floor": {
-    "mae": 4632.081116235072,
-    "rmse": 21872.269347993366,
-    "signatures": 461,
+    "mae": 3293.75017139723,
+    "rmse": 17919.239467737098,
+    "signatures": 426,
     "group_sizes": {
       "min": 1,
       "median": 3.0,
       "max": 1040,
-      "singleton_row_share": 0.014780655078633085
+      "singleton_row_share": 0.016317016317016316
     }
   },
   "feature_cost": [
     {
       "feature": "partition",
-      "floor_mae_without": 4632.081116235072,
+      "floor_mae_without": 3293.75017139723,
       "cost": 0.0
     },
     {
       "feature": "num_cores_req",
-      "floor_mae_without": 4685.731583303772,
-      "cost": 53.65046706869998
+      "floor_mae_without": 3341.1936103112575,
+      "cost": 47.44343891402741
     },
     {
       "feature": "user",
-      "floor_mae_without": 4718.76516495211,
-      "cost": 86.68404871703842
+      "floor_mae_without": 3382.2728643905116,
+      "cost": 88.52269299328145
     },
     {
       "feature": "requested_seconds",
-      "floor_mae_without": 7485.248669741043,
-      "cost": 2853.1675535059712
+      "floor_mae_without": 5909.286850404497,
+      "cost": 2615.536679007267
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 9882.899668913326,
-        "coverage": 0.6280004729809625,
-        "rows": 8457
+        "mae": 7027.949403537639,
+        "coverage": 0.6226518579459756,
+        "rows": 7293
       },
       "10d": {
-        "mae": 6790.198356391155,
-        "coverage": 0.7624453115762091,
-        "rows": 8457
+        "mae": 5207.162073220897,
+        "coverage": 0.7603181132592898,
+        "rows": 7293
       },
       "30d": {
-        "mae": 6888.9700248315,
-        "coverage": 0.7829017382050373,
-        "rows": 8457
+        "mae": 5565.950980392156,
+        "coverage": 0.7830796654326067,
+        "rows": 7293
       },
       "60d": {
-        "mae": 7123.881991249852,
-        "coverage": 0.791651886011588,
-        "rows": 8457
+        "mae": 5736.910119292472,
+        "coverage": 0.788564376799671,
+        "rows": 7293
       },
       "120d": {
-        "mae": 6591.090753222183,
-        "coverage": 0.8097434078278349,
-        "rows": 8457
+        "mae": 5326.471616618675,
+        "coverage": 0.8085835732894556,
+        "rows": 7293
       },
       "all": {
-        "mae": 6511.538547948445,
-        "coverage": 0.8123448031216743,
-        "rows": 8457
+        "mae": 5261.414712738242,
+        "coverage": 0.811600164541341,
+        "rows": 7293
       }
     },
-    "best_lookback": "all",
+    "best_lookback": "10d",
     "backoff_order": [
       "partition",
       "num_cores_req",
@@ -86,11 +89,11 @@
       "requested_seconds"
     ],
     "backoff_at_best": {
-      "mae": 6073.262622679437,
-      "coverage": 0.8123448031216743,
-      "rows": 8457
+      "mae": 4910.252639517345,
+      "coverage": 0.7603181132592898,
+      "rows": 7293
     }
   },
   "dataset_id": "pwa_hpc2n",
-  "generated_at": "2026-08-26T22:49:14.059074Z"
+  "generated_at": "2026-10-21T03:09:00.686866Z"
 }

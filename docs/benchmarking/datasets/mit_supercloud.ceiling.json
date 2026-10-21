@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 118,
+    "scored_windows": 98
   },
-  "scored_rows": 32278,
+  "scored_rows": 29194,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "constraints",
     "num_cores_req",
@@ -14,90 +17,90 @@
     "user"
   ],
   "floor": {
-    "mae": 20078.766590247225,
-    "rmse": 60873.94647209764,
-    "signatures": 913,
+    "mae": 17250.68065355895,
+    "rmse": 56907.845090767376,
+    "signatures": 775,
     "group_sizes": {
       "min": 1,
       "median": 4.0,
-      "max": 7122,
-      "singleton_row_share": 0.007714232604250573
+      "max": 6661,
+      "singleton_row_share": 0.007330273343837775
     }
   },
   "feature_cost": [
     {
       "feature": "constraints",
-      "floor_mae_without": 20095.255344197285,
-      "cost": 16.488753950059618
+      "floor_mae_without": 17265.282078509284,
+      "cost": 14.601424950335058
     },
     {
       "feature": "partition",
-      "floor_mae_without": 20297.297540120206,
-      "cost": 218.53094987298027
-    },
-    {
-      "feature": "requested_seconds",
-      "floor_mae_without": 21147.63894912944,
-      "cost": 1068.872358882214
+      "floor_mae_without": 17423.077070630952,
+      "cost": 172.3964170720028
     },
     {
       "feature": "num_cores_req",
-      "floor_mae_without": 21174.161410248467,
-      "cost": 1095.394820001242
+      "floor_mae_without": 18078.047749537574,
+      "cost": 827.367095978625
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 18316.47557717339,
+      "cost": 1065.7949236144414
     },
     {
       "feature": "user",
-      "floor_mae_without": 24945.287192515025,
-      "cost": 4866.520602267799
+      "floor_mae_without": 21889.092416249914,
+      "cost": 4638.411762690965
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 29683.738304727678,
-        "coverage": 0.7056199268851849,
-        "rows": 32278
+        "mae": 28644.73369527985,
+        "coverage": 0.7238816195108584,
+        "rows": 29194
       },
       "10d": {
-        "mae": 33718.94341347048,
-        "coverage": 0.8419356837474441,
-        "rows": 32278
+        "mae": 31493.87387819415,
+        "coverage": 0.8444543399328629,
+        "rows": 29194
       },
       "30d": {
-        "mae": 32875.38245864056,
-        "coverage": 0.8759526612553442,
-        "rows": 32278
+        "mae": 30908.24248133178,
+        "coverage": 0.8799410837843392,
+        "rows": 29194
       },
       "60d": {
-        "mae": 33178.86761881157,
-        "coverage": 0.8942003841625875,
-        "rows": 32278
+        "mae": 31285.137322737548,
+        "coverage": 0.8969993834349523,
+        "rows": 29194
       },
       "120d": {
-        "mae": 33041.63142078196,
-        "coverage": 0.9123551645083339,
-        "rows": 32278
+        "mae": 31181.011731862713,
+        "coverage": 0.9166267041172844,
+        "rows": 29194
       },
       "all": {
-        "mae": 33001.23774707231,
-        "coverage": 0.9124790879236632,
-        "rows": 32278
+        "mae": 31134.838254435843,
+        "coverage": 0.9167637185723094,
+        "rows": 29194
       }
     },
     "best_lookback": "1d",
     "backoff_order": [
       "constraints",
       "partition",
-      "requested_seconds",
       "num_cores_req",
+      "requested_seconds",
       "user"
     ],
     "backoff_at_best": {
-      "mae": 30520.287719189542,
-      "coverage": 0.7056199268851849,
-      "rows": 32278
+      "mae": 29819.61163252723,
+      "coverage": 0.7238816195108584,
+      "rows": 29194
     }
   },
   "dataset_id": "mit_supercloud",
-  "generated_at": "2026-08-26T22:46:29.483325Z"
+  "generated_at": "2026-10-21T03:08:48.694151Z"
 }

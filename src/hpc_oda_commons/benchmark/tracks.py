@@ -33,6 +33,7 @@ from hpc_oda_commons.benchmark.arm_selection import (
     _window_rows,
     common_scored_indices,
     derive_arm_keys,
+    legacy_arm_config,
     pooled_metric,
     walk_forward,
 )
@@ -46,6 +47,13 @@ POWER_PROTOCOL: dict[str, int] = {
     "test_window_hours": 24,
     "training_lookback_days": 60,
 }
+
+# The runtime benchmark's protocol: the fleet that has been run (plan 20260826-231908, 20
+# datasets x 7 models x these lookbacks), testing 30 days in 6 h windows. The cards ask for
+# 90 days (#191), but no fleet has run that yet, so the leaderboard counts what exists and
+# moves to the cards' windows when #191's fleet does.
+RUNTIME_PROTOCOL: dict[str, int] = {"n_windows": 120, "test_window_hours": 6}
+RUNTIME_LOOKBACKS: tuple[int, ...] = (10, 30, 120)
 
 # What a bundle ran with for a setting added after it was written, so the stale check below
 # still sees it. UoPC voted over whole watts until the predictor setting existed (#241).
@@ -64,7 +72,16 @@ class Track:
 
 
 TRACKS: tuple[Track, ...] = (
-    Track("runtime", "Job runtime", "runtime_seconds", headroom=True),
+    Track(
+        "runtime",
+        "Job runtime",
+        "runtime_seconds",
+        headroom=True,
+        # Measured on the fleet of 2026-08-26 (#238); revisit when #191's fleet replaces it.
+        note="30-day test, 10/30/120-day lookbacks. On alcf_djc_polaris the baseline's "
+        "walk-forward pick scores 14% worse than its best single lookback, so headroom "
+        "there reads high.",
+    ),
     Track("avgpcon_per_node", "Average power per node", "avgpcon_per_node", headroom=True),
     Track(
         "maxpcon_per_node",
@@ -116,9 +133,16 @@ def load_floors(ceilings_dir: Path) -> dict[tuple[str, str], Floor]:
 def _roster(
     track: Track, floors: Mapping[tuple[str, str], Floor], cards: Sequence[Any]
 ) -> list[str]:
-    """The datasets a track's table has a column for, whether or not anything ran on them."""
+    """The datasets a track's table has a column for, whether or not anything ran on them.
+
+    For runtime, every card the planner would run: a dataset too large for one node (today
+    ``ccin2p3_2024``) keeps its card but is never planned, so it would leave every model's
+    average incomplete.
+    """
     if track.target == "runtime_seconds":
-        return sorted(card.dataset for card in cards)
+        from hpc_oda_commons.benchmarking.hpc.matrix import fits_a_node
+
+        return sorted(card.dataset for card in cards if fits_a_node(card.effective_rows))
     return sorted(dataset for target, dataset in floors if target == track.target)
 
 
@@ -166,12 +190,6 @@ def exclusion_reason(
     power_recipes: Mapping[str, Mapping[str, Any]],
 ) -> str | None:
     """Why a bundle is not a cell of its target's benchmark, or None when it is."""
-    from hpc_oda_commons.benchmarking.hpc.matrix import (
-        SPLIT,
-        lookback_arms_for,
-        n_windows_for,
-    )
-
     target = entry.get("prediction_target")
     if target not in TRACK_BY_TARGET:
         return f"no leaderboard for target {target!r}"
@@ -187,16 +205,14 @@ def exclusion_reason(
         card = cards_by_dataset.get(dataset)
         if card is None:
             return f"{dataset!r} is not in the runtime roster (no dataset card)"
-        expected = {
-            "n_windows": n_windows_for(card),
-            "test_window_hours": int(SPLIT["test_window_hours"]),
-        }
-        for key, value in expected.items():
-            if int(split[key]) != int(value):
+        for key, value in RUNTIME_PROTOCOL.items():
+            if int(split[key]) != value:
                 return f"{key}={split[key]}, the benchmark runs {value}"
-        arms = lookback_arms_for(card)
-        if int(split["training_lookback_days"]) not in arms:
-            return f"lookback {split['training_lookback_days']} d is not one of {list(arms)}"
+        if int(split["training_lookback_days"]) not in RUNTIME_LOOKBACKS:
+            return (
+                f"lookback {split['training_lookback_days']} d is not one of "
+                f"{list(RUNTIME_LOOKBACKS)}"
+            )
         return None
 
     for key, value in POWER_PROTOCOL.items():
@@ -218,6 +234,12 @@ def exclusion_reason(
 # --- cells ----------------------------------------------------------------------------
 
 
+def _arm_config(metrics: Mapping[str, Any]) -> dict[str, Any]:
+    """What a bundle ran with: its ``run_config``, or for bundles from before #197 (the
+    runtime fleet among them) the lookback its summary records."""
+    return dict(metrics.get("run_config") or legacy_arm_config(metrics) or {})
+
+
 def _cell_score(
     bundles: Sequence[tuple[dict[str, Any], dict[str, Any]]], burn_in: int
 ) -> tuple[float, int | None]:
@@ -232,7 +254,7 @@ def _cell_score(
         arm = Arm.from_metrics("only", metrics)
         windows = [arm.windows[i] for i in common_scored_indices([arm])[burn_in:]]
         return pooled_metric(windows, "mae"), int(sum(_window_rows(w) for w in windows))
-    configs = [metrics.get("run_config") or {} for _entry, metrics in bundles]
+    configs = [_arm_config(metrics) for _entry, metrics in bundles]
     keys = derive_arm_keys(configs)
     arms = [
         Arm.from_metrics(key, metrics) for key, (_e, metrics) in zip(keys, bundles, strict=True)
@@ -269,7 +291,7 @@ def build_tables(
         target = str(entry["prediction_target"])
         dataset = bundle_dataset(entry, power_recipes)
         model = str(entry["model"]["id"])
-        arm = json.dumps(metrics.get("run_config") or {}, sort_keys=True, default=str)
+        arm = json.dumps(_arm_config(metrics), sort_keys=True, default=str)
         key = (target, dataset, model, arm)
         if key in newest:
             excluded.append(

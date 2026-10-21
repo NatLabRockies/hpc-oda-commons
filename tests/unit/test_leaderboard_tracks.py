@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from hpc_oda_commons.benchmark.results import build_leaderboard
-from hpc_oda_commons.benchmark.tracks import build_tables
+from hpc_oda_commons.benchmark.tracks import RUNTIME_PROTOCOL, build_tables
 from hpc_oda_commons.benchmarking.hpc.matrix import Card
 from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
 from hpc_oda_commons.models.job_power_uopc.model import UOPC_DEFAULT_PREDICTOR
@@ -277,8 +277,14 @@ def _lassen_card(tmp_path: Path) -> Card:
     )
 
 
-def _runtime_pairs(model: str, arms: dict[int, list[float]]) -> list[tuple[dict, dict]]:
-    """One bundle per lookback arm of ``model`` on lassen, four windows of 10 jobs each."""
+def _runtime_pairs(
+    model: str, arms: dict[int, list[float]], *, run_config: bool = True, n_windows: int = 0
+) -> list[tuple[dict, dict]]:
+    """One bundle per lookback arm of ``model`` on lassen, a window of 10 jobs per MAE.
+
+    The summary states the runtime protocol's window count (or ``n_windows``); the window
+    list is kept short, since the policy reads the windows and the protocol check the
+    summary. ``run_config=False`` writes a bundle from before #197, like the fleet's."""
     pairs = []
     for lookback, maes in arms.items():
         entry = {
@@ -290,10 +296,15 @@ def _runtime_pairs(model: str, arms: dict[int, list[float]]) -> list[tuple[dict,
         }
         metrics = {
             "mae": sum(maes) / len(maes),
-            "summary": {"n_windows": 4, "test_window_hours": 6, "training_lookback_days": lookback},
-            "run_config": {"training_lookback_days": lookback},
+            "summary": {
+                "n_windows": n_windows or RUNTIME_PROTOCOL["n_windows"],
+                "test_window_hours": RUNTIME_PROTOCOL["test_window_hours"],
+                "training_lookback_days": lookback,
+            },
             "windows": _windows(maes),
         }
+        if run_config:
+            metrics["run_config"] = {"training_lookback_days": lookback}
         pairs.append((entry, metrics))
     return pairs
 
@@ -333,7 +344,7 @@ def test_runtime_headroom_when_the_ceiling_covers_the_same_jobs(tmp_path: Path) 
     # Baseline 9 (its walk-forward pick, the 10-day arm), floor 1, model 5: halfway.
     assert xgb["cells"]["lassen"]["headroom"] == pytest.approx(0.5)
     assert xgb["average"] == pytest.approx(0.5)
-    assert runtime["note"] == ""
+    assert "covers other jobs" not in runtime["note"]
 
 
 def test_runtime_shows_mae_alone_when_the_ceiling_covers_other_jobs(tmp_path: Path) -> None:
@@ -345,6 +356,56 @@ def test_runtime_shows_mae_alone_when_the_ceiling_covers_other_jobs(tmp_path: Pa
     assert cell["headroom_missing"].startswith("covers other jobs: the ceiling 40")
     assert "covers other jobs" in runtime["note"]
     assert all(row["average"] is None for row in runtime["rows"])
+
+
+def _runtime_table(tmp_path: Path, pairs: list) -> tuple[dict, list]:
+    tables, excluded = build_tables(
+        pairs, ceilings_dir=tmp_path, cards=[_lassen_card(tmp_path)], burn_in=2
+    )
+    return next(t for t in tables if t["key"] == "runtime"), excluded
+
+
+@pytest.mark.parametrize(
+    ("arms", "n_windows", "reason"),
+    [
+        ({10: [5.0] * 4, 30: [6.0] * 4}, 360, "n_windows=360, the benchmark runs 120"),
+        ({50: [5.0] * 4}, 0, "lookback 50 d is not one of [10, 30, 120]"),
+    ],
+    ids=["cards-90-days", "other-lookback"],
+)
+def test_runtime_counts_the_fleets_protocol_only(
+    tmp_path: Path, arms: dict, n_windows: int, reason: str
+) -> None:
+    """The runtime benchmark is the fleet that has run: 30 days in 6 h windows at 10, 30 and
+    120 days of lookback. The cards' 90 days count once #191's fleet runs them."""
+    pairs = _runtime_pairs("model.job_runtime_xgboost", arms, n_windows=n_windows)
+    runtime, excluded = _runtime_table(tmp_path, pairs)
+
+    assert not runtime["rows"]
+    assert {e["reason"] for e in excluded} == {reason}
+
+
+def test_bundles_from_before_run_config_are_told_apart_by_their_lookback(tmp_path: Path) -> None:
+    """The fleet's bundles predate run_config (#197); their summary holds the lookback."""
+    arms = {10: [5.0, 5.0, 1.0, 9.0], 30: [6.0, 6.0, 6.0, 2.0]}
+    pairs = _runtime_pairs("model.job_runtime_xgboost", arms, run_config=False)
+    runtime, excluded = _runtime_table(tmp_path, pairs)
+
+    assert runtime["rows"][0]["cells"]["lassen"]["mae"] == pytest.approx(5.0)
+    assert not excluded
+
+
+def test_a_dataset_too_large_to_plan_has_no_runtime_column(tmp_path: Path) -> None:
+    """ccin2p3_2024 keeps its card, but the planner never runs it, so it would leave every
+    model's average incomplete (#150)."""
+    from dataclasses import replace
+
+    from hpc_oda_commons.benchmarking.hpc.matrix import MAX_NODE_ROWS
+
+    big = replace(_lassen_card(tmp_path), dataset="ccin2p3_2024", window_rows=MAX_NODE_ROWS + 1)
+    tables, _ = build_tables([], ceilings_dir=tmp_path, cards=[_lassen_card(tmp_path), big])
+    runtime = next(t for t in tables if t["key"] == "runtime")
+    assert runtime["roster"] == ["lassen"]
 
 
 def test_a_power_cell_on_other_jobs_gets_no_headroom(power_runs) -> None:

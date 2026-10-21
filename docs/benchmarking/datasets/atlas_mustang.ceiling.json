@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 120,
+    "scored_windows": 100
   },
-  "scored_rows": 14974,
+  "scored_rows": 13407,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "account",
     "num_nodes_req",
@@ -14,74 +17,74 @@
     "user"
   ],
   "floor": {
-    "mae": 2816.2556431147323,
-    "rmse": 9070.748623851674,
-    "signatures": 767,
+    "mae": 2090.336913552622,
+    "rmse": 7387.590580130763,
+    "signatures": 665,
     "group_sizes": {
       "min": 1,
       "median": 2.0,
-      "max": 4828,
-      "singleton_row_share": 0.020502203819954587
+      "max": 4821,
+      "singleton_row_share": 0.019989557693742076
     }
   },
   "feature_cost": [
     {
       "feature": "account",
-      "floor_mae_without": 2816.2556431147323,
+      "floor_mae_without": 2090.336913552622,
       "cost": 0.0
     },
     {
       "feature": "user",
-      "floor_mae_without": 2816.2556431147323,
+      "floor_mae_without": 2090.336913552622,
       "cost": 0.0
     },
     {
       "feature": "num_tasks_req",
-      "floor_mae_without": 2816.555963670362,
-      "cost": 0.3003205556296962
+      "floor_mae_without": 2090.6653986723354,
+      "cost": 0.32848511971360494
     },
     {
       "feature": "num_nodes_req",
-      "floor_mae_without": 2846.8843328435955,
-      "cost": 30.628689728863264
+      "floor_mae_without": 2120.0953233385544,
+      "cost": 29.7584097859326
     },
     {
       "feature": "requested_seconds",
-      "floor_mae_without": 3365.297382129024,
-      "cost": 549.0417390142916
+      "floor_mae_without": 2520.787200716044,
+      "cost": 430.4502871634222
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 6048.151829838386,
-        "coverage": 0.7740082810204354,
-        "rows": 14974
+        "mae": 4943.482098903558,
+        "coverage": 0.7870515402401731,
+        "rows": 13407
       },
       "10d": {
-        "mae": 5223.835147589155,
-        "coverage": 0.863830639775611,
-        "rows": 14974
+        "mae": 4220.757514731111,
+        "coverage": 0.8746923249049005,
+        "rows": 13407
       },
       "30d": {
-        "mae": 5056.989949245359,
-        "coverage": 0.8865366635501536,
-        "rows": 14974
+        "mae": 4051.101364958604,
+        "coverage": 0.8983366897889162,
+        "rows": 13407
       },
       "60d": {
-        "mae": 4661.211199412314,
-        "coverage": 0.9008948844664084,
-        "rows": 14974
+        "mae": 3561.4420079063175,
+        "coverage": 0.912433803237115,
+        "rows": 13407
       },
       "120d": {
-        "mae": 4709.452684653399,
-        "coverage": 0.9292774141845866,
-        "rows": 14974
+        "mae": 3589.764973521295,
+        "coverage": 0.9430148429924666,
+        "rows": 13407
       },
       "all": {
-        "mae": 4698.675437424869,
-        "coverage": 0.9310805396019768,
-        "rows": 14974
+        "mae": 3578.0500484821364,
+        "coverage": 0.9450287163422093,
+        "rows": 13407
       }
     },
     "best_lookback": "60d",
@@ -93,11 +96,11 @@
       "requested_seconds"
     ],
     "backoff_at_best": {
-      "mae": 4624.7025844797645,
-      "coverage": 0.9008948844664084,
-      "rows": 14974
+      "mae": 3578.884090400537,
+      "coverage": 0.912433803237115,
+      "rows": 13407
     }
   },
   "dataset_id": "atlas_mustang",
-  "generated_at": "2026-08-26T22:39:53.722255Z"
+  "generated_at": "2026-10-21T03:08:41.733308Z"
 }

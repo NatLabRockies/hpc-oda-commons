@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 120,
+    "scored_windows": 100
   },
-  "scored_rows": 77876,
+  "scored_rows": 65193,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "account",
     "job_type",
@@ -15,96 +18,96 @@
     "user"
   ],
   "floor": {
-    "mae": 1939.8243014192435,
-    "rmse": 5711.599846031659,
-    "signatures": 719,
+    "mae": 1608.8281174154124,
+    "rmse": 3955.7901963759546,
+    "signatures": 633,
     "group_sizes": {
       "min": 1,
       "median": 6.0,
-      "max": 28287,
-      "singleton_row_share": 0.001964661769993323
+      "max": 23102,
+      "singleton_row_share": 0.0020094181890693784
     }
   },
   "feature_cost": [
     {
-      "feature": "account",
-      "floor_mae_without": 1939.8243014192433,
-      "cost": -2.2737367544323206e-13
-    },
-    {
       "feature": "num_gpus_req",
-      "floor_mae_without": 1939.8243014192435,
+      "floor_mae_without": 1608.8281174154124,
       "cost": 0.0
     },
     {
       "feature": "user",
-      "floor_mae_without": 1939.8243014192435,
+      "floor_mae_without": 1608.8281174154124,
       "cost": 0.0
     },
     {
+      "feature": "account",
+      "floor_mae_without": 1608.8281174154126,
+      "cost": 2.2737367544323206e-13
+    },
+    {
       "feature": "queue",
-      "floor_mae_without": 1955.7903675375471,
-      "cost": 15.966066118303615
+      "floor_mae_without": 1628.9119597272406,
+      "cost": 20.08384231182822
     },
     {
       "feature": "job_type",
-      "floor_mae_without": 1968.661174083094,
-      "cost": 28.8368726638505
+      "floor_mae_without": 1636.2957277086803,
+      "cost": 27.467610293267853
     },
     {
       "feature": "requested_seconds",
-      "floor_mae_without": 2250.805962020237,
-      "cost": 310.98166060099356
+      "floor_mae_without": 1975.6614263272897,
+      "cost": 366.83330891187734
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 3665.05405942201,
-        "coverage": 0.5019775026965946,
-        "rows": 77876
+        "mae": 3235.6827977615994,
+        "coverage": 0.4582087033884006,
+        "rows": 65193
       },
       "10d": {
-        "mae": 3505.3305554222948,
-        "coverage": 0.7887025527762084,
-        "rows": 77876
+        "mae": 2974.232664203995,
+        "coverage": 0.7905296580921265,
+        "rows": 65193
       },
       "30d": {
-        "mae": 4208.4985485136185,
-        "coverage": 0.8164903179413426,
-        "rows": 77876
+        "mae": 3883.3482446307953,
+        "coverage": 0.8157164112711487,
+        "rows": 65193
       },
       "60d": {
-        "mae": 4371.030309326733,
-        "coverage": 0.8444963788586984,
-        "rows": 77876
+        "mae": 4071.050965534069,
+        "coverage": 0.8284325004218245,
+        "rows": 65193
       },
       "120d": {
-        "mae": 4391.1751921200175,
-        "coverage": 0.8515332066361909,
-        "rows": 77876
+        "mae": 4076.3486872388357,
+        "coverage": 0.8361173745647539,
+        "rows": 65193
       },
       "all": {
-        "mae": 4364.322901761896,
-        "coverage": 0.8515974112691972,
-        "rows": 77876
+        "mae": 4044.2611333392542,
+        "coverage": 0.8361940699154817,
+        "rows": 65193
       }
     },
     "best_lookback": "10d",
     "backoff_order": [
-      "account",
       "num_gpus_req",
       "user",
+      "account",
       "queue",
       "job_type",
       "requested_seconds"
     ],
     "backoff_at_best": {
-      "mae": 3362.3531686465603,
-      "coverage": 0.7887025527762084,
-      "rows": 77876
+      "mae": 2791.5487861966635,
+      "coverage": 0.7905296580921265,
+      "rows": 65193
     }
   },
   "dataset_id": "lassen",
-  "generated_at": "2026-08-26T22:46:21.560633Z"
+  "generated_at": "2026-10-21T03:08:52.809516Z"
 }

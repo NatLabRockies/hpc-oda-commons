@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 120,
+    "scored_windows": 100
   },
-  "scored_rows": 6739,
+  "scored_rows": 5748,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "num_cores_req",
     "partition",
@@ -14,74 +17,74 @@
     "user"
   ],
   "floor": {
-    "mae": 8391.255527526338,
-    "rmse": 25526.968093645126,
-    "signatures": 450,
+    "mae": 7115.315240083507,
+    "rmse": 22855.617929765387,
+    "signatures": 393,
     "group_sizes": {
       "min": 1,
       "median": 3.0,
-      "max": 1064,
-      "singleton_row_share": 0.018548746104763317
+      "max": 1008,
+      "singleton_row_share": 0.018789144050104383
     }
   },
   "feature_cost": [
     {
       "feature": "partition",
-      "floor_mae_without": 8391.255527526338,
+      "floor_mae_without": 7115.315240083507,
       "cost": 0.0
     },
     {
       "feature": "queue",
-      "floor_mae_without": 8391.255527526338,
+      "floor_mae_without": 7115.315240083507,
       "cost": 0.0
     },
     {
       "feature": "user",
-      "floor_mae_without": 9624.283128060542,
-      "cost": 1233.0276005342039
-    },
-    {
-      "feature": "requested_seconds",
-      "floor_mae_without": 10132.19795221843,
-      "cost": 1740.9424246920917
+      "floor_mae_without": 8376.895267919277,
+      "cost": 1261.5800278357701
     },
     {
       "feature": "num_cores_req",
-      "floor_mae_without": 10645.956224959193,
-      "cost": 2254.700697432854
+      "floor_mae_without": 8440.59046624913,
+      "cost": 1325.2752261656233
+    },
+    {
+      "feature": "requested_seconds",
+      "floor_mae_without": 8924.334899095338,
+      "cost": 1809.0196590118312
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 16814.168645199585,
-        "coverage": 0.6070633625166939,
-        "rows": 6739
+        "mae": 15682.092814892136,
+        "coverage": 0.609777313848295,
+        "rows": 5748
       },
       "10d": {
-        "mae": 13521.4852351981,
-        "coverage": 0.7864668348419647,
-        "rows": 6739
+        "mae": 12414.74304105776,
+        "coverage": 0.8006263048016702,
+        "rows": 5748
       },
       "30d": {
-        "mae": 12984.028268289063,
-        "coverage": 0.8376613740911114,
-        "rows": 6739
+        "mae": 11528.22068545581,
+        "coverage": 0.8500347947112039,
+        "rows": 5748
       },
       "60d": {
-        "mae": 12740.547410595043,
-        "coverage": 0.8539842706633032,
-        "rows": 6739
+        "mae": 11402.416840640222,
+        "coverage": 0.8669102296450939,
+        "rows": 5748
       },
       "120d": {
-        "mae": 12830.680887372013,
-        "coverage": 0.8600682593856656,
-        "rows": 6739
+        "mae": 11575.322199025748,
+        "coverage": 0.8728253305497564,
+        "rows": 5748
       },
       "all": {
-        "mae": 12838.049933224514,
-        "coverage": 0.8600682593856656,
-        "rows": 6739
+        "mae": 11591.832463465553,
+        "coverage": 0.8728253305497564,
+        "rows": 5748
       }
     },
     "best_lookback": "60d",
@@ -89,15 +92,15 @@
       "partition",
       "queue",
       "user",
-      "requested_seconds",
-      "num_cores_req"
+      "num_cores_req",
+      "requested_seconds"
     ],
     "backoff_at_best": {
-      "mae": 12609.99918385517,
-      "coverage": 0.8539842706633032,
-      "rows": 6739
+      "mae": 11222.560368823939,
+      "coverage": 0.8669102296450939,
+      "rows": 5748
     }
   },
   "dataset_id": "pwa_kit_fh2",
-  "generated_at": "2026-08-26T22:49:16.823143Z"
+  "generated_at": "2026-10-21T03:09:01.714063Z"
 }
