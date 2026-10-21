@@ -1,6 +1,8 @@
 # Ingest Jobs Parquet Exports
 
-This workflow handles the common case where job data is a Parquet export from a database query (e.g., `sacct` output) rather than raw slurmctld logs.
+This workflow handles the common case where job data is a Parquet export from a database query (e.g., `sacct` output) rather than raw slurmctld logs. Its wizard is a quick way to look at an export and map it.
+
+To benchmark your data, write a dataset descriptor instead: it ties the table to the exact export and works with every `hpc-oda datasets` command. See [Benchmark your own data](benchmark-your-data.md).
 
 ## Interactive Wizard
 
@@ -17,28 +19,26 @@ The wizard:
 
 ### Supported Transformations
 
-| Type | Formats / Units |
+| Type | Formats / units |
 |------|----------------|
 | Timestamp | `iso8601`, `epoch_s`, `epoch_ms`, `epoch_us` |
-| Duration | `seconds`, `minutes`, `hours`, `HH:MM:SS` |
-| Memory | `bytes`, `KB`, `MB`, `GB`, `KiB`, `MiB`, `GiB` |
-| Memory (SLURM) | `slurm` -- parses SLURM-format strings like `160G`, `2366M`, `4096` → MiB |
-| Identifier | SHA-256 hash with optional salt (via `HPC_ODA_HASH_SALT` env var). Can be applied to any mapped field. |
+| Duration | `seconds`, `minutes`, `hours`, `HH:MM:SS`, `timedelta` (`"N days HH:MM:SS"`) |
+| Memory | `bytes`, `KB`, `MB`, `GB`, `KiB`, `MiB`, `GiB`, or `slurm` for Slurm strings such as `160G` |
+| Identifier | Hashed, salted with `HPC_ODA_HASH_SALT` when it is set. Any mapped field can be hashed. |
 
-The wizard also offers an optional state filter after field mapping, allowing you to keep only specific job states (e.g., COMPLETED, TIMEOUT).
+The wizard also offers a state filter after the mapping, to keep only some job states (such as
+`COMPLETED` and `TIMEOUT`).
 
 ## Non-Interactive (Reuse Mapping)
 
 ```bash
-hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet --mapping mapping.yml
+hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet --mapping mapping.yml --non-interactive
 ```
 
-### Additional Flags
-
-- `--sample-rows <N>` -- rows to sample for profiling (default: 200)
-- `--batch-size <N>` -- rows per processing batch (default: 50,000)
-- `--non-interactive` -- skip wizard prompts, use suggestions only
-- `--hash-identifiers / --no-hash-identifiers` -- control default selection for identifier hashing (default: on, pre-selects `user` and `account`)
+With `--mapping`, the wizard doesn't run. Without `--non-interactive`, it still asks about the
+state filter when run in a terminal. `--non-interactive` never prompts, and fails without
+`--mapping`. The [CLI reference](../reference/cli.md) lists every
+option.
 
 ## Mapping Spec Example
 
@@ -78,58 +78,12 @@ fields:
     role: optional
 ```
 
-`derive` supports two forms: `end_time - start_time` (for `runtime_seconds`, filling it where
-the source is missing) and `<field> / <field>`, a ratio of two other mapped fields, e.g.
-`avgpcon_per_node: {derive: "avgpcon / num_nodes_alloc"}`; a zero or missing denominator
-gives null. Any other expression is an error. (Before #204 an unrecognised expression was
-ignored, leaving the column empty.) A ratio may use `runtime_seconds` or another ratio, in
-any order in the mapping; a circular derive is an error (#206). For a column that holds a
-list of samples per job, such as a power trace, `transform: {type: list_mean}` or
-`{type: list_max}` reduces it to one number.
-
-`transform: {type: energy, unit: wh}` converts energy to joules (`j`, `kj`, `wh`, `kwh`).
-`null_values: [0]` on a field turns those source values into null before any transform, for
-counters where a value means "no reading". The row is kept; only that field is null.
-Together they give average power from an energy counter (NLR Eagle, #206):
-
-```yaml
-energy_joules: { from: node_energy_total_watt_hours, type: energy, unit: wh, null_values: [0] }
-avgpcon: { derive: "energy_joules / runtime_seconds" }
-avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc" }
-```
-
-`null_when` nulls a field where a condition on another source column holds, and keeps the
-row. It takes a list; any match nulls. Each condition names a `source` column and one of
-`gt`, `ge`, `lt`, `le` (a number) or `in` (a list). A null source value matches nothing. For
-example, Kestrel's Slurm energy is the whole node's when the node was shared, so it is not
-the job's power (#209):
-
-```yaml
-energy_joules:
-  from: consumed_energy_raw_joules
-  type: energy
-  unit: j
-  null_values: [0]
-  null_when:
-    - { source: shared_job_count, ge: 1 }
-    - { source: partition, in: [shared, shared-stdby, sharedl] }
-```
-
-**Trimming impossible values.** In a dataset descriptor's mapping,
-`trim_quantiles: [0.001, 0.999]` on a numeric field nulls its values below the field's
-0.1th percentile or above its 99.9th (#216). As with `null_values`, the row is kept. It
-runs after the target's `filter`, over the rows that remain, and before `sample`. Each
-bound is a value from the data (the order statistic at or beyond the quantile), so a table
-too small to have that tail loses nothing. The prepare manifest records, per trimmed field,
-the quantiles, the bounds and how many values became null.
-
-The bounds come from the whole prepared table, test months included. That is a look-ahead
-in the cut-off only, not in any value. Eagle and Kestrel use it on `avgpcon_per_node`,
-where a few energy readings give impossible power (up to 20.7 MW per node on Eagle):
-
-```yaml
-avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc", trim_quantiles: [0.001, 0.999] }
-```
+Each field takes the same options as a descriptor's mapping rule: `derive`, `null_values`,
+`null_when`, and transform types including `energy`, `integer`, `number`, `list_mean` and
+`list_max`. A mapping.yml names its source column `source:` and nests the type under
+`transform:`, where a descriptor writes `from:` and `type:` on the rule itself.
+[Dataset descriptors](../reference/descriptors.md#mapping-rules) explains each option.
+`trim_quantiles` is for descriptors only.
 
 Fields can be **sourced** from a column (`source:`) or **derived** from other fields (`derive:`). The `role` is either `required` (rows missing this field are skipped) or `optional`.
 
@@ -137,9 +91,10 @@ Fields can be **sourced** from a column (`source:`) or **derived** from other fi
 
 ```text
 data/ingested/jobs_parquet/<run>/
-  data.parquet      # Canonical ODA table (oda.job.v0.2.0)
-  manifest.json     # Transformation lineage
-  mapping.yml       # Reusable mapping spec
+  data.parquet               # Canonical ODA table (oda.job.v0.2.0)
+  data.parquet.quality.json  # Quality report
+  manifest.json              # Transformation lineage
+  mapping.yml                # Reusable mapping spec, written by the wizard only
 ```
 
 In the canonical table, the `start_time`, `end_time`, and `submit_time` columns
@@ -151,4 +106,4 @@ are written as native Arrow `timestamp(us, tz=UTC)` values, not ISO-8601 strings
 hpc-oda validate data/ingested/jobs_parquet/<run>/data.parquet
 ```
 
-This writes a quality report to `data.parquet.quality.json`.
+This checks the table against the schema again and rewrites `data.parquet.quality.json`.

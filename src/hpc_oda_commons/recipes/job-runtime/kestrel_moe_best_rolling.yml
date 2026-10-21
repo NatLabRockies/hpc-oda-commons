@@ -1,4 +1,5 @@
-# The best job-runtime configuration measured to date, as a runnable recipe (#143).
+# The best job-runtime configuration measured on 2026-08-17 (#143), as a runnable recipe.
+# It is a dated study, not a leaderboard entry; the leaderboard is the current ranking.
 #
 # Reproduce it from a fresh clone:
 #
@@ -6,14 +7,12 @@
 #        src/hpc_oda_commons/datasets/descriptors/nlr_kestrel.yml
 #      -> data/datasets/nlr_kestrel/data.parquet
 #
-#   2. hpc-oda bench-matrix slice --dataset nlr_kestrel \
-#        --extra-lookback-days 60 --out data/windows
-#      -> data/windows/nlr_kestrel/{data.parquet,slice.json}
+#   2. hpc-oda datasets slice data/datasets/nlr_kestrel/data.parquet \
+#        --start 2025-01-28 --end 2025-06-26 --out data/windows/nlr_kestrel/data.parquet
 #
-#      The card window is 2025-03-29..2025-06-26 (60 training + 30 test days). This
-#      split asks for 120 days of lookback, so the slice is extended 60 days earlier,
-#      to 2025-01-28, or the earliest rolling windows would train on truncated
-#      history. The test region is unchanged. slice.json records what you got.
+#      The window measured: the card's 2025-03-29..2025-06-26 at the time (60 training
+#      + 30 test days), extended 60 days earlier for this split's 120-day lookback. The
+#      card's window has grown since (#191), so the dates are given here, not derived.
 #
 #   3. hpc-oda benchmark \
 #        src/hpc_oda_commons/recipes/job-runtime/kestrel_moe_best_rolling.yml -v

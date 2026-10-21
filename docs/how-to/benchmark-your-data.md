@@ -107,7 +107,7 @@ data, copy it under your dataset's name, then change these:
   export.
 - **`decode`:** the format, and for text, its delimiter.
 - **`mapping`:** which export column feeds each schema column, and how to read it. The
-  [mapping reference](ingest-jobs-parquet.md#mapping-spec-example) lists the transforms:
+  [descriptor reference](../reference/descriptors.md#mapping-rules) lists the transforms:
   timestamps, durations and their units, hashing, energy, derived ratios, and nulling bad
   readings. The bundled descriptors are worked examples:
   [`nlr_kestrel.yml`](../../src/hpc_oda_commons/datasets/descriptors/nlr_kestrel.yml) derives

@@ -1,4 +1,4 @@
-# Tiny synthetic benchmark recipe for SLURM job runtime prediction (v0.1).
+# Tiny synthetic benchmark recipe for job runtime prediction.
 # Used for CI smoke tests and offline demo runs.
 
 recipe_id: recipe.job_runtime.baseline_tiny
@@ -17,20 +17,19 @@ model:
   id: model.baseline
   version: "0.1.0"
 
-# Runtime prediction is regression: provide at least MAE and RMSE in v0.1.
+# Every recipe reports at least MAE and RMSE, on one target column.
 metrics:
   - name: mae
     target: runtime_seconds
   - name: rmse
     target: runtime_seconds
 
-# v0.1 can use a simple deterministic split.
+# A simple deterministic split.
 split:
   method: fixed
   train_fraction: 0.8
   seed: 42
 
 run:
-  # Optional knobs: keep minimal in v0.1
   output_dir: runs
   overwrite: false

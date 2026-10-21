@@ -55,7 +55,7 @@ maxpcon_per_node: { derive: "maxpcon / num_nodes_alloc" }
 A job with a zero or missing node count gets null, never an infinite target, and drops out
 of scoring. `trim_quantiles: [0.001, 0.999]` nulls the outer 0.1% of a target at each end,
 for sources with impossible readings such as Eagle's
-([ingest how-to](ingest-jobs-parquet.md), #216).
+([descriptor reference](../reference/descriptors.md#mapping-rules), #216).
 
 **Which node count.** Divide by the nodes the power was summed over. For PM100 that is the
 allocated nodes. For F-DATA it is the **requested** nodes (`num_nodes_req`): Fugaku's
