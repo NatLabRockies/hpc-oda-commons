@@ -1,6 +1,11 @@
 # Design Spec — Public Dataset Ingestion
 
-**Status:** Draft (RFC)
+**Status:** Implemented. This is the design as agreed on 2026-07-01, kept as a record; the
+code has moved on since. Descriptors are now one flat folder with task-free ids
+(`dataset.<name>`), the registry is built from the package's files, and the `datasets`
+commands differ. For how it works today, see
+[the CLI reference](../reference/cli.md), [recipes](../reference/recipes.md) and
+[Benchmark your own data](../how-to/benchmark-your-data.md).
 **Date:** 2026-07-01
 **Targets:** a new `datasets` module (`src/hpc_oda_commons/datasets/`)
 **Decisions locked (session review):**
