@@ -7,7 +7,7 @@ Instructions for AI agents **using** hpc-oda-commons as a tool. If you are
 
 ## Project Overview
 
-**hpc-oda-commons** is a local-first CLI + standards toolkit for HPC Operational Data Analytics (ODA). v0.1 focuses on SLURM job runtime prediction: discovering, ingesting, analyzing, and benchmarking runtime prediction models across HPC sites.
+**hpc-oda-commons** is a local-first CLI + standards toolkit for HPC Operational Data Analytics (ODA). Its benchmark predicts job runtime and job power: discovering, ingesting, analyzing and benchmarking prediction models across HPC sites.
 
 ## Installation
 
@@ -17,29 +17,24 @@ pip install -e ".[dev]"
 
 ## Workflow
 
-The typical workflow is: **ingest -> validate -> train -> benchmark -> leaderboard**. Every command runs locally with no network required.
+To benchmark a user's own job data, follow
+[Benchmark your own data](how-to/benchmark-your-data.md) step by step. It runs every model
+the way the published leaderboard does, and a test keeps its commands working. In short:
 
 ```bash
-# 1. Ingest data (pick one)
-hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet  # interactive wizard
-hpc-oda ingest slurmctld --path /path/to/slurmctld.log
-
-# 2. Validate ingested data
-hpc-oda validate data/ingested/jobs_parquet/<run>/data.parquet
-
-# 2b. (optional) embed rows for the embedding-knn model
-hpc-oda embed data/ingested/jobs_parquet/<run>/data.parquet \
-  --out data/ingested/jobs_parquet/<run>_embedded/data.parquet --model stub
-
-# 2c. (optional) train a model
-hpc-oda train --recipe my_recipe.yml
-
-# 3. Run a benchmark
-hpc-oda benchmark my_recipe.yml
-
-# 4. Compare results
-hpc-oda leaderboard --runs runs --out leaderboard
+hpc-oda datasets prepare descriptors/<name>.yml --from exports      # read and check the export
+hpc-oda datasets characterize data/datasets/<name>/data.parquet \
+  --dataset-id dataset.<name> --descriptor dataset.<name> --out benchmark/datasets
+hpc-oda recipes write descriptors/<name>.yml \
+  --card benchmark/datasets/<name>.card.json --out recipes          # prints embed + ceiling commands
+# run the printed embed and ceiling commands, then:
+for r in recipes/runtime/*.yml recipes/power/*.yml; do hpc-oda benchmark "$r"; done
+hpc-oda leaderboard --runs runs --out leaderboard --ceilings benchmark/datasets --recipes recipes
 ```
+
+Everything runs locally. For a first look at a Parquet export without writing a descriptor,
+`hpc-oda ingest jobs-parquet --path <parquet>` maps it interactively ([Ingesting Parquet
+Data](#ingesting-parquet-data)), and `hpc-oda validate` checks the result.
 
 ## Key Commands
 
@@ -49,13 +44,13 @@ hpc-oda leaderboard --runs runs --out leaderboard
 | `hpc-oda ingest slurmctld --path <log>` | Parse slurmctld logs to canonical Parquet | `data/ingested/slurmctld/<run>/` |
 | `hpc-oda validate <path>` | Validate artifacts against schemas | `*.quality.json` next to input |
 | `hpc-oda embed <parquet> --out <path> --model <stub\|hf-id>` | Serialize + encode rows into a dense `embedding` column | `<out>` + `<out>.manifest.json` |
-| `hpc-oda train --recipe <recipe.yml>` | Train a model from a benchmark recipe | `runs/train-<timestamp>/` or model cache |
 | `hpc-oda analyze --data <path>` | Quick baseline analysis with HTML report | `reports/analysis-<id>/` |
 | `hpc-oda benchmark <recipe.yml>` | Run a benchmark recipe | `runs/benchmark-<timestamp>/` |
 | `hpc-oda benchmark -v <recipe.yml>` | Benchmark with verbose progress | Same, with console output |
 | `hpc-oda leaderboard --runs <dir> --out <dir>` | One leaderboard per target, plus every run | `leaderboard.json` + `index.html` + `runs.html` |
 | `hpc-oda models cards` | A card per registered model, generated from the code and the leaderboard | `docs/models/<model>.md` + `README.md` |
 | `hpc-oda datasets cards` | A card per bundled dataset: source and DOI, curation, characterization, windows, ceilings and results, generated | `docs/datasets/cards/<dataset>.md` + `README.md` |
+| `hpc-oda recipes write <descriptor> --card <card> --out <dir>` | Every model's recipes for a dataset of your own, on the benchmark's protocol, plus the embed and ceiling commands | `<dir>/runtime/*.yml`, `<dir>/power/*.yml` |
 | `hpc-oda record-hash` | Record source hash for current git commit | `integrity/known_hashes.json` |
 | `hpc-oda browse` | List registry entries (adapters, models, recipes) | Console output |
 | `hpc-oda info <entry_id>` | Show metadata for a registry entry | Console output |

@@ -32,9 +32,12 @@ metrics:
   the target. Naming the target in `extra_feature_fields`, or as the embedding column, is
   an error.
 
-Supported by `model.baseline`, `_xgboost`, `_random_forest`, `_mlp`,
-`_moe_xgboost`, `_signature_memorizer`, `_tfidf_knn` and `_embedding_knn`. The model ids
-still say `job_runtime`; they are target-agnostic.
+Supported by `model.baseline`, `model.xgboost`, `model.random_forest`, `model.mlp`,
+`model.moe_xgboost`, `model.signature_memorizer`, `model.tfidf_knn` and
+`model.embedding_knn`. UoPC (`model.uopc`) predicts power only.
+
+To run every power model on your own data, on the benchmark's protocol, see
+[Benchmark your own data](benchmark-your-data.md).
 
 ## Per-node power
 

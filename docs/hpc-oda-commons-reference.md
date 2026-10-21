@@ -231,6 +231,7 @@ The CLI is built on Typer and exposed as the `hpc-oda` command. It provides a co
 | `hpc-oda leaderboard --runs <dir> --out <dir>` | One leaderboard per prediction target (a row per model, headroom per dataset, an average), plus `runs.html` listing every bundle and why any was not counted. |
 | `hpc-oda models cards [--out docs/models]` | A card for every registered model, generated from the registry, the benchmark runners, the bundled recipes and the leaderboard. |
 | `hpc-oda datasets cards [--out docs/datasets/cards]` | A card for every bundled dataset, generated from its descriptor, its runtime card, the error ceilings, the bundled recipes and the leaderboard. |
+| `hpc-oda recipes write <descriptor> --out <dir> [--card <card>]` | Every model's recipes for a dataset of your own, on the benchmark's protocol ([Benchmark your own data](how-to/benchmark-your-data.md)). |
 | `hpc-oda record-hash` | Record the current source code hash and git commit in `integrity/known_hashes.json`. Run after tests pass on a clean commit. |
 | `hpc-oda browse` | Browse the registry. Supports filters: `--tag`, `--type`, `--source`, `--input-schema`, `--output-schema`. |
 | `hpc-oda info <entry_id>` | Display detailed metadata for a registry entry (adapter, model, recipe, or dataset). |

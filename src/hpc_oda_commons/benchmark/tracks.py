@@ -170,15 +170,23 @@ def _roster(
 # --- which bundles count ------------------------------------------------------------
 
 
-def _bundled_power_recipes() -> dict[str, dict[str, Any]]:
-    """The bundled power benchmark recipes, by recipe id: their split, as shipped today."""
+def _bundled_power_recipes(extra_dirs: Sequence[Path] = ()) -> dict[str, dict[str, Any]]:
+    """The power benchmark recipes, by recipe id: their split, as they stand today.
+
+    The bundled ones, plus any in ``extra_dirs``: the recipes ``hpc-oda recipes write`` wrote
+    for a dataset of your own (#255), which count once they're on the power protocol.
+    """
     from hpc_oda_commons.benchmark.recipes import load_recipe
 
     root = Path(str(ir.files("hpc_oda_commons") / "recipes" / "job-power"))
+    paths = sorted(root.glob("*_rolling_*.yml"))
+    for extra in extra_dirs:
+        paths += sorted(Path(extra).rglob("*.yml"))
     recipes: dict[str, dict[str, Any]] = {}
-    for path in sorted(root.glob("*_rolling_*.yml")):
+    for path in paths:
         recipe = load_recipe(path)
-        recipes[str(recipe["recipe_id"])] = recipe
+        if "job-power-prediction" in (recipe.get("problem_domain") or []):
+            recipes[str(recipe["recipe_id"])] = recipe
     return recipes
 
 
@@ -290,6 +298,7 @@ def build_tables(
     ceilings_dir: Path = DEFAULT_CEILINGS_DIR,
     cards: Sequence[Any] = (),
     burn_in: int = DEFAULT_BURN_IN,
+    recipe_dirs: Sequence[Path] = (),
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """The per-target tables, and every bundle left out with the reason.
 
@@ -298,7 +307,7 @@ def build_tables(
     """
     floors = load_floors(ceilings_dir)
     cards_by_dataset = {card.dataset: card for card in cards}
-    power_recipes = _bundled_power_recipes()
+    power_recipes = _bundled_power_recipes(recipe_dirs)
 
     excluded: list[dict[str, Any]] = []
     newest: dict[tuple[str, str, str, str], tuple[dict[str, Any], dict[str, Any]]] = {}
@@ -431,7 +440,11 @@ def _table(
         "target": track.target,
         "headroom": track.headroom,
         "caption": track.caption,
-        "dataset_notes": _dataset_notes(track, mismatched),
+        # Only this table's datasets: a leaderboard of other datasets (your own, #255) must
+        # not carry the published ones' caveats.
+        "dataset_notes": {
+            d: note for d, note in _dataset_notes(track, mismatched).items() if d in datasets
+        },
         "average_note": track.average_note,
         "datasets": datasets,
         "roster": roster,
