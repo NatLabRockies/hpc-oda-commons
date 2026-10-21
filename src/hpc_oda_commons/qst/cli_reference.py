@@ -7,12 +7,12 @@ their printed copy. Regenerate it with ``make docs-cli`` after changing a comman
 
 from __future__ import annotations
 
-import html
+import inspect
 import sys
 from pathlib import Path
 
+import click
 import typer
-from typer.cli import get_docs_for_click
 
 CLI_REFERENCE = Path("docs/reference/cli.md")
 
@@ -44,19 +44,94 @@ def render() -> str:
     """The page, as `make docs-cli` writes it."""
     from hpc_oda_commons.qst.cli import app
 
-    command = typer.main.get_command(app)
-    ctx = typer.Context(command)
-    body = get_docs_for_click(obj=command, ctx=ctx, name="hpc-oda", title="Commands")
-    # Typer escapes quotes for HTML; plain characters read better in the Markdown source.
-    body = html.unescape(body).strip()
+    root = typer.main.get_command(app)
+    lines = ["## Commands", "", _help(root), ""]
+    lines += [f"- `{name}`: {_summary(sub)}" for name, sub in root.commands.items()]  # type: ignore[attr-defined]
+    lines += [""]
+    for path, command in _walk(root, ["hpc-oda"]):
+        lines += _command(path, command)
+    return INTRO + "\n".join(lines).rstrip() + "\n"
+
+
+# The page is built from the click objects directly, not by typer's own docs command:
+# that renders option types differently from one typer or click release to the next,
+# and the page must read the same wherever the test runs.
+
+
+def _walk(command: click.Command, path: list[str]):
+    for name, sub in getattr(command, "commands", {}).items():
+        yield [*path, name], sub
+        yield from _walk(sub, [*path, name])
+
+
+def _help(command: click.Command) -> str:
+    text = inspect.cleandoc(command.help or "")
     # Click's "\b" (keep this paragraph's line breaks) means nothing in Markdown.
-    body = body.replace("\n\b\n", "\n")
-    # The generated title is a level-1 heading; the page already has one.
-    body = body.replace("# Commands", "## Commands", 1)
-    body = "\n".join(
-        "#" + line if line.startswith("## `hpc-oda") else line for line in body.splitlines()
+    return "\n".join(line for line in text.splitlines() if line != "\b")
+
+
+def _summary(command: click.Command) -> str:
+    """A command's first line of help."""
+    return _help(command).split("\n")[0]
+
+
+def _command(path: list[str], command: click.Command) -> list[str]:
+    params = [p for p in command.params if not getattr(p, "hidden", False)]
+    arguments = [p for p in params if p.param_type_name == "argument"]
+    options = [p for p in params if not p.param_type_name == "argument"]
+    subcommands = getattr(command, "commands", {})
+    usage = " ".join(
+        [*path]
+        + (["[OPTIONS]"] if options else [])
+        + [str(p.name).upper() for p in arguments]
+        + (["COMMAND"] if subcommands else [])
     )
-    return INTRO + body + "\n"
+    out = [f"### `{' '.join(path)}`", "", _help(command), "", "```console", usage, "```", ""]
+    if arguments:
+        out += ["**Arguments:**", ""] + [_param(p) for p in arguments] + [""]
+    if options:
+        out += ["**Options:**", ""] + [_param(p) for p in options] + [""]
+    if subcommands:
+        out += ["**Commands:**", ""]
+        out += [f"- `{name}`: {_summary(sub)}" for name, sub in subcommands.items()]
+        out += [""]
+    return out
+
+
+def _kind(kind: object) -> str:
+    """A value's kind by its type's class name: typer may carry its own click, and click's
+    type names differ between releases."""
+    names = {k.__name__ for k in type(kind).__mro__}
+    if names & {"Path", "TyperPath"}:
+        return "PATH"
+    if names & {"IntParamType", "IntRange"}:
+        return "INTEGER"
+    if names & {"FloatParamType", "FloatRange"}:
+        return "NUMBER"
+    return "TEXT"
+
+
+def _param(param: click.Parameter) -> str:
+    if param.param_type_name == "argument":
+        names = str(param.name).upper()
+    else:
+        value = "" if getattr(param, "is_flag", False) else f" {_kind(param.type)}"
+        names = ", ".join(f"`{opt}{value}`" for opt in [*param.opts, *param.secondary_opts])
+    if param.param_type_name == "argument":
+        names = f"`{names}`"
+    text = getattr(param, "help", None) or ""
+    notes = []
+    if param.required:
+        notes.append("Required.")
+    if param.multiple:
+        notes.append("Repeatable.")
+    default = param.default
+    flag = getattr(param, "is_flag", False)
+    if flag and param.secondary_opts and default is not None:
+        notes.append(f"Default: `{param.opts[0] if default else param.secondary_opts[0]}`.")
+    elif not flag and default not in (None, "", ()) and not param.required:
+        notes.append(f"Default: `{default}`.")
+    return f"- {names}: " + " ".join(x for x in [text, *notes] if x)
 
 
 def main() -> None:
