@@ -20,7 +20,7 @@ dataset:
   table_path: data/datasets/pm100/data.parquet
 
 model:
-  id: model.job_runtime_baseline
+  id: model.baseline
   version: "0.1.0"
 
 metrics:

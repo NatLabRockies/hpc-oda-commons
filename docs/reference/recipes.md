@@ -48,7 +48,7 @@ dataset:
 
 # Model to evaluate
 model:
-  id: model.job_runtime_baseline
+  id: model.baseline
   version: "0.1.0"
 
 # Metrics to compute (v0.1 requires at least mae and rmse; other supported
@@ -73,16 +73,16 @@ run:
 
 ### Split Methods
 
-**`fixed`** -- Deterministic train/test split. Used with `model.job_runtime_baseline` and the UoPC adaptation (`model.job_power_uopc`).
+**`fixed`** -- Deterministic train/test split. Used with `model.baseline` and the UoPC adaptation (`model.uopc`).
 - `train_fraction` (float, required): fraction of data for training (e.g., `0.8`)
 - `seed` (int, required): random seed for reproducibility
 
-**`cutoff`** -- Every job submitted on or after a date is a test job; everything earlier is history only. Used with `model.job_power_uopc` to run the UoPC paper protocol ([UoPC reproduction](../benchmarking/power/uopc.md)).
+**`cutoff`** -- Every job submitted on or after a date is a test job; everything earlier is history only. Used with `model.uopc` to run the UoPC paper protocol ([UoPC reproduction](../benchmarking/power/uopc.md)).
 - `test_start` (ISO date, required): the cutoff, e.g. `"2024-02-01"` (quote it, so YAML keeps it a string)
 - `theta` (int, default `500`) / `k` (int, default `20`; the paper's is `5`): history size and neighbour count; with a sweep they name the headline cell
 - `theta_values` / `k_values` (lists of int, optional): run the θ × k sensitivity grid instead of one reproduction; the headline `theta`/`k` must be in the grid
 
-**`rolling`** -- Sliding windows that simulate production retraining. Used with the rolling models (`model.job_runtime_baseline`, `model.job_runtime_xgboost`, `model.job_runtime_random_forest`, `model.job_runtime_tfidf_knn`, `model.job_runtime_mlp`, `model.job_runtime_embedding_knn`, `model.job_runtime_moe_xgboost`, `model.job_runtime_signature_memorizer`) and with `model.job_power_uopc`, which then reads `theta`, `k` and `embedding_field` (see [Predict job power](../how-to/predict-power.md#uopc-on-the-same-windows)). Rolling recipes may report `mae`, `rmse`, `mape`, `r2` and `underprediction_ratio`.
+**`rolling`** -- Sliding windows that simulate production retraining. Used with the rolling models (`model.baseline`, `model.xgboost`, `model.random_forest`, `model.tfidf_knn`, `model.mlp`, `model.embedding_knn`, `model.moe_xgboost`, `model.signature_memorizer`) and with `model.uopc`, which then reads `theta`, `k` and `embedding_field` (see [Predict job power](../how-to/predict-power.md#uopc-on-the-same-windows)). Rolling recipes may report `mae`, `rmse`, `mape`, `r2` and `underprediction_ratio`.
 - `n_windows` (int, required): number of windows to evaluate
 - `test_window_hours` (int, default `6`): duration of each test window in hours
 - `training_lookback_days` (int, default `100`): days of history per training window
@@ -93,7 +93,7 @@ run:
 - `time_decay_rate` (float, default `0.0`): exponential recency weight on training rows, in units of 1/day — `0.05` is roughly a two-week half-life. Supported by the rolling tabular models; composes with `objective`.
 - `objective` (string, default `reg:squarederror`): XGBoost and MoE XGBoost only — the loss the trees are fitted against. `reg:absoluteerror` fits the metric the leaderboard ranks on; on heavy-tailed runtimes the two are not close. Trades RMSE for MAE and median AE.
 
-`model.job_runtime_moe_xgboost` adds routing knobs on top of those:
+`model.moe_xgboost` adds routing knobs on top of those:
 
 - `enable_power_users` (bool, default `true`): whether the heaviest users get their own experts in addition to the wallclock bins. `false` routes every row by bin alone. There is no value of `power_user_percentile` that selects nobody, which is why this switch exists.
 - `power_user_percentile` (float, default `0.99`): quantile of per-user job count at or above which a user is a power user. Inert when `enable_power_users` is `false`.

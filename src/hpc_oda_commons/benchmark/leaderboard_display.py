@@ -29,8 +29,7 @@ POWER_TARGET_UNITS: dict[str, str] = {
 def model_titles() -> dict[str, str]:
     """Each registered model's title for readers: its registry ``name`` (#247).
 
-    The ids stay as they are in recipes and bundles; the job_runtime_ prefix predates power
-    and is not a reader's concern. The registry is the one place a model's name is kept.
+    The registry is the one place a model's name is kept.
     """
     from hpc_oda_commons.registry.snapshot import load_registry_index
 

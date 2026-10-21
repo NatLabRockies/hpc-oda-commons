@@ -21,7 +21,7 @@ is a one-model study, not a leaderboard.
 
 ## Two protocols, one model
 
-`model.job_power_uopc` runs either protocol, chosen by the recipe's `split.method`:
+`model.uopc` runs either protocol, chosen by the recipe's `split.method`:
 
 | | `fixed` — the Commons adaptation | `cutoff` — the paper protocol |
 |---|---|---|

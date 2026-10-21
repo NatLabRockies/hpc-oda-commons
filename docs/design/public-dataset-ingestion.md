@@ -117,7 +117,7 @@ targets:
     capabilities:                         # EXPLICIT model-suitability, validated against `mapping` outputs
       - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
       - { problem_domain: job-power-prediction,    target_column: maxpcon }
-    suitable_models: [model.job_runtime_xgboost, model.job_power_uopc]   # optional curated hint
+    suitable_models: [model.xgboost, model.uopc]   # optional curated hint
     mapping:                              # reuses apply.py transform vocab (timestamp/duration/memory/hash_identifier; later list_mean/list_max and ratio derives, #204; energy, null_values and chained ratios, #206; null_when, #209)
       job_id:          { from: jobid,   type: hash_identifier }
       start_time:      { from: sdt,     type: timestamp, format: epoch_s }
@@ -171,7 +171,7 @@ about which models it can drive:
   so power/energy columns ride along in the *same* canonical table as long as the
   required job fields (`job_id`, `start_time`, `end_time`, `runtime_seconds`) are
   present.
-- The UoPC model already resolves columns by alias (`models/job_power_uopc/model.py:24-40`):
+- The UoPC model already resolves columns by alias (`models/uopc/model.py:24-40`):
   target `maxpcon`; features `user`/`usr`, `name`/`jnam`,
   `processors_requested`/`cnumr`, `nodes_requested`/`nnumr`, order-by
   `end_time`/`edt`. Those aliases are Fugaku F-DATA's native names — so normalize

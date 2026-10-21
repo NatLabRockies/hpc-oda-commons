@@ -7,7 +7,7 @@ site config into per-cell Slurm recipes and sbatch scripts, then slices each dat
 its 90-day window ready to stage to the cluster.
 
 The matrix is **6 models × 21 datasets = 126 benchmark cells**, plus **21 GPU embedding
-jobs** (the embedded parquet is reused by `job_runtime_embedding_knn`).
+jobs** (the embedded parquet is reused by `embedding_knn`).
 
 ## The tracked / untracked split
 
@@ -257,8 +257,8 @@ Two models carry extra split keys, from `matrix.MODEL_SPLIT_OVERRIDES`:
 
 | model | overrides | why |
 | --- | --- | --- |
-| `job_runtime_xgboost` | `objective: reg:absoluteerror` | fit the metric the leaderboard ranks on (#138) |
-| `job_runtime_moe_xgboost` | `objective: reg:absoluteerror`, `enable_power_users: false`, `time_decay_rate: 0.05` | the best measured configuration (#134/#136/#141) |
+| `xgboost` | `objective: reg:absoluteerror` | fit the metric the leaderboard ranks on (#138) |
+| `moe_xgboost` | `objective: reg:absoluteerror`, `enable_power_users: false`, `time_decay_rate: 0.05` | the best measured configuration (#134/#136/#141) |
 
 Both XGBoost variants fit absolute error deliberately: if only the MoE did, its margin over
 plain XGBoost would bundle an objective effect that has nothing to do with the mixture.

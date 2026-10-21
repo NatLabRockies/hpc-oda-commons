@@ -12,9 +12,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from hpc_oda_commons.models.job_runtime_mlp.model import (
-    JobRuntimeMlpConfig,
-    JobRuntimeMlpModel,
+from hpc_oda_commons.models.mlp.model import (
+    MlpConfig,
+    MlpModel,
 )
 
 pytest.importorskip("sklearn")
@@ -47,8 +47,8 @@ def _rows(n_hours: int = 72) -> list[dict]:
     return rows
 
 
-def _config(window_n_jobs: int) -> JobRuntimeMlpConfig:
-    return JobRuntimeMlpConfig(
+def _config(window_n_jobs: int) -> MlpConfig:
+    return MlpConfig(
         n_windows=12,
         test_window_hours=6,
         training_lookback_days=2,
@@ -62,8 +62,8 @@ def _config(window_n_jobs: int) -> JobRuntimeMlpConfig:
 
 def test_parallel_windows_match_sequential_exactly():
     rows = _rows()
-    seq = JobRuntimeMlpModel(_config(1)).evaluate(rows)
-    par = JobRuntimeMlpModel(_config(4)).evaluate(rows)
+    seq = MlpModel(_config(1)).evaluate(rows)
+    par = MlpModel(_config(4)).evaluate(rows)
 
     # Scenario sanity: several windows scored across more than one day (so the
     # cross-day preprocessing precompute + refit bookkeeping is actually exercised).
@@ -79,8 +79,8 @@ def test_parallel_windows_match_sequential_exactly():
 
 def test_parallel_and_sequential_capture_same_artifacts():
     rows = _rows()
-    seq = JobRuntimeMlpModel(_config(1)).evaluate(rows, capture_artifacts=True)
-    par = JobRuntimeMlpModel(_config(4)).evaluate(rows, capture_artifacts=True)
+    seq = MlpModel(_config(1)).evaluate(rows, capture_artifacts=True)
+    par = MlpModel(_config(4)).evaluate(rows, capture_artifacts=True)
     # The captured "last scored window" is chosen by split order, not finish order.
     assert seq["_last_model"]["split_time"] == par["_last_model"]["split_time"]
     assert seq["_y_pred"] == par["_y_pred"]

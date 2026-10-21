@@ -267,7 +267,7 @@ difference.
 
 | Where | Claim | What's true |
 |---|---|---|
-| `models/job_power_uopc/model.py:506` and `docs/benchmarking/power/uopc.md:79` | Global z-scoring is done "as the authors' code does" | It's in neither the paper nor the authors' repositories; it's our adaptation |
+| `models/uopc/model.py:506` and `docs/benchmarking/power/uopc.md:79` | Global z-scoring is done "as the authors' code does" | It's in neither the paper nor the authors' repositories; it's our adaptation |
 | `model.py:679`, `uopc.md:22`, `uopc.md:82` | Rounding to integer classes follows the authors' implementation | The classifier follows their code; the rounding is ours, needed for fractional per-node targets |
 | `model.py:436-437` | The `nnuma` division follows "the authors' code" | The UoPC code has no division. The paper text and figures, and the JPCP code, support allocated nodes. |
 | `model.py:1` | "per-user kNN regression" | The paper mode uses a classifier |

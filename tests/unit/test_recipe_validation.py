@@ -18,7 +18,7 @@ def _valid_recipe() -> dict:
             "table_path": "hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet",
             "manifest_path": "hpc_oda_commons/datasets/synthetic/job-runtime/tiny/manifest.json",
         },
-        "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+        "model": {"id": "model.baseline", "version": "0.1.0"},
         "metrics": [
             {"name": "mae", "target": "runtime_seconds"},
             {"name": "rmse", "target": "runtime_seconds"},
@@ -30,7 +30,7 @@ def _valid_recipe() -> dict:
 
 def _valid_rolling_recipe() -> dict:
     payload = _valid_recipe()
-    payload["model"] = {"id": "model.job_runtime_xgboost", "version": "0.1.0"}
+    payload["model"] = {"id": "model.xgboost", "version": "0.1.0"}
     payload["split"] = {"method": "rolling", "n_windows": 24}
     return payload
 
@@ -57,7 +57,7 @@ def test_validate_recipe_rolling_accepts_moe_routing_knobs() -> None:
     with "Additional properties are not allowed" and the option is unreachable.
     """
     payload = _valid_rolling_recipe()
-    payload["model"] = {"id": "model.job_runtime_moe_xgboost", "version": "0.1.0"}
+    payload["model"] = {"id": "model.moe_xgboost", "version": "0.1.0"}
     payload["split"] = {
         "method": "rolling",
         "n_windows": 24,
@@ -124,7 +124,7 @@ def test_load_recipe_from_file(tmp_path: Path) -> None:
                 "  id: hpc_oda_commons/datasets/synthetic/job-runtime/tiny",
                 "  table_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet",
                 "model:",
-                "  id: model.job_runtime_baseline",
+                "  id: model.baseline",
                 '  version: "0.1.0"',
                 "metrics:",
                 "  - name: mae",
@@ -171,9 +171,9 @@ def test_every_rolling_tabular_split_knob_is_declared_in_the_schema() -> None:
     from pathlib import Path
 
     from hpc_oda_commons.benchmark.runner import _rolling_tabular_split_kwargs
-    from hpc_oda_commons.models.job_runtime_xgboost.model import JobRuntimeXGBoostConfig
+    from hpc_oda_commons.models.xgboost.model import XGBoostConfig
 
-    knobs = set(_rolling_tabular_split_kwargs({}, JobRuntimeXGBoostConfig()))
+    knobs = set(_rolling_tabular_split_kwargs({}, XGBoostConfig()))
     schema = json.loads(
         (Path("src/hpc_oda_commons/schemas/oda/recipe/v0.1.0.json")).read_text(encoding="utf-8")
     )
@@ -185,7 +185,7 @@ def test_every_rolling_tabular_split_knob_is_declared_in_the_schema() -> None:
 def test_a_recipe_can_actually_set_the_target_encoding_knobs() -> None:
     """Declared in the schema AND read by the runner -- both halves, or it does nothing."""
     from hpc_oda_commons.benchmark.runner import _rolling_tabular_split_kwargs
-    from hpc_oda_commons.models.job_runtime_xgboost.model import JobRuntimeXGBoostConfig
+    from hpc_oda_commons.models.xgboost.model import XGBoostConfig
 
     payload = _valid_rolling_recipe()
     payload["split"] = {
@@ -196,7 +196,7 @@ def test_a_recipe_can_actually_set_the_target_encoding_knobs() -> None:
     }
     validate_recipe(payload)  # half one: the schema accepts it
 
-    kwargs = _rolling_tabular_split_kwargs(payload["split"], JobRuntimeXGBoostConfig())
+    kwargs = _rolling_tabular_split_kwargs(payload["split"], XGBoostConfig())
 
     # half two: the runner carries it into the model's config
     assert kwargs["target_encode_min_cardinality"] == 64
@@ -205,7 +205,7 @@ def test_a_recipe_can_actually_set_the_target_encoding_knobs() -> None:
 
 def _valid_cutoff_recipe() -> dict:
     payload = _valid_recipe()
-    payload["model"] = {"id": "model.job_power_uopc", "version": "0.1.0"}
+    payload["model"] = {"id": "model.uopc", "version": "0.1.0"}
     payload["split"] = {"method": "cutoff", "test_start": "2024-02-01"}
     return payload
 

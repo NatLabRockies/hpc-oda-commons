@@ -18,13 +18,13 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from hpc_oda_commons.benchmark.runner import run_rolling_baseline
-from hpc_oda_commons.models.job_runtime_tfidf_knn.model import (
-    JobRuntimeTfidfKnnConfig,
-    JobRuntimeTfidfKnnModel,
+from hpc_oda_commons.models.tfidf_knn.model import (
+    TfidfKnnConfig,
+    TfidfKnnModel,
 )
-from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostConfig,
-    JobRuntimeXGBoostModel,
+from hpc_oda_commons.models.xgboost.model import (
+    XGBoostConfig,
+    XGBoostModel,
 )
 
 # --------------------------------------------------------------------------- #
@@ -127,14 +127,14 @@ def test_baseline_rolling_regression() -> None:
 )
 def test_xgboost_rolling_regression() -> None:
     rows = _regression_rows()
-    config = JobRuntimeXGBoostConfig(
+    config = XGBoostConfig(
         n_windows=4,
         test_window_hours=1,
         max_svd_components=8,
         target_max_one_hot_width=64,
         random_state=42,
     )
-    model = JobRuntimeXGBoostModel(config)
+    model = XGBoostModel(config)
     payload = model.evaluate(rows)
     summary = payload["summary"]
 
@@ -153,8 +153,8 @@ def test_xgboost_feature_columns_are_submission_time_only() -> None:
     a post-hoc column (a `*_alloc`, a `job_state`) cannot quietly become a feature
     again when a new dataset carries one.
     """
-    model = JobRuntimeXGBoostModel(
-        JobRuntimeXGBoostConfig(
+    model = XGBoostModel(
+        XGBoostConfig(
             n_windows=4,
             test_window_hours=1,
             max_svd_components=8,
@@ -179,13 +179,13 @@ def test_xgboost_feature_columns_are_submission_time_only() -> None:
 )
 def test_tfidf_knn_rolling_regression() -> None:
     rows = _regression_rows()
-    config = JobRuntimeTfidfKnnConfig(
+    config = TfidfKnnConfig(
         n_windows=4,
         test_window_hours=1,
         k=3,
         n_hash_features=256,
     )
-    model = JobRuntimeTfidfKnnModel(config)
+    model = TfidfKnnModel(config)
     payload = model.evaluate(rows)
     summary = payload["summary"]
 
@@ -203,19 +203,17 @@ def test_all_models_same_splits() -> None:
         rows, split=SPLIT_PARAMS, metric_defs=METRIC_DEFS
     )
 
-    xgb_config = JobRuntimeXGBoostConfig(
+    xgb_config = XGBoostConfig(
         n_windows=4,
         test_window_hours=1,
         max_svd_components=8,
         target_max_one_hot_width=64,
         random_state=42,
     )
-    xgb_payload = JobRuntimeXGBoostModel(xgb_config).evaluate(rows)
+    xgb_payload = XGBoostModel(xgb_config).evaluate(rows)
 
-    tfidf_config = JobRuntimeTfidfKnnConfig(
-        n_windows=4, test_window_hours=1, k=3, n_hash_features=256
-    )
-    tfidf_payload = JobRuntimeTfidfKnnModel(tfidf_config).evaluate(rows)
+    tfidf_config = TfidfKnnConfig(n_windows=4, test_window_hours=1, k=3, n_hash_features=256)
+    tfidf_payload = TfidfKnnModel(tfidf_config).evaluate(rows)
 
     assert (
         baseline_payload["summary"]["windows_scored"]

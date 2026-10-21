@@ -25,31 +25,31 @@ Raw Input (slurmctld.log / jobs.parquet)
 - **`kernel/`** -- Core primitives: ODA tables, manifests, mapping specs, result bundles,
   provenance, hashing, metrics (`metrics.py`), serialization (`serialization.py`).
 - **`models/`** -- Prediction models:
-  - `job_runtime_baseline/` -- deterministic mean-prediction model (fit/predict)
+  - `baseline/` -- deterministic mean-prediction model (fit/predict)
   - `rolling_tabular/` -- neutral base package for the rolling tabular runtime models:
     `RollingTabularModel` + `RollingTabularConfig` (`base.py`), categorical preprocessing
     (OHE + SVD via `preprocessing.py`), the daily preprocessing cache / split logic
     (`split.py`), and the on-disk store that shares those daily artifacts across runs
     (`artifact_store.py`, #213). Concrete models supply a regressor via the `_new_regressor()` seam.
     (This is the "neutral base" refactor from issue #6, now landed.)
-  - `job_runtime_xgboost/` -- XGBoost regressor; subclasses `RollingTabularModel` and supplies
+  - `xgboost/` -- XGBoost regressor; subclasses `RollingTabularModel` and supplies
     an XGBoost regressor via `_new_regressor()`.
-  - `job_runtime_random_forest/`, `job_runtime_mlp/` -- Random Forest and MLP regressors that
+  - `random_forest/`, `mlp/` -- Random Forest and MLP regressors that
     also subclass `RollingTabularModel`, reusing the shared `rolling_tabular` preprocessing and
     splits and overriding only the regressor.
-  - `job_runtime_tfidf_knn/` -- TF-IDF + kNN with rolling evaluation (`evaluate()`); a
+  - `tfidf_knn/` -- TF-IDF + kNN with rolling evaluation (`evaluate()`); a
     stateless HashingVectorizer is applied once, then windows score index slices in parallel
     (`window_n_jobs`); text handling in `vectorization.py`
-  - `job_runtime_embedding_knn/` -- kNN over a precomputed dense `embedding` column
-  - `job_runtime_moe_xgboost/` -- mixture of experts: subclasses `RollingTabularModel` and
+  - `embedding_knn/` -- kNN over a precomputed dense `embedding` column
+  - `moe_xgboost/` -- mixture of experts: subclasses `RollingTabularModel` and
     overrides only the fit/predict seam, routing each job to a per-(user, wallclock-bin)
     expert with a window-wide fallback
     (`model.py`), with a selectable exact dense top-k backend (`backends.py`:
     numpy / torch / faiss). Reuses `rolling_tabular` split + `kernel.metrics`.
-  - `job_power_uopc/` -- user-based online power prediction (UoPC): the Commons adaptation on a
+  - `uopc/` -- user-based online power prediction (UoPC): the Commons adaptation on a
     fixed chronological split (`evaluate_fixed()`), and the paper protocol on a date cutoff
     (`evaluate_paper_reproduction()`, `evaluate_paper_sensitivity()`; see `docs/benchmarking/power/uopc.md`),
-    and `rolling.py` (`JobPowerUopcRollingModel`) for the shared rolling windows
+    and `rolling.py` (`UopcRollingModel`) for the shared rolling windows
 - **Targets** -- every model predicts the recipe's metric target (`runtime_seconds` by default):
   the runner sets `target_field` on target-configurable models and fails a model that cannot
   predict it (`benchmark/runner.py`, `recipe_target` / `_require_target`). Features come from
@@ -93,7 +93,7 @@ Raw Input (slurmctld.log / jobs.parquet)
   asserted both appeared, which was the double-counting bug of #166 sitting in plain sight for
   months. Distinct values cost nothing and keep a fixture from asserting more than intended.
 - **Monkeypatching models**: integration tests that exercise the XGBoost / TF-IDF kNN / MLP /
-  UoPC benchmark paths monkeypatch the model on `runner.` (e.g. `runner.JobRuntimeXGBoostModel`),
+  UoPC benchmark paths monkeypatch the model on `runner.` (e.g. `runner.XGBoostModel`),
   not via `cli.` -- the models are imported in `benchmark/runner.py`.
 - **Cross-environment numeric reproducibility** is a known limitation for fitted-model metric
   values; see [`known-issues.md`](known-issues.md) (issue #2).

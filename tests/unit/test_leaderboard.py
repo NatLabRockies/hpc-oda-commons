@@ -10,7 +10,7 @@ from hpc_oda_commons.tools.report import render_leaderboard_html, render_runs_ht
 def _make_bundle(
     bundle_dir: Path,
     *,
-    model: str = "model.job_runtime_baseline",
+    model: str = "model.baseline",
     dataset: str = "synthetic_job_runtime_tiny",
     created_at: str = "2026-02-05T00:00:00Z",
     mae: float = 1.0,
@@ -65,9 +65,16 @@ def test_build_leaderboard(tmp_path: Path) -> None:
     leaderboard = build_leaderboard(tmp_path / "runs")
     assert leaderboard["entries"], "expected leaderboard entries"
     entry = leaderboard["entries"][0]
-    assert entry["model"]["id"] == "model.job_runtime_baseline"
+    assert entry["model"]["id"] == "model.baseline"
     assert entry["dataset"]["hash"] == "abc12345"
     assert entry["prediction_target"] == "runtime_seconds"
+
+
+def test_a_bundle_from_before_249_counts_under_its_models_new_id(tmp_path: Path) -> None:
+    _make_bundle(tmp_path / "runs" / "run-1", model="model.job_runtime_xgboost")
+
+    entry = build_leaderboard(tmp_path / "runs")["entries"][0]
+    assert entry["model"]["id"] == "model.xgboost"
 
 
 def test_write_leaderboard_and_html(tmp_path: Path) -> None:
@@ -103,8 +110,8 @@ def test_build_leaderboard_orders_by_created_at(tmp_path: Path) -> None:
     older = tmp_path / "runs" / "run-older"
     newer = tmp_path / "runs" / "run-newer"
 
-    _make_bundle(older, model="model.job_runtime_baseline", created_at="2026-01-01T00:00:00Z")
-    _make_bundle(newer, model="model.job_runtime_xgboost", created_at="2026-02-01T00:00:00Z")
+    _make_bundle(older, model="model.baseline", created_at="2026-01-01T00:00:00Z")
+    _make_bundle(newer, model="model.xgboost", created_at="2026-02-01T00:00:00Z")
 
     leaderboard = build_leaderboard(tmp_path / "runs")
 
@@ -144,10 +151,10 @@ def test_superseded_bundles_are_named_not_silently_dropped(tmp_path: Path) -> No
 
 def test_different_cells_are_never_merged(tmp_path: Path) -> None:
     """Same model on two datasets, and two models on one dataset, are four distinct cells."""
-    _make_bundle(tmp_path / "runs" / "1", dataset="ds_a", model="model.job_runtime_baseline")
-    _make_bundle(tmp_path / "runs" / "2", dataset="ds_b", model="model.job_runtime_baseline")
-    _make_bundle(tmp_path / "runs" / "3", dataset="ds_a", model="model.job_runtime_xgboost")
-    _make_bundle(tmp_path / "runs" / "4", dataset="ds_b", model="model.job_runtime_xgboost")
+    _make_bundle(tmp_path / "runs" / "1", dataset="ds_a", model="model.baseline")
+    _make_bundle(tmp_path / "runs" / "2", dataset="ds_b", model="model.baseline")
+    _make_bundle(tmp_path / "runs" / "3", dataset="ds_a", model="model.xgboost")
+    _make_bundle(tmp_path / "runs" / "4", dataset="ds_b", model="model.xgboost")
 
     leaderboard = build_leaderboard(tmp_path / "runs")
 
@@ -157,7 +164,7 @@ def test_different_cells_are_never_merged(tmp_path: Path) -> None:
 
 def test_a_clean_runs_dir_is_unchanged(tmp_path: Path) -> None:
     """No duplicates means the behaviour is exactly as before the fix."""
-    _make_bundle(tmp_path / "runs" / "only", dataset="ds", model="model.job_runtime_baseline")
+    _make_bundle(tmp_path / "runs" / "only", dataset="ds", model="model.baseline")
 
     leaderboard = build_leaderboard(tmp_path / "runs")
 

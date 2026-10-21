@@ -14,7 +14,7 @@ DATASET = "arm_ranking_demo"
 # Arm keys name their axis since #197, so a bundle says what it ran without its filename.
 LB10 = "training_lookback_days=10"
 LB120 = "training_lookback_days=120"
-MODEL = "model.job_runtime_xgboost"
+MODEL = "model.xgboost"
 
 
 def _windows(maes: list[float]) -> list[dict]:

@@ -11,7 +11,7 @@ import pyarrow.parquet as pq
 
 from hpc_oda_commons.datasets.descriptor import load_descriptor
 from hpc_oda_commons.datasets.normalize import normalize_target
-from hpc_oda_commons.models.job_power_uopc.model import JobPowerUopcModel
+from hpc_oda_commons.models.uopc.model import UopcModel
 from hpc_oda_commons.schema.validator import validate_parquet_with_quality
 
 _DESCRIPTORS = Path(str(ir.files("hpc_oda_commons") / "datasets" / "descriptors"))
@@ -105,7 +105,7 @@ def test_uopc_window_prepares_the_columns_the_paper_protocol_reads(tmp_path: Pat
     validate_parquet_with_quality(out, schema_id="oda.job.v0.2.0", strict=True)
 
     # And the model accepts the prepared rows as they come off disk.
-    model = JobPowerUopcModel()
+    model = UopcModel()
     prepared = model._prepare_paper_data(table.to_pylist(), test_start="2024-02-01")
     assert len(prepared.avg_target_arr) == 5
     assert prepared.avg_target_arr[0] == 100.0  # 200 W over 2 allocated nodes
@@ -145,7 +145,7 @@ def test_per_node_power_divides_by_requested_nodes_not_a_padded_allocation(
     assert rows[0]["avgpcon_per_node"] == 100.0  # 200 W over 2 requested nodes, not 48
     assert rows[0]["maxpcon_per_node"] == 150.0
 
-    model = JobPowerUopcModel()
+    model = UopcModel()
     prepared = model._prepare_paper_data(rows, test_start="2024-02-01")
     assert prepared.avg_target_arr[0] == 100.0
     paper = model._prepare_paper_data(rows, test_start="2024-02-01", node_count="allocated")

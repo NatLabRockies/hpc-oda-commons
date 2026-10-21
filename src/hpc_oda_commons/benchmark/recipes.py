@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 
 from hpc_oda_commons.kernel.validate import SchemaValidationError, validate_json
+from hpc_oda_commons.models.ids import canonical_model_id
 
 RECIPE_SCHEMA_ID = "oda.recipe.v0.1.0"
 MDL_SCHEMA_ID = "oda.mdl.v0.1.0"
@@ -21,6 +22,9 @@ def load_recipe(recipe_path: Path, *, validate: bool = True) -> dict[str, Any]:
             message="Recipe YAML must be a mapping/object.",
             path=str(recipe_path),
         )
+    model = payload.get("model")
+    if isinstance(model, dict) and isinstance(model.get("id"), str):
+        model["id"] = canonical_model_id(model["id"])
     if validate:
         validate_recipe(payload, path=recipe_path)
     return payload
@@ -84,12 +88,12 @@ def validate_recipe(payload: dict[str, Any], *, path: Path | None = None) -> Non
             )
         for key in ("uopc_features", "predictor"):
             if key in split and (
-                (payload.get("model") or {}).get("id") != "model.job_power_uopc"
+                (payload.get("model") or {}).get("id") != "model.uopc"
                 or method not in ("cutoff", "rolling")
             ):
                 raise SchemaValidationError(
                     schema_id=RECIPE_SCHEMA_ID,
-                    message=f"split.{key} only applies to model.job_power_uopc "
+                    message=f"split.{key} only applies to model.uopc "
                     "with split.method cutoff or rolling",
                     path=str(path) if path else None,
                 )

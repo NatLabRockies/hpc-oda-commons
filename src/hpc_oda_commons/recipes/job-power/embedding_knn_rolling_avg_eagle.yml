@@ -29,7 +29,7 @@ dataset:
   table_path: data/windows/nlr_eagle_power_embedded/data.parquet
 
 model:
-  id: model.job_runtime_embedding_knn
+  id: model.embedding_knn
   version: "0.1.0"
 
 metrics:

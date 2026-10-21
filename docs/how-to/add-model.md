@@ -5,7 +5,8 @@ registry metadata and recipes.
 
 ## Minimal Steps
 
-1. Implement a model class under `src/hpc_oda_commons/models/`.
+1. Implement a model class under `src/hpc_oda_commons/models/<name>/`. Name it for its
+   method, not a task: its id is `model.<name>`, and recipes choose what it predicts.
 2. Add a registry entry in `src/hpc_oda_commons/registry/snapshot.json`.
 3. Add a recipe in `src/hpc_oda_commons/recipes/`.
 4. Add unit tests that exercise the model's public API (e.g., `fit()`/`predict()` for simple models, or `evaluate()` for rolling-window models).
@@ -60,21 +61,21 @@ The toolkit ships eight models, each illustrating a different complexity level:
 
 | Model | Package | Interface |
 |-------|---------|-----------|
-| `model.job_runtime_baseline` | `models/job_runtime_baseline/` | Simple `fit()`/`predict()` class, rolling loop in runner |
-| `model.job_runtime_xgboost` | `models/job_runtime_xgboost/` | Thin subclass of `RollingTabularModel` (`models/rolling_tabular/`) with OHE+SVD preprocessing and daily cache |
-| `model.job_runtime_random_forest` | `models/job_runtime_random_forest/` | Thin subclass of `RollingTabularModel` |
-| `model.job_runtime_mlp` | `models/job_runtime_mlp/` | Thin subclass of `RollingTabularModel` |
-| `model.job_runtime_tfidf_knn` | `models/job_runtime_tfidf_knn/` | `evaluate()` with TF-IDF vectorization; hashes once, scores window slices in parallel (`window_n_jobs`) |
-| `model.job_runtime_embedding_knn` | `models/job_runtime_embedding_knn/` | `evaluate()` over a precomputed embedding column; selectable dense top-k backend (`backends.py`) |
-| `model.job_runtime_moe_xgboost` | `models/job_runtime_moe_xgboost/` | Subclass of `RollingTabularModel` that overrides the fit/predict seam to route each job to a per-(user, wallclock-bin) expert |
-| `model.job_power_uopc` | `models/job_power_uopc/` | Per-user kNN job-power model: `evaluate_fixed()` on a fixed split, `evaluate_paper_reproduction()` / `evaluate_paper_sensitivity()` on a date cutoff |
+| `model.baseline` | `models/baseline/` | Simple `fit()`/`predict()` class, rolling loop in runner |
+| `model.xgboost` | `models/xgboost/` | Thin subclass of `RollingTabularModel` (`models/rolling_tabular/`) with OHE+SVD preprocessing and daily cache |
+| `model.random_forest` | `models/random_forest/` | Thin subclass of `RollingTabularModel` |
+| `model.mlp` | `models/mlp/` | Thin subclass of `RollingTabularModel` |
+| `model.tfidf_knn` | `models/tfidf_knn/` | `evaluate()` with TF-IDF vectorization; hashes once, scores window slices in parallel (`window_n_jobs`) |
+| `model.embedding_knn` | `models/embedding_knn/` | `evaluate()` over a precomputed embedding column; selectable dense top-k backend (`backends.py`) |
+| `model.moe_xgboost` | `models/moe_xgboost/` | Subclass of `RollingTabularModel` that overrides the fit/predict seam to route each job to a per-(user, wallclock-bin) expert |
+| `model.uopc` | `models/uopc/` | Per-user kNN job-power model: `evaluate_fixed()` on a fixed split, `evaluate_paper_reproduction()` / `evaluate_paper_sensitivity()` on a date cutoff |
 
-For a minimal starting point, see `models/job_runtime_baseline/`. For a new
+For a minimal starting point, see `models/baseline/`. For a new
 rolling tabular regressor, subclass `RollingTabularModel` in
 `models/rolling_tabular/base.py` -- the `xgboost`, `random_forest`, and `mlp`
 models share that base and differ only in the estimator they plug in. For a
 rolling-evaluation model with fully custom internal state, see
-`models/job_runtime_tfidf_knn/`.
+`models/tfidf_knn/`.
 
 ## Running Alternate Models
 

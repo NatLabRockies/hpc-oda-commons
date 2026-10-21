@@ -145,8 +145,7 @@ def bench_matrix_plan(
         typer.Option(
             "--exclude-model",
             help=(
-                "Leave a model out of the matrix (repeatable). Full key "
-                "(job_runtime_mlp) or short tag (mlp)."
+                "Leave a model out of the matrix (repeatable). Full key (mlp) or short tag (mlp)."
             ),
         ),
     ] = None,

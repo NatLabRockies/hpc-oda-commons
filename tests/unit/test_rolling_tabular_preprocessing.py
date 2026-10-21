@@ -9,7 +9,6 @@ import pytest
 from scipy.linalg import LinAlgError
 from sklearn.decomposition import TruncatedSVD
 
-from hpc_oda_commons.models.job_runtime_xgboost.model import JobRuntimeXGBoostModel
 from hpc_oda_commons.models.rolling_tabular.preprocessing import (
     _SVD_N_OVERSAMPLES,
     analyze_one_hot_encoding,
@@ -20,6 +19,7 @@ from hpc_oda_commons.models.rolling_tabular.preprocessing import (
     select_svd_components,
     write_preprocessing_diagnostics,
 )
+from hpc_oda_commons.models.xgboost.model import XGBoostModel
 
 
 def _sample_rows() -> list[dict[str, object]]:
@@ -120,7 +120,7 @@ def test_svd_oversamples_beyond_the_sklearn_default() -> None:
 def test_daily_artifacts_fit_the_svd_with_the_same_conditioning() -> None:
     """The component count and the fitted transform must agree on the numerics (#159)."""
     rows = _sample_rows()
-    model = JobRuntimeXGBoostModel()
+    model = XGBoostModel()
     artifacts = model._build_daily_preprocessing_artifacts(rows)
 
     assert artifacts.svd is not None

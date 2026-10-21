@@ -43,16 +43,16 @@ def test_each_runner_builds_the_config_its_entry_names() -> None:
 
 
 def test_split_keys_follow_helpers_and_resolve_defaults() -> None:
-    xgb = RUNNERS[("model.job_runtime_xgboost", "rolling")]
+    xgb = RUNNERS[("model.xgboost", "rolling")]
     keys = dict(model_cards._split_keys(xgb.run, xgb.config))
     # Read through the shared rolling helper, with the config's defaults.
     assert keys["training_lookback_days"] == "`100`"
     assert keys["objective"] == "`reg:squarederror`"
-    cutoff = dict(model_cards._split_keys(RUNNERS[("model.job_power_uopc", "cutoff")].run, None))
+    cutoff = dict(model_cards._split_keys(RUNNERS[("model.uopc", "cutoff")].run, None))
     assert cutoff["test_start"] == "required"  # split["test_start"]
     assert cutoff["max_alloc_ratio"] == "`None`"  # split.get with no default is optional
     assert cutoff["predictor"] == "`median`"  # a module constant, resolved
-    fixed = RUNNERS[("model.job_power_uopc", "fixed")]
+    fixed = RUNNERS[("model.uopc", "fixed")]
     # Read inside the model's evaluate_fixed, which the runner hands split to.
     assert dict(model_cards._split_keys(fixed.run, fixed.config)) == {"train_fraction": "`0.8`"}
 
@@ -63,6 +63,6 @@ def test_cards_say_where_and_how_each_model_runs() -> None:
     cards = _cards()
     for model in RUNTIME_MODELS:
         assert "in the runtime fleet" in cards[f"{model}.md"], model
-    assert "in the runtime fleet" not in cards["job_power_uopc.md"]
-    assert "It does not use the shared submit-time allowlist." in cards["job_runtime_baseline.md"]
-    assert "shared submit-time allowlist ([" in cards["job_runtime_xgboost.md"]
+    assert "in the runtime fleet" not in cards["uopc.md"]
+    assert "It does not use the shared submit-time allowlist." in cards["baseline.md"]
+    assert "shared submit-time allowlist ([" in cards["xgboost.md"]

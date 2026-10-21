@@ -1,0 +1,1336 @@
+"""User-based online power prediction (UoPC): a per-user kNN over each user's own history.
+
+Adapted from https://github.com/francescoantici/UoPC:
+- Per-user history ordered by end time
+- Last ``theta`` jobs used as training context for each prediction
+- Categorical job features label-encoded per fit
+
+Two protocols live here. ``evaluate_fixed`` is the original Commons adaptation (fraction
+split, label-encoded job features, kNN regressor). ``evaluate_paper_reproduction`` and
+``evaluate_paper_sensitivity`` follow the paper's protocol (Antici et al., IEEE 11017729):
+a date cutoff, per-node targets and per-user kNN. By default they use only choices the
+Commons can defend, even where the authors' differ (#228, #241): targets per requested
+node, because F-DATA pads its allocated counts, ``balanced`` features, and the median of the
+neighbours' values rather than the authors' vote over whole watts. The authors' setup
+(``node_count: allocated``, ``uopc_features: zscore``, ``predictor: vote``) stays
+available for comparison with the paper
+(docs/benchmarking/power/uopc.md, docs/benchmarking/power/uopc-audit.md). Recipes pick the paper
+protocol with ``split.method: cutoff``.
+"""
+
+from __future__ import annotations
+
+import functools
+import math
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any
+
+import numpy as np
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.preprocessing import LabelEncoder
+from tqdm import tqdm
+
+from hpc_oda_commons.kernel.metrics import compute_regression_metrics_from_defs
+from hpc_oda_commons.models.rolling_tabular.base import _blas_single_thread
+
+_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
+    "maxpcon": ("maxpcon",),
+    "user": ("user", "usr"),
+    "name": ("name", "jnam"),
+    "processors_requested": ("processors_requested", "cnumr"),
+    "nodes_requested": ("nodes_requested", "nnumr"),
+    "end_time": ("end_time", "edt"),
+    # Canonical oda.job name first; raw F-DATA ``nnuma`` for hand-placed files.
+    "num_nodes_alloc": ("num_nodes_alloc", "nnuma"),
+}
+
+# The configuration the paper reproduction runs (#125): score jobs submitted from this
+# date, keep each user's newest THETA finished jobs, vote among K neighbours. The value
+# lists are the theta x k grid the sensitivity analysis sweeps.
+PAPER_TEST_START = "2024-02-01"
+PAPER_THETA = 500
+PAPER_K = 5
+# Our k (#228). The theta x k sweep on our settings (per requested node, balanced features)
+# keeps theta = 500 but puts k = 20 ~0.4 MAPE points ahead of the paper's k = 5 on both
+# targets. PAPER_K stays for the paper-comparison recipes.
+UOPC_DEFAULT_K = 20
+PAPER_THETA_VALUES: tuple[int, ...] = (50, 100, 200, 500, 1000, 2000, 5000)
+PAPER_K_VALUES: tuple[int, ...] = (5, 10, 20, 50)
+# The two targets the paper protocol predicts, both in watts per node.
+PAPER_TARGETS: tuple[str, ...] = ("avgpcon_per_node", "maxpcon_per_node")
+# Divisors the paper protocol's targets may use (#222). The default is requested nodes, as
+# in the rolling benchmark: F-DATA pads allocated counts (410,740 one-node jobs record 48),
+# while power sums only the nodes a job ran on, which match its request (#228). Allocated
+# nodes are the paper's divisor, kept for comparison with it.
+PAPER_NODE_COUNTS: tuple[str, ...] = ("allocated", "requested")
+UOPC_DEFAULT_NODE_COUNT = "requested"
+# How UoPC turns a job into the vector its kNN compares (#222):
+# - zscore: the job embedding plus z-scored cores, nodes and frequency requested, as the
+#   paper reproduction's published results use;
+# - embedding: the job embedding alone;
+# - balanced (default): the embedding plus log2(nodes) and frequency, weighted so a typical
+#   difference is comparable to the distance between two job names (median ~0.84 on
+#   F-DATA). It scored best everywhere tried, so it is the default since #222.
+UOPC_FEATURE_MODES: tuple[str, ...] = ("zscore", "embedding", "balanced")
+UOPC_DEFAULT_FEATURES = "balanced"
+# Balanced weights: each doubling of requested nodes adds 0.2 (1 -> 16 nodes adds 0.8), and
+# the lowest-to-highest requested frequency adds 0.8. Cores are left out: on F-DATA they are
+# always 48 x nodes.
+BALANCED_NODE_WEIGHT = 0.2
+BALANCED_FREQUENCY_WEIGHT = 0.8
+# How UoPC turns its k neighbours into a prediction (#241):
+# - vote: the authors' rule, KNeighborsClassifier over targets rounded to whole watts. When
+#   the neighbours' values differ the vote is a tie, which scipy's mode breaks to the lowest
+#   value, so it under-predicts wherever a user's jobs vary (PM100: bias -129 W). Kept for
+#   the paper-comparison recipes only;
+# - mean: the mean of the neighbours' values (KNeighborsRegressor);
+# - median (default): their median. On the F-DATA reproduction protocol (theta 500, k 20) it
+#   has the lowest MAE, the benchmark's metric, on both targets: average 5.44 W against the
+#   mean's 5.58 and the vote's 5.71. Chosen there only, as k was (#228); k = 20 still holds.
+UOPC_PREDICTORS: tuple[str, ...] = ("vote", "mean", "median")
+UOPC_DEFAULT_PREDICTOR = "median"
+# The sweep's column for each predictor. "classifier" and "regressor" predate #241 and are
+# kept so earlier sweep bundles read the same way.
+SWEEP_COLUMNS: dict[str, str] = {"vote": "classifier", "mean": "regressor", "median": "median"}
+
+
+@dataclass
+class _PaperPreparedData:
+    job_id_arr: np.ndarray
+    user_arr: np.ndarray
+    submit_arr: np.ndarray
+    end_arr: np.ndarray
+    num_cores_req_arr: np.ndarray
+    num_nodes_req_arr: np.ndarray
+    nnuma_arr: np.ndarray
+    freq_req_arr: np.ndarray
+    features: np.ndarray
+    avg_target_arr: np.ndarray
+    max_target_arr: np.ndarray
+    order: np.ndarray
+    user_rows: dict[str, np.ndarray]
+    user_ends: dict[str, np.ndarray]
+    test_idx: np.ndarray
+    # Running totals for the mean baselines, so each test job reads its mean in O(1)
+    # instead of re-averaging every earlier job. Index i holds the sum of the first i
+    # jobs by end time (globally, or within one user); index 0 is 0.
+    sorted_end: np.ndarray
+    global_avg_cumsum: np.ndarray
+    global_max_cumsum: np.ndarray
+    user_avg_cumsum: dict[str, np.ndarray]
+    user_max_cumsum: dict[str, np.ndarray]
+    # Jobs dropped for an allocated/requested node ratio above ``max_alloc_ratio`` (#222),
+    # and the node count the targets divide by.
+    rows_dropped_alloc_ratio: int = 0
+    node_count: str = UOPC_DEFAULT_NODE_COUNT
+    features_mode: str = UOPC_DEFAULT_FEATURES
+
+
+def _one_blas_thread(method):
+    """Run an evaluate_* method with native BLAS/OpenMP pools pinned to one thread.
+
+    UoPC fits a tiny kNN per test job (or per user and window): up to ``theta`` rows. Left
+    alone, scikit-learn and BLAS spin up a pool across every core for each of those
+    millions of fits, and the threads spend their time synchronising, not computing. On the
+    F-DATA reproduction this showed as ~12 cores busy, two-thirds of it kernel time, and was
+    4.7x slower than one thread, with identical results.
+    """
+
+    @functools.wraps(method)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        with _blas_single_thread():
+            return method(*args, **kwargs)
+
+    return wrapper
+
+
+def _cumsum_from_zero(values: np.ndarray) -> np.ndarray:
+    return np.concatenate(([0.0], np.cumsum(values, dtype=np.float64)))
+
+
+def balanced_numeric_features(
+    nodes: np.ndarray, frequency: np.ndarray, fit: np.ndarray
+) -> np.ndarray:
+    """The ``balanced`` numeric columns: weighted log2(requested nodes), and requested
+    frequency scaled to [0, 1] over the ``fit`` rows (history only) then weighted.
+
+    Missing or sub-1 node counts read as 1 node. Missing frequencies, or a frequency that
+    never varies in the fitted rows, contribute 0; values outside the fitted range are
+    clipped to it.
+    """
+    nodes = np.asarray(nodes, dtype=np.float64)
+    frequency = np.asarray(frequency, dtype=np.float64)
+    node_col = BALANCED_NODE_WEIGHT * np.log2(
+        np.where(np.isfinite(nodes) & (nodes >= 1), nodes, 1.0)
+    )
+    fitted = frequency[np.asarray(fit, dtype=bool)]
+    fitted = fitted[np.isfinite(fitted)]
+    freq_col = np.zeros_like(frequency)
+    if fitted.size and fitted.max() > fitted.min():
+        lo, hi = float(fitted.min()), float(fitted.max())
+        known = np.isfinite(frequency)
+        freq_col[known] = (
+            BALANCED_FREQUENCY_WEIGHT * (np.clip(frequency[known], lo, hi) - lo) / (hi - lo)
+        )
+    return np.column_stack([node_col, freq_col]).astype(np.float32)
+
+
+def check_uopc_features(features: str) -> None:
+    if features not in UOPC_FEATURE_MODES:
+        raise ValueError(f"features must be one of {list(UOPC_FEATURE_MODES)}, got {features!r}.")
+
+
+_FEATURE_LABELS = {
+    "zscore": "emb+znum",
+    "embedding": "emb",
+    "balanced": "emb+balanced(log2 nodes, frequency)",
+}
+
+
+def check_uopc_predictor(predictor: str) -> None:
+    if predictor not in UOPC_PREDICTORS:
+        raise ValueError(f"predictor must be one of {list(UOPC_PREDICTORS)}, got {predictor!r}.")
+
+
+def uopc_predict(
+    context_features: np.ndarray,
+    context_targets: tuple[np.ndarray, ...],
+    query_features: np.ndarray,
+    *,
+    k: int,
+    predictor: str,
+) -> list[np.ndarray]:
+    """Predict each target for every query from its k nearest context rows (#241).
+
+    ``vote`` fits one KNeighborsClassifier per target on whole watts, as the authors' tool
+    does. ``mean`` and ``median`` share one neighbour search across the targets; it is the
+    search KNeighborsClassifier makes, so all three see the same neighbours.
+    """
+    if predictor == "vote":
+        preds = []
+        for target in context_targets:
+            model = KNeighborsClassifier(n_neighbors=k)
+            model.fit(context_features, np.rint(target).astype(np.int64))
+            preds.append(model.predict(query_features).astype(np.float64))
+        return preds
+    search = KNeighborsRegressor(n_neighbors=k)
+    search.fit(context_features, np.zeros(len(context_features), dtype=np.float64))
+    neighbours = search.kneighbors(query_features, return_distance=False)
+    reduce = np.mean if predictor == "mean" else np.median
+    return [
+        reduce(np.asarray(target, dtype=np.float64)[neighbours], axis=1)
+        for target in context_targets
+    ]
+
+
+def _check_paper_variant(node_count: str, max_alloc_ratio: float | None) -> None:
+    if node_count not in PAPER_NODE_COUNTS:
+        raise ValueError(
+            f"node_count must be one of {list(PAPER_NODE_COUNTS)}, got {node_count!r}."
+        )
+    if max_alloc_ratio is not None and not (math.isfinite(max_alloc_ratio) and max_alloc_ratio > 0):
+        raise ValueError(f"max_alloc_ratio must be a positive number, got {max_alloc_ratio!r}.")
+
+
+def _paper_target_labels(node_count: str) -> list[str]:
+    nodes = "nnuma" if node_count == "allocated" else "num_nodes_req"
+    return [f"avgpcon/{nodes}", f"maxpcon/{nodes}"]
+
+
+def _paper_variant_summary(
+    prepared: _PaperPreparedData, max_alloc_ratio: float | None
+) -> dict[str, Any]:
+    return {
+        "node_count": prepared.node_count,
+        "max_alloc_ratio": max_alloc_ratio,
+        "rows_dropped_alloc_ratio": prepared.rows_dropped_alloc_ratio,
+    }
+
+
+@dataclass(frozen=True)
+class UopcConfig:
+    """Configuration for the UoPC user-based kNN power model."""
+
+    target_field: str = "maxpcon"
+    user_field: str = "user"
+    order_by_field: str = "end_time"
+    feature_fields: tuple[str, ...] = ("name", "processors_requested", "nodes_requested")
+    categorical_fields: frozenset[str] = frozenset({"name"})
+    theta: int = 50
+    k: int = 5
+
+
+def _first_present(row: dict[str, Any], field: str) -> Any:
+    for key in _FIELD_ALIASES.get(field, (field,)):
+        if key in row and row[key] is not None:
+            return row[key]
+    return None
+
+
+def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(row)
+    for canonical in _FIELD_ALIASES:
+        value = _first_present(row, canonical)
+        if value is not None:
+            normalized[canonical] = value
+    return normalized
+
+
+def _end_time_sort_key(row: dict[str, Any], *, field: str) -> float:
+    raw = row.get(field)
+    if raw is None:
+        return float("-inf")
+    if isinstance(raw, datetime):
+        return raw.timestamp()
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    text = str(raw).strip()
+    if not text:
+        return float("-inf")
+    normalized = text
+    if len(normalized) > 5 and normalized[-3] in "+-" and normalized[-2:].isdigit():
+        normalized = f"{normalized[:-3]}{normalized[-3]}{normalized[-2:]}:00"
+    try:
+        return datetime.fromisoformat(normalized.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return float("-inf")
+
+
+def _finite_target(row: dict[str, Any], target_field: str) -> float | None:
+    raw = _first_present(row, target_field)
+    if raw is None:
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(value):
+        return None
+    return value
+
+
+def _feature_value(row: dict[str, Any], field: str) -> Any:
+    return _first_present(row, field)
+
+
+def _feature_float(raw: Any) -> float:
+    """Coerce a numeric feature value to float, falling back to 0.0.
+
+    SLURM-derived fields (e.g. processors/nodes requested) may arrive as
+    non-numeric strings; mirror the XGBoost preprocessing convention of
+    tolerating them rather than crashing the whole benchmark.
+    """
+    if raw is None:
+        return 0.0
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _classifier_prediction_from_neighbor_targets(
+    neighbor_targets: np.ndarray,
+    k: int,
+) -> float:
+    """Reproduce uniform-weight KNeighborsClassifier voting from ordered neighbors."""
+    labels = np.rint(np.asarray(neighbor_targets[:k], dtype=np.float64)).astype(np.int64)
+    if labels.size < k:
+        raise ValueError(f"Need at least {k} neighbors, got {labels.size}.")
+    values, counts = np.unique(labels, return_counts=True)
+    return float(values[np.argmax(counts)])
+
+
+def _regressor_prediction_from_neighbor_targets(
+    neighbor_targets: np.ndarray,
+    k: int,
+) -> float:
+    """Reproduce uniform-weight KNeighborsRegressor prediction from ordered neighbors."""
+    values = np.asarray(neighbor_targets[:k], dtype=np.float64)
+    if values.size < k:
+        raise ValueError(f"Need at least {k} neighbors, got {values.size}.")
+    return float(np.mean(values))
+
+
+def _nearest_neighbor_indices_and_distances(
+    context_features: np.ndarray,
+    query_features: np.ndarray,
+    max_neighbors: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return nearest context-row indices and distances, ordered nearest first."""
+    if max_neighbors <= 0:
+        raise ValueError("max_neighbors must be positive.")
+
+    n_neighbors = min(max_neighbors, len(context_features))
+    if n_neighbors == 0:
+        return (
+            np.asarray([], dtype=np.int64),
+            np.asarray([], dtype=np.float64),
+        )
+
+    # Neighbor locations depend only on features, not on the prediction target.
+    # Fit once so avg/max power and multiple k values can reuse the same search.
+    model = KNeighborsRegressor(n_neighbors=n_neighbors)
+    model.fit(
+        context_features,
+        np.zeros(len(context_features), dtype=np.float64),
+    )
+
+    distances, indices = model.kneighbors(
+        query_features,
+        n_neighbors=n_neighbors,
+        return_distance=True,
+    )
+
+    return (
+        np.asarray(indices[0], dtype=np.int64),
+        np.asarray(distances[0], dtype=np.float64),
+    )
+
+
+class _LabelFeatureEncoder:
+    """Per-column label encoders fit on the user's training history."""
+
+    def __init__(self, categorical_fields: frozenset[str]) -> None:
+        self.categorical_fields = categorical_fields
+        self._encoders: dict[str, LabelEncoder] = {}
+
+    def fit_transform_row_matrix(
+        self,
+        history: list[dict[str, Any]],
+        query: dict[str, Any],
+        feature_fields: tuple[str, ...],
+    ) -> tuple[np.ndarray, np.ndarray]:
+        x_train = np.zeros((len(history), len(feature_fields)), dtype=np.float64)
+        x_query = np.zeros((1, len(feature_fields)), dtype=np.float64)
+
+        for col_idx, field in enumerate(feature_fields):
+            if field in self.categorical_fields:
+                encoder = LabelEncoder()
+                train_values = [str(_feature_value(row, field) or "") for row in history]
+                encoder.fit(train_values)
+                self._encoders[field] = encoder
+                x_train[:, col_idx] = encoder.transform(train_values)
+                query_value = str(_feature_value(query, field) or "")
+                if query_value in encoder.classes_:
+                    x_query[0, col_idx] = encoder.transform([query_value])[0]
+                else:
+                    x_query[0, col_idx] = -1.0
+            else:
+                train_numeric = [_feature_float(_feature_value(row, field)) for row in history]
+                x_train[:, col_idx] = np.asarray(train_numeric, dtype=np.float64)
+                x_query[0, col_idx] = _feature_float(_feature_value(query, field))
+
+        return x_train, x_query
+
+
+class UopcModel:
+    """UoPC-style per-user kNN model for fixed chronological evaluation."""
+
+    def __init__(self, config: UopcConfig | None = None) -> None:
+        self.config = config or UopcConfig()
+
+    @_one_blas_thread
+    def evaluate_fixed(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        split: dict[str, Any],
+        metric_defs: list[dict[str, Any]] | None = None,
+        verbose: bool = False,
+        capture_artifacts: bool = False,
+    ) -> dict[str, Any]:
+        cfg = self.config
+        resolved_metric_defs = metric_defs or [
+            {"name": "mae", "target": cfg.target_field},
+            {"name": "rmse", "target": cfg.target_field},
+        ]
+
+        supervised = [
+            _normalize_row(row) for row in rows if _finite_target(row, cfg.target_field) is not None
+        ]
+        if not supervised:
+            raise ValueError("No rows with a finite target value.")
+
+        supervised.sort(key=lambda row: _end_time_sort_key(row, field=cfg.order_by_field))
+
+        train_fraction = float(split.get("train_fraction", 0.8))
+        n_train = max(1, int(len(supervised) * train_fraction))
+        train_rows = supervised[:n_train]
+        test_rows = supervised[n_train:] if n_train < len(supervised) else []
+
+        history_by_user: dict[str, list[dict[str, Any]]] = {}
+        for row in train_rows:
+            user = str(_feature_value(row, cfg.user_field) or "")
+            history_by_user.setdefault(user, []).append(row)
+
+        y_true: list[float] = []
+        y_pred: list[float] = []
+        rows_skipped = 0
+
+        test_iter = tqdm(
+            test_rows,
+            desc="fixed/uopc",
+            unit="job",
+            disable=not verbose,
+        )
+
+        for test_row in test_iter:
+            user = str(_feature_value(test_row, cfg.user_field) or "")
+            history = list(history_by_user.get(user, []))
+            history.sort(
+                key=lambda row: _end_time_sort_key(row, field=cfg.order_by_field),
+                reverse=True,
+            )
+            context = history[: cfg.theta]
+
+            # Online evaluation: every test job is appended to its user's history
+            # after being seen, so it becomes context for that user's later jobs --
+            # whether or not it was scored. This mirrors the streaming UoPC design
+            # and is intentional, not train/test leakage.
+            if len(context) < cfg.k:
+                rows_skipped += 1
+                history_by_user.setdefault(user, []).append(test_row)
+                continue
+
+            pred = self._predict_one(context, test_row)
+            y_true.append(float(_finite_target(test_row, cfg.target_field)))
+            y_pred.append(pred)
+            history_by_user.setdefault(user, []).append(test_row)
+
+        if not y_true:
+            raise ValueError("No test rows produced scored predictions.")
+
+        metrics = compute_regression_metrics_from_defs(y_true, y_pred, resolved_metric_defs)
+        summary = {
+            "rows_total": len(supervised),
+            "rows_train": len(train_rows),
+            "rows_test": len(test_rows),
+            "rows_scored": len(y_true),
+            "rows_skipped": rows_skipped,
+            "theta": cfg.theta,
+            "k": cfg.k,
+            "train_fraction": train_fraction,
+        }
+
+        result: dict[str, Any] = {
+            **metrics,
+            "definitions": resolved_metric_defs,
+            "summary": summary,
+        }
+        if capture_artifacts:
+            result["_y_true"] = y_true
+            result["_y_pred"] = y_pred
+            # UoPC has no single persistent estimator -- each prediction fits a
+            # fresh per-user kNN on its own context window. The captured artifact
+            # is therefore the configuration needed to reproduce the run, not a
+            # fitted model (so save_model pickles this config rather than an estimator).
+            result["_last_model"] = {"kind": "uopc", "config": cfg}
+        return result
+
+    def _prepare_paper_data(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        test_start: str,
+        node_count: str = UOPC_DEFAULT_NODE_COUNT,
+        max_alloc_ratio: float | None = None,
+        features: str = UOPC_DEFAULT_FEATURES,
+    ) -> _PaperPreparedData:
+        _check_paper_variant(node_count, max_alloc_ratio)
+        check_uopc_features(features)
+        rows_dropped_alloc_ratio = 0
+        cutoff = datetime.fromisoformat(test_start).replace(tzinfo=timezone.utc).timestamp()
+
+        job_ids: list[Any] = []
+        users: list[str] = []
+        submits: list[float] = []
+        ends: list[float] = []
+
+        num_cores_req_values: list[float] = []
+        num_nodes_req_values: list[float] = []
+        nnuma_values: list[float] = []
+        freq_req_values: list[float] = []
+
+        embeddings: list[np.ndarray] = []
+        numeric: list[list[float]] = []
+        avg_targets: list[float] = []
+        max_targets: list[float] = []
+
+        for row in rows:
+            nnuma_raw = _first_present(row, "num_nodes_alloc")
+            avgpcon_raw = row.get("avgpcon")
+            maxpcon_raw = row.get("maxpcon")
+            emb_raw = row.get("embedding")
+            adt_raw = row.get("submit_time")
+            edt_raw = row.get("end_time")
+
+            if (
+                nnuma_raw in (None, 0)
+                or avgpcon_raw is None
+                or maxpcon_raw is None
+                or emb_raw is None
+                or adt_raw is None
+                or edt_raw is None
+            ):
+                continue
+
+            submit = _end_time_sort_key({"ts": adt_raw}, field="ts")
+            end = _end_time_sort_key({"ts": edt_raw}, field="ts")
+
+            try:
+                nnuma = float(nnuma_raw)
+                avgpcon = float(avgpcon_raw)
+                maxpcon = float(maxpcon_raw)
+                emb = np.asarray(emb_raw, dtype=np.float32)
+            except (TypeError, ValueError):
+                continue
+
+            num_nodes_req = _feature_float(row.get("num_nodes_req"))
+            # The paper's data appears to lack F-DATA's most padded jobs (allocated 24x or
+            # 48x what they requested), so a variant drops them from history and test alike
+            # (#222). A job without a requested count can't be judged and is kept.
+            if (
+                max_alloc_ratio is not None
+                and num_nodes_req > 0
+                and nnuma / num_nodes_req > max_alloc_ratio
+            ):
+                rows_dropped_alloc_ratio += 1
+                continue
+
+            # Whole-job power per node. By default per requested node, like the prepared
+            # avgpcon_per_node columns, because nnuma can be padded (#204, #228). The
+            # paper divides by allocated nodes (nnuma), per its text and figures; that
+            # stays available as node_count="allocated" for comparison with it.
+            nodes = nnuma if node_count == "allocated" else num_nodes_req
+            if nodes <= 0:
+                continue
+            avg_target = avgpcon / nodes
+            max_target = maxpcon / nodes
+
+            if (
+                not math.isfinite(submit)
+                or not math.isfinite(end)
+                or not math.isfinite(avg_target)
+                or not math.isfinite(max_target)
+                or nnuma <= 0
+                or emb.ndim != 1
+                or emb.size == 0
+            ):
+                continue
+
+            job_ids.append(row.get("job_id"))
+            num_cores_req_values.append(_feature_float(row.get("num_cores_req")))
+            num_nodes_req_values.append(_feature_float(row.get("num_nodes_req")))
+            nnuma_values.append(nnuma)
+            freq_req_values.append(_feature_float(row.get("freq_req")))
+
+            users.append(str(row.get("user") or ""))
+            submits.append(submit)
+            ends.append(end)
+            embeddings.append(emb)
+            numeric.append(
+                [
+                    _feature_float(row.get("num_cores_req")),
+                    _feature_float(row.get("num_nodes_req")),
+                    _feature_float(row.get("freq_req")),
+                ]
+            )
+            avg_targets.append(avg_target)
+            max_targets.append(max_target)
+
+        if not avg_targets:
+            raise ValueError("No usable rows for UoPC paper reproduction.")
+
+        job_id_arr = np.asarray(job_ids)
+        user_arr = np.asarray(users)
+        submit_arr = np.asarray(submits, dtype=np.float64)
+        end_arr = np.asarray(ends, dtype=np.float64)
+
+        num_cores_req_arr = np.asarray(
+            num_cores_req_values,
+            dtype=np.float64,
+        )
+        num_nodes_req_arr = np.asarray(
+            num_nodes_req_values,
+            dtype=np.float64,
+        )
+        nnuma_arr = np.asarray(
+            nnuma_values,
+            dtype=np.float64,
+        )
+        freq_req_arr = np.asarray(
+            freq_req_values,
+            dtype=np.float64,
+        )
+
+        emb_arr = np.ascontiguousarray(
+            np.vstack(embeddings),
+            dtype=np.float32,
+        )
+        num_arr = np.asarray(numeric, dtype=np.float32)
+        avg_target_arr = np.asarray(avg_targets, dtype=np.float64)
+        max_target_arr = np.asarray(max_targets, dtype=np.float64)
+
+        if features == "zscore":
+            # Standardize over the whole usable dataset, test period included. This is the
+            # Commons' adaptation (#203); the paper embeds the numbers as text and scales
+            # nothing. Test-period statistics shape the feature scale, a look-ahead that is
+            # immaterial here: frequency's two values stay >= 2 apart under any scaling, and
+            # outliers keep cores and nodes negligible either way (uopc-audit.md).
+            mu = num_arr.mean(axis=0)
+            sd = num_arr.std(axis=0)
+            sd[sd == 0] = 1.0
+
+            features_arr = np.hstack([emb_arr, (num_arr - mu) / sd]).astype(np.float32)
+        elif features == "embedding":
+            features_arr = emb_arr
+        else:
+            # Frequency's range comes from jobs submitted before the cutoff: history only.
+            numeric_cols = balanced_numeric_features(
+                num_nodes_req_arr, freq_req_arr, fit=submit_arr < cutoff
+            )
+            features_arr = np.hstack([emb_arr, numeric_cols]).astype(np.float32)
+
+        # Pre-sort each user's rows by completion time.
+        order = np.argsort(end_arr, kind="stable")
+
+        by_user: dict[str, list[int]] = {}
+        for idx in order:
+            by_user.setdefault(user_arr[idx], []).append(int(idx))
+
+        user_rows = {user: np.asarray(indices, dtype=np.int64) for user, indices in by_user.items()}
+        user_ends = {user: end_arr[indices] for user, indices in user_rows.items()}
+
+        test_idx = np.where(submit_arr >= cutoff)[0]
+        test_idx = test_idx[np.argsort(submit_arr[test_idx], kind="stable")]
+
+        return _PaperPreparedData(
+            job_id_arr=job_id_arr,
+            user_arr=user_arr,
+            submit_arr=submit_arr,
+            end_arr=end_arr,
+            num_cores_req_arr=num_cores_req_arr,
+            num_nodes_req_arr=num_nodes_req_arr,
+            nnuma_arr=nnuma_arr,
+            freq_req_arr=freq_req_arr,
+            features=features_arr,
+            avg_target_arr=avg_target_arr,
+            max_target_arr=max_target_arr,
+            order=order,
+            user_rows=user_rows,
+            user_ends=user_ends,
+            test_idx=test_idx,
+            sorted_end=end_arr[order],
+            global_avg_cumsum=_cumsum_from_zero(avg_target_arr[order]),
+            global_max_cumsum=_cumsum_from_zero(max_target_arr[order]),
+            user_avg_cumsum={
+                user: _cumsum_from_zero(avg_target_arr[indices])
+                for user, indices in user_rows.items()
+            },
+            user_max_cumsum={
+                user: _cumsum_from_zero(max_target_arr[indices])
+                for user, indices in user_rows.items()
+            },
+            rows_dropped_alloc_ratio=rows_dropped_alloc_ratio,
+            node_count=node_count,
+            features_mode=features,
+        )
+
+    @_one_blas_thread
+    def evaluate_paper_reproduction(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        test_start: str = PAPER_TEST_START,
+        theta: int = PAPER_THETA,
+        k: int = UOPC_DEFAULT_K,
+        node_count: str = UOPC_DEFAULT_NODE_COUNT,
+        max_alloc_ratio: float | None = None,
+        features: str = UOPC_DEFAULT_FEATURES,
+        predictor: str = UOPC_DEFAULT_PREDICTOR,
+        metric_defs: list[dict[str, Any]] | None = None,
+        verbose: bool = False,
+        capture_artifacts: bool = False,
+    ) -> dict[str, Any]:
+        """Evaluate the paper reproduction of Antici et al. UoPC.
+
+        This path intentionally remains separate from ``evaluate_fixed`` so the
+        existing HPC ODA UoPC adaptation and its defaults are unchanged.
+
+        Reproduction protocol:
+        - targets: avgpcon and maxpcon per requested node by default (``node_count``)
+        - features: ``balanced`` by default (``features``; see UOPC_FEATURE_MODES)
+        - test jobs: adt >= test_start
+        - history: same-user jobs with edt < query adt
+        - context: newest ``theta`` eligible jobs by completion time
+        - predictor: ``median`` of the k neighbours by default (``predictor``; see
+          UOPC_PREDICTORS); ``vote`` is the authors' KNeighborsClassifier on whole watts
+
+        The headline metrics are avgpcon per node. With ``capture_artifacts`` the
+        avgpcon predictions go out as ``_y_true``/``_y_pred`` and every job's
+        prediction for both targets (plus the baselines) as ``_per_job_records``.
+        """
+        resolved_metric_defs = metric_defs or [
+            {"name": "mape", "target": "avgpcon_per_node"},
+            {"name": "r2", "target": "avgpcon_per_node"},
+        ]
+
+        avg_metric_defs = [
+            {**metric_def, "target": "avgpcon_per_node"} for metric_def in resolved_metric_defs
+        ]
+
+        max_metric_defs = [
+            {**metric_def, "target": "maxpcon_per_node"} for metric_def in resolved_metric_defs
+        ]
+
+        check_uopc_predictor(predictor)
+        prepared = self._prepare_paper_data(
+            rows,
+            test_start=test_start,
+            node_count=node_count,
+            max_alloc_ratio=max_alloc_ratio,
+            features=features,
+        )
+
+        job_id_arr = prepared.job_id_arr
+        user_arr = prepared.user_arr
+        submit_arr = prepared.submit_arr
+        end_arr = prepared.end_arr
+        num_cores_req_arr = prepared.num_cores_req_arr
+        num_nodes_req_arr = prepared.num_nodes_req_arr
+        nnuma_arr = prepared.nnuma_arr
+        freq_req_arr = prepared.freq_req_arr
+        features = prepared.features
+        avg_target_arr = prepared.avg_target_arr
+        max_target_arr = prepared.max_target_arr
+        user_rows = prepared.user_rows
+        user_ends = prepared.user_ends
+        test_idx = prepared.test_idx
+
+        avg_y_true: list[float] = []
+        avg_y_pred: list[float] = []
+        max_y_true: list[float] = []
+        max_y_pred: list[float] = []
+        user_mean_avg_y_pred: list[float] = []
+        user_mean_max_y_pred: list[float] = []
+        global_mean_avg_y_pred: list[float] = []
+        global_mean_max_y_pred: list[float] = []
+        per_job_records: list[dict[str, Any]] = []
+        rows_skipped = 0
+
+        iterator = tqdm(
+            test_idx,
+            desc="cutoff/uopc-paper-repro",
+            unit="job",
+            disable=not verbose,
+        )
+
+        for j in iterator:
+            user = user_arr[j]
+            ends_for_user = user_ends.get(user)
+
+            if ends_for_user is None:
+                rows_skipped += 1
+                continue
+
+            # Strict paper history rule: completed BEFORE submission.
+            pos = int(
+                np.searchsorted(
+                    ends_for_user,
+                    submit_arr[j],
+                    side="left",
+                )
+            )
+
+            if pos < k:
+                rows_skipped += 1
+                continue
+
+            # All same-user jobs completed before this query.
+            user_history = user_rows[user][:pos]
+
+            # UoPC itself uses only the newest theta eligible jobs.
+            context = user_history[max(0, len(user_history) - theta) :]
+
+            history_size = len(user_history)
+            context_size = len(context)
+
+            # Trivial per-user baseline: mean over all eligible prior jobs for
+            # this user, with no future information.
+            user_mean_avg_pred = float(prepared.user_avg_cumsum[user][pos] / pos)
+            user_mean_max_pred = float(prepared.user_max_cumsum[user][pos] / pos)
+
+            # Trivial global baseline: mean over all jobs completed before this
+            # query's submission time, with no future information. Never empty:
+            # this user's ``pos >= k`` finished jobs are among them.
+            global_pos = int(np.searchsorted(prepared.sorted_end, submit_arr[j], side="left"))
+            global_mean_avg_pred = float(prepared.global_avg_cumsum[global_pos] / global_pos)
+            global_mean_max_pred = float(prepared.global_max_cumsum[global_pos] / global_pos)
+
+            # Both paper targets from the same eligible history context. With ``vote``,
+            # the authors' KNeighborsClassifier, per-node power is rounded to whole watts
+            # first, since a classifier needs discrete labels; the rounding is ours.
+            avg_pred, max_pred = uopc_predict(
+                features[context],
+                (avg_target_arr[context], max_target_arr[context]),
+                features[j : j + 1],
+                k=k,
+                predictor=predictor,
+            )
+
+            avg_y_true.append(float(avg_target_arr[j]))
+            avg_y_pred.append(float(avg_pred[0]))
+            max_y_true.append(float(max_target_arr[j]))
+            max_y_pred.append(float(max_pred[0]))
+            user_mean_avg_y_pred.append(user_mean_avg_pred)
+            user_mean_max_y_pred.append(user_mean_max_pred)
+            global_mean_avg_y_pred.append(global_mean_avg_pred)
+            global_mean_max_y_pred.append(global_mean_max_pred)
+
+            if capture_artifacts:
+                per_job_records.append(
+                    {
+                        "job_id": (
+                            job_id_arr[j].item()
+                            if isinstance(job_id_arr[j], np.generic)
+                            else job_id_arr[j]
+                        ),
+                        "user": str(user_arr[j]),
+                        "submit_time": float(submit_arr[j]),
+                        "end_time": float(end_arr[j]),
+                        "history_size": int(history_size),
+                        "context_size": int(context_size),
+                        "num_cores_req": float(num_cores_req_arr[j]),
+                        "num_nodes_req": float(num_nodes_req_arr[j]),
+                        "nnuma": float(nnuma_arr[j]),
+                        "freq_req": float(freq_req_arr[j]),
+                        "avgpcon_per_node_true": float(avg_target_arr[j]),
+                        "avgpcon_per_node_pred": float(avg_pred[0]),
+                        "maxpcon_per_node_true": float(max_target_arr[j]),
+                        "maxpcon_per_node_pred": float(max_pred[0]),
+                        "per_user_mean_avg_pred": user_mean_avg_pred,
+                        "per_user_mean_max_pred": user_mean_max_pred,
+                        "global_mean_avg_pred": global_mean_avg_pred,
+                        "global_mean_max_pred": global_mean_max_pred,
+                    }
+                )
+
+        if not avg_y_true or not max_y_true:
+            raise ValueError("No test rows produced scored predictions in paper reproduction.")
+
+        avg_metrics = compute_regression_metrics_from_defs(
+            avg_y_true,
+            avg_y_pred,
+            avg_metric_defs,
+        )
+        max_metrics = compute_regression_metrics_from_defs(
+            max_y_true,
+            max_y_pred,
+            max_metric_defs,
+        )
+
+        user_mean_avg_metrics = compute_regression_metrics_from_defs(
+            avg_y_true,
+            user_mean_avg_y_pred,
+            avg_metric_defs,
+        )
+        user_mean_max_metrics = compute_regression_metrics_from_defs(
+            max_y_true,
+            user_mean_max_y_pred,
+            max_metric_defs,
+        )
+
+        global_mean_avg_metrics = compute_regression_metrics_from_defs(
+            avg_y_true,
+            global_mean_avg_y_pred,
+            avg_metric_defs,
+        )
+        global_mean_max_metrics = compute_regression_metrics_from_defs(
+            max_y_true,
+            global_mean_max_y_pred,
+            max_metric_defs,
+        )
+
+        result: dict[str, Any] = {
+            "avgpcon_per_node": {
+                **avg_metrics,
+                "definitions": avg_metric_defs,
+            },
+            "maxpcon_per_node": {
+                **max_metrics,
+                "definitions": max_metric_defs,
+            },
+            "baselines": {
+                "per_user_mean": {
+                    "avgpcon_per_node": {
+                        **user_mean_avg_metrics,
+                        "definitions": avg_metric_defs,
+                    },
+                    "maxpcon_per_node": {
+                        **user_mean_max_metrics,
+                        "definitions": max_metric_defs,
+                    },
+                },
+                "global_mean": {
+                    "avgpcon_per_node": {
+                        **global_mean_avg_metrics,
+                        "definitions": avg_metric_defs,
+                    },
+                    "maxpcon_per_node": {
+                        **global_mean_max_metrics,
+                        "definitions": max_metric_defs,
+                    },
+                },
+            },
+            "summary": {
+                "rows_total": len(avg_target_arr),
+                "rows_test": len(test_idx),
+                "rows_scored": len(avg_y_true),
+                "rows_skipped": rows_skipped,
+                "theta": theta,
+                "k": k,
+                "test_start": test_start,
+                "targets": _paper_target_labels(prepared.node_count),
+                **_paper_variant_summary(prepared, max_alloc_ratio),
+                "features": _FEATURE_LABELS[prepared.features_mode],
+                "predictor": predictor,
+            },
+        }
+
+        if capture_artifacts:
+            # Only the keys run_extras consumes (and strips): anything else starting
+            # with "_" would land in metrics.json, one value per test job (#168).
+            result["_y_true"] = avg_y_true
+            result["_y_pred"] = avg_y_pred
+            result["_per_job_records"] = per_job_records
+            result["_last_model"] = {
+                "kind": "uopc_paper_reproduction",
+                "theta": theta,
+                "k": k,
+                "test_start": test_start,
+                "targets": _paper_target_labels(prepared.node_count),
+            }
+
+        return result
+
+    @_one_blas_thread
+    def evaluate_paper_sensitivity(
+        self,
+        rows: list[dict[str, Any]],
+        *,
+        test_start: str = PAPER_TEST_START,
+        theta_values: tuple[int, ...] = PAPER_THETA_VALUES,
+        k_values: tuple[int, ...] = PAPER_K_VALUES,
+        node_count: str = UOPC_DEFAULT_NODE_COUNT,
+        max_alloc_ratio: float | None = None,
+        features: str = UOPC_DEFAULT_FEATURES,
+        metric_defs: list[dict[str, Any]] | None = None,
+        verbose: bool = False,
+        capture_artifacts: bool = False,
+    ) -> dict[str, Any]:
+        """Evaluate UoPC theta/k sensitivity with reusable neighbor searches.
+
+        For each theta and query job, nearest neighbors are retrieved once up to
+        max(k_values). Those ordered neighbors are then reused for every k.
+
+        Every cell is scored by each predictor in UOPC_PREDICTORS, from the same
+        neighbours, under the column names in SWEEP_COLUMNS (#241).
+        """
+        if not theta_values:
+            raise ValueError("theta_values must not be empty.")
+        if not k_values:
+            raise ValueError("k_values must not be empty.")
+        if any(theta <= 0 for theta in theta_values):
+            raise ValueError("theta_values must contain only positive integers.")
+        if any(k <= 0 for k in k_values):
+            raise ValueError("k_values must contain only positive integers.")
+
+        theta_values = tuple(sorted(set(theta_values)))
+        k_values = tuple(sorted(set(k_values)))
+        max_k = max(k_values)
+
+        resolved_metric_defs = metric_defs or [
+            {"name": "mape", "target": "avgpcon_per_node"},
+            {"name": "r2", "target": "avgpcon_per_node"},
+        ]
+
+        avg_metric_defs = [
+            {**metric_def, "target": "avgpcon_per_node"} for metric_def in resolved_metric_defs
+        ]
+
+        max_metric_defs = [
+            {**metric_def, "target": "maxpcon_per_node"} for metric_def in resolved_metric_defs
+        ]
+
+        prepared = self._prepare_paper_data(
+            rows,
+            test_start=test_start,
+            node_count=node_count,
+            max_alloc_ratio=max_alloc_ratio,
+            features=features,
+        )
+
+        user_arr = prepared.user_arr
+        submit_arr = prepared.submit_arr
+        features = prepared.features
+        avg_target_arr = prepared.avg_target_arr
+        max_target_arr = prepared.max_target_arr
+        user_rows = prepared.user_rows
+        user_ends = prepared.user_ends
+        test_idx = prepared.test_idx
+
+        # One history count per test job. This is independent of theta and k
+        # and can later be used for cold-start/coverage analysis.
+        history_counts: list[int] = []
+
+        # Results are accumulated independently for every theta/k pair because
+        # coverage differs with k: a job with 7 prior jobs is valid for k=5
+        # but not for k=10, 20, or 50.
+        accumulators: dict[
+            tuple[int, int],
+            dict[str, dict[str, list[float]]],
+        ] = {}
+
+        for theta in theta_values:
+            for k in k_values:
+                accumulators[(theta, k)] = {
+                    "classifier": {
+                        "avg_true": [],
+                        "avg_pred": [],
+                        "max_true": [],
+                        "max_pred": [],
+                    },
+                    "regressor": {
+                        "avg_true": [],
+                        "avg_pred": [],
+                        "max_true": [],
+                        "max_pred": [],
+                    },
+                    "median": {
+                        "avg_true": [],
+                        "avg_pred": [],
+                        "max_true": [],
+                        "max_pred": [],
+                    },
+                }
+
+        theta_timings: dict[int, float] = {}
+        total_start = time.perf_counter()
+
+        # Process one theta at a time. For each query, retrieve up to max_k
+        # neighbors once and reuse them for all requested k values.
+        for theta in theta_values:
+            theta_start = time.perf_counter()
+
+            iterator = tqdm(
+                test_idx,
+                desc=f"uopc-sensitivity/theta={theta}",
+                unit="job",
+                disable=not verbose,
+            )
+
+            for j in iterator:
+                user = user_arr[j]
+                ends_for_user = user_ends.get(user)
+
+                if ends_for_user is None:
+                    if theta == theta_values[0]:
+                        history_counts.append(0)
+                    continue
+
+                pos = int(
+                    np.searchsorted(
+                        ends_for_user,
+                        submit_arr[j],
+                        side="left",
+                    )
+                )
+
+                if theta == theta_values[0]:
+                    history_counts.append(pos)
+
+                if pos == 0:
+                    continue
+
+                user_history = user_rows[user][:pos]
+                context = user_history[max(0, len(user_history) - theta) :]
+
+                if len(context) == 0:
+                    continue
+
+                neighbor_indices, _neighbor_distances = _nearest_neighbor_indices_and_distances(
+                    features[context],
+                    features[j].reshape(1, -1),
+                    max_neighbors=max_k,
+                )
+
+                if len(neighbor_indices) == 0:
+                    continue
+
+                # kneighbors() indices are relative to context.
+                neighbor_rows = context[neighbor_indices]
+
+                avg_neighbor_targets = avg_target_arr[neighbor_rows]
+                max_neighbor_targets = max_target_arr[neighbor_rows]
+
+                for k in k_values:
+                    if len(neighbor_rows) < k:
+                        continue
+
+                    bucket = accumulators[(theta, k)]
+
+                    avg_classifier_pred = _classifier_prediction_from_neighbor_targets(
+                        avg_neighbor_targets,
+                        k,
+                    )
+                    max_classifier_pred = _classifier_prediction_from_neighbor_targets(
+                        max_neighbor_targets,
+                        k,
+                    )
+
+                    avg_regressor_pred = _regressor_prediction_from_neighbor_targets(
+                        avg_neighbor_targets,
+                        k,
+                    )
+                    max_regressor_pred = _regressor_prediction_from_neighbor_targets(
+                        max_neighbor_targets,
+                        k,
+                    )
+                    avg_median_pred = float(np.median(avg_neighbor_targets[:k]))
+                    max_median_pred = float(np.median(max_neighbor_targets[:k]))
+
+                    avg_true = float(avg_target_arr[j])
+                    max_true = float(max_target_arr[j])
+
+                    bucket["classifier"]["avg_true"].append(avg_true)
+                    bucket["classifier"]["avg_pred"].append(avg_classifier_pred)
+                    bucket["classifier"]["max_true"].append(max_true)
+                    bucket["classifier"]["max_pred"].append(max_classifier_pred)
+
+                    bucket["regressor"]["avg_true"].append(avg_true)
+                    bucket["regressor"]["avg_pred"].append(avg_regressor_pred)
+                    bucket["regressor"]["max_true"].append(max_true)
+                    bucket["regressor"]["max_pred"].append(max_regressor_pred)
+
+                    bucket["median"]["avg_true"].append(avg_true)
+                    bucket["median"]["avg_pred"].append(avg_median_pred)
+                    bucket["median"]["max_true"].append(max_true)
+                    bucket["median"]["max_pred"].append(max_median_pred)
+
+            theta_timings[theta] = time.perf_counter() - theta_start
+
+        total_seconds = time.perf_counter() - total_start
+
+        results: dict[str, Any] = {}
+
+        for theta in theta_values:
+            theta_result: dict[str, Any] = {}
+
+            for k in k_values:
+                bucket = accumulators[(theta, k)]
+                configuration: dict[str, Any] = {}
+
+                for predictor in SWEEP_COLUMNS.values():
+                    values = bucket[predictor]
+
+                    avg_true = values["avg_true"]
+                    avg_pred = values["avg_pred"]
+                    max_true = values["max_true"]
+                    max_pred = values["max_pred"]
+
+                    predictor_result: dict[str, Any] = {
+                        "rows_scored": len(avg_true),
+                        "coverage": (len(avg_true) / len(test_idx) if len(test_idx) else 0.0),
+                    }
+
+                    if avg_true:
+                        predictor_result["avgpcon_per_node"] = compute_regression_metrics_from_defs(
+                            avg_true,
+                            avg_pred,
+                            avg_metric_defs,
+                        )
+                        predictor_result["maxpcon_per_node"] = compute_regression_metrics_from_defs(
+                            max_true,
+                            max_pred,
+                            max_metric_defs,
+                        )
+                    else:
+                        predictor_result["avgpcon_per_node"] = {}
+                        predictor_result["maxpcon_per_node"] = {}
+
+                    configuration[predictor] = predictor_result
+
+                theta_result[str(k)] = configuration
+
+            results[str(theta)] = theta_result
+
+        history_arr = np.asarray(history_counts, dtype=np.int64)
+
+        cold_start = {
+            "rows_test": int(len(test_idx)),
+            "history_count_min": (int(history_arr.min()) if history_arr.size else 0),
+            "history_count_max": (int(history_arr.max()) if history_arr.size else 0),
+            "history_count_mean": (float(history_arr.mean()) if history_arr.size else 0.0),
+            "history_count_median": (float(np.median(history_arr)) if history_arr.size else 0.0),
+            "rows_with_0_history": int(np.sum(history_arr == 0)),
+            "rows_with_lt_5_history": int(np.sum(history_arr < 5)),
+            "rows_with_lt_10_history": int(np.sum(history_arr < 10)),
+            "rows_with_lt_20_history": int(np.sum(history_arr < 20)),
+            "rows_with_lt_50_history": int(np.sum(history_arr < 50)),
+        }
+
+        result: dict[str, Any] = {
+            "summary": {
+                "rows_total": len(avg_target_arr),
+                "rows_test": int(len(test_idx)),
+                "theta_values": list(theta_values),
+                "k_values": list(k_values),
+                "max_neighbors": max_k,
+                "test_start": test_start,
+                "predictor_columns": dict(SWEEP_COLUMNS),
+                "targets": _paper_target_labels(prepared.node_count),
+                **_paper_variant_summary(prepared, max_alloc_ratio),
+                "features": _FEATURE_LABELS[prepared.features_mode],
+                "history_rule": "same user with edt < query adt",
+            },
+            "results": results,
+            "cold_start": cold_start,
+            "timing": {
+                "total_seconds": total_seconds,
+                "theta_seconds": {str(theta): seconds for theta, seconds in theta_timings.items()},
+            },
+        }
+
+        # No per-job artifacts: a grid has no single prediction per job, and the history
+        # counts are summarised in ``cold_start``. ``capture_artifacts`` is accepted for
+        # interface parity with the other evaluate_* methods.
+        _ = capture_artifacts
+
+        return result
+
+    def _predict_one(
+        self,
+        history: list[dict[str, Any]],
+        query: dict[str, Any],
+    ) -> float:
+        """Fit a fresh per-user kNN on this query's context window and predict.
+
+        Note: a LabelEncoder and KNeighborsRegressor are refit for every test
+        row. This is inherent to the per-user sliding-context design (each query
+        sees a different history window) and is acceptable for v0.1 power
+        datasets; it is a known scaling limitation for very large test sets.
+        """
+        cfg = self.config
+        encoder = _LabelFeatureEncoder(cfg.categorical_fields)
+        x_train, x_query = encoder.fit_transform_row_matrix(history, query, cfg.feature_fields)
+        y_train = np.asarray(
+            [float(_finite_target(row, cfg.target_field)) for row in history],
+            dtype=np.float64,
+        )
+
+        k_eff = min(cfg.k, len(history))
+        model = KNeighborsRegressor(n_neighbors=k_eff)
+        model.fit(x_train, y_train)
+        return float(model.predict(x_query)[0])

@@ -56,7 +56,7 @@ def test_embed_then_benchmark_end_to_end(
             "table_path": "data/ingested/jobs_parquet/embedded_jobs/data.parquet",
             "manifest_path": "data/ingested/jobs_parquet/embedded_jobs/data.parquet.manifest.json",
         },
-        "model": {"id": "model.job_runtime_embedding_knn", "version": "0.1.0"},
+        "model": {"id": "model.embedding_knn", "version": "0.1.0"},
         "metrics": [
             {"name": "mae", "target": "runtime_seconds"},
             {"name": "rmse", "target": "runtime_seconds"},
@@ -79,5 +79,5 @@ def test_embed_then_benchmark_end_to_end(
     for fname in ("result.json", "metrics.json", "provenance.json"):
         assert (bundle_dir / fname).exists(), f"missing {fname}"
     result = load_json(bundle_dir / "result.json")
-    assert result["model"]["id"] == "model.job_runtime_embedding_knn"
+    assert result["model"]["id"] == "model.embedding_knn"
     assert "mae" in result["metrics"]

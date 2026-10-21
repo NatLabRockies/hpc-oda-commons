@@ -20,8 +20,8 @@ def test_snapshot_loads_expected_entries() -> None:
     snapshot = load_registry_snapshot()
     ids = {entry.id for entry in snapshot.entries}
     assert "adapter.slurmctld" in ids
-    assert "model.job_runtime_baseline" in ids
-    assert "model.job_runtime_xgboost" in ids
+    assert "model.baseline" in ids
+    assert "model.xgboost" in ids
     assert "recipe.job_runtime.baseline_tiny" in ids
     assert "recipe.job_runtime.xgb_hourly_recent" in ids
 
@@ -33,8 +33,8 @@ def test_index_filters_by_tag_and_source() -> None:
     job_runtime = index.filter(tag="job-runtime-prediction")
     job_runtime_ids = {entry.id for entry in job_runtime}
     assert "adapter.slurmctld" in job_runtime_ids
-    assert "model.job_runtime_baseline" in job_runtime_ids
-    assert "model.job_runtime_xgboost" in job_runtime_ids
+    assert "model.baseline" in job_runtime_ids
+    assert "model.xgboost" in job_runtime_ids
     assert "recipe.job_runtime.baseline_tiny" in job_runtime_ids
     assert "recipe.job_runtime.xgb_hourly_recent" in job_runtime_ids
 
@@ -45,8 +45,8 @@ def test_index_filters_by_tag_and_source() -> None:
     # intentionally excluded from the source filter even when tagged job-runtime.
     slurm_sourced = {
         "adapter.slurmctld",
-        "model.job_runtime_baseline",
-        "model.job_runtime_xgboost",
+        "model.baseline",
+        "model.xgboost",
         "recipe.job_runtime.baseline_tiny",
         "recipe.job_runtime.xgb_hourly_recent",
     }
@@ -59,15 +59,15 @@ def test_index_filters_by_entry_type() -> None:
 
     models = index.filter(entry_type="model")
     assert [entry.id for entry in models] == [
-        "model.job_runtime_baseline",
-        "model.job_runtime_xgboost",
-        "model.job_runtime_moe_xgboost",
-        "model.job_runtime_tfidf_knn",
-        "model.job_runtime_embedding_knn",
-        "model.job_runtime_signature_memorizer",
-        "model.job_runtime_random_forest",
-        "model.job_runtime_mlp",
-        "model.job_power_uopc",
+        "model.baseline",
+        "model.xgboost",
+        "model.moe_xgboost",
+        "model.tfidf_knn",
+        "model.embedding_knn",
+        "model.signature_memorizer",
+        "model.random_forest",
+        "model.mlp",
+        "model.uopc",
     ]
 
 
@@ -82,12 +82,12 @@ def test_browse_command_outputs_entries(capsys: pytest.CaptureFixture[str]) -> N
     )
     captured = capsys.readouterr().out
     assert "adapter.slurmctld" in captured
-    assert "model.job_runtime_baseline" in captured
-    assert "model.job_runtime_xgboost" in captured
+    assert "model.baseline" in captured
+    assert "model.xgboost" in captured
 
 
 def test_info_command_outputs_details(capsys: pytest.CaptureFixture[str]) -> None:
-    info("model.job_runtime_baseline", snapshot=None)
+    info("model.baseline", snapshot=None)
     captured = capsys.readouterr().out
     assert "Baseline (window mean)" in captured
 

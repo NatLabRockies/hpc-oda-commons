@@ -28,6 +28,7 @@ from hpc_oda_commons.kernel.artifacts.result_bundle import (
 )
 from hpc_oda_commons.kernel.paths import ensure_dir
 from hpc_oda_commons.kernel.serialization import to_jsonable
+from hpc_oda_commons.models.ids import canonical_model_id
 
 # v0.2.0 (#237): adds ``tables`` (one per target: a row per model, a column per dataset)
 # and ``excluded``; ``entries`` and ``superseded`` are the per-bundle view, as before.
@@ -44,6 +45,13 @@ def _collect_bundle_dirs(runs_dir: Path) -> list[Path]:
     return [p.parent for p in runs_dir.rglob("result.json")]
 
 
+def _current_model(model: dict[str, Any]) -> dict[str, Any]:
+    """A bundle's model, under its current id: bundles from before #249 keep the old ones."""
+    if isinstance(model.get("id"), str):
+        return {**model, "id": canonical_model_id(model["id"])}
+    return model
+
+
 def build_leaderboard_entry(bundle_dir: Path) -> dict[str, Any]:
     validate_result_bundle(bundle_dir)
     result, metrics, _prov = read_result_bundle(bundle_dir, validate=True)
@@ -56,7 +64,7 @@ def build_leaderboard_entry(bundle_dir: Path) -> dict[str, Any]:
         "problem_domain": result.get("problem_domain", []),
         "metrics": result.get("metrics", metrics),
         "prediction_target": prediction_target,
-        "model": result.get("model", {}),
+        "model": _current_model(result.get("model") or {}),
         "dataset": result.get("dataset", {}),
         "integrity": result.get("integrity"),
         "timing": result.get("timing"),

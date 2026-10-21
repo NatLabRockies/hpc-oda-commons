@@ -12,17 +12,17 @@ Status: **decision log, error ceilings, four datasets, leaderboard** (#230, #237
 
 Eight models, each with its default configuration:
 
-- `job_runtime_baseline` (the window mean);
-- `job_runtime_signature_memorizer`;
-- `job_runtime_tfidf_knn`;
-- `job_runtime_embedding_knn`;
-- `job_power_uopc`;
-- `job_runtime_xgboost`;
-- `job_runtime_random_forest`;
-- `job_runtime_moe_xgboost`.
+- `baseline` (the window mean);
+- `signature_memorizer`;
+- `tfidf_knn`;
+- `embedding_knn`;
+- `uopc`;
+- `xgboost`;
+- `random_forest`;
+- `moe_xgboost`.
 
-The `job_runtime_*` models predict whatever column their recipe's metrics name, so the same
-models serve both tracks ([Predict job power](../../how-to/predict-power.md)).
+The models predict whatever column their recipe's metrics name, so the same models serve
+both tracks ([Predict job power](../../how-to/predict-power.md)).
 
 **UoPC runs at θ = 500, k = 20, with `balanced` features, and predicts the median of its k
 neighbours.** k = 20 comes from the θ × k sweep on F-DATA
@@ -35,7 +35,7 @@ On Eagle k = 20 scores worse than k = 5, and that is reported as it is.
 **MLP is excluded**, as from the runtime fleet run
 ([runtime methodology](../runtime/methodology.md#models-in-scope)). It measured weaker than the
 other rolling-tabular models across the board on runtime, and on F-DATA it cost ~130 s per
-window, over 3 hours per target. `model.job_runtime_mlp` still predicts power when a recipe
+window, over 3 hours per target. `model.mlp` still predicts power when a recipe
 names it.
 
 Adding a model to the benchmark is a decision recorded here, not a side effect of writing one.

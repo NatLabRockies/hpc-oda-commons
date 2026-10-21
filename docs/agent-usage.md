@@ -71,14 +71,14 @@ Bundled recipes are at `src/hpc_oda_commons/recipes/job-runtime/`:
 - `../job-power/uopc_paper_reproduction.yml` / `uopc_paper_sensitivity.yml` -- the UoPC paper protocol on F-DATA (`split.method: cutoff`; prepare `datasets/descriptors/job-power/fdata_fugaku_uopc.yml` first); see `docs/benchmarking/power/uopc.md`
 
 v0.1 models:
-- `model.job_runtime_baseline` -- mean predictor (supports fixed and rolling splits)
-- `model.job_runtime_xgboost` -- XGBoost with OHE+SVD preprocessing (rolling splits)
-- `model.job_runtime_tfidf_knn` -- TF-IDF text vectorization + kNN regression (rolling splits)
-- `model.job_runtime_embedding_knn` -- kNN over a precomputed dense embedding column (rolling splits; see `hpc-oda embed`)
-- `model.job_runtime_moe_xgboost` -- mixture of experts: one XGBoost per (user, wallclock bin), routed inside the shared rolling window (rolling splits)
-- `model.job_runtime_random_forest` -- Random Forest, uses the shared `rolling_tabular` OHE+SVD preprocessing (rolling splits)
-- `model.job_runtime_mlp` -- feed-forward neural network, uses the shared `rolling_tabular` preprocessing (rolling splits)
-- `model.job_power_uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split, the paper protocol with a cutoff split, or the shared rolling windows)
+- `model.baseline` -- mean predictor (supports fixed and rolling splits)
+- `model.xgboost` -- XGBoost with OHE+SVD preprocessing (rolling splits)
+- `model.tfidf_knn` -- TF-IDF text vectorization + kNN regression (rolling splits)
+- `model.embedding_knn` -- kNN over a precomputed dense embedding column (rolling splits; see `hpc-oda embed`)
+- `model.moe_xgboost` -- mixture of experts: one XGBoost per (user, wallclock bin), routed inside the shared rolling window (rolling splits)
+- `model.random_forest` -- Random Forest, uses the shared `rolling_tabular` OHE+SVD preprocessing (rolling splits)
+- `model.mlp` -- feed-forward neural network, uses the shared `rolling_tabular` preprocessing (rolling splits)
+- `model.uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split, the paper protocol with a cutoff split, or the shared rolling windows)
 
 Every runtime model predicts the column its recipe's metrics target, `runtime_seconds` by default. Point it at `avgpcon_per_node` or `maxpcon_per_node` to predict power; `recipes/job-power/<model>_rolling_{avg,peak}.yml` do this for every model. See `docs/how-to/predict-power.md`.
 
@@ -124,7 +124,7 @@ The key fields in `result.json`:
 ```json
 {
   "metrics": {"mae": 350.4, "rmse": 412.7},
-  "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+  "model": {"id": "model.baseline", "version": "0.1.0"},
   "dataset": {"hash": "e3b0c44..."},
   "integrity": {"code_hash": "abc123...", "validated": true, "git_commit": "def456..."}
 }

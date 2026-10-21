@@ -6,12 +6,12 @@ Each model's card. Where they stand: the [leaderboard](https://natlabrockies.git
 
 | Model | Id | Predicts |
 |---|---|---|
-| [Baseline (window mean)](job_runtime_baseline.md) | `model.job_runtime_baseline` | job runtime, job power |
-| [Embedding + kNN](job_runtime_embedding_knn.md) | `model.job_runtime_embedding_knn` | job runtime, job power |
-| [MLP](job_runtime_mlp.md) | `model.job_runtime_mlp` | job runtime, job power |
-| [Random Forest](job_runtime_random_forest.md) | `model.job_runtime_random_forest` | job runtime, job power |
-| [Signature memorizer](job_runtime_signature_memorizer.md) | `model.job_runtime_signature_memorizer` | job runtime, job power |
-| [TF-IDF + kNN](job_runtime_tfidf_knn.md) | `model.job_runtime_tfidf_knn` | job runtime, job power |
-| [UoPC](job_power_uopc.md) | `model.job_power_uopc` | job power |
-| [XGBoost](job_runtime_xgboost.md) | `model.job_runtime_xgboost` | job runtime, job power |
-| [XGBoost (MoE)](job_runtime_moe_xgboost.md) | `model.job_runtime_moe_xgboost` | job runtime, job power |
+| [Baseline (window mean)](baseline.md) | `model.baseline` | job runtime, job power |
+| [Embedding + kNN](embedding_knn.md) | `model.embedding_knn` | job runtime, job power |
+| [MLP](mlp.md) | `model.mlp` | job runtime, job power |
+| [Random Forest](random_forest.md) | `model.random_forest` | job runtime, job power |
+| [Signature memorizer](signature_memorizer.md) | `model.signature_memorizer` | job runtime, job power |
+| [TF-IDF + kNN](tfidf_knn.md) | `model.tfidf_knn` | job runtime, job power |
+| [UoPC](uopc.md) | `model.uopc` | job power |
+| [XGBoost](xgboost.md) | `model.xgboost` | job runtime, job power |
+| [XGBoost (MoE)](moe_xgboost.md) | `model.moe_xgboost` | job runtime, job power |

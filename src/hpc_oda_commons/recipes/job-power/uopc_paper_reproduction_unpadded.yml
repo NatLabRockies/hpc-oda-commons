@@ -21,7 +21,7 @@ dataset:
   table_path: data/datasets/fdata_fugaku_uopc/data.parquet
 
 model:
-  id: model.job_power_uopc
+  id: model.uopc
   version: "0.1.0"
 
 metrics:

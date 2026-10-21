@@ -18,7 +18,7 @@ dataset:
   manifest_path: data/ingested/jobs_parquet/embedded_jobs/manifest.json
 
 model:
-  id: model.job_runtime_embedding_knn
+  id: model.embedding_knn
   version: "0.1.0"
 
 metrics:

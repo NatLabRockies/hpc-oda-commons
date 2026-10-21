@@ -195,7 +195,7 @@ def test_benchmark_xgboost_recipe_small_window(
     recipe_path.write_text(yaml.safe_dump(recipe_payload, sort_keys=False), encoding="utf-8")
 
     monkeypatch.chdir(tmp_project)
-    monkeypatch.setattr(runner, "JobRuntimeXGBoostModel", _FakeXGBModel)
+    monkeypatch.setattr(runner, "XGBoostModel", _FakeXGBModel)
 
     cli.benchmark(recipe_path)
 
@@ -205,7 +205,7 @@ def test_benchmark_xgboost_recipe_small_window(
     metrics_payload = load_json(bundle_dir / "metrics.json")
 
     assert _FakeXGBModel.seen_n_windows == 24
-    assert result_payload["model"]["id"] == "model.job_runtime_xgboost"
+    assert result_payload["model"]["id"] == "model.xgboost"
     assert result_payload["metrics"]["mae"] == 10.0
     assert result_payload["metrics"]["rmse"] == 12.0
     assert metrics_payload["summary"]["n_windows"] == 24
@@ -247,7 +247,7 @@ def test_benchmark_xgboost_recipe_small_window_native_cli(
     result_payload = load_json(bundle_dir / "result.json")
     metrics_payload = load_json(bundle_dir / "metrics.json")
 
-    assert result_payload["model"]["id"] == "model.job_runtime_xgboost"
+    assert result_payload["model"]["id"] == "model.xgboost"
     assert result_payload["metrics"]["mae"] >= 0.0
     assert result_payload["metrics"]["rmse"] >= 0.0
     assert isinstance(metrics_payload.get("windows"), list)

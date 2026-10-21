@@ -1,9 +1,9 @@
 # Embedding-based kNN runtime model
 
-`model.job_runtime_embedding_knn` predicts `runtime_seconds` from the *k* nearest
+`model.embedding_knn` predicts `runtime_seconds` from the *k* nearest
 historical jobs in a **precomputed dense embedding space**, under the repo's
 rolling-window evaluation. It is the embedding-space counterpart to
-`model.job_runtime_tfidf_knn` (which vectorizes text with TF-IDF internally): this
+`model.tfidf_knn` (which vectorizes text with TF-IDF internally): this
 model consumes vectors you supply, so it can use any encoder — including neural
 sentence embeddings that capture semantics bag-of-words cannot.
 
@@ -105,7 +105,7 @@ Point a rolling recipe at your embedded dataset and run the benchmark offline:
 HPC_ODA_OFFLINE=1 hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/embedding_knn_rolling.yml
 ```
 
-The recipe's `model.id` is `model.job_runtime_embedding_knn` with a rolling split.
+The recipe's `model.id` is `model.embedding_knn` with a rolling split.
 The model is discoverable via `hpc-oda browse --type model`.
 
 ## Backends and devices
@@ -126,7 +126,7 @@ CPU faster, so measure before committing to a device.
 
 ## Configuration
 
-`JobRuntimeEmbeddingKnnConfig` knobs (also settable under a recipe's `split`):
+`EmbeddingKnnConfig` knobs (also settable under a recipe's `split`):
 
 - `k` — neighbors (default 5).
 - `embedding_field` — column name (default `embedding`).

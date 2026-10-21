@@ -4,9 +4,9 @@ import math
 
 import pytest
 
-from hpc_oda_commons.models.job_runtime_random_forest.model import (
-    JobRuntimeRandomForestConfig,
-    JobRuntimeRandomForestModel,
+from hpc_oda_commons.models.random_forest.model import (
+    RandomForestConfig,
+    RandomForestModel,
 )
 
 pytest.importorskip("sklearn")
@@ -51,8 +51,8 @@ def test_random_forest_evaluate_returns_requested_metrics() -> None:
         {"name": "rmse", "target": "runtime_seconds"},
         {"name": "underprediction_ratio", "target": "runtime_seconds"},
     ]
-    model = JobRuntimeRandomForestModel(
-        config=JobRuntimeRandomForestConfig(
+    model = RandomForestModel(
+        config=RandomForestConfig(
             n_windows=2,
             test_window_hours=1,
             training_lookback_days=1,

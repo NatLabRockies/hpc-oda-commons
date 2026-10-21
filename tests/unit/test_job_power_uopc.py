@@ -7,11 +7,11 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from hpc_oda_commons.models.job_power_uopc.model import (
+from hpc_oda_commons.models.uopc.model import (
     SWEEP_COLUMNS,
     UOPC_DEFAULT_PREDICTOR,
     UOPC_PREDICTORS,
-    JobPowerUopcModel,
+    UopcModel,
     _classifier_prediction_from_neighbor_targets,
     _nearest_neighbor_indices_and_distances,
     _regressor_prediction_from_neighbor_targets,
@@ -40,7 +40,7 @@ def test_uopc_fixed_predicts_with_user_history(tmp_path) -> None:
     _write_uopc_dataset(table_path)
     rows = pq.read_table(table_path).to_pylist()
 
-    result = JobPowerUopcModel().evaluate_fixed(
+    result = UopcModel().evaluate_fixed(
         rows,
         split={"train_fraction": 0.7, "seed": 1},
         metric_defs=[
@@ -61,7 +61,7 @@ def test_uopc_requires_finite_target() -> None:
         {"usr": "alice", "jnam": "x", "cnumr": 1, "nnumr": 1, "edt": "2024-04-01T00:00:00+09:00"}
     ]
     with pytest.raises(ValueError, match="No rows with a finite target"):
-        JobPowerUopcModel().evaluate_fixed(rows, split={"train_fraction": 0.8, "seed": 1})
+        UopcModel().evaluate_fixed(rows, split={"train_fraction": 0.8, "seed": 1})
 
 
 def test_uopc_datetime_end_time_matches_string_representation() -> None:
@@ -92,8 +92,8 @@ def test_uopc_datetime_end_time_matches_string_representation() -> None:
     md = [{"name": "mae", "target": "maxpcon"}, {"name": "rmse", "target": "maxpcon"}]
     split = {"train_fraction": 0.7, "seed": 1}
 
-    r_dt = JobPowerUopcModel().evaluate_fixed(dt_rows, split=split, metric_defs=md)
-    r_str = JobPowerUopcModel().evaluate_fixed(str_rows, split=split, metric_defs=md)
+    r_dt = UopcModel().evaluate_fixed(dt_rows, split=split, metric_defs=md)
+    r_str = UopcModel().evaluate_fixed(str_rows, split=split, metric_defs=md)
 
     assert r_dt["summary"]["rows_scored"] > 0
     assert r_dt["mae"] == r_str["mae"]
@@ -124,7 +124,7 @@ def test_uopc_paper_reproduction_smoke() -> None:
             }
         )
 
-    model = JobPowerUopcModel()
+    model = UopcModel()
 
     result = model.evaluate_paper_reproduction(
         rows,
@@ -303,7 +303,7 @@ def test_uopc_paper_sensitivity_matches_reproduction(predictor: str) -> None:
         {"name": "r2", "target": "avgpcon_per_node"},
     ]
 
-    model = JobPowerUopcModel()
+    model = UopcModel()
 
     reproduction = model.evaluate_paper_reproduction(
         rows,
@@ -353,7 +353,7 @@ def test_prepare_paper_data_matches_reproduction_protocol() -> None:
             }
         )
 
-    prepared = JobPowerUopcModel()._prepare_paper_data(
+    prepared = UopcModel()._prepare_paper_data(
         rows,
         test_start="2024-02-01",
         features="zscore",
@@ -418,7 +418,7 @@ def test_uopc_sensitivity_reuses_neighbors_for_multiple_k(predictor: str) -> Non
         {"name": "r2", "target": "avgpcon_per_node"},
     ]
 
-    model = JobPowerUopcModel()
+    model = UopcModel()
 
     sensitivity = model.evaluate_paper_sensitivity(
         rows,
@@ -484,7 +484,7 @@ def test_paper_baselines_match_a_brute_force_mean() -> None:
     """The baselines read running totals; they must equal averaging the eligible jobs
     directly: the user's (or everyone's) jobs that finished before this one was submitted."""
     rows = _paper_rows()
-    result = JobPowerUopcModel().evaluate_paper_reproduction(
+    result = UopcModel().evaluate_paper_reproduction(
         rows, test_start="2024-02-01", theta=10, k=3, capture_artifacts=True
     )
     records = result["_per_job_records"]
@@ -512,7 +512,7 @@ def test_paper_reproduction_reads_canonical_num_nodes_alloc() -> None:
     for r in raw:
         del r["num_nodes_alloc"]
 
-    model = JobPowerUopcModel()
+    model = UopcModel()
     a = model.evaluate_paper_reproduction(canonical, test_start="2024-02-01", theta=10, k=3)
     b = model.evaluate_paper_reproduction(raw, test_start="2024-02-01", theta=10, k=3)
 
@@ -524,7 +524,7 @@ def test_paper_reproduction_reads_canonical_num_nodes_alloc() -> None:
 def test_paper_modes_emit_only_artifact_keys_run_extras_strips() -> None:
     """Any other "_" key would be written into metrics.json, one value per test job (#168)."""
     rows = _paper_rows()
-    model = JobPowerUopcModel()
+    model = UopcModel()
 
     repro = model.evaluate_paper_reproduction(
         rows, test_start="2024-02-01", theta=10, k=3, capture_artifacts=True
@@ -558,7 +558,7 @@ def test_uopc_fits_its_tiny_knns_single_threaded(monkeypatch, predictor: str) ->
             return _original(self, *args, **kwargs)
 
         monkeypatch.setattr(cls, "fit", recording_fit)
-    JobPowerUopcModel().evaluate_paper_reproduction(
+    UopcModel().evaluate_paper_reproduction(
         _paper_rows(), test_start="2024-02-01", theta=10, k=3, predictor=predictor
     )
     assert seen and set(seen) == {1}

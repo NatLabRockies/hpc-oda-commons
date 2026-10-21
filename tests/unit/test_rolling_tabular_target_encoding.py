@@ -7,9 +7,9 @@ import datetime as dt
 import numpy as np
 import pytest
 
-from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostConfig,
-    JobRuntimeXGBoostModel,
+from hpc_oda_commons.models.xgboost.model import (
+    XGBoostConfig,
+    XGBoostModel,
 )
 
 UTC = dt.timezone.utc
@@ -33,14 +33,14 @@ def _rows(n: int, *, users: int, runtime_of) -> list[dict]:
     return out
 
 
-def _model(**kw) -> JobRuntimeXGBoostModel:
+def _model(**kw) -> XGBoostModel:
     kw.setdefault("target_encode_min_cardinality", 8)
-    return JobRuntimeXGBoostModel(config=JobRuntimeXGBoostConfig(**kw))
+    return XGBoostModel(config=XGBoostConfig(**kw))
 
 
 def test_disabled_by_default_so_no_measured_number_moves() -> None:
     """Enabling it changes every benchmark result, so it must be an explicit choice."""
-    artifacts = JobRuntimeXGBoostModel()._build_daily_preprocessing_artifacts(
+    artifacts = XGBoostModel()._build_daily_preprocessing_artifacts(
         _rows(200, users=50, runtime_of=lambda i: 100 + i % 7)
     )
 
@@ -122,7 +122,7 @@ def test_the_encoded_column_reaches_the_feature_matrix() -> None:
     model = _model()
     artifacts = model._build_daily_preprocessing_artifacts(rows)
 
-    without = JobRuntimeXGBoostModel()
+    without = XGBoostModel()
     plain = without._transform_rows(rows, without._build_daily_preprocessing_artifacts(rows))
     with_te = model._transform_rows(rows, artifacts)
 

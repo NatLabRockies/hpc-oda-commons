@@ -10,10 +10,10 @@ import pyarrow.parquet as pq
 import pytest
 
 from hpc_oda_commons.datasets.synthetic import generate_tiny_embedded_runtime_dataset
-from hpc_oda_commons.models.job_runtime_embedding_knn.backends import make_topk, resolve_backend
-from hpc_oda_commons.models.job_runtime_embedding_knn.model import (
-    JobRuntimeEmbeddingKnnConfig,
-    JobRuntimeEmbeddingKnnModel,
+from hpc_oda_commons.models.embedding_knn.backends import make_topk, resolve_backend
+from hpc_oda_commons.models.embedding_knn.model import (
+    EmbeddingKnnConfig,
+    EmbeddingKnnModel,
 )
 
 _HAS_TORCH = importlib.util.find_spec("torch") is not None
@@ -39,8 +39,8 @@ def _embedded_rows(tmp_path):
 
 def test_predicts_clustered_runtime_with_low_error(tmp_path):
     rows = _embedded_rows(tmp_path)
-    model = JobRuntimeEmbeddingKnnModel(
-        JobRuntimeEmbeddingKnnConfig(
+    model = EmbeddingKnnModel(
+        EmbeddingKnnConfig(
             n_windows=12, test_window_hours=6, training_lookback_days=30, k=3, backend="numpy"
         )
     )
@@ -56,11 +56,9 @@ def test_predicts_clustered_runtime_with_low_error(tmp_path):
 def test_numpy_and_torch_backends_agree(tmp_path):
     rows = _embedded_rows(tmp_path)
     cfg = dict(n_windows=12, test_window_hours=6, training_lookback_days=30, k=3)
-    np_res = JobRuntimeEmbeddingKnnModel(
-        JobRuntimeEmbeddingKnnConfig(backend="numpy", **cfg)
-    ).evaluate(rows)
-    torch_res = JobRuntimeEmbeddingKnnModel(
-        JobRuntimeEmbeddingKnnConfig(backend="torch", device="cpu", **cfg)
+    np_res = EmbeddingKnnModel(EmbeddingKnnConfig(backend="numpy", **cfg)).evaluate(rows)
+    torch_res = EmbeddingKnnModel(
+        EmbeddingKnnConfig(backend="torch", device="cpu", **cfg)
     ).evaluate(rows)
     assert np_res["mae"] == pytest.approx(torch_res["mae"], rel=1e-5)
     assert np_res["rmse"] == pytest.approx(torch_res["rmse"], rel=1e-5)
@@ -79,8 +77,8 @@ def test_rolling_window_has_no_future_leakage():
     # Test job T: latest submit -> defines the single window [20h, 21h); test = {T}.
     rows.append(_row(300, submit_h=20, end_h=20, runtime=100, embedding=[1.0, 0.0]))
 
-    model = JobRuntimeEmbeddingKnnModel(
-        JobRuntimeEmbeddingKnnConfig(
+    model = EmbeddingKnnModel(
+        EmbeddingKnnConfig(
             n_windows=1, test_window_hours=1, training_lookback_days=100, k=3, backend="numpy"
         )
     )
@@ -91,7 +89,7 @@ def test_rolling_window_has_no_future_leakage():
 
 
 def test_weighting_math():
-    model = JobRuntimeEmbeddingKnnModel(JobRuntimeEmbeddingKnnConfig(weighting="similarity"))
+    model = EmbeddingKnnModel(EmbeddingKnnConfig(weighting="similarity"))
     # similarity weights = clamp(sims,0)/sum
     w = model._weights(np.array([[1.0, 0.6]]), 2)
     assert w[0].tolist() == pytest.approx([0.625, 0.375])
@@ -102,14 +100,14 @@ def test_weighting_math():
     w = model._weights(np.array([[0.0, 0.0]]), 2)
     assert w[0].tolist() == pytest.approx([0.5, 0.5])
     # uniform weighting ignores similarity
-    uni = JobRuntimeEmbeddingKnnModel(JobRuntimeEmbeddingKnnConfig(weighting="uniform"))
+    uni = EmbeddingKnnModel(EmbeddingKnnConfig(weighting="uniform"))
     w = uni._weights(np.array([[0.9, 0.1]]), 2)
     assert w[0].tolist() == pytest.approx([0.5, 0.5])
 
 
 def test_missing_or_ragged_embedding_raises(tmp_path):
     rows = _embedded_rows(tmp_path)
-    model = JobRuntimeEmbeddingKnnModel(JobRuntimeEmbeddingKnnConfig(backend="numpy"))
+    model = EmbeddingKnnModel(EmbeddingKnnConfig(backend="numpy"))
     bad = [{k: v for k, v in r.items() if k != "embedding"} for r in rows]
     with pytest.raises(ValueError, match="embedding"):
         model.evaluate(bad)
@@ -154,10 +152,8 @@ def test_sims_block_bytes_preserves_neighbor_selection(tmp_path):
     # rows scored), so the memory-bounding fix does not change results meaningfully.
     rows = _embedded_rows(tmp_path)
     cfg = dict(n_windows=12, test_window_hours=6, training_lookback_days=30, k=3, backend="numpy")
-    default = JobRuntimeEmbeddingKnnModel(JobRuntimeEmbeddingKnnConfig(**cfg)).evaluate(rows)
-    streamed = JobRuntimeEmbeddingKnnModel(
-        JobRuntimeEmbeddingKnnConfig(sims_block_bytes=1, **cfg)
-    ).evaluate(rows)
+    default = EmbeddingKnnModel(EmbeddingKnnConfig(**cfg)).evaluate(rows)
+    streamed = EmbeddingKnnModel(EmbeddingKnnConfig(sims_block_bytes=1, **cfg)).evaluate(rows)
     assert default["mae"] == pytest.approx(streamed["mae"], rel=1e-5)
     assert default["rmse"] == pytest.approx(streamed["rmse"], rel=1e-5)
     assert default["summary"]["rows_scored"] == streamed["summary"]["rows_scored"]

@@ -18,7 +18,7 @@
         "rmse": 19919.816587314253
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -48,7 +48,7 @@
         "rmse": 19916.801716592858
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -78,7 +78,7 @@
         "rmse": 19917.27657384
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -108,7 +108,7 @@
         "rmse": 20179.16838024592
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -138,7 +138,7 @@
         "rmse": 20781.59276692412
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -168,7 +168,7 @@
         "rmse": 21276.163128276527
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -198,7 +198,7 @@
         "rmse": 17765.328092273507
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -228,7 +228,7 @@
         "rmse": 17118.773989481513
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -258,7 +258,7 @@
         "rmse": 15585.217662651332
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -288,7 +288,7 @@
         "rmse": 15102.793076848815
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -318,7 +318,7 @@
         "rmse": 17074.017459450126
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -348,7 +348,7 @@
         "rmse": 21390.653475075083
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -378,7 +378,7 @@
         "rmse": 20614.87719855632
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -408,7 +408,7 @@
         "rmse": 21399.825960241873
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -438,7 +438,7 @@
         "rmse": 21394.60654132573
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -468,7 +468,7 @@
         "rmse": 21413.054299692038
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -498,7 +498,7 @@
         "rmse": 17243.916453807607
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -528,7 +528,7 @@
         "rmse": 20418.77084746716
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -558,7 +558,7 @@
         "rmse": 20990.965449464795
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -588,7 +588,7 @@
         "rmse": 9834.16795864388
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -618,7 +618,7 @@
         "rmse": 9846.453908976777
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -648,7 +648,7 @@
         "rmse": 19570.737468101037
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -678,7 +678,7 @@
         "rmse": 16626.693639939
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -708,7 +708,7 @@
         "rmse": 18528.784620150076
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -738,7 +738,7 @@
         "rmse": 9841.787131273768
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -768,7 +768,7 @@
         "rmse": 17844.65592464061
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -798,7 +798,7 @@
         "rmse": 8134.634771799395
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -828,7 +828,7 @@
         "rmse": 5296.575175057604
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -858,7 +858,7 @@
         "rmse": 8229.734325754465
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -888,7 +888,7 @@
         "rmse": 9499.637924219325
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -918,7 +918,7 @@
         "rmse": 5298.844611711094
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -948,7 +948,7 @@
         "rmse": 17714.085659756875
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -978,7 +978,7 @@
         "rmse": 19576.96161442399
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1008,7 +1008,7 @@
         "rmse": 16828.901807034435
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1038,7 +1038,7 @@
         "rmse": 15676.642072230426
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1068,7 +1068,7 @@
         "rmse": 17300.957241090902
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1098,7 +1098,7 @@
         "rmse": 17200.33665397469
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1128,7 +1128,7 @@
         "rmse": 18459.040390846054
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1158,7 +1158,7 @@
         "rmse": 5075.474656283324
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1188,7 +1188,7 @@
         "rmse": 4890.977104127406
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1218,7 +1218,7 @@
         "rmse": 4902.169290106492
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1248,7 +1248,7 @@
         "rmse": 14189.810795335017
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1278,7 +1278,7 @@
         "rmse": 17326.979381585097
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1308,7 +1308,7 @@
         "rmse": 4641.469942318833
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1338,7 +1338,7 @@
         "rmse": 4710.566009773366
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1368,7 +1368,7 @@
         "rmse": 15614.209369999793
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1398,7 +1398,7 @@
         "rmse": 15298.764420597241
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1428,7 +1428,7 @@
         "rmse": 4622.065299933618
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1458,7 +1458,7 @@
         "rmse": 5834.957031645455
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1488,7 +1488,7 @@
         "rmse": 5319.484552811279
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1518,7 +1518,7 @@
         "rmse": 19855.33851320089
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1548,7 +1548,7 @@
         "rmse": 15207.456865547805
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1578,7 +1578,7 @@
         "rmse": 17735.83549525039
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1608,7 +1608,7 @@
         "rmse": 5487.328006117067
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1638,7 +1638,7 @@
         "rmse": 13642.884309820804
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1668,7 +1668,7 @@
         "rmse": 19840.87803924148
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1698,7 +1698,7 @@
         "rmse": 4747.530312050104
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1728,7 +1728,7 @@
         "rmse": 4580.278320157578
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1758,7 +1758,7 @@
         "rmse": 16889.66980342672
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1788,7 +1788,7 @@
         "rmse": 17784.984572991973
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1818,7 +1818,7 @@
         "rmse": 17716.896513502776
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1848,7 +1848,7 @@
         "rmse": 4661.526539500033
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1878,7 +1878,7 @@
         "rmse": 18000.732425041697
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1908,7 +1908,7 @@
         "rmse": 20224.59014548057
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1938,7 +1938,7 @@
         "rmse": 16535.532595614055
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1968,7 +1968,7 @@
         "rmse": 17240.614932335255
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -1998,7 +1998,7 @@
         "rmse": 16187.542183900574
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2028,7 +2028,7 @@
         "rmse": 17532.90520625668
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2058,7 +2058,7 @@
         "rmse": 15953.424887370795
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2088,7 +2088,7 @@
         "rmse": 19520.088948731645
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2118,7 +2118,7 @@
         "rmse": 13604.288244789834
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2148,7 +2148,7 @@
         "rmse": 19750.192760092443
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2178,7 +2178,7 @@
         "rmse": 17796.91701504463
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2208,7 +2208,7 @@
         "rmse": 11891.168127709127
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2238,7 +2238,7 @@
         "rmse": 17403.15925126734
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2268,7 +2268,7 @@
         "rmse": 15164.637987624843
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2298,7 +2298,7 @@
         "rmse": 19446.231074038315
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2328,7 +2328,7 @@
         "rmse": 20962.98051221737
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2358,7 +2358,7 @@
         "rmse": 13595.28371403648
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2388,7 +2388,7 @@
         "rmse": 12446.595082584206
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2418,7 +2418,7 @@
         "rmse": 13123.952796599791
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2448,7 +2448,7 @@
         "rmse": 15189.045504164049
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2478,7 +2478,7 @@
         "rmse": 17470.821184407403
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2508,7 +2508,7 @@
         "rmse": 16367.10192931097
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2538,7 +2538,7 @@
         "rmse": 13653.815376148515
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2568,7 +2568,7 @@
         "rmse": 16249.724300910415
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2598,7 +2598,7 @@
         "rmse": 5021.657129281037
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2628,7 +2628,7 @@
         "rmse": 17047.900955125424
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2658,7 +2658,7 @@
         "rmse": 15728.447155311638
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2688,7 +2688,7 @@
         "rmse": 15553.10579405126
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2718,7 +2718,7 @@
         "rmse": 16260.026327406762
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2748,7 +2748,7 @@
         "rmse": 16273.072148454856
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2778,7 +2778,7 @@
         "rmse": 16332.995987064092
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2808,7 +2808,7 @@
         "rmse": 15946.352449211978
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2838,7 +2838,7 @@
         "rmse": 15503.295892205593
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2868,7 +2868,7 @@
         "rmse": 15742.559299433306
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2898,7 +2898,7 @@
         "rmse": 17511.952962942534
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2928,7 +2928,7 @@
         "rmse": 13188.588245286543
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2958,7 +2958,7 @@
         "rmse": 28250.02977710666
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -2988,7 +2988,7 @@
         "rmse": 15575.750739036645
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3018,7 +3018,7 @@
         "rmse": 24146.555826919866
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3048,7 +3048,7 @@
         "rmse": 24213.501708628555
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3078,7 +3078,7 @@
         "rmse": 28320.09841982817
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3108,7 +3108,7 @@
         "rmse": 24254.017659968762
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3138,7 +3138,7 @@
         "rmse": 27280.19289722833
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3168,7 +3168,7 @@
         "rmse": 15510.021035381686
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3198,7 +3198,7 @@
         "rmse": 22071.753619466184
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3228,7 +3228,7 @@
         "rmse": 24992.310437285127
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3258,7 +3258,7 @@
         "rmse": 23848.025462497815
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3288,7 +3288,7 @@
         "rmse": 56314.34292200403
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3318,7 +3318,7 @@
         "rmse": 56327.49101063796
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3348,7 +3348,7 @@
         "rmse": 23014.392805152573
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3378,7 +3378,7 @@
         "rmse": 56287.88288646226
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3408,7 +3408,7 @@
         "rmse": 52258.94155617317
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3438,7 +3438,7 @@
         "rmse": 57204.06341724923
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3468,7 +3468,7 @@
         "rmse": 26373.521393112565
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3498,7 +3498,7 @@
         "rmse": 54699.45913337806
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3528,7 +3528,7 @@
         "rmse": 48125.1708758975
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3558,7 +3558,7 @@
         "rmse": 28055.379876888266
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3588,7 +3588,7 @@
         "rmse": 51786.965176985796
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3618,7 +3618,7 @@
         "rmse": 11370.679766955427
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3648,7 +3648,7 @@
         "rmse": 54934.33979097214
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3678,7 +3678,7 @@
         "rmse": 24642.841661497358
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3708,7 +3708,7 @@
         "rmse": 20572.555765993537
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3738,7 +3738,7 @@
         "rmse": 52577.93493788456
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3768,7 +3768,7 @@
         "rmse": 12524.010323489943
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3798,7 +3798,7 @@
         "rmse": 49750.789519723854
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3828,7 +3828,7 @@
         "rmse": 19905.597000963553
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3858,7 +3858,7 @@
         "rmse": 48867.80507367719
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3888,7 +3888,7 @@
         "rmse": 49324.16830453932
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3918,7 +3918,7 @@
         "rmse": 22201.083158802023
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3948,7 +3948,7 @@
         "rmse": 36150.856777588706
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -3978,7 +3978,7 @@
         "rmse": 36277.8205046005
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4008,7 +4008,7 @@
         "rmse": 34178.37744266313
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4038,7 +4038,7 @@
         "rmse": 17954.99431029757
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4068,7 +4068,7 @@
         "rmse": 36105.74868486986
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4098,7 +4098,7 @@
         "rmse": 34289.273916599166
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4128,7 +4128,7 @@
         "rmse": 30326.72978048013
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4158,7 +4158,7 @@
         "rmse": 10195.609344078535
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4188,7 +4188,7 @@
         "rmse": 22606.58203784829
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4218,7 +4218,7 @@
         "rmse": 10383.999647451008
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4248,7 +4248,7 @@
         "rmse": 10053.174472784247
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4278,7 +4278,7 @@
         "rmse": 8215.265414087444
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4308,7 +4308,7 @@
         "rmse": 8423.625207036563
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4338,7 +4338,7 @@
         "rmse": 46588.47916900266
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4368,7 +4368,7 @@
         "rmse": 49481.82011189168
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4398,7 +4398,7 @@
         "rmse": 30084.547914609175
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4428,7 +4428,7 @@
         "rmse": 9560.692911165606
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4458,7 +4458,7 @@
         "rmse": 8546.771623876291
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4488,7 +4488,7 @@
         "rmse": 21426.561648705847
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4518,7 +4518,7 @@
         "rmse": 33043.0086740817
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4548,7 +4548,7 @@
         "rmse": 101206.68719642419
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4578,7 +4578,7 @@
         "rmse": 23384.408718498264
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4608,7 +4608,7 @@
         "rmse": 100342.04987694164
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4638,7 +4638,7 @@
         "rmse": 46254.07665861489
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4668,7 +4668,7 @@
         "rmse": 98933.01922327299
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4698,7 +4698,7 @@
         "rmse": 10776.714392766587
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4728,7 +4728,7 @@
         "rmse": 94697.8254910775
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4758,7 +4758,7 @@
         "rmse": 113688.62955464968
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4788,7 +4788,7 @@
         "rmse": 32323.89406740825
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4818,7 +4818,7 @@
         "rmse": 136119.9354016484
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4848,7 +4848,7 @@
         "rmse": 93796.82070340544
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4878,7 +4878,7 @@
         "rmse": 52977.047843241424
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4908,7 +4908,7 @@
         "rmse": 125085.66003972155
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4938,7 +4938,7 @@
         "rmse": 9696.225626274563
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4968,7 +4968,7 @@
         "rmse": 20433.200525218
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -4998,7 +4998,7 @@
         "rmse": 31823.940089251664
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5028,7 +5028,7 @@
         "rmse": 10457.193545900913
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5058,7 +5058,7 @@
         "rmse": 8771.045269804996
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5088,7 +5088,7 @@
         "rmse": 106364.51051316028
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5118,7 +5118,7 @@
         "rmse": 7023.183282353654
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5148,7 +5148,7 @@
         "rmse": 26433.325609221556
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5178,7 +5178,7 @@
         "rmse": 96928.17224686465
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5208,7 +5208,7 @@
         "rmse": 26545.422508664902
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5238,7 +5238,7 @@
         "rmse": 119705.59376066826
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5268,7 +5268,7 @@
         "rmse": 97994.598921029
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5298,7 +5298,7 @@
         "rmse": 91613.4642035958
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5328,7 +5328,7 @@
         "rmse": 7235.988108937207
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5358,7 +5358,7 @@
         "rmse": 28280.53060164515
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5388,7 +5388,7 @@
         "rmse": 26671.807251907372
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5418,7 +5418,7 @@
         "rmse": 9320.483414395248
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5448,7 +5448,7 @@
         "rmse": 99592.37158142509
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5478,7 +5478,7 @@
         "rmse": 110590.39206674967
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5508,7 +5508,7 @@
         "rmse": 43762.81894470226
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5538,7 +5538,7 @@
         "rmse": 92912.46002862143
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5568,7 +5568,7 @@
         "rmse": 90204.05407468743
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5598,7 +5598,7 @@
         "rmse": 43830.42213708323
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5628,7 +5628,7 @@
         "rmse": 16191.475057803778
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5658,7 +5658,7 @@
         "rmse": 16224.189733285873
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5688,7 +5688,7 @@
         "rmse": 50334.0486274289
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5718,7 +5718,7 @@
         "rmse": 25365.019852143494
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5748,7 +5748,7 @@
         "rmse": 16198.78047635998
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5778,7 +5778,7 @@
         "rmse": 14003.09120263174
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5808,7 +5808,7 @@
         "rmse": 14305.690391447239
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5838,7 +5838,7 @@
         "rmse": 12788.516038929432
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5868,7 +5868,7 @@
         "rmse": 25592.221676427864
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5898,7 +5898,7 @@
         "rmse": 14678.096711468601
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5928,7 +5928,7 @@
         "rmse": 22139.525419405734
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5958,7 +5958,7 @@
         "rmse": 12680.556609150453
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -5988,7 +5988,7 @@
         "rmse": 17795.706154445248
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6018,7 +6018,7 @@
         "rmse": 17803.671434754557
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6048,7 +6048,7 @@
         "rmse": 32181.338066916942
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6078,7 +6078,7 @@
         "rmse": 17799.678361442835
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6108,7 +6108,7 @@
         "rmse": 7130.733547240336
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6138,7 +6138,7 @@
         "rmse": 15401.073391928987
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6168,7 +6168,7 @@
         "rmse": 16938.488210199906
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6198,7 +6198,7 @@
         "rmse": 29612.368789476655
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6228,7 +6228,7 @@
         "rmse": 16690.125764639342
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6258,7 +6258,7 @@
         "rmse": 26396.442393755075
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6288,7 +6288,7 @@
         "rmse": 7322.46110181615
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6318,7 +6318,7 @@
         "rmse": 44302.326699606165
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6348,7 +6348,7 @@
         "rmse": 37034.86895868634
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6378,7 +6378,7 @@
         "rmse": 15578.938079383388
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6408,7 +6408,7 @@
         "rmse": 95314.47351168825
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6438,7 +6438,7 @@
         "rmse": 11901.76210629629
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6468,7 +6468,7 @@
         "rmse": 32201.048686135517
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6498,7 +6498,7 @@
         "rmse": 46568.171686789734
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6528,7 +6528,7 @@
         "rmse": 39858.407230872064
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6558,7 +6558,7 @@
         "rmse": 41148.26444184448
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6588,7 +6588,7 @@
         "rmse": 41540.14573917785
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6618,7 +6618,7 @@
         "rmse": 28947.332417084355
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6648,7 +6648,7 @@
         "rmse": 27483.16793886622
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6678,7 +6678,7 @@
         "rmse": 12560.150747071326
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6708,7 +6708,7 @@
         "rmse": 28958.821327711135
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6738,7 +6738,7 @@
         "rmse": 32609.815847454647
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6768,7 +6768,7 @@
         "rmse": 39796.047284198445
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6798,7 +6798,7 @@
         "rmse": 26180.974221053053
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6828,7 +6828,7 @@
         "rmse": 13742.508806115049
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6858,7 +6858,7 @@
         "rmse": 18705.987149326593
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6888,7 +6888,7 @@
         "rmse": 13520.344974907046
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6918,7 +6918,7 @@
         "rmse": 47520.449896917824
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6948,7 +6948,7 @@
         "rmse": 26512.405995264875
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -6978,7 +6978,7 @@
         "rmse": 47417.61802097696
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7008,7 +7008,7 @@
         "rmse": 27657.698037903232
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7038,7 +7038,7 @@
         "rmse": 27296.566331648486
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7068,7 +7068,7 @@
         "rmse": 47569.14240136727
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7098,7 +7098,7 @@
         "rmse": 39808.32322448996
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7128,7 +7128,7 @@
         "rmse": 27022.582319304962
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7158,7 +7158,7 @@
         "rmse": 7476.265168698707
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7188,7 +7188,7 @@
         "rmse": 36984.074593257865
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7218,7 +7218,7 @@
         "rmse": 24929.09618759181
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7248,7 +7248,7 @@
         "rmse": 12463.682041784215
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7278,7 +7278,7 @@
         "rmse": 26899.12471967635
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7308,7 +7308,7 @@
         "rmse": 47962.0303379182
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7338,7 +7338,7 @@
         "rmse": 43238.67629082949
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7368,7 +7368,7 @@
         "rmse": 43656.201978855155
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7398,7 +7398,7 @@
         "rmse": 12482.801236478315
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7428,7 +7428,7 @@
         "rmse": 40493.466046437425
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7458,7 +7458,7 @@
         "rmse": 15110.059178820393
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7488,7 +7488,7 @@
         "rmse": 12295.402771098565
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7518,7 +7518,7 @@
         "rmse": 37312.64361258635
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7548,7 +7548,7 @@
         "rmse": 34788.424573507364
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7578,7 +7578,7 @@
         "rmse": 36414.806098747744
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7608,7 +7608,7 @@
         "rmse": 34265.47115501694
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7638,7 +7638,7 @@
         "rmse": 26336.003078037218
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7668,7 +7668,7 @@
         "rmse": 30537.3793117189
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7698,7 +7698,7 @@
         "rmse": 30281.358837313248
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7728,7 +7728,7 @@
         "rmse": 15148.600540277874
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7758,7 +7758,7 @@
         "rmse": 13932.616203976584
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7788,7 +7788,7 @@
         "rmse": 14729.724307336832
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7818,7 +7818,7 @@
         "rmse": 24178.606256432216
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7848,7 +7848,7 @@
         "rmse": 37008.078814599285
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7878,7 +7878,7 @@
         "rmse": 34342.065130090166
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7908,7 +7908,7 @@
         "rmse": 11561.11127384292
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7938,7 +7938,7 @@
         "rmse": 16184.36051634619
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7968,7 +7968,7 @@
         "rmse": 95373.70529632184
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -7998,7 +7998,7 @@
         "rmse": 32598.404407266917
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8028,7 +8028,7 @@
         "rmse": 31015.072097759192
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8058,7 +8058,7 @@
         "rmse": 95335.40100983973
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8088,7 +8088,7 @@
         "rmse": 12609.003485209796
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8118,7 +8118,7 @@
         "rmse": 31139.118240269163
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8148,7 +8148,7 @@
         "rmse": 38989.60469004163
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8178,7 +8178,7 @@
         "rmse": 37790.75204611778
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8208,7 +8208,7 @@
         "rmse": 31784.975274674263
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8238,7 +8238,7 @@
         "rmse": 30496.71089042378
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8268,7 +8268,7 @@
         "rmse": 25533.06817030237
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8298,7 +8298,7 @@
         "rmse": 39172.20979340664
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8328,7 +8328,7 @@
         "rmse": 36073.25628823517
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8358,7 +8358,7 @@
         "rmse": 12465.852815984932
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8388,7 +8388,7 @@
         "rmse": 12389.689560415782
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8418,7 +8418,7 @@
         "rmse": 35855.969944668315
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8448,7 +8448,7 @@
         "rmse": 12383.684555215099
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8478,7 +8478,7 @@
         "rmse": 28294.803046128083
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8508,7 +8508,7 @@
         "rmse": 16007.877033753628
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8538,7 +8538,7 @@
         "rmse": 25668.287725234386
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8568,7 +8568,7 @@
         "rmse": 12394.298715986897
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8598,7 +8598,7 @@
         "rmse": 34833.75566850283
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8628,7 +8628,7 @@
         "rmse": 9442.518431664255
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8658,7 +8658,7 @@
         "rmse": 26157.554113654656
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8688,7 +8688,7 @@
         "rmse": 9831.119968269963
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8718,7 +8718,7 @@
         "rmse": 133161.84503037098
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8748,7 +8748,7 @@
         "rmse": 9858.098350036134
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8778,7 +8778,7 @@
         "rmse": 8984.355354005645
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8808,7 +8808,7 @@
         "rmse": 32643.659361459082
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8838,7 +8838,7 @@
         "rmse": 9504.450260752978
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8868,7 +8868,7 @@
         "rmse": 30199.416082978223
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8898,7 +8898,7 @@
         "rmse": 38524.69446320731
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8928,7 +8928,7 @@
         "rmse": 140225.4718897688
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8958,7 +8958,7 @@
         "rmse": 95455.51897955486
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -8988,7 +8988,7 @@
         "rmse": 8264.902378376773
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9018,7 +9018,7 @@
         "rmse": 26125.093681345224
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9048,7 +9048,7 @@
         "rmse": 28894.411904581273
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9078,7 +9078,7 @@
         "rmse": 25946.254778441733
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9108,7 +9108,7 @@
         "rmse": 7408.868282288118
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9138,7 +9138,7 @@
         "rmse": 27804.328072504126
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9168,7 +9168,7 @@
         "rmse": 7544.496887970276
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9198,7 +9198,7 @@
         "rmse": 24702.068699625324
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9228,7 +9228,7 @@
         "rmse": 8279.451112167457
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9258,7 +9258,7 @@
         "rmse": 7832.797589813668
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9288,7 +9288,7 @@
         "rmse": 23175.9047666286
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9318,7 +9318,7 @@
         "rmse": 28616.36076872078
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9348,7 +9348,7 @@
         "rmse": 7435.9126754913905
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9378,7 +9378,7 @@
         "rmse": 7597.733834986587
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9408,7 +9408,7 @@
         "rmse": 6974.8904348250835
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9438,7 +9438,7 @@
         "rmse": 13598.94547316756
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9468,7 +9468,7 @@
         "rmse": 31125.147202333203
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9498,7 +9498,7 @@
         "rmse": 7743.528061860266
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9528,7 +9528,7 @@
         "rmse": 26345.670186184598
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9558,7 +9558,7 @@
         "rmse": 7537.417578731902
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9588,7 +9588,7 @@
         "rmse": 14731.899018560713
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9618,7 +9618,7 @@
         "rmse": 92626.81804923934
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9648,7 +9648,7 @@
         "rmse": 155295.20269497053
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9678,7 +9678,7 @@
         "rmse": 98037.05763912424
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9708,7 +9708,7 @@
         "rmse": 34636.68715826368
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9738,7 +9738,7 @@
         "rmse": 41569.641729340416
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9768,7 +9768,7 @@
         "rmse": 15141.391319742526
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9798,7 +9798,7 @@
         "rmse": 41193.52100931263
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9828,7 +9828,7 @@
         "rmse": 25468.80747091713
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9858,7 +9858,7 @@
         "rmse": 26615.190018083613
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9888,7 +9888,7 @@
         "rmse": 25865.099394473444
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9918,7 +9918,7 @@
         "rmse": 41341.42010886635
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9948,7 +9948,7 @@
         "rmse": 30560.245674227663
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -9978,7 +9978,7 @@
         "rmse": 7399.850076989681
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10008,7 +10008,7 @@
         "rmse": 36601.61178772453
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10038,7 +10038,7 @@
         "rmse": 26293.242629390632
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10068,7 +10068,7 @@
         "rmse": 26481.74878495529
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10098,7 +10098,7 @@
         "rmse": 13012.79916943358
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10128,7 +10128,7 @@
         "rmse": 91414.43096650859
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10158,7 +10158,7 @@
         "rmse": 90986.27569391302
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10188,7 +10188,7 @@
         "rmse": 6946.917906725489
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10218,7 +10218,7 @@
         "rmse": 22407.460905363125
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10248,7 +10248,7 @@
         "rmse": 7132.209509599476
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10278,7 +10278,7 @@
         "rmse": 94988.62954867806
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10308,7 +10308,7 @@
         "rmse": 82617.28973164975
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10338,7 +10338,7 @@
         "rmse": 24838.66257710662
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10368,7 +10368,7 @@
         "rmse": 26750.943135091977
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10398,7 +10398,7 @@
         "rmse": 90583.4376802683
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10428,7 +10428,7 @@
         "rmse": 45160.60524740467
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10458,7 +10458,7 @@
         "rmse": 15255.40471956556
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10488,7 +10488,7 @@
         "rmse": 11234.76937567748
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10518,7 +10518,7 @@
         "rmse": 23286.060555819586
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10548,7 +10548,7 @@
         "rmse": 12339.408380979423
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10578,7 +10578,7 @@
         "rmse": 22825.53022696981
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10608,7 +10608,7 @@
         "rmse": 91186.32429974944
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10638,7 +10638,7 @@
         "rmse": 45111.11516739966
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10668,7 +10668,7 @@
         "rmse": 7263.515409129633
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10698,7 +10698,7 @@
         "rmse": 24041.82376720125
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10728,7 +10728,7 @@
         "rmse": 13380.86097256903
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10758,7 +10758,7 @@
         "rmse": 35071.53567023003
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10788,7 +10788,7 @@
         "rmse": 14961.801629501884
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10818,7 +10818,7 @@
         "rmse": 7081.368455702705
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10848,7 +10848,7 @@
         "rmse": 27953.79387131293
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10878,7 +10878,7 @@
         "rmse": 35901.00326132726
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10908,7 +10908,7 @@
         "rmse": 7720.0728069996
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10938,7 +10938,7 @@
         "rmse": 28747.76469221434
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10968,7 +10968,7 @@
         "rmse": 40441.24037299566
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -10998,7 +10998,7 @@
         "rmse": 29961.57588543149
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11028,7 +11028,7 @@
         "rmse": 91727.31638171707
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11058,7 +11058,7 @@
         "rmse": 99557.55317121373
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11088,7 +11088,7 @@
         "rmse": 24168.73988605081
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11118,7 +11118,7 @@
         "rmse": 112675.47206467412
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11148,7 +11148,7 @@
         "rmse": 87049.74742920688
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11178,7 +11178,7 @@
         "rmse": 23033.947656594482
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11208,7 +11208,7 @@
         "rmse": 90583.81538864499
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11238,7 +11238,7 @@
         "rmse": 27418.79699598412
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11268,7 +11268,7 @@
         "rmse": 26719.05082701938
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11298,7 +11298,7 @@
         "rmse": 21545.69083925004
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11328,7 +11328,7 @@
         "rmse": 52585.77262423719
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11358,7 +11358,7 @@
         "rmse": 19369.659007079677
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11388,7 +11388,7 @@
         "rmse": 15020.427367634073
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11418,7 +11418,7 @@
         "rmse": 7825.511259438603
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11448,7 +11448,7 @@
         "rmse": 92999.48209600474
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11478,7 +11478,7 @@
         "rmse": 37752.28499239204
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11508,7 +11508,7 @@
         "rmse": 31993.483203405587
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11538,7 +11538,7 @@
         "rmse": 15605.003291014227
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11568,7 +11568,7 @@
         "rmse": 22562.978013645934
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11598,7 +11598,7 @@
         "rmse": 26327.447070566544
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11628,7 +11628,7 @@
         "rmse": 34690.311985658256
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11658,7 +11658,7 @@
         "rmse": 40292.56007572978
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11688,7 +11688,7 @@
         "rmse": 25573.02539058555
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11718,7 +11718,7 @@
         "rmse": 29933.252499861814
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11748,7 +11748,7 @@
         "rmse": 22174.908262200206
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11778,7 +11778,7 @@
         "rmse": 34380.68295437311
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11808,7 +11808,7 @@
         "rmse": 37554.73043478032
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11838,7 +11838,7 @@
         "rmse": 26638.74905264171
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11868,7 +11868,7 @@
         "rmse": 91092.40845217099
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11898,7 +11898,7 @@
         "rmse": 27615.051416294005
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11928,7 +11928,7 @@
         "rmse": 25011.497367955202
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11958,7 +11958,7 @@
         "rmse": 22492.969837411714
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -11988,7 +11988,7 @@
         "rmse": 22535.747648736142
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12018,7 +12018,7 @@
         "rmse": 40317.29597354995
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12048,7 +12048,7 @@
         "rmse": 24159.297091611163
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12078,7 +12078,7 @@
         "rmse": 26342.736746347888
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12108,7 +12108,7 @@
         "rmse": 28691.445316217498
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12138,7 +12138,7 @@
         "rmse": 90076.90168853189
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12168,7 +12168,7 @@
         "rmse": 86118.01383843123
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12198,7 +12198,7 @@
         "rmse": 27025.948887982475
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12228,7 +12228,7 @@
         "rmse": 20173.548947157145
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12258,7 +12258,7 @@
         "rmse": 32140.598815777197
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12288,7 +12288,7 @@
         "rmse": 24331.67040808691
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12318,7 +12318,7 @@
         "rmse": 92792.74887511572
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12348,7 +12348,7 @@
         "rmse": 21313.615918273776
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12378,7 +12378,7 @@
         "rmse": 31613.52507630008
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12408,7 +12408,7 @@
         "rmse": 21218.312208808777
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12438,7 +12438,7 @@
         "rmse": 34278.41120919457
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12468,7 +12468,7 @@
         "rmse": 39319.23273088664
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12498,7 +12498,7 @@
         "rmse": 25094.89531092635
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12528,7 +12528,7 @@
         "rmse": 20051.704972893094
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12558,7 +12558,7 @@
         "rmse": 21246.55505776688
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12588,7 +12588,7 @@
         "rmse": 21761.015019234157
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "runtime_seconds",
@@ -12620,7 +12620,7 @@
         "rmse": 19.136257977685247
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -12652,7 +12652,7 @@
         "rmse": 31.165669251859423
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -12684,7 +12684,7 @@
         "rmse": 24.461514355064185
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -12716,7 +12716,7 @@
         "rmse": 17.83211126238113
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -12748,7 +12748,7 @@
         "rmse": 32.951723957427475
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -12780,7 +12780,7 @@
         "rmse": 25.01623673560731
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -12812,7 +12812,7 @@
         "rmse": 26.662756139843864
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -12844,7 +12844,7 @@
         "rmse": 26.774156510326083
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -12876,7 +12876,7 @@
         "rmse": 13.54367164368613
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -12908,7 +12908,7 @@
         "rmse": 14.74912399577174
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -12940,7 +12940,7 @@
         "rmse": 14.711891944326398
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -12972,7 +12972,7 @@
         "rmse": 19.09048822910887
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -13004,7 +13004,7 @@
         "rmse": 14.690259065168975
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -13036,7 +13036,7 @@
         "rmse": 16.575146873259023
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -13068,7 +13068,7 @@
         "rmse": 15.536531366583981
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -13100,7 +13100,7 @@
         "rmse": 109.81061919810062
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13132,7 +13132,7 @@
         "rmse": 97.99298915946102
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13164,7 +13164,7 @@
         "rmse": 115.84026316227288
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13196,7 +13196,7 @@
         "rmse": 90.08584640431292
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13228,7 +13228,7 @@
         "rmse": 92.1325610271249
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13260,7 +13260,7 @@
         "rmse": 94.27543566597681
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13292,7 +13292,7 @@
         "rmse": 179.3575152223428
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13324,7 +13324,7 @@
         "rmse": 161.40702782799065
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13356,7 +13356,7 @@
         "rmse": 171.7450469475547
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13388,7 +13388,7 @@
         "rmse": 127.92625477974143
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13420,7 +13420,7 @@
         "rmse": 129.4600315613404
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13452,7 +13452,7 @@
         "rmse": 150.6183178214051
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13484,7 +13484,7 @@
         "rmse": 109.82508994610116
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13516,7 +13516,7 @@
         "rmse": 167.20216952642215
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13548,7 +13548,7 @@
         "rmse": 17.01127277217139
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13580,7 +13580,7 @@
         "rmse": 15.965357693946945
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13612,7 +13612,7 @@
         "rmse": 18.784520922910552
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13644,7 +13644,7 @@
         "rmse": 17.550273385236782
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13676,7 +13676,7 @@
         "rmse": 20.814238113384043
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -13708,7 +13708,7 @@
         "rmse": 19.4446900061804
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -13740,7 +13740,7 @@
         "rmse": 113.93923606463953
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13772,7 +13772,7 @@
         "rmse": 113.42904494882633
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13804,7 +13804,7 @@
         "rmse": 179.11598821944136
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13836,7 +13836,7 @@
         "rmse": 178.83902394084998
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13868,7 +13868,7 @@
         "rmse": 18.30821032517276
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13900,7 +13900,7 @@
         "rmse": 16.47964234184421
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13932,7 +13932,7 @@
         "rmse": 191.97008503834664
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13964,7 +13964,7 @@
         "rmse": 185.1497686233329
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -13996,7 +13996,7 @@
         "rmse": 199.1595165498978
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14028,7 +14028,7 @@
         "rmse": 197.84614863477833
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14060,7 +14060,7 @@
         "rmse": 178.28861375494301
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14092,7 +14092,7 @@
         "rmse": 177.0649546359472
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14124,7 +14124,7 @@
         "rmse": 179.66237000864885
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14156,7 +14156,7 @@
         "rmse": 269.37670395633853
       },
       "model": {
-        "id": "model.job_runtime_baseline",
+        "id": "model.baseline",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -14188,7 +14188,7 @@
         "rmse": 255.60377800006938
       },
       "model": {
-        "id": "model.job_runtime_signature_memorizer",
+        "id": "model.signature_memorizer",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -14220,7 +14220,7 @@
         "rmse": 268.3692142311313
       },
       "model": {
-        "id": "model.job_runtime_tfidf_knn",
+        "id": "model.tfidf_knn",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -14252,7 +14252,7 @@
         "rmse": 272.74137411722654
       },
       "model": {
-        "id": "model.job_runtime_embedding_knn",
+        "id": "model.embedding_knn",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -14284,7 +14284,7 @@
         "rmse": 243.74956245705383
       },
       "model": {
-        "id": "model.job_runtime_random_forest",
+        "id": "model.random_forest",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -14316,7 +14316,7 @@
         "rmse": 242.51937658676212
       },
       "model": {
-        "id": "model.job_runtime_xgboost",
+        "id": "model.xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -14348,7 +14348,7 @@
         "rmse": 246.8489731502213
       },
       "model": {
-        "id": "model.job_runtime_moe_xgboost",
+        "id": "model.moe_xgboost",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -14380,7 +14380,7 @@
         "rmse": 13.93054032773859
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14412,7 +14412,7 @@
         "rmse": 14.224773561823437
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14444,7 +14444,7 @@
         "rmse": 16.528605839589527
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14476,7 +14476,7 @@
         "rmse": 18.02706885550748
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -14508,7 +14508,7 @@
         "rmse": 120.80110775366163
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14540,7 +14540,7 @@
         "rmse": 156.45031900733278
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14572,7 +14572,7 @@
         "rmse": 205.57487747468662
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "avgpcon_per_node",
@@ -14604,7 +14604,7 @@
         "rmse": 276.59889004878426
       },
       "model": {
-        "id": "model.job_power_uopc",
+        "id": "model.uopc",
         "version": "0.1.0"
       },
       "prediction_target": "maxpcon_per_node",
@@ -14791,7 +14791,7 @@
       "reason": "protocol 'paper_sensitivity' is a study, not the benchmark"
     }
   ],
-  "generated_at": "2026-10-21T10:55:02.295240Z",
+  "generated_at": "2026-10-21T13:01:49.774418Z",
   "runs_dir": "runs",
   "schema_version": "oda.leaderboard.v0.2.0",
   "superseded": [
@@ -15196,7 +15196,7 @@
             }
           },
           "datasets_run": 20,
-          "model": "model.job_runtime_moe_xgboost"
+          "model": "model.moe_xgboost"
         },
         {
           "average": 0.6929786797855175,
@@ -15403,7 +15403,7 @@
             }
           },
           "datasets_run": 20,
-          "model": "model.job_runtime_signature_memorizer"
+          "model": "model.signature_memorizer"
         },
         {
           "average": 0.6465440859312512,
@@ -15610,7 +15610,7 @@
             }
           },
           "datasets_run": 20,
-          "model": "model.job_runtime_xgboost"
+          "model": "model.xgboost"
         },
         {
           "average": 0.5787612052472151,
@@ -15817,7 +15817,7 @@
             }
           },
           "datasets_run": 20,
-          "model": "model.job_runtime_random_forest"
+          "model": "model.random_forest"
         },
         {
           "average": 0.4331334052952058,
@@ -16024,7 +16024,7 @@
             }
           },
           "datasets_run": 20,
-          "model": "model.job_runtime_embedding_knn"
+          "model": "model.embedding_knn"
         },
         {
           "average": 0.3050836586870938,
@@ -16231,7 +16231,7 @@
             }
           },
           "datasets_run": 20,
-          "model": "model.job_runtime_tfidf_knn"
+          "model": "model.tfidf_knn"
         },
         {
           "average": 0.0,
@@ -16438,7 +16438,7 @@
             }
           },
           "datasets_run": 20,
-          "model": "model.job_runtime_baseline"
+          "model": "model.baseline"
         }
       ],
       "target": "runtime_seconds",
@@ -16500,7 +16500,7 @@
             }
           },
           "datasets_run": 4,
-          "model": "model.job_runtime_moe_xgboost"
+          "model": "model.moe_xgboost"
         },
         {
           "average": 0.5125477758339283,
@@ -16539,7 +16539,7 @@
             }
           },
           "datasets_run": 4,
-          "model": "model.job_runtime_xgboost"
+          "model": "model.xgboost"
         },
         {
           "average": 0.47911661728723937,
@@ -16578,7 +16578,7 @@
             }
           },
           "datasets_run": 4,
-          "model": "model.job_runtime_random_forest"
+          "model": "model.random_forest"
         },
         {
           "average": 0.3872902302479603,
@@ -16617,7 +16617,7 @@
             }
           },
           "datasets_run": 4,
-          "model": "model.job_power_uopc"
+          "model": "model.uopc"
         },
         {
           "average": 0.37399144104380877,
@@ -16656,7 +16656,7 @@
             }
           },
           "datasets_run": 4,
-          "model": "model.job_runtime_signature_memorizer"
+          "model": "model.signature_memorizer"
         },
         {
           "average": 0.34810170370338017,
@@ -16695,7 +16695,7 @@
             }
           },
           "datasets_run": 4,
-          "model": "model.job_runtime_embedding_knn"
+          "model": "model.embedding_knn"
         },
         {
           "average": 0.27886582222127954,
@@ -16734,7 +16734,7 @@
             }
           },
           "datasets_run": 4,
-          "model": "model.job_runtime_tfidf_knn"
+          "model": "model.tfidf_knn"
         },
         {
           "average": 0.0,
@@ -16773,7 +16773,7 @@
             }
           },
           "datasets_run": 4,
-          "model": "model.job_runtime_baseline"
+          "model": "model.baseline"
         }
       ],
       "target": "avgpcon_per_node",
@@ -16815,7 +16815,7 @@
             }
           },
           "datasets_run": 2,
-          "model": "model.job_runtime_xgboost"
+          "model": "model.xgboost"
         },
         {
           "average": 0.5167233640883389,
@@ -16838,7 +16838,7 @@
             }
           },
           "datasets_run": 2,
-          "model": "model.job_runtime_random_forest"
+          "model": "model.random_forest"
         },
         {
           "average": 0.5069452290065932,
@@ -16861,7 +16861,7 @@
             }
           },
           "datasets_run": 2,
-          "model": "model.job_runtime_moe_xgboost"
+          "model": "model.moe_xgboost"
         },
         {
           "average": 0.4350686940266685,
@@ -16884,7 +16884,7 @@
             }
           },
           "datasets_run": 2,
-          "model": "model.job_power_uopc"
+          "model": "model.uopc"
         },
         {
           "average": 0.38004500792087675,
@@ -16907,7 +16907,7 @@
             }
           },
           "datasets_run": 2,
-          "model": "model.job_runtime_embedding_knn"
+          "model": "model.embedding_knn"
         },
         {
           "average": 0.354424092975984,
@@ -16930,7 +16930,7 @@
             }
           },
           "datasets_run": 2,
-          "model": "model.job_runtime_signature_memorizer"
+          "model": "model.signature_memorizer"
         },
         {
           "average": 0.26813204529708085,
@@ -16953,7 +16953,7 @@
             }
           },
           "datasets_run": 2,
-          "model": "model.job_runtime_tfidf_knn"
+          "model": "model.tfidf_knn"
         },
         {
           "average": 0.0,
@@ -16976,7 +16976,7 @@
             }
           },
           "datasets_run": 2,
-          "model": "model.job_runtime_baseline"
+          "model": "model.baseline"
         }
       ],
       "target": "maxpcon_per_node",

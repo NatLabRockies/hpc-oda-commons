@@ -15,9 +15,9 @@ import sys
 from hpc_oda_commons.benchmark.results import _normalize_legacy_sets
 from hpc_oda_commons.benchmark.runner import resolved_run_config
 from hpc_oda_commons.kernel.serialization import to_jsonable
-from hpc_oda_commons.models.job_runtime_tfidf_knn.model import (
-    JobRuntimeTfidfKnnConfig,
-    JobRuntimeTfidfKnnModel,
+from hpc_oda_commons.models.tfidf_knn.model import (
+    TfidfKnnConfig,
+    TfidfKnnModel,
 )
 
 
@@ -51,13 +51,11 @@ def test_the_output_does_not_depend_on_the_hash_seed() -> None:
 
 
 def test_run_config_records_extra_feature_fields_as_a_list() -> None:
-    model = JobRuntimeTfidfKnnModel(
-        JobRuntimeTfidfKnnConfig(extra_feature_fields=frozenset({"qos", "account"}))
-    )
+    model = TfidfKnnModel(TfidfKnnConfig(extra_feature_fields=frozenset({"qos", "account"})))
     config = resolved_run_config(model)
 
     assert config["extra_feature_fields"] == ["account", "qos"]
-    assert resolved_run_config(JobRuntimeTfidfKnnModel())["extra_feature_fields"] == []
+    assert resolved_run_config(TfidfKnnModel())["extra_feature_fields"] == []
     json.dumps(config)  # and it is plain JSON
 
 

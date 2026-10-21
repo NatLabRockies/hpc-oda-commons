@@ -82,7 +82,7 @@ def test_result_bundle_roundtrip(tmp_path: Path) -> None:
         "created_at": "2026-01-01T00:00:00Z",
         "metrics": metrics,
         "provenance": prov,
-        "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+        "model": {"id": "model.baseline", "version": "0.1.0"},
         "dataset": {
             "id": "synthetic",
             "schema_version": "oda.job.v0.1.0",

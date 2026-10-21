@@ -6,9 +6,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostConfig,
-    JobRuntimeXGBoostModel,
+from hpc_oda_commons.models.xgboost.model import (
+    XGBoostConfig,
+    XGBoostModel,
 )
 
 
@@ -20,7 +20,7 @@ def _dt(_s: str):
 
 
 def test_config_defaults() -> None:
-    config = JobRuntimeXGBoostConfig()
+    config = XGBoostConfig()
     assert config.n_windows == 1000
     assert config.test_window_hours == 6
     assert config.training_lookback_days == 100
@@ -36,7 +36,7 @@ def test_config_defaults() -> None:
 
 
 def test_dependency_check_reports_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    model = JobRuntimeXGBoostModel()
+    model = XGBoostModel()
 
     def fake_find_spec(name: str) -> object | None:
         if name in {"xgboost", "sklearn"}:
@@ -56,7 +56,7 @@ def test_analyze_preprocessing_writes_diagnostics(tmp_path: Path) -> None:
         {"user": "charlie", "partition": "compute", "state": "COMPLETED"},
         {"user": None, "partition": "compute", "state": "TIMEOUT"},
     ]
-    model = JobRuntimeXGBoostModel()
+    model = XGBoostModel()
     out_path = tmp_path / "preprocessing.json"
 
     payload = model.analyze_preprocessing(rows, diagnostics_path=out_path)
@@ -78,7 +78,7 @@ def test_build_split_plan() -> None:
             "end_time": _dt("2026-01-01T23:50:00Z"),
         },
     ]
-    model = JobRuntimeXGBoostModel()
+    model = XGBoostModel()
     plan = model.build_split_plan(rows, n_windows=2, test_window_hours=1)
 
     assert len(plan) == 2
@@ -105,7 +105,7 @@ def test_build_split_plan_respects_training_lookback_override() -> None:
             "end_time": _dt("2026-01-01T00:10:00Z"),
         },
     ]
-    model = JobRuntimeXGBoostModel()
+    model = XGBoostModel()
 
     wide = model.build_split_plan(rows, n_windows=1, test_window_hours=1)
     narrow = model.build_split_plan(
@@ -118,11 +118,11 @@ def test_build_split_plan_respects_training_lookback_override() -> None:
 
 def test_objective_defaults_to_library_squared_error() -> None:
     """The default must not move: every recorded benchmark number was fitted with it."""
-    assert JobRuntimeXGBoostConfig().objective == "reg:squarederror"
+    assert XGBoostConfig().objective == "reg:squarederror"
 
 
 def test_objective_reaches_the_regressor() -> None:
     """A config field nobody passes to the estimator is a field that does nothing."""
-    model = JobRuntimeXGBoostModel(JobRuntimeXGBoostConfig(objective="reg:absoluteerror"))
+    model = XGBoostModel(XGBoostConfig(objective="reg:absoluteerror"))
 
     assert model._new_regressor(100).get_params()["objective"] == "reg:absoluteerror"

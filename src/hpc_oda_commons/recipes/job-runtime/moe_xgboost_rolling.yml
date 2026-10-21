@@ -19,7 +19,7 @@ dataset:
   manifest_path: data/ingested/jobs_parquet/fugaku_24_04/manifest.json
 
 model:
-  id: model.job_runtime_moe_xgboost
+  id: model.moe_xgboost
   version: "0.1.0"
 
 metrics:

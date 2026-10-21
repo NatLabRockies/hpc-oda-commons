@@ -48,7 +48,7 @@ def _recipe(tmp_path: Path) -> Path:
                 "  id: test_dataset",
                 f"  table_path: {table_path.as_posix()}",
                 "model:",
-                "  id: model.job_runtime_baseline",
+                "  id: model.baseline",
                 '  version: "0.1.0"',
                 "metrics:",
                 "  - name: mae",

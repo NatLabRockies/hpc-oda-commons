@@ -9,15 +9,15 @@ import pytest
 
 from hpc_oda_commons.benchmark.recipes import validate_recipe
 from hpc_oda_commons.kernel.validate import SchemaValidationError
-from hpc_oda_commons.models.job_power_uopc.model import (
+from hpc_oda_commons.models.uopc.model import (
     BALANCED_FREQUENCY_WEIGHT,
     BALANCED_NODE_WEIGHT,
-    JobPowerUopcModel,
+    UopcModel,
     balanced_numeric_features,
 )
-from hpc_oda_commons.models.job_power_uopc.rolling import (
-    JobPowerUopcRollingConfig,
-    JobPowerUopcRollingModel,
+from hpc_oda_commons.models.uopc.rolling import (
+    UopcRollingConfig,
+    UopcRollingModel,
 )
 
 TARGET = "avgpcon_per_node"
@@ -75,7 +75,7 @@ def _paper_rows() -> list[dict]:
 
 @pytest.mark.parametrize(("features", "width"), [("zscore", 7), ("embedding", 4), ("balanced", 6)])
 def test_paper_protocol_feature_width(features: str, width: int) -> None:
-    prepared = JobPowerUopcModel()._prepare_paper_data(
+    prepared = UopcModel()._prepare_paper_data(
         _paper_rows(), test_start="2024-02-01", features=features
     )
     assert prepared.features.shape[1] == width
@@ -84,9 +84,7 @@ def test_paper_protocol_feature_width(features: str, width: int) -> None:
 
 def test_paper_protocol_fits_balanced_frequency_on_history_only() -> None:
     rows = _paper_rows()
-    prepared = JobPowerUopcModel()._prepare_paper_data(
-        rows, test_start="2024-02-01", features="balanced"
-    )
+    prepared = UopcModel()._prepare_paper_data(rows, test_start="2024-02-01", features="balanced")
     freq_col = prepared.features[:, -1]
     # History spans 2000-2200, so every later, higher frequency is clipped to the top.
     assert freq_col.max() == pytest.approx(BALANCED_FREQUENCY_WEIGHT)
@@ -121,10 +119,10 @@ def _rows() -> list[dict]:
     return rows
 
 
-def _model(features: str, **overrides) -> JobPowerUopcRollingModel:
+def _model(features: str, **overrides) -> UopcRollingModel:
     cfg = {"n_windows": 1, "test_window_hours": 1, "training_lookback_days": 2, "theta": 10}
     cfg = {**cfg, "k": 3, "features": features, **overrides}
-    return JobPowerUopcRollingModel(JobPowerUopcRollingConfig(**cfg))
+    return UopcRollingModel(UopcRollingConfig(**cfg))
 
 
 @pytest.mark.parametrize(
@@ -157,8 +155,8 @@ def test_rolling_balanced_works_without_a_frequency_column() -> None:
 
 def test_balanced_is_the_default() -> None:
     """balanced scored best everywhere tried (#222)."""
-    assert JobPowerUopcRollingConfig().features == "balanced"
-    prepared = JobPowerUopcModel()._prepare_paper_data(_paper_rows(), test_start="2024-02-01")
+    assert UopcRollingConfig().features == "balanced"
+    prepared = UopcModel()._prepare_paper_data(_paper_rows(), test_start="2024-02-01")
     assert prepared.features_mode == "balanced"
 
 
@@ -208,14 +206,14 @@ def _recipe(model: str, split: dict) -> dict:
     ],
 )
 def test_recipe_accepts_uopc_features_for_uopc(split: dict) -> None:
-    validate_recipe(_recipe("model.job_power_uopc", split))
+    validate_recipe(_recipe("model.uopc", split))
 
 
 @pytest.mark.parametrize(
     ("model", "split"),
     [
-        ("model.job_runtime_xgboost", {"method": "rolling", "n_windows": 3}),
-        ("model.job_power_uopc", {"method": "fixed", "train_fraction": 0.8, "seed": 0}),
+        ("model.xgboost", {"method": "rolling", "n_windows": 3}),
+        ("model.uopc", {"method": "fixed", "train_fraction": 0.8, "seed": 0}),
     ],
 )
 def test_recipe_rejects_uopc_features_elsewhere(model: str, split: dict) -> None:
@@ -226,7 +224,7 @@ def test_recipe_rejects_uopc_features_elsewhere(model: str, split: dict) -> None
 def test_recipe_rejects_an_unknown_mode() -> None:
     split = {"method": "rolling", "n_windows": 3, "uopc_features": "tfidf"}
     with pytest.raises(SchemaValidationError):
-        validate_recipe(_recipe("model.job_power_uopc", split))
+        validate_recipe(_recipe("model.uopc", split))
 
 
 def test_k_20_is_ours_and_5_the_papers() -> None:
@@ -236,11 +234,11 @@ def test_k_20_is_ours_and_5_the_papers() -> None:
 
     import hpc_oda_commons
     from hpc_oda_commons.benchmark.recipes import load_recipe
-    from hpc_oda_commons.models.job_power_uopc.model import PAPER_K, UOPC_DEFAULT_K
+    from hpc_oda_commons.models.uopc.model import PAPER_K, UOPC_DEFAULT_K
 
     assert (UOPC_DEFAULT_K, PAPER_K) == (20, 5)
-    assert JobPowerUopcRollingConfig().k == UOPC_DEFAULT_K
-    signature = inspect.signature(JobPowerUopcModel.evaluate_paper_reproduction)
+    assert UopcRollingConfig().k == UOPC_DEFAULT_K
+    signature = inspect.signature(UopcModel.evaluate_paper_reproduction)
     assert signature.parameters["k"].default == UOPC_DEFAULT_K
 
     root = Path(hpc_oda_commons.__file__).parent / "recipes" / "job-power"

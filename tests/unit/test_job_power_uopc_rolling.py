@@ -7,9 +7,9 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from hpc_oda_commons.benchmark import runner
-from hpc_oda_commons.models.job_power_uopc.rolling import (
-    JobPowerUopcRollingConfig,
-    JobPowerUopcRollingModel,
+from hpc_oda_commons.models.uopc.rolling import (
+    UopcRollingConfig,
+    UopcRollingModel,
 )
 
 TARGET = "avgpcon_per_node"
@@ -45,9 +45,9 @@ def _rows() -> list[dict]:
     return rows
 
 
-def _model(**overrides) -> JobPowerUopcRollingModel:
+def _model(**overrides) -> UopcRollingModel:
     cfg = {"n_windows": 1, "test_window_hours": 1, "training_lookback_days": 2, "theta": 5, "k": 3}
-    return JobPowerUopcRollingModel(JobPowerUopcRollingConfig(**{**cfg, **overrides}))
+    return UopcRollingModel(UopcRollingConfig(**{**cfg, **overrides}))
 
 
 def test_each_user_is_predicted_from_their_own_history() -> None:
@@ -117,4 +117,4 @@ def test_rows_without_an_embedding_are_an_error() -> None:
 
 def test_the_target_cannot_be_a_feature() -> None:
     with pytest.raises(ValueError, match="prediction target"):
-        JobPowerUopcRollingModel(JobPowerUopcRollingConfig(target_field="num_cores_req"))
+        UopcRollingModel(UopcRollingConfig(target_field="num_cores_req"))

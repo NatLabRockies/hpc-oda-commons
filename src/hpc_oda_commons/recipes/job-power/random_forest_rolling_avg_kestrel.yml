@@ -21,7 +21,7 @@ dataset:
   table_path: data/windows/nlr_kestrel_power/data.parquet
 
 model:
-  id: model.job_runtime_random_forest
+  id: model.random_forest
   version: "0.1.0"
 
 metrics:

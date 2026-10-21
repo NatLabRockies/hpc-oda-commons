@@ -156,7 +156,7 @@ def test_build_plan_cell_and_embed_counts(tmp_path: Path) -> None:
 def test_build_plan_embedding_cells_read_embedded_parquet(tmp_path: Path) -> None:
     cfg = load_site_config(_write_site(tmp_path))
     plan = build_plan([_card("ds", 1000)], cfg, plan_id="p1")
-    emb = [c for c in plan.cells if c.model == EMBEDDING_MODEL.removeprefix("job_runtime_")]
+    emb = [c for c in plan.cells if c.model == EMBEDDING_MODEL]
     other = [c for c in plan.cells if c not in emb]
     assert all(c.needs_embed and "embeddings" in c.table_path for c in emb)
     assert all(not c.needs_embed and "windows" in c.table_path for c in other)
@@ -347,12 +347,12 @@ def test_both_xgboost_variants_fit_absolute_error() -> None:
     The leaderboard's headline comparison is MoE vs plain XGBoost; that has to be about
     routing and recency, not about which loss the trees were fitted to (#138, #145).
     """
-    assert _split_of("job_runtime_xgboost")["objective"] == "reg:absoluteerror"
-    assert _split_of("job_runtime_moe_xgboost")["objective"] == "reg:absoluteerror"
+    assert _split_of("xgboost")["objective"] == "reg:absoluteerror"
+    assert _split_of("moe_xgboost")["objective"] == "reg:absoluteerror"
 
 
 def test_moe_cells_carry_the_best_measured_routing() -> None:
-    split = _split_of("job_runtime_moe_xgboost")
+    split = _split_of("moe_xgboost")
 
     assert split["enable_power_users"] is False
     assert split["time_decay_rate"] == 0.05
@@ -360,13 +360,13 @@ def test_moe_cells_carry_the_best_measured_routing() -> None:
 
 def test_models_without_overrides_keep_the_shared_split() -> None:
     """An override must not leak into models that were never measured with it."""
-    for model_key in ("job_runtime_baseline", "job_runtime_mlp", "job_runtime_random_forest"):
+    for model_key in ("baseline", "mlp", "random_forest"):
         assert _split_of(model_key) == dict(SPLIT)
 
 
 def test_overrides_do_not_mutate_the_shared_split() -> None:
     """``build_recipe`` copies before layering; a leak here would poison later cells."""
-    _split_of("job_runtime_moe_xgboost")
+    _split_of("moe_xgboost")
 
     assert "objective" not in SPLIT
     assert "enable_power_users" not in SPLIT
@@ -381,7 +381,7 @@ def test_moe_is_in_the_fleet(tmp_path: Path) -> None:
     cfg = load_site_config(_write_site(tmp_path))
     plan = build_plan([_card("small", 1000)], cfg, plan_id="p1")
 
-    assert "job_runtime_moe_xgboost" in RUNTIME_MODELS
+    assert "moe_xgboost" in RUNTIME_MODELS
     assert "moe_xgboost" in {cell.model for cell in plan.cells}
 
 
@@ -634,22 +634,20 @@ def test_no_exclusions_plans_the_whole_roster() -> None:
 
 def test_a_model_can_be_excluded_by_key_or_by_tag() -> None:
     """Both spellings appear in the tooling -- plan output uses tags, the roster uses keys."""
-    assert select_models(["job_runtime_mlp"]) == select_models(["mlp"])
-    assert "job_runtime_mlp" not in select_models(["mlp"])
+    assert select_models(["mlp"]) == select_models(["mlp"])
+    assert "mlp" not in select_models(["mlp"])
 
 
 def test_exclusion_preserves_roster_order_and_drops_only_what_was_named() -> None:
-    kept = select_models(["mlp", "job_runtime_baseline"])
+    kept = select_models(["mlp", "baseline"])
 
-    assert kept == tuple(
-        m for m in RUNTIME_MODELS if m not in {"job_runtime_mlp", "job_runtime_baseline"}
-    )
+    assert kept == tuple(m for m in RUNTIME_MODELS if m not in {"mlp", "baseline"})
 
 
 def test_an_unknown_exclusion_is_an_error_not_a_silent_no_op() -> None:
     """A typo that quietly planned the full matrix is the surprise this option prevents."""
-    with pytest.raises(ModelSelectionError, match="job_runtime_mpl"):
-        select_models(["job_runtime_mpl"])
+    with pytest.raises(ModelSelectionError, match="mpl"):
+        select_models(["mpl"])
 
 
 def test_excluding_everything_is_an_error() -> None:
@@ -745,7 +743,7 @@ def test_a_card_predating_the_field_plans_as_it_did_before(tmp_path: Path) -> No
 
 def test_the_recipe_carries_the_cards_window_count() -> None:
     """The plan and the recipe must not be able to disagree about the evaluation length."""
-    recipe = build_recipe("ds", "job_runtime_xgboost", "t.parquet", "runs/ds", n_windows=360)
+    recipe = build_recipe("ds", "xgboost", "t.parquet", "runs/ds", n_windows=360)
     assert recipe["split"]["n_windows"] == 360
 
 

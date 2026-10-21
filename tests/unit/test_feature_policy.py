@@ -11,11 +11,11 @@ from hpc_oda_commons.models.feature_policy import (
     RUNTIME_PREDICTION_FEATURE_FIELDS,
     partition_feature_fields,
 )
-from hpc_oda_commons.models.job_runtime_random_forest.model import (
-    JobRuntimeRandomForestConfig,
-    JobRuntimeRandomForestModel,
+from hpc_oda_commons.models.random_forest.model import (
+    RandomForestConfig,
+    RandomForestModel,
 )
-from hpc_oda_commons.models.job_runtime_tfidf_knn.vectorization import detect_text_columns
+from hpc_oda_commons.models.tfidf_knn.vectorization import detect_text_columns
 
 pytest.importorskip("sklearn")
 
@@ -65,9 +65,9 @@ def _rows(*, extra_column: str | None = None) -> list[dict[str, object]]:
     return rows
 
 
-def _model(**config_kwargs: object) -> JobRuntimeRandomForestModel:
-    return JobRuntimeRandomForestModel(
-        config=JobRuntimeRandomForestConfig(
+def _model(**config_kwargs: object) -> RandomForestModel:
+    return RandomForestModel(
+        config=RandomForestConfig(
             n_windows=4,
             test_window_hours=1,
             training_lookback_days=1,

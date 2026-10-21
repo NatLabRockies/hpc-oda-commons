@@ -39,14 +39,14 @@ Like MAE but penalizes large errors more heavily. Always >= MAE.
 Run the baseline first to establish a reference, then run alternate models on the same data using the same rolling split parameters. A useful model should achieve lower MAE and RMSE than the baseline, which predicts the global mean runtime for every job.
 
 The toolkit ships eight models -- seven for job runtime and one for job power:
-- `model.job_runtime_baseline` -- mean predictor (supports fixed and rolling splits)
-- `model.job_runtime_xgboost` -- gradient-boosted trees with OHE+SVD preprocessing
-- `model.job_runtime_random_forest` -- random forest with OHE+SVD preprocessing
-- `model.job_runtime_mlp` -- feed-forward MLP with OHE+SVD preprocessing
-- `model.job_runtime_tfidf_knn` -- text similarity via TF-IDF + k-nearest neighbors
-- `model.job_runtime_embedding_knn` -- kNN over precomputed dense embeddings (see `hpc-oda embed`)
-- `model.job_runtime_moe_xgboost` -- per-(user, wallclock-bin) XGBoost experts routed inside the shared rolling window
-- `model.job_power_uopc` -- job power prediction via per-user kNN (fixed split, the paper protocol with a cutoff split, or the shared rolling windows; see `docs/benchmarking/power/uopc.md`)
+- `model.baseline` -- mean predictor (supports fixed and rolling splits)
+- `model.xgboost` -- gradient-boosted trees with OHE+SVD preprocessing
+- `model.random_forest` -- random forest with OHE+SVD preprocessing
+- `model.mlp` -- feed-forward MLP with OHE+SVD preprocessing
+- `model.tfidf_knn` -- text similarity via TF-IDF + k-nearest neighbors
+- `model.embedding_knn` -- kNN over precomputed dense embeddings (see `hpc-oda embed`)
+- `model.moe_xgboost` -- per-(user, wallclock-bin) XGBoost experts routed inside the shared rolling window
+- `model.uopc` -- job power prediction via per-user kNN (fixed split, the paper protocol with a cutoff split, or the shared rolling windows; see `docs/benchmarking/power/uopc.md`)
 
 Every runtime model can also predict power: the recipe's metric target is the column it
 predicts. With rolling UoPC, `summary.rows_fallback` in `metrics.json` counts test jobs whose
@@ -62,7 +62,7 @@ Use rolling evaluation with the same `n_windows`, `test_window_hours`, and `trai
   "schema_version": "oda.result.v0.1.0",
   "recipe_id": "recipe.job_runtime.baseline_tiny",
   "metrics": {"mae": 350.4, "rmse": 412.7},
-  "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+  "model": {"id": "model.baseline", "version": "0.1.0"},
   "dataset": {
     "id": "...",
     "schema_version": "oda.job.v0.2.0",
