@@ -1,6 +1,4 @@
-"""
-Implements  for adapters/models/recipes metadata display.
-"""
+"""`hpc-oda info`: show one registry entry."""
 
 from __future__ import annotations
 
@@ -29,6 +27,7 @@ def info(
         ),
     ] = None,
 ) -> None:
+    """Show one registry entry's metadata."""
     snapshot_obj = load_registry_snapshot(snapshot)
     index = RegistryIndex.from_entries(snapshot_obj.entries)
     entry = index.get(entry_id)

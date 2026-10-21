@@ -1,6 +1,4 @@
-"""
-Implements  (Find pillar via the registry).
-"""
+"""`hpc-oda browse`: list the registry's entries."""
 
 from __future__ import annotations
 
@@ -44,6 +42,7 @@ def browse(
         ),
     ] = None,
 ) -> None:
+    """List the registry's models, datasets, recipes and adapters."""
     if entry_type and entry_type not in {"adapter", "model", "recipe", "dataset"}:
         raise typer.BadParameter("type must be one of: adapter, model, recipe, dataset")
 

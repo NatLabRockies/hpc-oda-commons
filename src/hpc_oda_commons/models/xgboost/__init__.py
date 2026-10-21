@@ -1,5 +1,5 @@
 """
-XGBoost model package for job runtime prediction (v0.1).
+XGBoost model package: predicts the recipe's target (job runtime or power).
 """
 
 from __future__ import annotations

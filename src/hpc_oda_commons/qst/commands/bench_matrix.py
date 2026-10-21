@@ -126,7 +126,7 @@ def _load_plan_dir(plan_dir: Path | None) -> tuple[LoadedPlan, Path]:
 def bench_matrix_plan(
     cards_dir: Annotated[
         Path,
-        typer.Option("--cards-dir", exists=True, help="Directory of *.card.json dataset cards."),
+        typer.Option("--cards-dir", exists=True, help="Directory of runtime cards (*.card.json)."),
     ] = Path("docs/benchmarking/datasets"),
     site: Annotated[
         Path,
@@ -144,9 +144,7 @@ def bench_matrix_plan(
         list[str] | None,
         typer.Option(
             "--exclude-model",
-            help=(
-                "Leave a model out of the matrix (repeatable). Full key (mlp) or short tag (mlp)."
-            ),
+            help=("Leave a model out of the matrix, by name, e.g. mlp (repeatable)."),
         ),
     ] = None,
     include_unhealthy: Annotated[
@@ -166,7 +164,11 @@ def bench_matrix_plan(
         ),
     ] = Path(".hpc_oda/bench-matrix/data/windows"),
 ) -> None:
-    """Generate the benchmark-matrix plan (recipes + sbatch scripts + plan.json)."""
+    """Generate the benchmark-matrix plan (recipes + sbatch scripts + plan.json).
+
+    Each recipe tests its card's whole test period (360 6-hour windows for a 90-day card).
+    The runtime leaderboard counts 120 windows today, so these runs show on runs.html only.
+    """
     try:
         cfg = load_site_config(site)
     except SiteConfigError as exc:
@@ -247,7 +249,7 @@ def _partition_for(plan, dataset: str) -> str:
 def bench_matrix_slice(
     cards_dir: Annotated[
         Path,
-        typer.Option("--cards-dir", exists=True, help="Directory of *.card.json dataset cards."),
+        typer.Option("--cards-dir", exists=True, help="Directory of runtime cards (*.card.json)."),
     ] = Path("docs/benchmarking/datasets"),
     out: Annotated[
         Path,
@@ -270,9 +272,8 @@ def bench_matrix_slice(
             min=0,
             help=(
                 "Extend the slice earlier by N days, leaving the test region alone. "
-                "Defaults to the shortfall the benchmark split implies for each dataset "
-                "(training_lookback_days - the card's train_days). Pass a value only to "
-                "override that."
+                "Defaults to each card's history budget beyond its training days "
+                "(history_days - train_days). Pass a value only to override that."
             ),
         ),
     ] = None,
@@ -280,15 +281,15 @@ def bench_matrix_slice(
     """Slice each dataset's canonical parquet to its benchmark window.
 
     Reads the canonical parquet named on each card and writes
-    ``<out>/<dataset>/data.parquet``, plus a ``slice.json`` recording which window it
-    holds. That tree rsyncs to ``<repo>/data/windows`` on the cluster, where the generated
+    `<out>/<dataset>/data.parquet`, plus a slice.json recording which window it
+    holds. That tree rsyncs to `<repo>/data/windows` on the cluster, where the generated
     recipes read it. Overlapping (long-running) jobs are kept so the earliest rolling
     windows keep their training rows — see the slice module.
 
-    By default each dataset is extended back by exactly the shortfall its card leaves against
-    the benchmark split's ``training_lookback_days``, so a slice always holds the history the
-    generated recipes ask for. Deriving it rather than passing it by hand is deliberate: a
-    slice silently narrower than the split is invisible in the results (#143, #145).
+    By default each dataset is extended back by its card's history budget beyond the
+    training days (history_days - train_days), so a slice holds the history every lookback
+    arm can use. Deriving it rather than passing it by hand is deliberate: a slice silently
+    narrower than the split is invisible in the results.
     """
     cards = load_cards(cards_dir)
     table = Table(title="Slice to benchmark window")
@@ -387,7 +388,7 @@ def bench_matrix_submit(
     execute: Annotated[
         bool,
         typer.Option(
-            "--execute", help="Actually submit (default: dry-run — charges the allocation)."
+            "--execute", help="Really submit, which charges the allocation (default: a dry run)."
         ),
     ] = False,
     only: Annotated[str | None, typer.Option("--only", help="Submit only this dataset.")] = None,
@@ -416,11 +417,11 @@ def bench_matrix_submit(
 ) -> None:
     """Submit embed jobs then benchmark cells (embedding_knn cells depend on their embed).
 
-    Dry-run by default; pass ``--execute`` to really submit. Use ``--only``/``--only-model``
-    and ``--partition debug`` for a quick single-cell smoke before the full fleet.
+    Dry-run by default; pass --execute to really submit. Use --only/--only-model
+    and --partition debug for a quick single-cell smoke before the full fleet.
 
-    ``--resume`` recovers an interrupted submit: it asks ``sacct`` which of the plan's job
-    names already exist and submits only the rest (#189).
+    --resume recovers an interrupted submit: it asks sacct which of the plan's job
+    names already exist and submits only the rest.
     """
     cfg = _load_site(site)
     plan, resolved = _load_plan_dir(plan_dir)
@@ -630,7 +631,7 @@ def bench_matrix_rank(
     """Rank each cell by walk-forward choice among its training-lookback arms.
 
     Reporting the best arm by test error would select on the number it reports; this chooses
-    each window's arm from earlier windows only (#190).
+    each window's arm from earlier windows only.
     """
     from hpc_oda_commons.benchmark.results import build_arm_ranking, write_arm_ranking
 

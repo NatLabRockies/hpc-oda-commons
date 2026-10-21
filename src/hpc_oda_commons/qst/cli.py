@@ -86,13 +86,17 @@ from hpc_oda_commons.tools.report import (
     write_leaderboard_pages,
 )
 
-app = typer.Typer(add_completion=False, help="hpc-oda-commons Quickstart Toolkit (v0.1)")
+app = typer.Typer(
+    add_completion=False,
+    help="Benchmark HPC job runtime and power prediction, on public data or your own.",
+)
 ingest_app = typer.Typer(
     add_completion=False, help="Ingest operational data into canonical ODA artifacts."
 )
 app.add_typer(ingest_app, name="ingest")
 datasets_app = typer.Typer(
-    add_completion=False, help="Discover and fetch public operational datasets."
+    add_completion=False,
+    help="Fetch, prepare, characterize, slice and card datasets, and compute their ceilings.",
 )
 app.add_typer(datasets_app, name="datasets")
 datasets_app.command("fetch")(datasets_fetch)
@@ -121,7 +125,9 @@ app.command()(embed)
 
 console = Console()
 
-SLURMCTLD_PATH_OPT = typer.Option(..., "--path", exists=True, readable=True)
+SLURMCTLD_PATH_OPT = typer.Option(
+    ..., "--path", exists=True, readable=True, help="The slurmctld log to read."
+)
 
 
 def _now_utc_iso() -> str:
@@ -596,17 +602,43 @@ def ingest_slurmctld(path: Path = SLURMCTLD_PATH_OPT) -> None:
 
 @ingest_app.command("jobs-parquet")
 def ingest_jobs_parquet(
-    path: Annotated[Path, typer.Option(..., "--path", exists=True, readable=True)],
-    mapping: Annotated[Path | None, typer.Option("--mapping")] = None,
-    sample_rows: Annotated[int, typer.Option("--sample-rows")] = 200,
-    batch_size: Annotated[int, typer.Option("--batch-size")] = 50_000,
-    non_interactive: Annotated[bool, typer.Option("--non-interactive")] = False,
+    path: Annotated[
+        Path,
+        typer.Option(..., "--path", exists=True, readable=True, help="The Parquet export to read."),
+    ],
+    mapping: Annotated[
+        Path | None,
+        typer.Option(
+            "--mapping",
+            help="A mapping.yml from an earlier run. Without it, a wizard builds one.",
+        ),
+    ] = None,
+    sample_rows: Annotated[
+        int, typer.Option("--sample-rows", help="Rows the wizard profiles to suggest a mapping.")
+    ] = 200,
+    batch_size: Annotated[
+        int, typer.Option("--batch-size", help="Rows converted at a time.")
+    ] = 50_000,
+    non_interactive: Annotated[
+        bool,
+        typer.Option(
+            "--non-interactive",
+            help="Never prompt: requires --mapping, and skips the job-state filter question.",
+        ),
+    ] = False,
     hash_identifiers: Annotated[
-        bool, typer.Option("--hash-identifiers/--no-hash-identifiers")
+        bool,
+        typer.Option(
+            "--hash-identifiers/--no-hash-identifiers",
+            help="The wizard's default for hashing user and account. No effect with --mapping.",
+        ),
     ] = True,
 ) -> None:
     """
     Ingest a jobs Parquet export into canonical oda.job.v0.2.0 artifacts.
+
+    Writes data/ingested/jobs_parquet/<run>/: data.parquet, its quality report, a manifest and,
+    from the wizard, mapping.yml.
     """
     root = Path.cwd()
     _ensure_dirs(root)
@@ -702,7 +734,7 @@ def ingest_jobs_parquet(
 
 @app.command()
 def benchmark(
-    recipe: Path,
+    recipe: Annotated[Path, typer.Argument(help="The recipe YAML to run.")],
     verbose: Annotated[
         bool,
         typer.Option(
@@ -713,8 +745,9 @@ def benchmark(
     ] = False,
 ) -> None:
     """
-    Run a benchmark recipe (v0.1 runtime prediction).
-    Writes a result bundle under ./runs/.
+    Run a benchmark recipe: one model, one dataset, one split.
+
+    Writes a result bundle under the recipe's run.output_dir (default runs/).
     """
     from hpc_oda_commons.kernel.integrity import check_integrity
 
@@ -909,8 +942,18 @@ def benchmark(
 
 @app.command("analyze")
 def analyze_my_data(
-    data: Annotated[Path, typer.Option("--data", exists=True, readable=True)],
-    out: Annotated[Path, typer.Option("--out", exists=False)] = Path("reports"),
+    data: Annotated[
+        Path,
+        typer.Option(
+            "--data",
+            exists=True,
+            readable=True,
+            help="A job Parquet file, or an ingest run folder holding data.parquet.",
+        ),
+    ],
+    out: Annotated[
+        Path, typer.Option("--out", exists=False, help="Folder the report bundle goes under.")
+    ] = Path("reports"),
 ) -> None:
     """
     Analyze a local dataset with the baseline model and emit a report bundle.
@@ -988,12 +1031,16 @@ def analyze_my_data(
 
 
 @app.command()
-def validate(path: Path) -> None:
+def validate(
+    path: Annotated[Path, typer.Argument(help="A result bundle, manifest.json or Parquet file.")],
+) -> None:
     """
-    Validate artifacts (v0.1):
-    - If path is a result bundle dir, validate result.json against schema.
-    - If path is a manifest.json, validate it against manifest schema.
-    - If path is a parquet file, validate first rows as oda.job.v0.2.0.
+    Validate an artifact against its schema.
+
+    \b
+    - A result bundle folder: checks result.json.
+    - A manifest.json: checks it against the manifest schema.
+    - A Parquet file: checks its first rows as oda.job.v0.2.0.
     """
     if not path.exists():
         raise typer.BadParameter(f"Path not found: {path}")
@@ -1039,7 +1086,7 @@ def leaderboard(
         Path,
         typer.Option(
             "--ceilings",
-            help="Directory of error ceilings and dataset cards, for headroom and rosters.",
+            help="Folder of error ceilings and runtime cards, for headroom and the roster.",
         ),
     ] = Path("docs/benchmarking/datasets"),
     recipes: Annotated[
@@ -1052,7 +1099,7 @@ def leaderboard(
     ] = None,
 ) -> None:
     """
-    Generate leaderboard.json, index.html and runs.html from result bundles under runs/.
+    Generate leaderboard.json, index.html and runs.html from the result bundles in --runs.
 
     index.html has one leaderboard per target: a row per model, its average headroom, and a
     column per dataset. runs.html lists every bundle and why any was not counted.
@@ -1077,7 +1124,8 @@ def leaderboard(
 def record_hash_cmd() -> None:
     """Record the current source code hash for this git commit.
 
-    Appends a (git_commit, source_hash) entry to integrity/known_hashes.json.
+    Appends a (git_commit, source_hash) entry to the package's
+    src/hpc_oda_commons/integrity/known_hashes.json.
     Run this after tests pass on a clean commit to register it as validated.
     """
     from hpc_oda_commons.kernel.integrity import record_hash

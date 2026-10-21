@@ -1,7 +1,7 @@
 """CLI: ``hpc-oda embed`` — serialize an ingested job table and embed each row.
 
 Produces an embedded parquet (original columns + a dense ``embedding`` column) plus a
-provenance manifest, for use by ``model.embedding_knn``. The embedding
+provenance manifest, for the embedding models (embedding kNN, UoPC). The embedding
 model is swappable; ``--model stub`` uses a deterministic dependency-free encoder for
 offline/CI. Extra text columns (e.g. local job scripts) are configured only via a local
 ``--config`` file so sensitive content never lands on the command line or in the repo.
@@ -56,15 +56,27 @@ def embed(
         Path | None,
         typer.Option("--config", help="Local YAML (extra_text_columns, instruction, ...)"),
     ] = None,
-    device: Annotated[str, typer.Option("--device")] = "auto",
-    dtype: Annotated[str, typer.Option("--dtype")] = "fp16",
-    batch_size: Annotated[int, typer.Option("--batch-size")] = 32,
+    device: Annotated[
+        str, typer.Option("--device", help="auto, cpu, cuda or mps (auto picks the best found)")
+    ] = "auto",
+    dtype: Annotated[str, typer.Option("--dtype", help="fp16, fp32 or bf16")] = "fp16",
+    batch_size: Annotated[
+        int, typer.Option("--batch-size", help="Rows the model encodes at a time")
+    ] = 32,
     chunk_size: Annotated[int, typer.Option("--chunk-size", help="Rows per cache chunk")] = 1000,
     cache_dir: Annotated[
         Path | None, typer.Option("--cache-dir", help="Vector cache dir (enables resume)")
     ] = None,
-    instruction: Annotated[str, typer.Option("--instruction")] = "",
-    trust_remote_code: Annotated[bool, typer.Option("--trust-remote-code")] = False,
+    instruction: Annotated[
+        str,
+        typer.Option("--instruction", help="Prefix each row with this model instruction"),
+    ] = "",
+    trust_remote_code: Annotated[
+        bool,
+        typer.Option(
+            "--trust-remote-code", help="Let the model run its own code from its repository"
+        ),
+    ] = False,
 ) -> None:
     """Embed an ingested job table into an embedded parquet + provenance manifest."""
     from hpc_oda_commons.embeddings.runner import embed_table

@@ -1,9 +1,9 @@
 """
-Shared infrastructure for rolling tabular runtime-prediction models.
+Shared infrastructure for the rolling tabular models.
 
 Holds the rolling split utilities and the OHE+SVD categorical preprocessing
-reused by the XGBoost, Random Forest, and MLP models (and the rolling split
-helper used by TF-IDF kNN).
+reused by the XGBoost, MoE XGBoost, Random Forest, MLP and signature-memorizer
+models (and the rolling split helper used by TF-IDF kNN).
 """
 
 from __future__ import annotations

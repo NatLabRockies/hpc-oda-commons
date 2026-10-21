@@ -1,4 +1,4 @@
-.PHONY: test test-integration lint format precommit
+.PHONY: test test-integration lint format precommit docs-cli
 
 test:
 	pytest -q
@@ -15,3 +15,6 @@ format:
 
 precommit:
 	pre-commit run --all-files
+
+docs-cli:
+	python -m hpc_oda_commons.qst.cli_reference

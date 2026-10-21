@@ -1,4 +1,4 @@
-"""Feed-forward MLP model for job runtime prediction with rolling evaluation."""
+"""Feed-forward MLP model with rolling evaluation: predicts the recipe's target."""
 
 from hpc_oda_commons.models.mlp.model import (
     MlpConfig,
