@@ -272,7 +272,9 @@ def fetch_descriptor(
         if dest.exists() and sha256_file(dest) == expected:
             cached.append(CachedResource(filename, dest, expected, resource.get("bytes"), True))
             continue
-        if offline:
+        # Offline forbids downloads. A manual source copied from a local folder (--from) is
+        # not one, so a private export prepares offline too (#255).
+        if offline and not (kind == "manual" and source_dir is not None):
             raise OfflineError(filename)
 
         _materialize(kind, resource, dest, source=source, source_dir=source_dir)

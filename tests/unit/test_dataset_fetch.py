@@ -164,6 +164,20 @@ def test_a_cache_under_an_id_from_before_249_is_adopted(tmp_path: Path) -> None:
     ]
 
 
+def test_offline_still_copies_a_manual_file_from_a_local_folder(tmp_path: Path) -> None:
+    """Offline forbids downloads; copying your own export from --from is not one (#255)."""
+    content = b"job|data\n"
+    folder = tmp_path / "exports"
+    folder.mkdir()
+    (folder / "jobs.txt").write_bytes(content)
+    resource = {"filename": "jobs.txt", "sha256": _sha(content), "bytes": len(content)}
+    desc = _descriptor({"kind": "manual", "resources": [resource]})
+
+    result = fetch_descriptor(desc, cache_dir=tmp_path / "cache", offline=True, source_dir=folder)
+
+    assert result.resources[0].path.read_bytes() == content
+
+
 def test_offline_uses_cache_or_errors(tmp_path: Path) -> None:
     res = _remote(tmp_path / "remote", "a.bin", b"abc")
     desc = _descriptor({"kind": "http", "resources": [res]})
