@@ -10,8 +10,8 @@ from __future__ import annotations
 import inspect
 import sys
 from pathlib import Path
+from typing import Any
 
-import click
 import typer
 
 CLI_REFERENCE = Path("docs/reference/cli.md")
@@ -53,29 +53,29 @@ def render() -> str:
     return INTRO + "\n".join(lines).rstrip() + "\n"
 
 
-# The page is built from the click objects directly, not by typer's own docs command:
+# The page is built from the command objects directly, not by typer's own docs command:
 # that renders option types differently from one typer or click release to the next,
 # and the page must read the same wherever the test runs.
 
 
-def _walk(command: click.Command, path: list[str]):
+def _walk(command: Any, path: list[str]):
     for name, sub in getattr(command, "commands", {}).items():
         yield [*path, name], sub
         yield from _walk(sub, [*path, name])
 
 
-def _help(command: click.Command) -> str:
+def _help(command: Any) -> str:
     text = inspect.cleandoc(command.help or "")
     # Click's "\b" (keep this paragraph's line breaks) means nothing in Markdown.
     return "\n".join(line for line in text.splitlines() if line != "\b")
 
 
-def _summary(command: click.Command) -> str:
+def _summary(command: Any) -> str:
     """A command's first line of help."""
     return _help(command).split("\n")[0]
 
 
-def _command(path: list[str], command: click.Command) -> list[str]:
+def _command(path: list[str], command: Any) -> list[str]:
     params = [p for p in command.params if not getattr(p, "hidden", False)]
     arguments = [p for p in params if p.param_type_name == "argument"]
     options = [p for p in params if not p.param_type_name == "argument"]
@@ -99,8 +99,8 @@ def _command(path: list[str], command: click.Command) -> list[str]:
 
 
 def _kind(kind: object) -> str:
-    """A value's kind by its type's class name: typer may carry its own click, and click's
-    type names differ between releases."""
+    """A value's kind by its type's class name. Newer typer carries its own copy of click,
+    so the click package may not be installed, and click's type names differ by release."""
     names = {k.__name__ for k in type(kind).__mro__}
     if names & {"Path", "TyperPath"}:
         return "PATH"
@@ -111,7 +111,7 @@ def _kind(kind: object) -> str:
     return "TEXT"
 
 
-def _param(param: click.Parameter) -> str:
+def _param(param: Any) -> str:
     if param.param_type_name == "argument":
         names = str(param.name).upper()
     else:
