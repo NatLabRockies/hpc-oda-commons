@@ -27,6 +27,7 @@ schema_version: oda.job.v0.2.0
 dataset:
   id: nlr_kestrel
   table_path: data/windows/nlr_kestrel_power_embedded/data.parquet
+  window: { start: "2025-08-01", end: "2026-01-01" }
 
 model:
   id: model.embedding_knn

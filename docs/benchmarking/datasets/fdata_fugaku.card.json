@@ -1,35 +1,51 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
   "dataset_id": "dataset.fdata_fugaku",
-  "generated_at": "2026-08-27T12:58:50.439335+00:00",
+  "generated_at": "2026-10-21T16:47:45.938812+00:00",
   "source": {
     "table_path": "data/datasets/fdata_fugaku/data.parquet",
     "system": "Fugaku",
     "descriptor": "dataset.fdata_fugaku"
   },
   "characterization": {
-    "n_rows": 5793789,
+    "n_rows": 8724203,
     "full_span": {
       "start": "2023-02-28",
-      "end": "2023-09-30"
+      "end": "2024-04-30"
     },
     "healthy_span": {
       "start": "2023-03-01",
-      "end": "2023-09-30",
-      "days": 214,
-      "rows": 5793568
+      "end": "2024-04-30",
+      "days": 427,
+      "rows": 8723982
     },
     "daily_volume": {
-      "median": 20222.0,
-      "min": 2583,
+      "median": 19982.0,
+      "min": 11,
       "max": 113432,
-      "gap_floor": 1011.1
+      "gap_floor": 999.1
     },
-    "rate_per_day": 27072.7,
-    "gaps": [],
+    "rate_per_day": 20430.9,
+    "gaps": [
+      {
+        "start": "2023-10-01",
+        "end": "2023-11-29",
+        "days": 60
+      },
+      {
+        "start": "2024-02-10",
+        "end": "2024-02-12",
+        "days": 3
+      },
+      {
+        "start": "2024-04-01",
+        "end": "2024-04-03",
+        "days": 3
+      }
+    ],
     "columns": {
       "user": {
-        "cardinality": 1161,
+        "cardinality": 1647,
         "missingness": 0.0
       },
       "job_state": {
@@ -39,9 +55,9 @@
     },
     "runtime_seconds": {
       "min": 1.0,
-      "median": 1680.0,
-      "p90": 31002.2,
-      "p99": 141545.5,
+      "median": 1451.0,
+      "p90": 27251.0,
+      "p99": 133946.0,
       "max": 259201.0
     }
   },
@@ -50,7 +66,8 @@
       "anchor": 0.8,
       "train_days": 60,
       "test_days": 90,
-      "history_days": 120
+      "history_days": 120,
+      "pinned_end": "2023-09-26"
     },
     "window_start": "2023-04-30",
     "window_end": "2023-09-26",
@@ -60,7 +77,7 @@
     "rate_per_day": 29008.3,
     "gaps_in_window": [],
     "healthy": true,
-    "rationale": "window END at 80% of healthy span; clear of all missing blocks."
+    "rationale": "pinned to end 2023-09-26, the window the benchmark ran on, so the table can grow without moving it. No missing blocks."
   },
   "decisions": [],
   "provenance": {
@@ -74,15 +91,15 @@
     },
     "code": {
       "package_version": "0.1.0",
-      "git_commit": "fdf037fe018c5ad7eed76829bbf790b72aa73995",
+      "git_commit": "937c6202add6420302197b3ca441a11bce85fb7c",
       "source_hash": null
     },
     "inputs": [
       {
         "path": "data/datasets/fdata_fugaku/data.parquet",
-        "sha256": "1592976399098dc801f743413857617dbf7b0c70127e6f5ec924b521f02f7718",
-        "size_bytes": 142972847,
-        "mtime_epoch": 1787411048.7850702
+        "sha256": "ef75f9b714a4e1fcbeeef48fe4605365abcc1f8c00fd3e03ddc97011cc4ae617",
+        "size_bytes": 8826939966,
+        "mtime_epoch": 1792598223.5373523
       }
     ]
   }

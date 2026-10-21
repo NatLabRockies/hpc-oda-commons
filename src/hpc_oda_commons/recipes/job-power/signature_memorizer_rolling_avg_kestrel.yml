@@ -1,11 +1,9 @@
 # The signature memorizer predicting average power per node on NLR Kestrel (#217), on the
 # same rolling protocol as F-DATA (#204): 89 daily windows, 60 days of history. The windows
-# end at the table's last submit, so they cover Kestrel's last 89 days; the slice only keeps
+# end at the table's last submit, so they cover Kestrel's last 89 days; the window only keeps
 # the table small enough to load.
 #
 #   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/nlr_kestrel.yml
-#   hpc-oda datasets slice data/datasets/nlr_kestrel/data.parquet \
-#     --start 2025-08-01 --end 2026-01-01 --out data/windows/nlr_kestrel_power/data.parquet
 #
 # Every model in recipes/job-power/*_rolling_avg_kestrel.yml uses the same split and rows.
 
@@ -18,7 +16,8 @@ schema_version: oda.job.v0.2.0
 
 dataset:
   id: nlr_kestrel
-  table_path: data/windows/nlr_kestrel_power/data.parquet
+  table_path: data/datasets/nlr_kestrel/data.parquet
+  window: { start: "2025-08-01", end: "2026-01-01" }
 
 model:
   id: model.signature_memorizer

@@ -32,7 +32,7 @@ is a one-model study, not a leaderboard.
 | Test set | last 20% of jobs by end time | every job submitted on or after `test_start` |
 | History for a test job | every earlier job by that user, by end time | that user's jobs that **finished before it was submitted** |
 | Context | newest `theta` = 50 | newest `theta` = 500 |
-| Data | a hand-placed raw Fugaku file | `dataset.fdata_fugaku_uopc` via `datasets prepare` |
+| Data | a hand-placed raw Fugaku file | `dataset.fdata_fugaku` via `datasets prepare`, its Dec 2023–Apr 2024 window |
 
 The adaptation is unchanged by this work. A third mode, `split.method: rolling`, scores the
 same model on the shared rolling windows next to every other model
@@ -134,8 +134,8 @@ benchmark. The paper-comparison recipes keep k = 5.
 ## Running it
 
 ```bash
-# ~3.9 GB: the five F-DATA monthly files for Dec 2023 - Apr 2024
-hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/fdata_fugaku_uopc.yml
+# ~9.7 GB: the twelve F-DATA monthly files; the recipes read Dec 2023 - Apr 2024
+hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/fdata_fugaku.yml
 
 # Our reproduction, and the theta x k sweep, on our settings
 hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml

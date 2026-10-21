@@ -314,12 +314,15 @@ def bench_matrix_slice(
         )
         start = effective_start(card.window_start, extension)
         try:
+            # The runtime protocol embeds every dataset itself (`hpc-oda embed`, which
+            # refuses a table that has one), so a source's own embedding is left out (#249).
             n = slice_dataset(
                 source,
                 dest,
                 card.window_start,
                 card.window_end,
                 extra_lookback_days=extension,
+                drop_columns=("embedding",),
             )
         except SliceError as exc:
             table.add_row(card.dataset, "-", "-", f"[red]{exc}[/red]")

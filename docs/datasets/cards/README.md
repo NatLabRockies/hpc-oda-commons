@@ -13,8 +13,7 @@ Each dataset's card. Where models stand on them: the [leaderboard](https://natla
 | [Atlas Mustang (LANL)](atlas_mustang.md) | Mustang | job runtime | [landing page](https://ftp.pdl.cmu.edu/pub/datasets/ATLAS/) | Job runtime |
 | [Atlas OpenTrinity (LANL)](atlas_opentrinity.md) | Trinity | job runtime | [landing page](https://ftp.pdl.cmu.edu/pub/datasets/ATLAS/) | Job runtime |
 | [CC-IN2P3 2024 Workload (Sep–Dec)](ccin2p3_2024.md) | CC-IN2P3 | job runtime | [10.5281/zenodo.18668107](https://doi.org/10.5281/zenodo.18668107) | — |
-| [F-DATA (Fugaku Jobs, Dec 2023–Apr 2024, UoPC window)](fdata_fugaku_uopc.md) | Fugaku | job runtime and job power | [10.5281/zenodo.11467483](https://doi.org/10.5281/zenodo.11467483) | Average power per node, Peak power per node |
-| [F-DATA (Fugaku Jobs, Mar–Sep 2023)](fdata_fugaku.md) | Fugaku | job runtime and job power | [10.5281/zenodo.11467483](https://doi.org/10.5281/zenodo.11467483) | Job runtime |
+| [F-DATA (Fugaku Jobs, 2023–2024)](fdata_fugaku.md) | Fugaku | job runtime and job power | [10.5281/zenodo.11467483](https://doi.org/10.5281/zenodo.11467483) | Job runtime, Average power per node, Peak power per node |
 | [FRESCO Anvil Job Accounting](fresco_anvil.md) | Anvil | job runtime | [landing page](https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/) | Job runtime |
 | [FRESCO Conte Job Accounting](fresco_conte.md) | Conte | job runtime | [landing page](https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/) | Job runtime |
 | [FRESCO Stampede1 Job Accounting](fresco_stampede1.md) | Stampede | job runtime | [landing page](https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/) | Job runtime |

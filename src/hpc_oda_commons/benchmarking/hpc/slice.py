@@ -89,6 +89,64 @@ def slice_to_window(
     return table.filter(mask, null_selection_behavior="drop")
 
 
+def _pick_name(names: list[str], preferred: str, fallback: str) -> str:
+    if preferred in names:
+        return preferred
+    if fallback in names:
+        return fallback
+    raise SliceError(
+        f"table has neither {preferred!r} nor {fallback!r}; cannot slice to a window "
+        f"(columns: {', '.join(names)})."
+    )
+
+
+def read_window(
+    source: Path,
+    window_start: str | None = None,
+    window_end: str | None = None,
+    *,
+    extra_lookback_days: int = 0,
+    require_nonnull: tuple[str, ...] | list[str] = (),
+    drop_columns: tuple[str, ...] | list[str] = (),
+    by: str = "overlap",
+) -> pa.Table:
+    """Read the rows of ``source`` that overlap a window, and have every column in
+    ``require_nonnull``, filtering as the file is scanned (#249).
+
+    The window keeps the same rows as :func:`slice_to_window`, in the same order. Filtering
+    one batch at a time keeps memory to the rows kept, and keeps a large list column such
+    as F-DATA's ``embedding`` clear of pyarrow's ``take``/``filter`` bug past 2^30 values
+    (docs/known-issues.md). A window bound left as None does not filter on time.
+
+    ``by="submit"`` keeps the jobs *submitted* in the window instead, for a benchmark
+    defined by when jobs were submitted, as a source cut into submit months is (F-DATA).
+    """
+    if by not in ("overlap", "submit"):
+        raise SliceError(f"window by must be 'overlap' or 'submit', got {by!r}")
+    import pyarrow.dataset as ds
+
+    dataset = ds.dataset(str(source), format="parquet")
+    names = list(dataset.schema.names)
+    expr = None
+    if window_start is not None or window_end is not None:
+        if window_start is None or window_end is None:
+            raise SliceError("a window needs both a start and an end")
+        submit = _pick_name(names, "submit_time", "start_time")
+        end = _pick_name(names, "end_time", submit)
+        lo = _day_start_utc(effective_start(window_start, extra_lookback_days))
+        hi = _day_start_utc(window_end) + timedelta(days=1)  # inclusive of the whole end day
+        bound = end if by == "overlap" else submit
+        expr = (ds.field(submit) < pa.scalar(hi, type=dataset.schema.field(submit).type)) & (
+            ds.field(bound) >= pa.scalar(lo, type=dataset.schema.field(bound).type)
+        )
+    for column in require_nonnull:
+        if column not in names:
+            raise SliceError(f"require_nonnull names {column!r}, which the table lacks")
+        expr = ds.field(column).is_valid() if expr is None else expr & ds.field(column).is_valid()
+    columns = [name for name in names if name not in set(drop_columns)]
+    return dataset.to_table(columns=columns, filter=expr)
+
+
 def slice_dataset(
     source: Path,
     out: Path,
@@ -97,6 +155,7 @@ def slice_dataset(
     *,
     extra_lookback_days: int = 0,
     window_key: str = "card_window",
+    drop_columns: tuple[str, ...] = (),
 ) -> int:
     """Read ``source`` parquet, slice to the window, write ``out``. Returns rows written.
 
@@ -106,9 +165,12 @@ def slice_dataset(
     requested window there: ``card_window`` when it came from a dataset card, ``window``
     when it was given by hand (``hpc-oda datasets slice``, #217).
     """
-    table = pq.read_table(source)
-    sliced = slice_to_window(
-        table, window_start, window_end, extra_lookback_days=extra_lookback_days
+    sliced = read_window(
+        source,
+        window_start,
+        window_end,
+        extra_lookback_days=extra_lookback_days,
+        drop_columns=drop_columns,
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(sliced, out)
@@ -118,6 +180,7 @@ def slice_dataset(
                 "source_table": str(source),
                 window_key: {"start": window_start, "end": window_end},
                 "extra_lookback_days": extra_lookback_days,
+                "dropped_columns": list(drop_columns),
                 "effective_window": {
                     "start": effective_start(window_start, extra_lookback_days),
                     "end": window_end,

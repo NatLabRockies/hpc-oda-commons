@@ -40,9 +40,9 @@ by allocated nodes, which F-DATA pads ([why we don't](uopc.md#nodes-requested-no
 
 | Dataset | Data | Targets | Test period (UTC) | Jobs scored | Users | Top user's share |
 |---|---|---|---|---:|---:|---:|
-| [F-DATA](#f-data) (Fugaku) | `dataset.fdata_fugaku_uopc`: Dec 2023 – Apr 2024, the five months the UoPC paper uses | average, peak | 2024-02-02 14:00 – 2024-05-01 14:00 (the paper's starts on 2024-02-01) | 1,510,726 | | |
-| [Eagle](#eagle-and-kestrel) (NLR) | `dataset.nlr_eagle`, sliced 2023-05-01 – 2023-09-30 | average | 2023-07-03 16:00 – 2023-09-30 16:00 | 490,260 | 428 | 9.0% |
-| [Kestrel](#eagle-and-kestrel) (NLR) | `dataset.nlr_kestrel`, sliced 2025-08-01 – 2026-01-01 | average | 2025-10-05 06:00 – 2026-01-02 06:00 | 638,081 | 475 | 11.8% |
+| [F-DATA](#f-data) (Fugaku) | `dataset.fdata_fugaku`, window 2023-11-30 – 2024-04-30: the five months the UoPC paper uses | average, peak | 2024-02-02 14:00 – 2024-05-01 14:00 (the paper's starts on 2024-02-01) | 1,510,726 | | |
+| [Eagle](#eagle-and-kestrel) (NLR) | `dataset.nlr_eagle`, window 2023-05-01 – 2023-09-30 | average | 2023-07-03 16:00 – 2023-09-30 16:00 | 490,260 | 428 | 9.0% |
+| [Kestrel](#eagle-and-kestrel) (NLR) | `dataset.nlr_kestrel`, window 2025-08-01 – 2026-01-01 | average | 2025-10-05 06:00 – 2026-01-02 06:00 | 638,081 | 475 | 11.8% |
 | [PM100](#pm100) (Marconi100) | `dataset.pm100`, all of it: May – Oct 2020 | average, peak | 2020-07-17 04:00 – 2020-10-14 04:00 | 142,206 | 380 | 20.8% |
 
 The counts are over the jobs the runs scored.

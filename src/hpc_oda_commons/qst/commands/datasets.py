@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from typing import Annotated
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import typer
 from rich.console import Console
@@ -270,6 +271,14 @@ def datasets_characterize(
     descriptor: Annotated[
         str | None, typer.Option("--descriptor", help="Descriptor id/path recorded on the card.")
     ] = None,
+    pin_end: Annotated[
+        str | None,
+        typer.Option(
+            "--pin-end",
+            help="Keep the window ending on this day (YYYY-MM-DD) instead of choosing one: "
+            "the window a benchmark already ran on (#249).",
+        ),
+    ] = None,
     anchor: Annotated[
         float,
         typer.Option("--anchor", help="Place the window END at this fraction of the healthy span."),
@@ -304,12 +313,19 @@ def datasets_characterize(
     """
     stem = dataset_id.split(".")[-1] if dataset_id else table_path.parent.name
     did = dataset_id or f"dataset.{stem}"
-    table = pq.read_table(table_path)
+    # List columns (F-DATA's embedding) are never characterized; leaving them unread keeps a
+    # large table within memory (#249).
+    schema = pq.read_schema(table_path)
+    table = pq.read_table(
+        table_path,
+        columns=[f.name for f in schema if not pa.types.is_list(f.type)],
+    )
     try:
         char = characterize_table(table, gap_min_days=gap_min_days, gap_floor_frac=gap_floor)
         window = select_window(
             char,
             anchor=anchor,
+            pinned_end=pin_end,
             train_days=train_days,
             test_days=test_days,
             history_days=history_days,
@@ -415,6 +431,25 @@ def datasets_ceiling(
             "e.g. embedding. The floor bounds a model only if its signature holds every input.",
         ),
     ] = None,
+    start: Annotated[
+        str | None,
+        typer.Option("--start", help="Read only the recipe's window: its first day (#249)."),
+    ] = None,
+    end: Annotated[
+        str | None,
+        typer.Option("--end", help="Read only the recipe's window: its last day (#249)."),
+    ] = None,
+    require_nonnull: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--require-nonnull",
+            help="Read only rows that have this column, as the recipe does (repeatable, #249).",
+        ),
+    ] = None,
+    window_by: Annotated[
+        str,
+        typer.Option("--by", help="The window keeps overlapping jobs, or those submitted in it."),
+    ] = "overlap",
 ) -> None:
     """Compute the minimum error any submit-time predictor could achieve on this table.
 
@@ -432,7 +467,18 @@ def datasets_ceiling(
     from hpc_oda_commons.models.feature_policy import feature_allowlist
 
     stem = dataset_id.split(".")[-1] if dataset_id else table_path.parent.name
-    table = pq.read_table(table_path)
+    if start or end or require_nonnull:
+        from hpc_oda_commons.benchmarking.hpc.slice import SliceError, read_window
+
+        try:
+            table = read_window(
+                table_path, start, end, require_nonnull=require_nonnull or [], by=window_by
+            )
+        except SliceError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(1) from exc
+    else:
+        table = pq.read_table(table_path)
     try:
         fields = sorted(feature_allowlist(extra_feature or (), target=target))
     except ValueError as exc:

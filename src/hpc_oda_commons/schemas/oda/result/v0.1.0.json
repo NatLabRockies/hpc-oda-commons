@@ -47,7 +47,19 @@
           "pattern": "^oda\\.[a-z0-9_.-]+\\.v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
           "description": "Schema id for dataset table rows (e.g., oda.job.v0.1.0)."
         },
-        "hash": { "type": "string", "minLength": 8, "description": "Optional dataset content hash." }
+        "hash": { "type": "string", "minLength": 8, "description": "Optional dataset content hash." },
+        "window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start", "end"],
+          "description": "The window the recipe declared, which the run read (#249).",
+          "properties": { "start": { "type": "string" }, "end": { "type": "string" }, "by": { "type": "string" } }
+        },
+        "require_nonnull": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Columns the recipe required a row to have (#249)."
+        }
       }
     },
     "metrics": {
