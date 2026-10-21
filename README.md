@@ -58,84 +58,49 @@ Together, these let a site operator go from local logs to comparable, provenance
 
 ---
 
-## v0.1: Job Runtime Prediction
-
-The first vertical slice delivers a complete end-to-end workflow for SLURM job runtime prediction.
+## Getting started
 
 **Python 3.10+**
 
-### Quickstart
+### Try it
 
 ```bash
 # Install from a repo clone
 git clone <repo-url> && cd hpc-oda-commons
 pip install -e ".[dev]"
 
-# Browse the offline registry
+# Browse the registry: the models, recipes and datasets
 hpc-oda browse
-hpc-oda info model.baseline
 
-# Run a deterministic baseline on a bundled synthetic dataset (no network)
+# Run a baseline on a bundled synthetic dataset (no network)
 HPC_ODA_OFFLINE=1 hpc-oda run-baseline
-
-# Benchmark using the v0.1 baseline recipe
-HPC_ODA_OFFLINE=1 hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
-
-# Generate a leaderboard from result bundles
-hpc-oda leaderboard --runs runs --out leaderboard
 ```
 
-### Ingest Your Own Data
+The [Quickstart](docs/how-to/quickstart.md) walks through this in five minutes.
 
-hpc-oda-commons supports two ingestion paths:
+### Benchmark your own data
 
-**Option A: slurmctld logs**
-```bash
-hpc-oda ingest slurmctld --path /path/to/slurmctld.log
-```
+[Benchmark your own data](docs/how-to/benchmark-your-data.md) runs every model on your own
+job data, the way the [published leaderboard](https://natlabrockies.github.io/hpc-oda-commons/leaderboard/)
+runs them, and builds a private leaderboard and dataset card. The steps:
 
-**Option B: any jobs table exported as Parquet** (interactive mapping wizard)
-```bash
-hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
-```
+1. Describe the export.
+2. Prepare it.
+3. Characterize it.
+4. Write the recipes (`hpc-oda recipes write`).
+5. Embed.
+6. Compute the error ceilings.
+7. Run the models.
+8. Read the results.
 
-The wizard walks you through mapping your columns to the canonical ODA schema. To replay a mapping non-interactively:
-```bash
-hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet --mapping /path/to/mapping.yml --non-interactive
-```
+Nothing leaves your machine. A test runs the guide's commands, so they work as written.
 
-### Validate, Analyze, and Benchmark
+### Models
 
-```bash
-# Validate ingested data and generate a quality report
-hpc-oda validate data/ingested/jobs_parquet/<run>/data.parquet
-
-# Run a baseline analysis → reports/<id>/{analysis.json, index.html}
-hpc-oda analyze --data data/ingested/jobs_parquet/<run>
-
-# Benchmark with a recipe (use -v for progress on rolling evaluations)
-hpc-oda benchmark -v my_recipe.yml
-```
-
-### v0.1 Models
-
-**Baseline** (`model.baseline`) — Deterministic mean-prediction model. Computes `mean(runtime_seconds)` on the training set and predicts that constant for all test rows. Supports both fixed and rolling evaluation. Fast, explainable, and useful as a floor for comparison.
-
-**XGBoost** (`model.xgboost`) — Gradient-boosted tree model with automatic categorical preprocessing (one-hot encoding + SVD dimensionality reduction). Uses a daily preprocessing cache so OHE/SVD are only refit on day boundaries during rolling evaluation.
-
-**Random Forest** (`model.random_forest`) — Random Forest regression with the same automatic categorical preprocessing (one-hot encoding + SVD) and rolling evaluation. Shares the `rolling_tabular` base with XGBoost and MLP.
-
-**MLP** (`model.mlp`) — Feed-forward neural network (sklearn `MLPRegressor`) with automatic categorical preprocessing (one-hot encoding + SVD) and rolling evaluation. Shares the `rolling_tabular` base with XGBoost and Random Forest.
-
-**TF-IDF + kNN** (`model.tfidf_knn`) — Text-similarity model that concatenates job metadata fields (user, account, partition, job name, submit line, working directory, script) into text, vectorizes with TF-IDF, and predicts runtime as the similarity-weighted average of the k nearest neighbors. The stateless HashingVectorizer runs once over all rows and each rolling window scores an index slice, so the independent windows can run in parallel across cores (`window_n_jobs`).
-
-**Embedding + kNN** (`model.embedding_knn`) — Embedding-space counterpart to TF-IDF + kNN: predicts runtime as the similarity-weighted average of the k nearest neighbors in a **precomputed dense embedding space**, using an exact dense top-k search. Model-agnostic — produce the `embedding` column with `hpc-oda embed` (any HuggingFace sentence-transformers model, or a dependency-free stub). See [Embedding-based kNN](docs/how-to/embedding-knn.md).
-
-**MoE XGBoost** (`model.moe_xgboost`) — Mixture of experts: one XGBoost per (user, requested-wallclock bin), with the bin edges derived from each training window's own request distribution (they land on the system's partition limits), a window-wide fallback expert for sparse bins, and exponential recency weighting of training rows. Routing happens inside the shared rolling window, so it scores exactly the rows the other models score.
-
-**Job Power UoPC** (`model.uopc`) — Power-prediction model (domain `job-power-prediction`) using per-user online kNN regression on label-encoded job features (UoPC-style), with fixed evaluation. With `split.method: cutoff` it instead reproduces the UoPC paper on Fugaku (per-node average and peak power, embedding features, kNN-classifier voting, per-user and global mean baselines, and a θ × k sensitivity sweep) — see [UoPC reproduction](docs/benchmarking/power/uopc.md).
-
-**Any model, any target.** Every model above predicts the column its recipe's metrics name, `runtime_seconds` by default. Point one at `avgpcon_per_node` or `maxpcon_per_node` (watts per node; per requested node on F-DATA, whose allocated count can be padded) to predict job power on the same rolling protocol — see [Predict job power](docs/how-to/predict-power.md).
+Each model has a card, generated from its code, its recipes and the leaderboard:
+[models](docs/models/README.md). Every model predicts the column its recipe's metrics name:
+`runtime_seconds` for runtime, or `avgpcon_per_node` / `maxpcon_per_node` for power. See
+[Predict job power](docs/how-to/predict-power.md).
 
 ---
 

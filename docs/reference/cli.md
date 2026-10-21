@@ -73,10 +73,28 @@ This reference covers the v0.1 `hpc-oda` commands.
    in `integrity/known_hashes.json`. Run after tests pass on a clean commit to
    register it as validated. Benchmark results on validated code show `integrity.validated: true`.
 
+## Datasets and recipes
+1. `hpc-oda datasets prepare <descriptor.yml> [--from <dir>]`
+   Fetches (or, for a `manual` source, copies from `--from`) and checksums a dataset's
+   files, then writes its prepared table, manifest and quality report.
+1. `hpc-oda datasets characterize <table> --out <dir> [--pin-end YYYY-MM-DD]`
+   Writes the dataset's runtime card: its characterization and runtime window. `--pin-end`
+   keeps a window a benchmark already ran on.
+1. `hpc-oda datasets ceiling <table> --dataset-id <id> [--target <col>] [--start --end --by --require-nonnull]`
+   Writes an error ceiling: the lowest error any submit-time predictor could reach.
+1. `hpc-oda recipes write <descriptor.yml> --out <dir> [--card <card.json>] [--start --end --by --require-nonnull] [--model <name>]`
+   Writes every model's recipes for a dataset on the benchmark's protocol, and prints the
+   embedding and ceiling commands that go with them
+   ([Benchmark your own data](../how-to/benchmark-your-data.md)).
+1. `hpc-oda datasets cards [--descriptors <dir> --benchmark-dir <dir> --recipes <dir> --leaderboard <json>] [--out <dir>]`
+   Writes a card for each dataset: the bundled ones by default, or the descriptors in
+   `--descriptors`.
+
 ## Leaderboard
-1. `hpc-oda leaderboard --runs <dir> --out <dir>`
+1. `hpc-oda leaderboard --runs <dir> --out <dir> [--recipes <dir>]`
    Writes `index.html` (one leaderboard per prediction target: a row per model, headroom
    per dataset, an average), `runs.html` (every bundle, and why any was not counted) and
    `leaderboard.json`. `--ceilings <dir>` points at the error ceilings and dataset cards
-   (default `docs/benchmarking/datasets`). See
+   (default `docs/benchmarking/datasets`). `--recipes <dir>` counts power runs from recipes
+   that `hpc-oda recipes write` wrote. See
    [Reading the leaderboard](../how-to/interpret-results.md#reading-the-leaderboard).
