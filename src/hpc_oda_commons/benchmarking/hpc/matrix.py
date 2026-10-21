@@ -1,13 +1,14 @@
 """Plan the full model x dataset benchmark matrix for an HPC cluster.
 
-Given the tracked dataset cards and a local :class:`SiteConfig`, this builds one Slurm
-recipe + sbatch script per (dataset, model) cell, plus one GPU embedding job per dataset
+Given the tracked runtime cards and a local :class:`SiteConfig`, this builds one Slurm
+recipe + sbatch script per (dataset, model, lookback) cell, plus one GPU embedding job per dataset
 (the embedded parquet is reused by ``embedding_knn``). Everything is written
 under a local staging dir (``.hpc_oda/bench-matrix/<plan_id>/``, gitignored); the
 orchestration step rsyncs it to the cluster and submits.
 
-All resource decisions are derived from each card's 90-day-window row count, so the plan
-is reproducible from tracked inputs + the (untracked) site config alone.
+All resource decisions are derived from the rows each slice holds (or the card window's,
+before slicing), so the plan is reproducible from tracked inputs + the (untracked) site
+config alone.
 """
 
 from __future__ import annotations
@@ -51,26 +52,26 @@ EMBEDDING_MODEL: str = "embedding_knn"
 # it.
 WINDOW_PARALLEL_MODEL_TAGS: frozenset[str] = frozenset({"mlp", "tfidf_knn", "moe_xgboost"})
 
-# Rolling split: 120 x 6h = 30 days test, 120 days training lookback.
-#
-# The lookback exceeds the cards' ``train_days`` (60), so the earliest rolling windows would
-# train on truncated history unless the slice reaches further back than the card window. That
-# shortfall is derived per dataset by ``bench-matrix slice`` rather than passed by hand -- see
-# ``Card.train_days`` -- so the slice and this split cannot drift apart (#143, #145).
+# The longest lookback exceeds the cards' ``train_days`` (60), so the earliest rolling windows
+# would train on truncated history unless the slice reaches further back than the card window.
+# That extension is derived per dataset by ``bench-matrix slice`` (``slice_extension_for``)
+# rather than passed by hand, so the slice and the split cannot drift apart (#143, #145).
 # The span of history a slice carries before its window's test region -- equivalently, the
 # longest lookback a slice can express. Kept separate from ``training_lookback_days`` (#170):
 # this is how much we CUT, that is how much a model USES. While they were the same number, a
 # per-dataset lookback meant re-slicing that dataset.
 #
-# Set equal to the default lookback, so existing slices remain exactly as they are. Raising it
+# Since #191 a card states its own budget (``history_days``); this is the default for cards
+# that predate the field, set equal to the default lookback. Raising it
 # is how you enable lookbacks longer than 120 days; that requires a re-slice, but does not
 # invalidate results already measured -- a 120-day lookback selects the same training rows no
 # matter how much extra history sits in the file.
 SLICE_HISTORY_DAYS: int = 120
 
-# The benchmark sweeps the training lookback rather than fixing it. Measured, the fixed 120
-# days was best for only 6 of 20 datasets, and the cost of the wrong value is not marginal:
-# on lassen, XGBoost scores 3,346 at 10 days against 4,233 at 120 -- and at 10 days it beats
+# The benchmark sweeps the training lookback rather than fixing it. In the memorization sweep
+# of 2026-08, the fixed 120 days was best for only 6 of 20 datasets, and the cost of the wrong
+# value is not marginal: on lassen, XGBoost scored 3,304 at 10 days against 4,434 at 120 -- and
+# at 10 days it beats
 # every model the fleet ran at 120, which is to say the parameter, not the model, decided
 # that dataset (#170).
 #
@@ -80,7 +81,7 @@ SLICE_HISTORY_DAYS: int = 120
 #
 # Choosing a winner per cell is left to analysis, deliberately. Picking each model's best arm
 # by test MAE would be selecting on the test set -- a noisier model gets three draws at the
-# same target -- so the honest selection (tune on early windows, score on late ones) is done
+# same target -- so the honest selection (walk-forward, ``bench-matrix rank``, #190) is done
 # downstream from the per-window metrics these runs already emit.
 LOOKBACK_ARMS: tuple[int, ...] = (10, 30, 120)
 

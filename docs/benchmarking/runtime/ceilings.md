@@ -1,11 +1,33 @@
 # Error ceilings — how much accuracy is available
 
 Per-dataset floors for the runtime-prediction benchmark: **the minimum error any predictor
-restricted to submit-time features could achieve.** Jobs whose features are identical cannot
-be told apart, so the best possible prediction per signature is its group median (for MAE) or
-mean (for RMSE). See [`methodology.md`](methodology.md) for the definition and
-[#169](https://github.com/NatLabRockies/hpc-oda-commons/issues/169) for what is deliberately
-excluded.
+restricted to submit-time features could achieve.** The leaderboard's headroom is measured
+against them ([reading the leaderboard](../../how-to/interpret-results.md#reading-the-leaderboard)).
+
+## What a ceiling is
+
+A leaderboard MAE is uninterpretable alone: an error on one machine and another says nothing
+about how much accuracy was *available* on either. `hpc-oda datasets ceiling` computes that
+bound.
+
+**The claim.** Two jobs whose submit-time features are identical cannot be told apart by any
+predictor restricted to those features. So for the feature signature `Z` and metric `M`, the
+minimum achievable error over the scored rows is `min_f (1/N) Σ M(y_i, f(z_i))`, which
+decomposes per group and has a closed form. **The minimising statistic depends on the
+metric**: the median for MAE, the mean for RMSE, so they are computed as a pair.
+
+This is exact, not an estimate. A signature appearing once contributes zero error, correctly:
+a function mapping it to that value exists and is a legitimate predictor. That is what makes
+it a bound. It also means floors are **monotone in the fineness of `Z`** and reach zero when
+every row is its own group, so the analysis reports the group-size distribution alongside
+(below); without it a floor cannot be judged tight or vacuous.
+
+**Deliberately not included:** leave-one-out
+([#169](https://github.com/NatLabRockies/hpc-oda-commons/issues/169)). It is neither the
+floor (the optimal function has no "leave out" in its definition) nor achievable (a row's peers
+include jobs that ran *after* it, so it is not causal), so it answers neither question.
+
+## Computing one
 
 Machine-readable form: `docs/benchmarking/datasets/<dataset>.ceiling.json`, regenerable with
 
@@ -24,12 +46,18 @@ jobs count towards it, as in walk-forward, so the floor covers exactly the jobs 
 cell is scored on ([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)). No training lookback is involved: the floor
 and the feature costs use only the scored jobs, and causal memorization sweeps its own.
 
+On a whole prepared table rather than a slice, `--start`, `--end`, `--by` and
+`--require-nonnull` read only a recipe's declared window, as the ceiling commands that
+`hpc-oda recipes write` prints do.
+
 These involve no fitting and no BLAS, so unlike the fitted-model metrics they are byte-stable
 across machines: a diff means a real change.
 
 > **No model scores here.** They are deliberately absent so this file cannot go stale —
 > compare against them on the leaderboard (`hpc-oda leaderboard`, `bench-matrix aggregate`).
-> The floors depend only on which jobs are scored, which is set by the fleet's windows.
+> The floors depend only on which jobs are scored, which is set by the fleet's windows. The
+> tables are copied from the `.ceiling.json` files, and `tests/unit/test_runtime_ceilings_doc.py`
+> fails when they differ.
 
 ## The floor, per dataset
 
@@ -88,7 +116,7 @@ signature are rows the bound cannot constrain.
 | `pwa_ricc` | 1 / 3 / 37,081 | 0.2% |
 | `pwa_sdsc_blue` | 1 / 2 / 943 | 2.5% |
 
-`fdata_fugaku` is the one loose bound in the fleet: 12.5% of its rows are alone in their
+`fdata_fugaku` is the one loose bound in the fleet: 12.6% of its rows are alone in their
 signature, because its `name` column pushes the signature count to six figures. Its floor
 should be read as optimistic rather than tight.
 
@@ -123,9 +151,8 @@ earlier. Coverage is the share of scored rows whose signature had been seen at a
 Optimal lookback: 1d ×1, 10d ×5, 30d ×3, 60d ×5, 120d ×5, all ×1. The benchmark once fixed
 `training_lookback_days: 120` for every dataset, which is optimal here for 5 of 20. Since
 [#170](https://github.com/NatLabRockies/hpc-oda-commons/issues/170) it runs every model at
-10, 30 and 120 days and chooses among them walk-forward. How this
-strategy compares against the fitted models is tracked in
-[#171](https://github.com/NatLabRockies/hpc-oda-commons/issues/171).
+10, 30 and 120 days and chooses among them walk-forward. The strategy itself is on the
+leaderboard as the signature memorizer (`model.signature_memorizer`, #171).
 
 ## Per-feature information cost
 
