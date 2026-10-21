@@ -8,9 +8,10 @@ from rich.console import Console
 from rich.table import Table
 
 from hpc_oda_commons.benchmark.leaderboard_display import (
+    dataset_title,
     format_headroom,
     format_metric_value,
-    short_registry_id,
+    model_title,
 )
 
 
@@ -40,11 +41,11 @@ def render_leaderboard_console(
         if data["headroom"]:
             table.add_column("Average", justify="right")
         for dataset in data["datasets"]:
-            table.add_column(dataset, justify="right")
+            table.add_column(dataset_title(dataset), justify="right")
         rank = 0
         for row in data["rows"]:
             cells = [_cell_text(data, row["cells"].get(d)) for d in data["datasets"]]
-            label = short_registry_id(str(row["model"]), prefix="model.")
+            label = model_title(str(row["model"]))
             if row["average"] is not None:
                 rank += 1
                 head = [str(rank), label, f"[bold]{format_headroom(row['average'])}[/bold]"]
@@ -54,8 +55,12 @@ def render_leaderboard_console(
                 head = ["", label]
             table.add_row(*head, *cells)
         console.print(table)
-        if data.get("note"):
-            console.print(f"[dim]{data['note']}[/dim]")
+        if data.get("caption"):
+            console.print(f"[dim]{data['caption']}[/dim]")
+        if data.get("average_note"):
+            console.print(f"[dim]* Average: {data['average_note']}[/dim]")
+        for dataset, note in (data.get("dataset_notes") or {}).items():
+            console.print(f"[dim]* {dataset}: {note}[/dim]")
     excluded = leaderboard.get("excluded", [])
     if excluded:
         console.print(f"[dim]{len(excluded)} run(s) not counted; see runs.html for why.[/dim]")

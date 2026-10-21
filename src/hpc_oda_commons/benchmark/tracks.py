@@ -22,7 +22,7 @@ from __future__ import annotations
 import importlib.resources as ir
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -62,14 +62,22 @@ _BEFORE_SETTING_EXISTED: dict[str, Any] = {"predictor": "vote"}
 
 @dataclass(frozen=True)
 class Track:
-    """One leaderboard: a prediction target and the benchmark that ranks it."""
+    """One leaderboard: a prediction target and the benchmark that ranks it.
+
+    ``caption`` is one line on the protocol, shown under the title. ``dataset_notes`` and
+    ``average_note`` are caveats, shown as a marked note on that column's header (#247).
+    """
 
     key: str
     title: str
     target: str
     headroom: bool
-    note: str = ""
+    caption: str = ""
+    dataset_notes: Mapping[str, str] = field(default_factory=dict)
+    average_note: str = ""
 
+
+_POWER_CAPTION = "89 daily windows, 60 days of history, power per node the job ran on."
 
 TRACKS: tuple[Track, ...] = (
     Track(
@@ -77,18 +85,31 @@ TRACKS: tuple[Track, ...] = (
         "Job runtime",
         "runtime_seconds",
         headroom=True,
+        caption="30 days in 6-hour windows; each model's lookback (10, 30 or 120 days) "
+        "chosen walk-forward.",
         # Measured on the fleet of 2026-08-26 (#238); revisit when #191's fleet replaces it.
-        note="30-day test, 10/30/120-day lookbacks. On alcf_djc_polaris the baseline's "
-        "walk-forward pick scores 14% worse than its best single lookback, so headroom "
-        "there reads high.",
+        dataset_notes={
+            "alcf_djc_polaris": "The baseline's walk-forward pick scores 14% worse here than "
+            "its best single lookback, so headroom reads high: XGBoost (MoE)'s 67% would be "
+            "58% against the better baseline.",
+            "atlas_opentrinity": "The 120-day lookback trained on the ~50 days of history this "
+            "dataset's slice holds.",
+        },
     ),
-    Track("avgpcon_per_node", "Average power per node", "avgpcon_per_node", headroom=True),
+    Track(
+        "avgpcon_per_node",
+        "Average power per node",
+        "avgpcon_per_node",
+        headroom=True,
+        caption=_POWER_CAPTION,
+    ),
     Track(
         "maxpcon_per_node",
         "Peak power per node",
         "maxpcon_per_node",
         headroom=True,
-        note="F-DATA and PM100 define peak differently; the average mixes the two.",
+        caption=_POWER_CAPTION,
+        average_note="F-DATA and PM100 define peak differently; the average mixes the two.",
     ),
 )
 TRACK_BY_TARGET = {track.target: track for track in TRACKS}
@@ -356,6 +377,16 @@ def _headroom_blocker(
     return None
 
 
+def _dataset_notes(track: Track, mismatched: set[str]) -> dict[str, str]:
+    """A track's caveats per dataset, plus one for any dataset whose ceiling covers other jobs
+    than some of its cells (#238)."""
+    notes = dict(track.dataset_notes)
+    for dataset in sorted(mismatched):
+        extra = "Some cells show MAE alone: the ceiling covers other jobs than they do."
+        notes[dataset] = f"{notes[dataset]} {extra}" if dataset in notes else extra
+    return notes
+
+
 def _table(
     track: Track,
     roster: list[str],
@@ -364,7 +395,7 @@ def _table(
 ) -> dict[str, Any]:
     datasets = sorted(set(roster) | {d for row in cells.values() for d in row})
     baselines = cells.get(BASELINE_MODEL, {})
-    mismatched = False
+    mismatched: set[str] = set()
     for row in cells.values():
         for dataset, cell in row.items():
             floor = floors.get((track.target, dataset))
@@ -375,7 +406,8 @@ def _table(
             else:
                 cell["headroom"] = None
                 cell["headroom_missing"] = reason
-                mismatched = mismatched or reason.startswith(_ROWS_DIFFER)
+                if reason.startswith(_ROWS_DIFFER):
+                    mismatched.add(dataset)
 
     rows = []
     for model, row in cells.items():
@@ -398,16 +430,9 @@ def _table(
         "title": track.title,
         "target": track.target,
         "headroom": track.headroom,
-        "note": " ".join(
-            n
-            for n in (
-                track.note,
-                "Cells in MAE alone: their dataset's ceiling covers other jobs (#238)."
-                if mismatched
-                else "",
-            )
-            if n
-        ),
+        "caption": track.caption,
+        "dataset_notes": _dataset_notes(track, mismatched),
+        "average_note": track.average_note,
         "datasets": datasets,
         "roster": roster,
         "rows": rows,

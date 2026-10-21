@@ -349,7 +349,7 @@ def test_runtime_headroom_when_the_ceiling_covers_the_same_jobs(tmp_path: Path) 
     # Baseline 9 (its walk-forward pick, the 10-day arm), floor 1, model 5: halfway.
     assert xgb["cells"]["lassen"]["headroom"] == pytest.approx(0.5)
     assert xgb["average"] == pytest.approx(0.5)
-    assert "covers other jobs" not in runtime["note"]
+    assert "lassen" not in runtime["dataset_notes"]
 
 
 def test_runtime_shows_mae_alone_when_the_ceiling_covers_other_jobs(tmp_path: Path) -> None:
@@ -359,7 +359,7 @@ def test_runtime_shows_mae_alone_when_the_ceiling_covers_other_jobs(tmp_path: Pa
 
     assert cell["headroom"] is None and cell["mae"] == pytest.approx(5.0)
     assert cell["headroom_missing"].startswith("covers other jobs: the ceiling 40")
-    assert "covers other jobs" in runtime["note"]
+    assert "the ceiling covers other jobs" in runtime["dataset_notes"]["lassen"]
     assert all(row["average"] is None for row in runtime["rows"])
 
 
@@ -458,3 +458,81 @@ def test_published_pages_hold_no_absolute_path(power_runs, tmp_path: Path) -> No
     for page in ("index.html", "runs.html", "leaderboard.json"):
         assert str(tmp_path) not in (out / page).read_text(), page
     assert leaderboard["runs_dir"] == "runs"
+
+
+def test_pages_show_model_titles_and_keep_the_id_on_hover(power_runs) -> None:
+    """Readers see a model's title, not its code id (#247); the id stays in the tooltip."""
+    from hpc_oda_commons.benchmark.leaderboard_display import model_title, model_titles
+
+    runs, ceilings = power_runs
+    page = render_leaderboard_html(
+        build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
+    )
+
+    assert ">XGBoost (MoE)</a>" in page and ">XGBoost</a>" in page
+    assert "/docs/models/job_runtime_moe_xgboost.md" in page  # the row links to its card
+    assert 'title="model.job_runtime_moe_xgboost"' in page
+    assert ">job_runtime_xgboost<" not in page
+    assert model_title("model.someone_elses_model") == "someone_elses_model"
+    titles = model_titles()
+    assert len(titles) == 9 and all(t and not t.startswith("Job ") for t in titles.values())
+
+
+def test_each_cell_holds_headroom_and_mae_for_the_toggle(power_runs) -> None:
+    """The page shows one value per cell, switched by the toggle; both are in the markup, so
+    the page works without the script, showing headroom (#247)."""
+    runs, ceilings = power_runs
+    page = render_leaderboard_html(
+        build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
+    )
+
+    assert 'data-show="pct"' in page and 'data-show="mae"' in page
+    assert page.count('class="v-pct') == page.count('class="v-mae"') > 0
+    assert 'body[data-show="mae"] .col-avg' in page  # the average hides with MAE
+    assert "localStorage" in page and "try {" in page
+
+
+def test_caveats_are_marks_on_their_column_headers(power_runs) -> None:
+    """A caveat is a mark on its column's header, with the text on hover or focus (#247)."""
+    from hpc_oda_commons.benchmark.tracks import TRACK_BY_TARGET
+
+    runs, ceilings = power_runs
+    leaderboard = build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
+    table = {
+        **_table(leaderboard, "avgpcon_per_node"),
+        "dataset_notes": {"pm100": "A caveat & more."},
+        "average_note": "About the average.",
+    }
+    page = render_leaderboard_html({**leaderboard, "tables": [table]})
+
+    assert 'Marconi100</a><sup class="note" tabindex="0" data-note="A caveat &amp; more."' in page
+    assert 'Average<sup class="note" tabindex="0" data-note="About the average."' in page
+    assert "define peak differently" in TRACK_BY_TARGET["maxpcon_per_node"].average_note
+
+
+def test_dataset_columns_show_titles_and_keep_the_id_on_hover(power_runs) -> None:
+    """Column headers show the system's name (#247); every dataset with a card has one."""
+    from hpc_oda_commons.benchmark.leaderboard_display import DATASET_TITLES, dataset_title
+
+    runs, ceilings = power_runs
+    page = render_leaderboard_html(
+        build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
+    )
+
+    assert 'title="pm100">Marconi100</a>' in page
+    assert 'title="nlr_eagle">Eagle</a>' in page
+    assert dataset_title("someone_elses_dataset") == "someone_elses_dataset"
+    cards = Path(__file__).parents[2] / "docs" / "benchmarking" / "datasets"
+    assert {p.name.split(".")[0] for p in cards.glob("*.card.json")} <= set(DATASET_TITLES)
+
+
+def test_every_dataset_links_to_a_page_that_exists() -> None:
+    """Column headers link into the repo (#247); a link must land on a real file and heading."""
+    from hpc_oda_commons.benchmark.leaderboard_display import DATASET_TITLES, dataset_doc
+    from tests.unit.test_doc_links import _anchors
+
+    root = Path(__file__).parents[2]
+    for dataset in DATASET_TITLES:
+        path, _, anchor = dataset_doc(dataset).partition("#")
+        assert (root / path).is_file(), dataset
+        assert not anchor or anchor in _anchors(root / path), dataset
