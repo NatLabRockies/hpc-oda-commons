@@ -67,6 +67,11 @@ def _bundle(
     return bundle_dir
 
 
+def _label(runs: Path, bundle: Path) -> str:
+    """How the leaderboard names a bundle: relative to the runs directory (#245)."""
+    return bundle.relative_to(runs).as_posix()
+
+
 def _ceiling(
     ceilings: Path, dataset_id: str, target: str, floor: float, scored_rows: int = ROWS
 ) -> None:
@@ -195,7 +200,7 @@ def test_only_the_benchmark_protocol_counts(power_runs, kwargs: dict, reason: st
     leaderboard = build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
 
     reasons = {e["bundle_dir"]: e["reason"] for e in leaderboard["excluded"]}
-    assert reason in reasons[str(bundle)]
+    assert reason in reasons[_label(runs, bundle)]
     table = _table(leaderboard, "avgpcon_per_node")
     assert "model.job_power_uopc" not in {r["model"] for r in table["rows"]}
 
@@ -231,7 +236,7 @@ def test_a_rerun_replaces_its_cell_and_is_named(power_runs) -> None:
         "pm100"
     ]
     assert cell["mae"] == 110.0
-    assert cell["bundles"] == [str(newer)]
+    assert cell["bundles"] == [_label(runs, newer)]
     assert any(e["reason"].startswith("superseded by") for e in leaderboard["excluded"])
 
 
@@ -436,3 +441,20 @@ def test_pages_render_tables_and_list_what_was_left_out(power_runs) -> None:
     runs_html = render_runs_html(leaderboard)
     assert "not counted: n_windows=3" in runs_html
     assert str(smoke) not in index
+
+
+def test_published_pages_hold_no_absolute_path(power_runs, tmp_path: Path) -> None:
+    """The leaderboard is published (#245): no page may carry the machine's paths, even when
+    the runs directory is given as an absolute one, as the CLI does."""
+    from hpc_oda_commons.tools.report import write_leaderboard_pages
+
+    runs, ceilings = power_runs
+    assert runs.is_absolute()
+    leaderboard = build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
+    out = tmp_path / "site"
+    write_leaderboard_pages(leaderboard, out)
+    (out / "leaderboard.json").write_text(json.dumps(leaderboard))
+
+    for page in ("index.html", "runs.html", "leaderboard.json"):
+        assert str(tmp_path) not in (out / page).read_text(), page
+    assert leaderboard["runs_dir"] == "runs"

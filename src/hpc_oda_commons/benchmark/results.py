@@ -82,6 +82,18 @@ def _cell_key(entry: dict[str, Any]) -> tuple[Any, ...]:
     return ("bundle", entry.get("bundle_dir"))
 
 
+def _bundle_label(bundle_dir: Path, runs_dir: Path) -> str:
+    """A bundle's path relative to the runs directory, as the leaderboard records it.
+
+    The leaderboard is published (#245), so it must not carry the machine's absolute paths;
+    a relative path is also the same on every machine that holds the same runs.
+    """
+    try:
+        return bundle_dir.relative_to(runs_dir).as_posix()
+    except ValueError:
+        return bundle_dir.name
+
+
 def build_leaderboard(
     runs_dir: Path,
     *,
@@ -113,6 +125,7 @@ def build_leaderboard(
         except Exception:
             # Skip invalid bundles to keep report generation robust in v0.1
             continue
+        entry["bundle_dir"] = _bundle_label(bundle_dir, runs_dir)
         entries.append(entry)
         payloads[str(entry["bundle_dir"])] = metrics
 
@@ -134,7 +147,8 @@ def build_leaderboard(
     return {
         "schema_version": LEADERBOARD_FORMAT_VERSION,
         "generated_at": _now_utc_iso(),
-        "runs_dir": str(runs_dir),
+        # The directory's name only, like the bundle paths below: no absolute path (#245).
+        "runs_dir": runs_dir.name,
         "tables": tables,
         "excluded": excluded,
         "entries": kept,

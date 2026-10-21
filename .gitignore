@@ -68,7 +68,7 @@ conda-bld/
 # =========================
 # Docs site builds
 # =========================
-site/
+# site/ is tracked: it is the published leaderboard (#245), not a docs build.
 docs/_build/
 .build/
 

@@ -33,6 +33,18 @@ benchmark ([#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)).
 average, and a column per dataset, each cell the headroom captured against that dataset's
 error ceiling ([reading the leaderboard](../how-to/interpret-results.md#reading-the-leaderboard)).
 
+**The published leaderboard** is at <https://natlabrockies.github.io/hpc-oda-commons/leaderboard/>
+([#245](https://github.com/NatLabRockies/hpc-oda-commons/issues/245)). It is a snapshot,
+`site/leaderboard/`, committed to the repo and deployed by `.github/workflows/pages.yml`
+whenever `site/` changes on `main`. CI can't rebuild it, because the result bundles aren't in
+the repo. To refresh it after new results:
+
+1. Collect every bundle under one `runs/` folder: the power runs, and the runtime fleet's
+   bundles from the cluster (`bench-matrix collect`).
+2. Run `hpc-oda leaderboard --runs runs --out site/leaderboard`.
+3. Open a PR. The `leaderboard.json` diff shows what changed; a test keeps absolute paths off
+   the pages.
+
 ## Shared
 
 - [HPC runner](hpc-runner.md): running the benchmark matrix on a Slurm cluster (runtime
