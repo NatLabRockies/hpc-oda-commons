@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.mit_supercloud
+dataset_id: dataset.mit_supercloud
 schema_version: oda.dataset.v0.1.0
 name: MIT Supercloud Datacenter Challenge (scheduler)
 version: 1.0.0
@@ -9,7 +9,6 @@ description: >
   requested walltime = timelimit (minutes; 4294967295 is the SLURM "unlimited" sentinel,
   normalized to null).
   Timestamps are Unix epoch seconds; state is a numeric SLURM state code.
-problem_domains: [job-runtime-prediction]
 systems: [Supercloud]
 providers: [MIT, "MIT Lincoln Laboratory"]
 citation: { url: "https://dcc.mit.edu/" }
@@ -33,9 +32,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: id_job }
       submit_time: { from: time_submit, type: timestamp, format: epoch_s }

@@ -294,8 +294,8 @@ the temporal-health analysis that did not previously exist.
 ```
 # from a prepared canonical parquet (data/datasets/<id>/data.parquet):
 hpc-oda datasets characterize data/datasets/<id>/data.parquet \
-  --dataset-id dataset.job_runtime.<id> --system <System> \
-  --descriptor dataset.job_runtime.<id> --out docs/benchmarking/datasets
+  --dataset-id dataset.<id> --system <System> \
+  --descriptor dataset.<id> --out docs/benchmarking/datasets
 ```
 
 Knobs (defaults are the agreed methodology): `--anchor 0.80`, `--train-days 60`,

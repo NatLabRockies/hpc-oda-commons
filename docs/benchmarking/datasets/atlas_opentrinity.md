@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.atlas_opentrinity`
+# Dataset card — `dataset.atlas_opentrinity`
 
 *Generated 2026-08-27T12:58:44.631702+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Trinity  ·  **Descriptor:** `dataset.job_runtime.atlas_opentrinity`
+**System:** Trinity  ·  **Descriptor:** `dataset.atlas_opentrinity`
 
 ## Characterization
 

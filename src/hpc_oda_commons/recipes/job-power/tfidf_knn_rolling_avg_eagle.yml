@@ -4,7 +4,7 @@
 # full quarter before Eagle wound down (its last 89 days have a quarter as many jobs with
 # power, from 159 users).
 #
-#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/nlr_eagle.yml
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/nlr_eagle.yml
 #   hpc-oda datasets slice data/datasets/nlr_eagle/data.parquet \
 #     --start 2023-05-01 --end 2023-09-30 --out data/windows/nlr_eagle_power/data.parquet
 #

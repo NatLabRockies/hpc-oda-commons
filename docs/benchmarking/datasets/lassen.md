@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.lassen`
+# Dataset card — `dataset.lassen`
 
 *Generated 2026-08-27T12:58:57.619436+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Lassen  ·  **Descriptor:** `dataset.job_runtime.lassen`
+**System:** Lassen  ·  **Descriptor:** `dataset.lassen`
 
 ## Characterization
 

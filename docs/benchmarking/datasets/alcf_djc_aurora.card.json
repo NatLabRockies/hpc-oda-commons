@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.alcf_djc_aurora",
+  "dataset_id": "dataset.alcf_djc_aurora",
   "generated_at": "2026-08-27T12:58:38.309780+00:00",
   "source": {
     "table_path": "data/datasets/alcf_djc_aurora/data.parquet",
     "system": "Aurora",
-    "descriptor": "dataset.job_runtime.alcf_djc_aurora"
+    "descriptor": "dataset.alcf_djc_aurora"
   },
   "characterization": {
     "n_rows": 927999,

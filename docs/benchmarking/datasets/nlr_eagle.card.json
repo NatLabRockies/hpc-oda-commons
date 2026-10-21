@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.nlr_eagle",
+  "dataset_id": "dataset.nlr_eagle",
   "generated_at": "2026-08-27T12:59:01.568006+00:00",
   "source": {
     "table_path": "data/datasets/nlr_eagle/data.parquet",
     "system": "Eagle",
-    "descriptor": "dataset.job_runtime.nlr_eagle"
+    "descriptor": "dataset.nlr_eagle"
   },
   "characterization": {
     "n_rows": 13836216,

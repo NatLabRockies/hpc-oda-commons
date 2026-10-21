@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.alcf_djc_polaris",
+  "dataset_id": "dataset.alcf_djc_polaris",
   "generated_at": "2026-08-27T12:58:39.888658+00:00",
   "source": {
     "table_path": "data/datasets/alcf_djc_polaris/data.parquet",
     "system": "Polaris",
-    "descriptor": "dataset.job_runtime.alcf_djc_polaris"
+    "descriptor": "dataset.alcf_djc_polaris"
   },
   "characterization": {
     "n_rows": 1000194,

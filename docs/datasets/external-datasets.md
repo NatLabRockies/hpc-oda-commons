@@ -14,7 +14,7 @@ retrieve them yourself and turn them into canonical `oda.job.v0.2.0` tables:
 
 **ALCF DJC** was on this list too, but a closer look showed it isn't a hard wall — its downloads
 sit behind a one-time name/email form on *public* data. It is now a **registered `manual`-kind
-dataset** (`dataset.job_runtime.alcf_djc_polaris` + `dataset.job_runtime.alcf_djc_aurora`): you clear
+dataset** (`dataset.alcf_djc_polaris` + `dataset.alcf_djc_aurora`): you clear
 the form once, download the files, and `datasets prepare --from <dir>` checksum-verifies + normalizes
 them. See the ALCF DJC entry below and
 "How to ingest" path 2 — it's the working example of the manual flow.
@@ -69,7 +69,7 @@ If you already hold a verified copy, drop it at `<cache>/<dataset_id>/raw/<filen
 ### ALCF DJC (Argonne — Polaris / Aurora / Theta / Mira) — **registered (manual-kind)**
 
 Polaris (all published years 2022–2026, five files) and Aurora (2025–2026) are registered as
-`dataset.job_runtime.alcf_djc_polaris` and `dataset.job_runtime.alcf_djc_aurora`; these entries are
+`dataset.alcf_djc_polaris` and `dataset.alcf_djc_aurora`; these entries are
 the recipe for adding **further years / systems** (Theta, Mira) the same way.
 
 - **What:** `DIM_JOB_COMPOSITE` job accounting for ALCF systems (Polaris 2022–2026, Theta, ThetaGPU,
@@ -78,7 +78,7 @@ the recipe for adding **further years / systems** (Theta, Mira) the same way.
   `ANL-ALCF-DJC-POLARIS_20230101_20231231.html`, and click the CSV link). The download itself
   (`…/data/data/ANL-ALCF-DJC-<SYS>_<start>_<end>.csv.gz`) 302-redirects to a **one-time name/email
   form** on public data — not a login. Fill it once in a browser and the `.csv.gz` downloads.
-- **Ingest:** `hpc-oda datasets prepare dataset.job_runtime.alcf_djc_polaris --from <dir>` (the
+- **Ingest:** `hpc-oda datasets prepare dataset.alcf_djc_polaris --from <dir>` (the
   `manual` backend checksum-verifies your placed file). For a new year/system, copy the descriptor,
   swap the filename + pinned `sha256`, and adjust the date in the id/name.
 - **Format:** `.csv.gz`, 67 columns; the descriptor reads the ~17 mapped ones (`WALLTIME_SECONDS`,

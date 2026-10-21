@@ -41,7 +41,6 @@ def _descriptor(source: dict, dataset_id: str = "dataset.test.x") -> Descriptor:
             "name": "Test Dataset",
             "version": "1.0.0",
             "description": "test descriptor",
-            "problem_domains": ["job-runtime-prediction"],
             "source": source,
             "decode": {"format": "parquet"},
             "targets": [],
@@ -147,6 +146,24 @@ def test_unknown_size_requires_confirm(tmp_path: Path) -> None:
     assert result.unknown_size is True
 
 
+def test_a_cache_under_an_id_from_before_249_is_adopted(tmp_path: Path) -> None:
+    """Renaming dataset.job_runtime.x to dataset.x must not throw away its downloads."""
+    res = _remote(tmp_path / "remote", "a.bin", b"abc")
+    cache = tmp_path / "cache"
+    fetch_descriptor(
+        _descriptor({"kind": "http", "resources": [res]}, "dataset.job_runtime.x"), cache_dir=cache
+    )
+
+    renamed = _descriptor({"kind": "http", "resources": [res]}, "dataset.x")
+    result = fetch_descriptor(renamed, cache_dir=cache, offline=True)
+
+    assert result.resources[0].reused is True
+    assert sorted(p.name for p in cache.iterdir()) == ["dataset.x"]
+    assert sorted(p.name for p in (cache / "dataset.x").glob("*.lock.json")) == [
+        "dataset.x.lock.json"
+    ]
+
+
 def test_offline_uses_cache_or_errors(tmp_path: Path) -> None:
     res = _remote(tmp_path / "remote", "a.bin", b"abc")
     desc = _descriptor({"kind": "http", "resources": [res]})
@@ -240,23 +257,18 @@ def test_parse_size() -> None:
     assert parse_size("1KB") == 1000
 
 
-def _cli_descriptor_payload(res: dict, dataset_id: str, with_capability: bool) -> dict:
+def _cli_descriptor_payload(res: dict, dataset_id: str) -> dict:
     target: dict = {
         "schema": "oda.job.v0.2.0",
         "mapping": {"runtime_seconds": {"from": "duration", "type": "duration", "unit": "seconds"}},
         "output": {"id": "out", "path": "data/datasets/out/data.parquet"},
     }
-    if with_capability:
-        target["capabilities"] = [
-            {"problem_domain": "job-runtime-prediction", "target_column": "runtime_seconds"}
-        ]
     return {
         "dataset_id": dataset_id,
         "schema_version": "oda.dataset.v0.1.0",
         "name": "CLI Test Dataset",
         "version": "1.0.0",
         "description": "cli test descriptor",
-        "problem_domains": ["job-runtime-prediction"],
         "source": {"kind": "http", "resources": [res]},
         "decode": {"format": "parquet"},
         "targets": [target],
@@ -265,7 +277,7 @@ def _cli_descriptor_payload(res: dict, dataset_id: str, with_capability: bool) -
 
 def test_cli_datasets_fetch(tmp_path: Path) -> None:
     res = _remote(tmp_path / "remote", "data.parquet", b"payload-bytes")
-    payload = _cli_descriptor_payload(res, "dataset.test.cli", with_capability=True)
+    payload = _cli_descriptor_payload(res, "dataset.test.cli")
     desc_path = tmp_path / "desc.yml"
     desc_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
     cache = tmp_path / "cache"
@@ -279,7 +291,7 @@ def test_cli_datasets_fetch(tmp_path: Path) -> None:
 
 def test_cli_size_guardrail_exit_code(tmp_path: Path) -> None:
     res = _remote(tmp_path / "remote", "big.parquet", b"x" * 5000)
-    payload = _cli_descriptor_payload(res, "dataset.test.big", with_capability=False)
+    payload = _cli_descriptor_payload(res, "dataset.test.big")
     desc_path = tmp_path / "big.yml"
     desc_path.write_text(yaml.safe_dump(payload), encoding="utf-8")
 

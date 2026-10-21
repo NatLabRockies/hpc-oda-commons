@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.fresco_anvil`
+# Dataset card — `dataset.fresco_anvil`
 
 *Generated 2026-08-27T12:58:52.088297+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Anvil  ·  **Descriptor:** `dataset.job_runtime.fresco_anvil`
+**System:** Anvil  ·  **Descriptor:** `dataset.fresco_anvil`
 
 ## Characterization
 

@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.alcf_djc_theta",
+  "dataset_id": "dataset.alcf_djc_theta",
   "generated_at": "2026-08-27T12:58:41.425075+00:00",
   "source": {
     "table_path": "data/datasets/alcf_djc_theta/data.parquet",
     "system": "Theta",
-    "descriptor": "dataset.job_runtime.alcf_djc_theta"
+    "descriptor": "dataset.alcf_djc_theta"
   },
   "characterization": {
     "n_rows": 540391,

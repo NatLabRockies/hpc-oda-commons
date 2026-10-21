@@ -83,7 +83,7 @@ same pattern recipes already use.
 One YAML per dataset, fully declaring the ETL. Sketch (F-DATA / Fugaku):
 
 ```yaml
-dataset_id: dataset.job_power.fdata_fugaku
+dataset_id: dataset.fdata_fugaku
 schema_version: oda.dataset.v0.1.0
 name: F-DATA (Fugaku Job Records)
 version: 1.0.0

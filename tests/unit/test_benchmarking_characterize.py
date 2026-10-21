@@ -136,9 +136,7 @@ def test_card_builds_strips_private_series_and_validates(tmp_path: Path) -> None
 
     char = characterize_table(table)
     win = select_window(char)
-    card = build_card(
-        "dataset.job_runtime.test", parquet, char, win, source={"system": "TestSystem"}
-    )
+    card = build_card("dataset.test", parquet, char, win, source={"system": "TestSystem"})
 
     assert "_daily" not in card["characterization"]  # private series stripped
     load_schema("oda.dataset_card.v0.1.0")  # schema id resolves via the loader

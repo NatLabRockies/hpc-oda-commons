@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.nlr_kestrel",
+  "dataset_id": "dataset.nlr_kestrel",
   "generated_at": "2026-08-27T12:59:03.695523+00:00",
   "source": {
     "table_path": "data/datasets/nlr_kestrel/data.parquet",
     "system": "Kestrel",
-    "descriptor": "dataset.job_runtime.nlr_kestrel"
+    "descriptor": "dataset.nlr_kestrel"
   },
   "characterization": {
     "n_rows": 9321737,

@@ -95,7 +95,7 @@ def test_info_command_outputs_details(capsys: pytest.CaptureFixture[str]) -> Non
 def test_dataset_entry_type_supported() -> None:
     entry = RegistryEntry.from_dict(
         {
-            "id": "dataset.job_runtime.example",
+            "id": "dataset.example",
             "entry_type": "dataset",
             "name": "Example Dataset",
             "version": "0.1.0",
@@ -110,7 +110,7 @@ def test_dataset_entry_type_supported() -> None:
     )
     assert entry.entry_type == "dataset"
     index = RegistryIndex.from_entries([entry])
-    assert [e.id for e in index.filter(entry_type="dataset")] == ["dataset.job_runtime.example"]
+    assert [e.id for e in index.filter(entry_type="dataset")] == ["dataset.example"]
 
 
 def test_browse_accepts_dataset_type() -> None:
@@ -128,7 +128,7 @@ def test_browse_accepts_dataset_type() -> None:
 
 def _snapshot_with_dataset(extra: dict) -> dict:
     entry = {
-        "id": "dataset.job_runtime.example",
+        "id": "dataset.example",
         "entry_type": "dataset",
         "name": "Example Dataset",
         "version": "0.1.0",

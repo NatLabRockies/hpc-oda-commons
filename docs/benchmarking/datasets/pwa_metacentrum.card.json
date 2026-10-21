@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.pwa_metacentrum",
+  "dataset_id": "dataset.pwa_metacentrum",
   "generated_at": "2026-08-27T12:59:11.712970+00:00",
   "source": {
     "table_path": "data/datasets/pwa_metacentrum/data.parquet",
     "system": "MetaCentrum",
-    "descriptor": "dataset.job_runtime.pwa_metacentrum"
+    "descriptor": "dataset.pwa_metacentrum"
   },
   "characterization": {
     "n_rows": 5731100,

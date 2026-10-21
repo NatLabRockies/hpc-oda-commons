@@ -66,11 +66,11 @@ divides by requested nodes, and keeps the paper's divisor only for comparison.
 
 | Dataset | Window | Power columns |
 |---|---|---|
-| `dataset.job_power.fdata_fugaku_uopc` | Fugaku, Dec 2023–Apr 2024 | `avgpcon`, `maxpcon`, per node, plus F-DATA's job `embedding` |
-| `dataset.job_runtime.fdata_fugaku` | Fugaku, Mar–Sep 2023 (the runtime benchmark window) | `avgpcon`, `maxpcon`, per node; rows filtered on runtime only |
-| `dataset.job_runtime.pm100` | Marconi100, May–Oct 2020 | mean and peak of the job's node-power trace, per node; rows filtered on runtime only |
-| `dataset.job_runtime.nlr_eagle` | Eagle, 2018-11 to 2024-06 | average only: the job's node energy over its runtime, per node used; rows filtered on runtime only |
-| `dataset.job_runtime.nlr_kestrel` | Kestrel, 2023-08 to 2025-12 | average only, CPU nodes: Slurm job energy over runtime, per node used; null for jobs that shared their node and for GPU jobs (no energy); rows filtered on runtime only |
+| `dataset.fdata_fugaku_uopc` | Fugaku, Dec 2023–Apr 2024 | `avgpcon`, `maxpcon`, per node, plus F-DATA's job `embedding` |
+| `dataset.fdata_fugaku` | Fugaku, Mar–Sep 2023 (the runtime benchmark window) | `avgpcon`, `maxpcon`, per node; rows filtered on runtime only |
+| `dataset.pm100` | Marconi100, May–Oct 2020 | mean and peak of the job's node-power trace, per node; rows filtered on runtime only |
+| `dataset.nlr_eagle` | Eagle, 2018-11 to 2024-06 | average only: the job's node energy over its runtime, per node used; rows filtered on runtime only |
+| `dataset.nlr_kestrel` | Kestrel, 2023-08 to 2025-12 | average only, CPU nodes: Slurm job energy over runtime, per node used; null for jobs that shared their node and for GPU jobs (no energy); rows filtered on runtime only |
 
 Sources that record power as a trace of samples are reduced with `type: list_mean` or
 `type: list_max`. Sources that record energy instead convert it with `type: energy` and
@@ -82,7 +82,7 @@ needs near-zero readings treated as missing,
 ## Run it
 
 ```bash
-hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml
+hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/fdata_fugaku_uopc.yml
 hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/xgboost_rolling_avg.yml
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
@@ -99,7 +99,7 @@ a table's last submit, so each table is cut to its benchmark period first, keepi
 that overlaps it:
 
 ```bash
-hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/nlr_eagle.yml
+hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/nlr_eagle.yml
 hpc-oda datasets slice data/datasets/nlr_eagle/data.parquet \
   --start 2023-05-01 --end 2023-09-30 --out data/windows/nlr_eagle_power/data.parquet
 hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/xgboost_rolling_avg_eagle.yml

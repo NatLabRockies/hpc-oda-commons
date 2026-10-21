@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.pwa_ricc",
+  "dataset_id": "dataset.pwa_ricc",
   "generated_at": "2026-08-27T12:59:13.284601+00:00",
   "source": {
     "table_path": "data/datasets/pwa_ricc/data.parquet",
     "system": "RICC",
-    "descriptor": "dataset.job_runtime.pwa_ricc"
+    "descriptor": "dataset.pwa_ricc"
   },
   "characterization": {
     "n_rows": 447794,

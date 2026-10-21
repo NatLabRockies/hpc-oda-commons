@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.ccin2p3_2024",
+  "dataset_id": "dataset.ccin2p3_2024",
   "generated_at": "2026-08-27T12:58:48.466728+00:00",
   "source": {
     "table_path": "data/datasets/ccin2p3_2024/data.parquet",
     "system": "CC-IN2P3",
-    "descriptor": "dataset.job_runtime.ccin2p3_2024"
+    "descriptor": "dataset.ccin2p3_2024"
   },
   "characterization": {
     "n_rows": 15737082,

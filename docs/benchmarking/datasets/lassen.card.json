@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.lassen",
+  "dataset_id": "dataset.lassen",
   "generated_at": "2026-08-27T12:58:57.619436+00:00",
   "source": {
     "table_path": "data/datasets/lassen/data.parquet",
     "system": "Lassen",
-    "descriptor": "dataset.job_runtime.lassen"
+    "descriptor": "dataset.lassen"
   },
   "characterization": {
     "n_rows": 1467746,

@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.pwa_metacentrum`
+# Dataset card — `dataset.pwa_metacentrum`
 
 *Generated 2026-08-27T12:59:11.712970+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** MetaCentrum  ·  **Descriptor:** `dataset.job_runtime.pwa_metacentrum`
+**System:** MetaCentrum  ·  **Descriptor:** `dataset.pwa_metacentrum`
 
 ## Characterization
 

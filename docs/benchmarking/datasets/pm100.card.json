@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.pm100",
+  "dataset_id": "dataset.pm100",
   "generated_at": "2026-08-27T12:59:05.250176+00:00",
   "source": {
     "table_path": "data/datasets/pm100/data.parquet",
     "system": "Marconi100",
-    "descriptor": "dataset.job_runtime.pm100"
+    "descriptor": "dataset.pm100"
   },
   "characterization": {
     "n_rows": 231238,

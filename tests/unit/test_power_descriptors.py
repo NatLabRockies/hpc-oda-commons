@@ -15,7 +15,7 @@ from hpc_oda_commons.models.uopc.model import UopcModel
 from hpc_oda_commons.schema.validator import validate_parquet_with_quality
 
 _DESCRIPTORS = Path(str(ir.files("hpc_oda_commons") / "datasets" / "descriptors"))
-_UOPC = _DESCRIPTORS / "job-power" / "fdata_fugaku_uopc.yml"
+_UOPC = _DESCRIPTORS / "fdata_fugaku_uopc.yml"
 
 
 def test_every_prepared_table_has_its_own_path() -> None:
@@ -35,7 +35,7 @@ def test_fugaku_runtime_window_is_untouched_by_the_power_work() -> None:
     """The runtime benchmark keeps its seven-month curation (#154) and no slices: the UoPC
     months live in their own descriptor rather than as a slice that would change the
     runtime default."""
-    runtime = load_descriptor(_DESCRIPTORS / "job-runtime" / "fdata_fugaku.yml")
+    runtime = load_descriptor(_DESCRIPTORS / "fdata_fugaku.yml")
     files = [r["filename"] for r in runtime.source["resources"]]
     assert files == [f"23_{m:02d}.parquet" for m in range(3, 10)]
     assert not runtime.source.get("slices")
@@ -122,10 +122,7 @@ def test_uopc_window_derives_per_node_power(tmp_path: Path) -> None:
     rows = pq.read_table(out).to_pylist()
     assert [r["avgpcon_per_node"] for r in rows] == [r["avgpcon"] / 2 for r in rows]
     assert [r["maxpcon_per_node"] for r in rows] == [r["maxpcon"] / 2 for r in rows]
-    assert {c.target_column for c in target.capabilities} == {
-        "avgpcon_per_node",
-        "maxpcon_per_node",
-    }
+    assert {"avgpcon_per_node", "maxpcon_per_node"} <= set(target.target_columns)
 
 
 def test_per_node_power_divides_by_requested_nodes_not_a_padded_allocation(
@@ -155,7 +152,7 @@ def test_per_node_power_divides_by_requested_nodes_not_a_padded_allocation(
 def test_fugaku_runtime_window_carries_power_without_changing_its_rows(tmp_path: Path) -> None:
     """Per-node power rides along on the runtime window, but its filter is still runtime:
     a job with no power reading keeps its runtime row (#204)."""
-    (target,) = load_descriptor(_DESCRIPTORS / "job-runtime" / "fdata_fugaku.yml").targets
+    (target,) = load_descriptor(_DESCRIPTORS / "fdata_fugaku.yml").targets
     assert target.filter == {"require_nonnull": ["runtime_seconds"]}
 
     raw = tmp_path / "23_07.parquet"
@@ -172,7 +169,7 @@ def test_fugaku_runtime_window_carries_power_without_changing_its_rows(tmp_path:
 def test_pm100_power_is_its_node_trace_per_allocated_node(tmp_path: Path) -> None:
     """PM100's node_power_consumption is the job's total across its nodes (it scales with
     node count), so per-node power is the trace's mean/peak over allocated nodes."""
-    (target,) = load_descriptor(_DESCRIPTORS / "job-runtime" / "pm100.yml").targets
+    (target,) = load_descriptor(_DESCRIPTORS / "pm100.yml").targets
     raw = tmp_path / "job_table.parquet"
     ts = pa.array([1_600_000_000_000_000] * 2, pa.timestamp("us", tz="UTC"))
     pq.write_table(
@@ -203,11 +200,9 @@ def test_eagle_average_power_comes_from_node_energy(tmp_path: Path) -> None:
     """Eagle's node_energy_total_watt_hours is the job's energy over all its nodes (#206):
     Wh x 3600 / runtime is the job's average W, / nodes_used per node. 0 Wh is no reading,
     and a job without power keeps its runtime row."""
-    (target,) = load_descriptor(_DESCRIPTORS / "job-runtime" / "nlr_eagle.yml").targets
-    assert {c.target_column for c in target.capabilities} == {
-        "runtime_seconds",
-        "avgpcon_per_node",
-    }
+    (target,) = load_descriptor(_DESCRIPTORS / "nlr_eagle.yml").targets
+    assert {"runtime_seconds", "avgpcon_per_node"} <= set(target.target_columns)
+    assert "maxpcon_per_node" not in target.target_columns
     # Impossible readings (#216): the outer 0.1% of per-node power, not of whole-job power.
     assert target.mapping["avgpcon_per_node"]["trim_quantiles"] == [0.001, 0.999]
     assert "trim_quantiles" not in target.mapping["avgpcon"]
@@ -240,11 +235,9 @@ def test_kestrel_average_power_is_null_where_the_node_was_shared(tmp_path: Path)
     """Slurm's job energy is the node's on a shared node (#209), so a job that shared its
     node (shared_job_count >= 1, or a shared* partition) has no power target. 0 J is no
     reading. Every job keeps its runtime row."""
-    (target,) = load_descriptor(_DESCRIPTORS / "job-runtime" / "nlr_kestrel.yml").targets
-    assert {c.target_column for c in target.capabilities} == {
-        "runtime_seconds",
-        "avgpcon_per_node",
-    }
+    (target,) = load_descriptor(_DESCRIPTORS / "nlr_kestrel.yml").targets
+    assert {"runtime_seconds", "avgpcon_per_node"} <= set(target.target_columns)
+    assert "maxpcon_per_node" not in target.target_columns
     assert target.mapping["avgpcon_per_node"]["trim_quantiles"] == [0.001, 0.999]  # #216
     start = pa.array([1_717_200_000_000_000] * 5, pa.timestamp("us", tz="UTC"))
     end = pa.array([1_717_203_600_000_000] * 5, pa.timestamp("us", tz="UTC"))  # 1 hour

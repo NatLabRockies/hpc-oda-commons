@@ -1,4 +1,4 @@
-dataset_id: dataset.job_power.fdata_fugaku_uopc
+dataset_id: dataset.fdata_fugaku_uopc
 schema_version: oda.dataset.v0.1.0
 name: F-DATA (Fugaku Jobs, Dec 2023–Apr 2024, UoPC window)
 version: 1.0.0
@@ -6,13 +6,12 @@ description: >
   Fujitsu/Fugaku job records from F-DATA (RIKEN R-CCS / University of Bologna), curated
   for job power prediction. This is the five-month window (2023-12 through 2024-04) the
   UoPC paper evaluates on (Antici et al., IEEE 11017729), tested from 2024-02-01. It is a
-  separate dataset from `dataset.job_runtime.fdata_fugaku` on purpose: the two cover
+  separate dataset from `dataset.fdata_fugaku` on purpose: the two cover
   different months, and sharing one descriptor would mean sharing one prepared table, so
   preparing either window would overwrite the other's. Power targets are avgpcon and
   maxpcon (watts, whole job), also given per requested node as avgpcon_per_node and
   maxpcon_per_node, the columns every model predicts. Each row
   also carries F-DATA's precomputed job `embedding`, which UoPC uses as its main feature.
-problem_domains: [job-power-prediction]
 systems: [Fugaku]
 providers: ["RIKEN R-CCS", "University of Bologna"]
 citation: { doi: "10.5281/zenodo.11467483", url: "https://zenodo.org/records/11467483" }
@@ -53,19 +52,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-power-prediction, target_column: avgpcon_per_node }
-      - { problem_domain: job-power-prediction, target_column: maxpcon_per_node }
-    suitable_models:
-      - model.uopc
-      - model.baseline
-      - model.xgboost
-      - model.random_forest
-      - model.mlp
-      - model.tfidf_knn
-      - model.embedding_knn
-      - model.signature_memorizer
-      - model.moe_xgboost
     mapping:
       job_id: { from: jid }
       start_time: { from: sdt, type: timestamp, format: iso8601 }

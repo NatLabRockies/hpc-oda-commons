@@ -7,7 +7,7 @@
 # Results: docs/benchmarking/power/uopc.md.
 #
 # Prepare the data first (5 monthly files, ~3.9 GB):
-#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/fdata_fugaku_uopc.yml
 
 recipe_id: recipe.job_power.uopc_paper_reproduction_unpadded
 

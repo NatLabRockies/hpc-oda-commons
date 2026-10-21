@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.nlr_eagle`
+# Dataset card — `dataset.nlr_eagle`
 
 *Generated 2026-08-27T12:59:01.568006+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Eagle  ·  **Descriptor:** `dataset.job_runtime.nlr_eagle`
+**System:** Eagle  ·  **Descriptor:** `dataset.nlr_eagle`
 
 ## Characterization
 

@@ -76,7 +76,6 @@ def _descriptor_payload(remote: Path) -> dict:
         "name": "Prepare Test Dataset",
         "version": "1.0.0",
         "description": "prepare end-to-end test descriptor",
-        "problem_domains": ["job-runtime-prediction", "job-power-prediction"],
         "source": {
             "kind": "http",
             "resources": [
@@ -92,9 +91,6 @@ def _descriptor_payload(remote: Path) -> dict:
         "targets": [
             {
                 "schema": "oda.job.v0.2.0",
-                "capabilities": [
-                    {"problem_domain": "job-power-prediction", "target_column": "maxpcon"}
-                ],
                 "mapping": MAPPING,
                 "output": {"id": "test_prep", "path": "data/datasets/test_prep/data.parquet"},
             }

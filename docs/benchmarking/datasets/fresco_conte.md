@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.fresco_conte`
+# Dataset card — `dataset.fresco_conte`
 
 *Generated 2026-08-27T12:58:53.671794+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Conte  ·  **Descriptor:** `dataset.job_runtime.fresco_conte`
+**System:** Conte  ·  **Descriptor:** `dataset.fresco_conte`
 
 ## Characterization
 

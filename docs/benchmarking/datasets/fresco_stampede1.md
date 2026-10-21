@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.fresco_stampede1`
+# Dataset card — `dataset.fresco_stampede1`
 
 *Generated 2026-08-27T12:58:55.963063+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Stampede1  ·  **Descriptor:** `dataset.job_runtime.fresco_stampede1`
+**System:** Stampede1  ·  **Descriptor:** `dataset.fresco_stampede1`
 
 ## Characterization
 

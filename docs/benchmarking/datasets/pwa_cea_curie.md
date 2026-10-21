@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.pwa_cea_curie`
+# Dataset card — `dataset.pwa_cea_curie`
 
 *Generated 2026-08-27T12:59:06.787203+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Curie  ·  **Descriptor:** `dataset.job_runtime.pwa_cea_curie`
+**System:** Curie  ·  **Descriptor:** `dataset.pwa_cea_curie`
 
 ## Characterization
 

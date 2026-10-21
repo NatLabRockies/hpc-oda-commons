@@ -25,19 +25,15 @@ from hpc_oda_commons.kernel.validate import SchemaValidationError, validate_json
 DATASET_SCHEMA_ID = "oda.dataset.v0.1.0"
 
 
-@dataclass(frozen=True)
-class Capability:
-    """A model-suitability claim: this target drives `problem_domain` via `target_column`."""
-
-    problem_domain: str
-    target_column: str
-
-    @classmethod
-    def from_dict(cls, payload: Mapping[str, Any]) -> Capability:
-        return cls(
-            problem_domain=str(payload.get("problem_domain")),
-            target_column=str(payload.get("target_column")),
-        )
+# The tasks a dataset can serve, by the target columns its mapping produces (#249). Derived
+# rather than declared, so a descriptor cannot claim a task its columns do not support.
+TARGET_DOMAINS: dict[str, str] = {
+    "runtime_seconds": "job-runtime-prediction",
+    "avgpcon": "job-power-prediction",
+    "maxpcon": "job-power-prediction",
+    "avgpcon_per_node": "job-power-prediction",
+    "maxpcon_per_node": "job-power-prediction",
+}
 
 
 @dataclass(frozen=True)
@@ -48,8 +44,6 @@ class Target:
     mapping: Mapping[str, Any]
     output_id: str
     output_path: str
-    capabilities: tuple[Capability, ...] = ()
-    suitable_models: tuple[str, ...] = ()
     select: tuple[str, ...] = ()
     filter: Mapping[str, Any] | None = None
     sample: Mapping[str, Any] | None = None
@@ -59,6 +53,11 @@ class Target:
         """Canonical column names this target emits (the keys of `mapping`)."""
         return frozenset(self.mapping.keys())
 
+    @property
+    def target_columns(self) -> tuple[str, ...]:
+        """The prediction targets this table carries, in ``TARGET_DOMAINS`` order."""
+        return tuple(column for column in TARGET_DOMAINS if column in self.mapping)
+
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> Target:
         output = payload.get("output") or {}
@@ -67,10 +66,6 @@ class Target:
             mapping=dict(payload.get("mapping") or {}),
             output_id=str(output.get("id")),
             output_path=str(output.get("path")),
-            capabilities=tuple(
-                Capability.from_dict(c) for c in (payload.get("capabilities") or [])
-            ),
-            suitable_models=tuple(str(m) for m in (payload.get("suitable_models") or [])),
             select=tuple(str(s) for s in (payload.get("select") or [])),
             filter=payload.get("filter"),
             sample=payload.get("sample"),
@@ -85,7 +80,6 @@ class Descriptor:
     name: str
     version: str
     description: str
-    problem_domains: tuple[str, ...]
     source: Mapping[str, Any]
     decode: Mapping[str, Any]
     targets: tuple[Target, ...]
@@ -102,7 +96,6 @@ class Descriptor:
             name=str(payload.get("name")),
             version=str(payload.get("version")),
             description=str(payload.get("description")),
-            problem_domains=tuple(str(d) for d in (payload.get("problem_domains") or [])),
             source=dict(payload.get("source") or {}),
             decode=dict(payload.get("decode") or {}),
             targets=tuple(Target.from_dict(t) for t in (payload.get("targets") or [])),
@@ -113,15 +106,18 @@ class Descriptor:
             providers=tuple(str(p) for p in (payload.get("providers") or [])),
         )
 
-    def capabilities(self) -> tuple[Capability, ...]:
-        """All capabilities across every target."""
-        return tuple(cap for target in self.targets for cap in target.capabilities)
+    @property
+    def target_columns(self) -> tuple[str, ...]:
+        """Every prediction target across the descriptor's tables, without repeats."""
+        return tuple(dict.fromkeys(c for target in self.targets for c in target.target_columns))
+
+    @property
+    def problem_domains(self) -> tuple[str, ...]:
+        """The tasks the dataset can serve, from its target columns (#249)."""
+        return tuple(dict.fromkeys(TARGET_DOMAINS[c] for c in self.target_columns))
 
     def supports_domain(self, domain: str) -> bool:
         return domain in self.problem_domains
-
-    def supports_model(self, model_id: str) -> bool:
-        return any(model_id in target.suitable_models for target in self.targets)
 
 
 def load_descriptor(path: Path, *, validate: bool = True) -> Descriptor:
@@ -143,32 +139,7 @@ def validate_descriptor(payload: Mapping[str, Any], *, path: Path | None = None)
     validate_json(dict(payload), DATASET_SCHEMA_ID, path=path)
     loc = str(path) if path else None
 
-    declared_domains = {str(d) for d in (payload.get("problem_domains") or [])}
-
     for idx, target in enumerate(payload.get("targets") or []):
-        produced = set((target.get("mapping") or {}).keys())
-        for cap in target.get("capabilities") or []:
-            column = cap.get("target_column")
-            if column not in produced:
-                raise SchemaValidationError(
-                    schema_id=DATASET_SCHEMA_ID,
-                    message=(
-                        f"targets[{idx}] declares capability target_column "
-                        f"'{column}' that its mapping does not produce."
-                    ),
-                    path=loc,
-                )
-            domain = cap.get("problem_domain")
-            if domain not in declared_domains:
-                raise SchemaValidationError(
-                    schema_id=DATASET_SCHEMA_ID,
-                    message=(
-                        f"targets[{idx}] capability problem_domain '{domain}' is "
-                        "not listed in the dataset's problem_domains."
-                    ),
-                    path=loc,
-                )
-
         for field, rule in (target.get("mapping") or {}).items():
             trim = rule.get("trim_quantiles")
             if trim and not trim[0] < trim[1]:

@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.pwa_kit_fh2",
+  "dataset_id": "dataset.pwa_kit_fh2",
   "generated_at": "2026-08-27T12:59:09.855453+00:00",
   "source": {
     "table_path": "data/datasets/pwa_kit_fh2/data.parquet",
     "system": "ForHLR-II",
-    "descriptor": "dataset.job_runtime.pwa_kit_fh2"
+    "descriptor": "dataset.pwa_kit_fh2"
   },
   "characterization": {
     "n_rows": 114355,

@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.nlr_kestrel`
+# Dataset card — `dataset.nlr_kestrel`
 
 *Generated 2026-08-27T12:59:03.695523+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Kestrel  ·  **Descriptor:** `dataset.job_runtime.nlr_kestrel`
+**System:** Kestrel  ·  **Descriptor:** `dataset.nlr_kestrel`
 
 ## Characterization
 

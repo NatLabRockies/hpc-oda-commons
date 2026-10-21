@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.alcf_djc_aurora`
+# Dataset card — `dataset.alcf_djc_aurora`
 
 *Generated 2026-08-27T12:58:38.309780+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Aurora  ·  **Descriptor:** `dataset.job_runtime.alcf_djc_aurora`
+**System:** Aurora  ·  **Descriptor:** `dataset.alcf_djc_aurora`
 
 ## Characterization
 

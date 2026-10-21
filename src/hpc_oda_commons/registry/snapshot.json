@@ -306,7 +306,7 @@
       }
     },
     {
-      "id": "dataset.job_power.fdata_fugaku_uopc",
+      "id": "dataset.fdata_fugaku_uopc",
       "entry_type": "dataset",
       "name": "F-DATA (Fugaku Jobs, Dec 2023-Apr 2024, UoPC window)",
       "version": "1.0.0",
@@ -317,11 +317,11 @@
       "tags": ["fugaku", "a64fx", "fujitsu", "arm", "power", "uopc"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-power/fdata_fugaku_uopc.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/fdata_fugaku_uopc.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.pm100",
+      "id": "dataset.pm100",
       "entry_type": "dataset",
       "name": "PM100 (Marconi100 Jobs)",
       "version": "1.0.0",
@@ -332,11 +332,11 @@
       "tags": ["marconi100", "slurm", "power", "benchmark"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pm100.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/pm100.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.fdata_fugaku",
+      "id": "dataset.fdata_fugaku",
       "entry_type": "dataset",
       "name": "F-DATA (Fugaku Jobs, recent month)",
       "version": "1.0.0",
@@ -347,11 +347,11 @@
       "tags": ["fugaku", "a64fx", "fujitsu", "arm", "power"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fdata_fugaku.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/fdata_fugaku.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.adastra_mi250",
+      "id": "dataset.adastra_mi250",
       "entry_type": "dataset",
       "name": "Adastra MI250 Jobs (15 days)",
       "version": "1.0.0",
@@ -362,11 +362,11 @@
       "tags": ["adastra", "cines", "slurm", "mi250", "gpu", "power"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/adastra_mi250.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/adastra_mi250.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.ccin2p3_2024",
+      "id": "dataset.ccin2p3_2024",
       "entry_type": "dataset",
       "name": "CC-IN2P3 2024 Workload (recent month)",
       "version": "1.0.0",
@@ -377,11 +377,11 @@
       "tags": ["cc-in2p3", "cnrs", "slurm", "sacct", "htc"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/ccin2p3_2024.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/ccin2p3_2024.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.nrel_eagle",
+      "id": "dataset.nrel_eagle",
       "entry_type": "dataset",
       "name": "NREL Eagle Jobs (OEDI 5860)",
       "version": "1.0.0",
@@ -392,11 +392,11 @@
       "tags": ["eagle", "nrel", "slurm", "oedi", "home-lab"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nrel_eagle.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/nrel_eagle.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.pwa_kit_fh2",
+      "id": "dataset.pwa_kit_fh2",
       "entry_type": "dataset",
       "name": "PWA KIT-FH2 (ForHLR II)",
       "version": "1.0.0",
@@ -407,11 +407,11 @@
       "tags": ["pwa", "swf", "kit", "forhlr2"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_kit_fh2.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/pwa_kit_fh2.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.pwa_cea_curie",
+      "id": "dataset.pwa_cea_curie",
       "entry_type": "dataset",
       "name": "PWA CEA-Curie (cleaned)",
       "version": "1.0.0",
@@ -422,11 +422,11 @@
       "tags": ["pwa", "swf", "cea", "curie"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_cea_curie.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/pwa_cea_curie.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.pwa_metacentrum",
+      "id": "dataset.pwa_metacentrum",
       "entry_type": "dataset",
       "name": "PWA MetaCentrum (2013-2015)",
       "version": "1.0.0",
@@ -437,11 +437,11 @@
       "tags": ["pwa", "swf", "metacentrum", "cesnet", "grid"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_metacentrum.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/pwa_metacentrum.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.atlas_mustang",
+      "id": "dataset.atlas_mustang",
       "entry_type": "dataset",
       "name": "Atlas Mustang (LANL)",
       "version": "1.0.0",
@@ -452,11 +452,11 @@
       "tags": ["atlas", "lanl", "mustang", "slurm"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/atlas_mustang.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/atlas_mustang.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.atlas_opentrinity",
+      "id": "dataset.atlas_opentrinity",
       "entry_type": "dataset",
       "name": "Atlas OpenTrinity (LANL)",
       "version": "1.0.0",
@@ -467,11 +467,11 @@
       "tags": ["atlas", "lanl", "trinity", "slurm"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/atlas_opentrinity.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/atlas_opentrinity.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.mit_supercloud",
+      "id": "dataset.mit_supercloud",
       "entry_type": "dataset",
       "name": "MIT Supercloud Datacenter Challenge (scheduler)",
       "version": "1.0.0",
@@ -482,11 +482,11 @@
       "tags": ["mit", "supercloud", "slurm", "gpu", "s3"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/mit_supercloud.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/mit_supercloud.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.nlr_kestrel",
+      "id": "dataset.nlr_kestrel",
       "entry_type": "dataset",
       "name": "NLR Kestrel Jobs (anonymized)",
       "version": "1.1.0",
@@ -497,11 +497,11 @@
       "tags": ["nlr", "kestrel", "slurm", "gpu", "h100", "home-lab"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nlr_kestrel.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/nlr_kestrel.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.nlr_eagle",
+      "id": "dataset.nlr_eagle",
       "entry_type": "dataset",
       "name": "NLR Eagle Jobs (anonymized)",
       "version": "1.1.0",
@@ -512,11 +512,11 @@
       "tags": ["nlr", "eagle", "slurm", "gpu", "home-lab"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/nlr_eagle.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/nlr_eagle.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.ic2",
+      "id": "dataset.ic2",
       "entry_type": "dataset",
       "name": "IC2 Integrated Cloud + HPC Jobs",
       "version": "1.0.0",
@@ -527,11 +527,11 @@
       "tags": ["ic2", "polaris", "aws", "cloud", "hpc", "json"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/ic2.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/ic2.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.pwa_ricc",
+      "id": "dataset.pwa_ricc",
       "entry_type": "dataset",
       "name": "PWA RICC (RIKEN Integrated Cluster)",
       "version": "1.0.0",
@@ -542,11 +542,11 @@
       "tags": ["pwa", "swf", "riken", "ricc"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_ricc.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/pwa_ricc.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.pwa_hpc2n",
+      "id": "dataset.pwa_hpc2n",
       "entry_type": "dataset",
       "name": "PWA HPC2N (Seth cluster)",
       "version": "1.0.0",
@@ -557,11 +557,11 @@
       "tags": ["pwa", "swf", "hpc2n", "seth"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_hpc2n.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/pwa_hpc2n.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.pwa_sdsc_blue",
+      "id": "dataset.pwa_sdsc_blue",
       "entry_type": "dataset",
       "name": "PWA SDSC Blue Horizon",
       "version": "1.0.0",
@@ -572,11 +572,11 @@
       "tags": ["pwa", "swf", "sdsc", "blue-horizon"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/pwa_sdsc_blue.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/pwa_sdsc_blue.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.lassen",
+      "id": "dataset.lassen",
       "entry_type": "dataset",
       "name": "Lassen LAST (LLNL)",
       "version": "1.0.0",
@@ -587,11 +587,11 @@
       "tags": ["lassen", "llnl", "lsf", "csm", "gpu"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/lassen.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/lassen.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.fresco_anvil",
+      "id": "dataset.fresco_anvil",
       "entry_type": "dataset",
       "name": "FRESCO Anvil Job Accounting",
       "version": "1.0.0",
@@ -602,11 +602,11 @@
       "tags": ["fresco", "anvil", "purdue", "slurm", "a100"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_anvil.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/fresco_anvil.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.fresco_conte",
+      "id": "dataset.fresco_conte",
       "entry_type": "dataset",
       "name": "FRESCO Conte Job Accounting",
       "version": "1.0.0",
@@ -617,11 +617,11 @@
       "tags": ["fresco", "conte", "purdue", "torque", "pbs"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_conte.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/fresco_conte.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.fresco_stampede1",
+      "id": "dataset.fresco_stampede1",
       "entry_type": "dataset",
       "name": "FRESCO Stampede1 Job Accounting",
       "version": "1.0.0",
@@ -632,11 +632,11 @@
       "tags": ["fresco", "stampede1", "tacc", "slurm"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/fresco_stampede1.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/fresco_stampede1.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.alcf_djc_polaris",
+      "id": "dataset.alcf_djc_polaris",
       "entry_type": "dataset",
       "name": "ALCF DJC — Polaris (2022–2026)",
       "version": "1.1.0",
@@ -647,11 +647,11 @@
       "tags": ["alcf", "argonne", "polaris", "pbs", "cobalt", "manual"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_polaris.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/alcf_djc_polaris.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.alcf_djc_aurora",
+      "id": "dataset.alcf_djc_aurora",
       "entry_type": "dataset",
       "name": "ALCF DJC — Aurora (2025–2026)",
       "version": "1.0.0",
@@ -662,11 +662,11 @@
       "tags": ["alcf", "argonne", "aurora", "pbs", "cobalt", "manual"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_aurora.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/alcf_djc_aurora.yml"
       }
     },
     {
-      "id": "dataset.job_runtime.alcf_djc_theta",
+      "id": "dataset.alcf_djc_theta",
       "entry_type": "dataset",
       "name": "ALCF DJC — Theta (2017–2024)",
       "version": "1.0.0",
@@ -677,7 +677,7 @@
       "tags": ["alcf", "argonne", "theta", "knl", "pbs", "cobalt", "manual"],
       "reference": {
         "kind": "path",
-        "path": "hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_theta.yml"
+        "path": "hpc_oda_commons/datasets/descriptors/alcf_djc_theta.yml"
       }
     }
   ]

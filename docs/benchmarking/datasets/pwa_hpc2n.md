@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.pwa_hpc2n`
+# Dataset card — `dataset.pwa_hpc2n`
 
 *Generated 2026-08-27T12:59:08.336352+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Seth  ·  **Descriptor:** `dataset.job_runtime.pwa_hpc2n`
+**System:** Seth  ·  **Descriptor:** `dataset.pwa_hpc2n`
 
 ## Characterization
 

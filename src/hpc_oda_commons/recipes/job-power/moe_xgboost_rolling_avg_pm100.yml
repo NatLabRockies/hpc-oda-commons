@@ -3,7 +3,7 @@
 # (docs/benchmarking/power/methodology.md). The windows end at the table's last submit,
 # so they test PM100's last 89 days, 2020-07-17 to 2020-10-14.
 #
-#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/pm100.yml
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/pm100.yml
 #
 # Every model in recipes/job-power/*_rolling_{avg,peak}_pm100.yml uses the same split and
 # rows.

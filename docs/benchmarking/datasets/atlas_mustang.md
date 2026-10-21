@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.atlas_mustang`
+# Dataset card — `dataset.atlas_mustang`
 
 *Generated 2026-08-27T12:58:43.110291+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Mustang  ·  **Descriptor:** `dataset.job_runtime.atlas_mustang`
+**System:** Mustang  ·  **Descriptor:** `dataset.atlas_mustang`
 
 ## Characterization
 

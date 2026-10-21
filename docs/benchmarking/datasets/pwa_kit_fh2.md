@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.pwa_kit_fh2`
+# Dataset card — `dataset.pwa_kit_fh2`
 
 *Generated 2026-08-27T12:59:09.855453+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** ForHLR-II  ·  **Descriptor:** `dataset.job_runtime.pwa_kit_fh2`
+**System:** ForHLR-II  ·  **Descriptor:** `dataset.pwa_kit_fh2`
 
 ## Characterization
 
