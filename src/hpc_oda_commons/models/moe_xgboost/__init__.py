@@ -1,5 +1,5 @@
 """
-Mixture-of-Experts XGBoost model for job runtime prediction (v0.1).
+Mixture-of-Experts XGBoost model: predicts the recipe's target (job runtime or power).
 
 Routes each job to a per-(user, wallclock-bin) XGBoost expert inside the shared
 rolling window, with data-derived bin edges, a window-wide fallback expert, and

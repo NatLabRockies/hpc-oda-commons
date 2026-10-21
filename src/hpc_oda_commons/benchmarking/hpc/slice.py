@@ -1,4 +1,4 @@
-"""Slice a canonical job table to a dataset card's 90-day benchmark window.
+"""Slice a canonical job table to a window: a runtime card's, or a recipe's declared one.
 
 The rolling-split benchmark keys **test** windows on ``submit_time`` and **training**
 windows on ``end_time`` (``split_time - lookback <= end_time < split_time``). A job
@@ -13,8 +13,12 @@ exactly this reason; that is expected.
 A recipe may ask for a longer training lookback than the card's window was sized for
 (the card rule is ``train_days`` + ``test_days``). The earliest rolling windows would
 then train on truncated history. ``extra_lookback_days`` extends the **lower** bound
-by that shortfall — ``training_lookback_days - card.train_days`` — leaving the test
-region untouched, so the run scores exactly the rows the card window defines (#143).
+-- by default the card's ``history_days - train_days`` (``matrix.slice_extension_for``) --
+leaving the test region untouched, so the run scores exactly the rows the card window
+defines (#143, #170).
+
+``read_window`` applies a recipe's declared ``dataset.window`` the same way at scan time,
+so a recipe can read a full prepared table without a slice on disk.
 """
 
 from __future__ import annotations

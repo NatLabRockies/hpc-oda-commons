@@ -1,5 +1,5 @@
 """
-Baseline model package for SLURM job runtime prediction (v0.1).
+Baseline model package: predicts the training mean of the recipe's target.
 """
 
 from __future__ import annotations

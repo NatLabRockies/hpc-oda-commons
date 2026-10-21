@@ -1,4 +1,4 @@
-"""``hpc-oda recipes``: write the benchmark's recipes for a dataset of your own (#255)."""
+"""``hpc-oda recipes``: write the benchmark's recipes for a dataset of your own ."""
 
 from __future__ import annotations
 
@@ -39,7 +39,11 @@ def recipes_write(
     ] = None,
     by: Annotated[
         str,
-        typer.Option("--by", help="Power window: keep overlapping jobs, or those submitted in it."),
+        typer.Option(
+            "--by",
+            help="Power window. overlap: keep jobs that overlap it; submit: keep jobs submitted "
+            "in it.",
+        ),
     ] = "overlap",
     require_nonnull: Annotated[
         list[str] | None,
@@ -59,7 +63,8 @@ def recipes_write(
 
     Runtime recipes need the dataset's runtime card, which sets their window; power recipes
     are written for each per-node power target the descriptor maps, over the whole table or
-    the window you give. Runs from these recipes count on `hpc-oda leaderboard --recipes`.
+    the window you give. On `hpc-oda leaderboard`, the power runs count when you pass this
+    folder with --recipes, and the runtime runs count when --ceilings holds the runtime card.
     """
     from hpc_oda_commons.benchmark.recipe_writer import write_recipes
     from hpc_oda_commons.benchmarking.hpc.matrix import load_card
