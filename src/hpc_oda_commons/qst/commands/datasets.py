@@ -298,8 +298,9 @@ def datasets_characterize(
 ) -> None:
     """Characterize a prepared dataset's health, pick its 3-month benchmark window, write a card.
 
-    Emits ``<stem>.card.json`` (machine-readable, consumed by the benchmark runner) and
-    ``<stem>.md`` (human-readable) under ``--out``. See docs/benchmarking/runtime/methodology.md.
+    Emits ``<stem>.card.json`` under ``--out``, which the benchmark runner consumes; people
+    read it in the dataset's card, so run ``hpc-oda datasets cards`` after. See
+    docs/benchmarking/runtime/methodology.md.
     """
     stem = dataset_id.split(".")[-1] if dataset_id else table_path.parent.name
     did = dataset_id or f"dataset.{stem}"
@@ -324,7 +325,7 @@ def datasets_characterize(
     if descriptor:
         source["descriptor"] = descriptor
     card = build_card(did, table_path, char, window, source=source or None)
-    json_path, md_path = write_card(card, out, stem=stem)
+    json_path = write_card(card, out, stem=stem)
 
     hs = char["healthy_span"]
     verdict = "[green]healthy[/green]" if window["healthy"] else "[red]UNHEALTHY[/red]"
@@ -338,8 +339,7 @@ def datasets_characterize(
         f"  window {window['window_start']}..{window['window_end']} "
         f"({window['n_rows']:,} rows) → {verdict}"
     )
-    console.print(f"  card: {json_path}")
-    console.print(f"        {md_path}")
+    console.print(f"  card: {json_path} (regenerate the dataset cards: hpc-oda datasets cards)")
 
 
 def datasets_slice(
@@ -496,3 +496,29 @@ def datasets_ceiling(
             f"(coverage {s['coverage'] * 100:.0f}%)"
         )
     console.print(f"  → {out_path}")
+
+
+def datasets_cards(
+    out: Annotated[
+        Path, typer.Option("--out", help="Directory to write the dataset cards into.")
+    ] = Path("docs/datasets/cards"),
+    leaderboard: Annotated[
+        Path,
+        typer.Option(
+            "--leaderboard",
+            exists=True,
+            readable=True,
+            help="The leaderboard JSON the cards' results come from.",
+        ),
+    ] = Path("site/leaderboard/leaderboard.json"),
+) -> None:
+    """Write a card for every bundled dataset, generated from the repo (#249).
+
+    Each card comes from the dataset's descriptor, its runtime card, the error ceilings, the
+    bundled recipes and the leaderboard, so regenerate the cards whenever one of those
+    changes; a unit test fails when the committed cards differ from what this writes.
+    """
+    from hpc_oda_commons.benchmark.dataset_cards import write_dataset_cards
+
+    for path in write_dataset_cards(out, leaderboard.resolve()):
+        console.print(f"[green]wrote[/green] {path}")

@@ -3,15 +3,20 @@ schema_version: oda.dataset.v0.1.0
 name: Atlas OpenTrinity (LANL)
 version: 1.0.0
 description: >
-  LANL Trinity (OpenTrinity) SLURM trace from the Atlas repository, formatted release
-  (~25k jobs, Feb-Apr 2016; 21,531 after dropping rows with no runtime). The
-  runtime-prediction target is derived (end_time - start_time);
-  requested walltime = wallclock_limit (a pandas timedelta string). No job identifier
-  column, so job_id is a synthesized row-index surrogate. Timestamps carry -06:00/-07:00
-  offsets and are normalized to UTC. Citation required (USENIX ATC'18).
+  Slurm trace of LANL's Trinity supercomputer (OpenTrinity) from the Atlas repository,
+  formatted release (~25k jobs, February–April 2016; 21,531 have a runtime). Runtime is
+  end_time − start_time, and requested walltime is wallclock_limit (a pandas timedelta
+  string). There is no job id column, so job_id is a row-index surrogate. Timestamps carry
+  −06:00/−07:00 offsets and are normalized to UTC.
 systems: [Trinity]
 providers: [LANL]
-citation: { url: "https://ftp.pdl.cmu.edu/pub/datasets/ATLAS/" }
+citation:
+  url: "https://ftp.pdl.cmu.edu/pub/datasets/ATLAS/"
+  papers:
+    - title: "On the diversity of cluster workloads and its impact on research results (USENIX ATC, 2018)"
+      url: "https://www.usenix.org/conference/atc18/presentation/amvrosiadis"
+    - title: "The Atlas Cluster Trace Repository (USENIX ;login:, 2018)"
+      url: "https://www.usenix.org/publications/login/winter-2018-vol-43-no-4/amvrosiadis"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [atlas, lanl, trinity, slurm]
 size:

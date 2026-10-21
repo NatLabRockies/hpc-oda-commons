@@ -167,7 +167,7 @@ is flagged **unhealthy** and the dataset is escalated (seek other months / widen
 **Reproducibility:** the whole thing is deterministic — `hpc-oda datasets characterize
 <parquet>` regenerates the identical card from the prepared table + these parameters.
 
-Exemplar: [`fresco_stampede1`](../datasets/fresco_stampede1.md) — healthy span 2013-01-11 →
+Exemplar: [`fresco_stampede1`](../../datasets/cards/fresco_stampede1.md) — healthy span 2013-01-11 →
 2018-01-17; chosen window **2016-10-19 → 2017-01-16** (gap-free); the one missing block
 (2018-01-13→15) sits at the span edge, correctly outside the window.
 
@@ -277,11 +277,10 @@ it, so it is not causal), so it answers neither question.
 
 ## The dataset card
 
-`hpc-oda datasets characterize <parquet>` emits, per dataset, into `docs/benchmarking/datasets/`:
-
-- `<stem>.card.json` — machine-readable, schema `oda.dataset_card.v0.1.0`; the benchmark
-  runner reads the chosen window from here.
-- `<stem>.md` — the human-readable rendering.
+`hpc-oda datasets characterize <parquet>` emits, per dataset, `<stem>.card.json` into
+`docs/benchmarking/datasets/`: machine-readable, schema `oda.dataset_card.v0.1.0`. The
+benchmark runner reads the chosen window from it, and people read it in the dataset's
+generated card ([dataset cards](../../datasets/cards/README.md), `hpc-oda datasets cards`).
 
 A card records: identity + provenance (git commit, table sha256); characterization (healthy
 span, daily-volume profile, job rate, **missing-block analysis**, per-column cardinality +

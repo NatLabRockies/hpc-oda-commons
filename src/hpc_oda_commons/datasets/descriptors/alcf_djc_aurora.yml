@@ -3,14 +3,13 @@ schema_version: oda.dataset.v0.1.0
 name: ALCF DJC — Aurora (2025–2026)
 version: 1.1.0
 description: >
-  DIM_JOB_COMPOSITE job accounting from Argonne's Aurora supercomputer, all published years
-  (2025-01 through 2026-07, two files), from the ALCF public DATA CATALOG. Same schema as the
-  Polaris DJC dataset: PBS scheduler data with real requested walltime (WALLTIME_SECONDS) and
-  elapsed runtime (RUNTIME_SECONDS), plus cores/nodes used+requested, queue, exit status, machine,
-  award category, and science field; user/project pre-anonymized. Primary-quality. ALCF gates
-  downloads behind a one-time name/email form, so this is a `manual`-kind dataset: fetch the files
-  yourself, then `datasets prepare --from <dir>` checksum-verifies and normalizes them. See
-  docs/datasets/alcf-djc-ingest.md.
+  DIM_JOB_COMPOSITE job accounting from Argonne's Aurora supercomputer, 2025-01 through
+  2026-07 in two files, from the ALCF public data catalog: PBS scheduler records with
+  requested walltime (WALLTIME_SECONDS) and elapsed runtime (RUNTIME_SECONDS), cores and
+  nodes used and requested, queue, exit status, machine, award category and science field.
+  Users and projects are anonymized at source. ALCF gates downloads behind a one-time name
+  and email form, so fetch the files yourself; `datasets prepare --from <dir>` then checks
+  and normalizes them (see docs/datasets/alcf-djc-ingest.md).
 systems: [Aurora]
 providers: [ALCF, Argonne]
 citation: { url: "https://reports.alcf.anl.gov/data/index.html" }

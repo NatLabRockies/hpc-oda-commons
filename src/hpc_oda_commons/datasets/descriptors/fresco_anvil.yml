@@ -3,15 +3,18 @@ schema_version: oda.dataset.v0.1.0
 name: FRESCO Anvil Job Accounting
 version: 1.0.0
 description: >
-  Anonymized SLURM job accounting from Purdue's Anvil supercomputer (A100), from the FRESCO
-  repository, 11 monthly CSVs covering July 2022 - May 2023. Runtime target = Wall Time
-  (seconds); requested walltime = Requested Wall Time (seconds). Timestamps are ISO with a
-  trailing "UTC" zone word. Cores/GPUs/nodes, requested nodes, queue, exit status, wait time
-  as features; user/account already anonymized. Fetched from the datadepot over direct HTTPS
-  (no Globus). Primary-quality Slurm accounting.
+  Anonymized Slurm job accounting from Purdue's Anvil supercomputer (NVIDIA A100), from
+  the FRESCO repository: 11 monthly CSVs, July 2022–May 2023. Runtime is Wall Time and
+  requested walltime is Requested Wall Time (seconds). Timestamps are ISO with a trailing
+  "UTC" word. Cores, GPUs and nodes, requested nodes, queue, exit status and wait time are
+  mapped; users and accounts are anonymized at source.
 systems: [Anvil]
 providers: [Purdue, TACC]
-citation: { url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/" }
+citation:
+  url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/"
+  papers:
+    - title: "Fresco: A Public Multi-Institutional Dataset for Understanding HPC System Behavior and Dependability (PEARC, 2025)"
+      doi: "10.1145/3708035.3736090"
 license:
   spdx: LicenseRef-fresco
   gated: false

@@ -8,7 +8,12 @@ window (with rationale), so the choices are explainable and repeatable for other
 See ``docs/benchmarking/runtime/methodology.md`` for the agreed methodology.
 """
 
-from hpc_oda_commons.benchmarking.cards import build_card, render_card_markdown, write_card
+from hpc_oda_commons.benchmarking.cards import (
+    build_card,
+    characterization_lines,
+    window_lines,
+    write_card,
+)
 from hpc_oda_commons.benchmarking.ceiling import (
     CEILING_SCHEMA_VERSION,
     CeilingError,
@@ -30,6 +35,7 @@ __all__ = [
     "characterize_table",
     "select_window",
     "build_card",
-    "render_card_markdown",
+    "characterization_lines",
+    "window_lines",
     "write_card",
 ]

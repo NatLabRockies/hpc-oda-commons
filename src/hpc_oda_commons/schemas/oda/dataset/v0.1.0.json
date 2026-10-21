@@ -136,8 +136,23 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "doi": { "type": "string" },
-        "url": { "type": "string" }
+        "doi": { "type": "string", "description": "The dataset's own DOI, if it has one." },
+        "url": { "type": "string", "description": "The dataset's landing page." },
+        "papers": {
+          "type": "array",
+          "description": "Papers that describe the dataset (#249).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["title"],
+            "anyOf": [{ "required": ["doi"] }, { "required": ["url"] }],
+            "properties": {
+              "title": { "type": "string", "minLength": 3 },
+              "doi": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        }
       }
     },
     "license": {

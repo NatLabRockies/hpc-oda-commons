@@ -13,6 +13,7 @@ from hpc_oda_commons.benchmarking import (
     build_card,
     characterize_table,
     select_window,
+    window_lines,
     write_card,
 )
 from hpc_oda_commons.benchmarking.characterize import CharacterizeError
@@ -144,6 +145,6 @@ def test_card_builds_strips_private_series_and_validates(tmp_path: Path) -> None
 
     jsonschema.validate(card, load_schema("oda.dataset_card.v0.1.0"))
 
-    json_path, md_path = write_card(card, tmp_path / "cards", stem="test")
-    assert json_path.exists() and md_path.exists()
-    assert "Benchmark window" in md_path.read_text()
+    json_path = write_card(card, tmp_path / "cards", stem="test")
+    assert json_path.exists() and not list((tmp_path / "cards").glob("*.md"))
+    assert "Test period" in "\n".join(window_lines(card))

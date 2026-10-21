@@ -3,15 +3,15 @@ schema_version: oda.dataset.v0.1.0
 name: ALCF DJC — Theta (2017–2024)
 version: 1.0.0
 description: >
-  DIM_JOB_COMPOSITE job accounting from Argonne's Theta supercomputer (Cray XC40 / KNL), all
-  published years (2017-07 through 2024, eight files), from the ALCF public DATA CATALOG. Same
-  schema as the Polaris/Aurora DJC datasets: Cobalt/PBS scheduler data with real requested walltime
-  (WALLTIME_SECONDS) and elapsed runtime (RUNTIME_SECONDS), plus cores/nodes used+requested, queue,
-  exit status, machine, award category, and science field; user/project pre-anonymized. Theta was
-  decommissioned end of 2023, so the 2024 file is near-empty. Primary-quality. ALCF gates downloads
-  behind a one-time name/email form, so this is a `manual`-kind dataset: fetch the files yourself,
-  then `datasets prepare --from <dir>` checksum-verifies and normalizes them. See
-  docs/datasets/alcf-djc-ingest.md.
+  DIM_JOB_COMPOSITE job accounting from Argonne's Theta supercomputer (Cray XC40, Intel
+  Knights Landing), 2017-07 through 2024 in eight files, from the ALCF public data
+  catalog: Cobalt/PBS scheduler records with requested walltime (WALLTIME_SECONDS) and
+  elapsed runtime (RUNTIME_SECONDS), cores and nodes used and requested, queue, exit
+  status, machine, award category and science field. Users and projects are anonymized at
+  source. Theta was decommissioned at the end of 2023, so the 2024 file is nearly empty.
+  ALCF gates downloads behind a one-time name and email form, so fetch the files yourself;
+  `datasets prepare --from <dir>` then checks and normalizes them (see
+  docs/datasets/alcf-djc-ingest.md).
 systems: [Theta]
 providers: [ALCF, Argonne]
 citation: { url: "https://reports.alcf.anl.gov/data/index.html" }

@@ -3,22 +3,20 @@ schema_version: oda.dataset.v0.1.0
 name: F-DATA (Fugaku Jobs, Mar–Sep 2023)
 version: 1.3.0
 description: >
-  Fujitsu/Fugaku job records from F-DATA (RIKEN R-CCS / University of Bologna).
-  This descriptor curates a seven-month slice (2023-03 through 2023-09). The benchmark's
-  rolling split trains on a 120-day lookback, so the card window needs ~60 days of history
-  behind it; the previous three-month curation (2023-07..09) put the window on the first day
-  of the ingested span, leaving every rolling window short of history. Seven months puts the
-  80%-anchored window far enough in to be backed by real history. Fugaku takes periodic
-  ~3-day maintenance outages, so the window rule health-gates and shifts the window off any
-  missing block. The full dataset spans Mar 2021 - Apr 2024 (38 monthly parquet files, ~24M
-  jobs, ~28 GB). Runtime-prediction target = duration (seconds).
-  Average and peak job power are mapped too, whole-job (avgpcon, maxpcon) and per
-  requested node (avgpcon_per_node, maxpcon_per_node), so the runtime models can be
-  pointed at power on this window (#204). The rows are the runtime benchmark's: the
-  filter is still on runtime, so a job without power keeps its runtime row.
+  Job records of Fugaku (Fujitsu A64FX) from F-DATA, by RIKEN R-CCS and the University of
+  Bologna. The source spans March 2021–April 2024 in 38 monthly parquet files (about 24M
+  jobs, 28 GB); this curation takes March–September 2023. Runtime is duration (seconds).
+  Average and peak job power are mapped whole-job (avgpcon, maxpcon) and per requested
+  node (avgpcon_per_node, maxpcon_per_node). Fugaku takes periodic maintenance outages of
+  about three days.
 systems: [Fugaku]
 providers: ["RIKEN R-CCS", "University of Bologna"]
-citation: { doi: "10.5281/zenodo.11467483", url: "https://zenodo.org/records/11467483" }
+citation:
+  doi: "10.5281/zenodo.11467483"
+  url: "https://zenodo.org/records/11467483"
+  papers:
+    - title: "F-DATA: A Fugaku Workload Dataset for Job-centric Predictive Modelling in HPC Systems (Scientific Data, 2025)"
+      doi: "10.1038/s41597-025-05633-1"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [fugaku, a64fx, fujitsu, arm, power]
 size:

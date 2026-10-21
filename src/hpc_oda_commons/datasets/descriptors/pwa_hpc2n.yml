@@ -3,13 +3,17 @@ schema_version: oda.dataset.v0.1.0
 name: PWA HPC2N (Seth cluster)
 version: 1.0.0
 description: >
-  Standard Workload Format log for the HPC2N (High Performance Computing Center North,
-  Sweden) Seth cluster, from the Parallel Workloads Archive (527,371 jobs, 2002-2006).
-  Runtime target = Run Time (seconds); requested walltime = Requested Time (seconds).
-  Absolute UTC submit/start/end are reconstructed from the SWF UnixStartTime header.
+  Standard Workload Format log of the Seth cluster at HPC2N (High Performance Computing
+  Center North, Sweden), from the Parallel Workloads Archive (527,371 jobs, 2002–2006).
+  Runtime is Run Time and requested walltime is Requested Time (seconds). Absolute UTC
+  times are reconstructed from the log's UnixStartTime header.
 systems: [Seth]
 providers: [HPC2N]
-citation: { url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_hpc2n/" }
+citation:
+  url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_hpc2n/"
+  papers:
+    - title: "Experience with using the Parallel Workloads Archive (Journal of Parallel and Distributed Computing, 2014)"
+      doi: "10.1016/j.jpdc.2014.06.013"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [pwa, swf, hpc2n, seth]
 size:

@@ -509,8 +509,8 @@ def test_caveats_are_marks_on_their_column_headers(power_runs) -> None:
 
 
 def test_dataset_columns_show_titles_and_keep_the_id_on_hover(power_runs) -> None:
-    """Column headers show the system's name (#247); every dataset with a card has one."""
-    from hpc_oda_commons.benchmark.leaderboard_display import DATASET_TITLES, dataset_title
+    """Column headers show the system's name, from the descriptor (#247, #249)."""
+    from hpc_oda_commons.benchmark.leaderboard_display import dataset_title
 
     runs, ceilings = power_runs
     page = render_leaderboard_html(
@@ -520,17 +520,15 @@ def test_dataset_columns_show_titles_and_keep_the_id_on_hover(power_runs) -> Non
     assert 'title="pm100">Marconi100</a>' in page
     assert 'title="nlr_eagle">Eagle</a>' in page
     assert dataset_title("someone_elses_dataset") == "someone_elses_dataset"
-    cards = Path(__file__).parents[2] / "docs" / "benchmarking" / "datasets"
-    assert {p.name.split(".")[0] for p in cards.glob("*.card.json")} <= set(DATASET_TITLES)
 
 
 def test_every_dataset_links_to_a_page_that_exists() -> None:
-    """Column headers link into the repo (#247); a link must land on a real file and heading."""
-    from hpc_oda_commons.benchmark.leaderboard_display import DATASET_TITLES, dataset_doc
-    from tests.unit.test_doc_links import _anchors
+    """Each column links to its own dataset's card (#249), which must exist."""
+    from hpc_oda_commons.benchmark.leaderboard_display import dataset_doc
+    from hpc_oda_commons.datasets.descriptor import bundled_descriptor_paths
 
     root = Path(__file__).parents[2]
-    for dataset in DATASET_TITLES:
-        path, _, anchor = dataset_doc(dataset).partition("#")
-        assert (root / path).is_file(), dataset
-        assert not anchor or anchor in _anchors(root / path), dataset
+    for dataset in bundled_descriptor_paths():
+        assert dataset_doc(dataset) == f"docs/datasets/cards/{dataset}.md"
+        assert (root / str(dataset_doc(dataset))).is_file(), dataset
+    assert dataset_doc("someone_elses_dataset") is None

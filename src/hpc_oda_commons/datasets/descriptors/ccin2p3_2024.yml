@@ -3,14 +3,18 @@ schema_version: oda.dataset.v0.1.0
 name: CC-IN2P3 2024 Workload (Sep–Dec)
 version: 1.1.0
 description: >
-  SLURM sacct per-job trace from CC-IN2P3 (CNRS national computing centre, France).
-  The full year 2024 is ~44M jobs across 12 monthly tar.gz files; this descriptor
-  curates the last four months (September–December 2024) as the premium runtime slice —
-  enough for a 3-month rolling-benchmark window. Runtime-prediction target = elapsed
-  (seconds); requested walltime = timelimit (seconds). CPU/HTC-centric (single-node jobs dominate).
+  Slurm sacct per-job trace from CC-IN2P3, the CNRS national computing centre in France.
+  The source holds all of 2024, about 44M jobs in 12 monthly files; this curation takes
+  September–December 2024. Runtime is elapsed and requested walltime is timelimit
+  (seconds). Most jobs are single-node CPU or high-throughput jobs.
 systems: [CC-IN2P3]
 providers: [CNRS, "CC-IN2P3"]
-citation: { doi: "10.5281/zenodo.18668107", url: "https://zenodo.org/records/18668107" }
+citation:
+  doi: "10.5281/zenodo.18668107"
+  url: "https://zenodo.org/records/18668107"
+  papers:
+    - title: "IN2P3 Computing Center 2024 Workload Dataset (arXiv preprint, 2026)"
+      doi: "10.48550/arXiv.2606.05914"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [cc-in2p3, cnrs, slurm, sacct, htc]
 size:

@@ -16,26 +16,26 @@ Rank 7 of 7, with an average headroom of 0% over 20 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| Aurora (`alcf_djc_aurora`) | 0% | 1.7 h |
-| Polaris (`alcf_djc_polaris`) | 0% | 2.0 h |
-| Theta (`alcf_djc_theta`) | 0% | 1.2 h |
-| Mustang (`atlas_mustang`) | 0% | 2.5 h |
-| Trinity (`atlas_opentrinity`) | 0% | 2.0 h |
-| Fugaku (`fdata_fugaku`) | 0% | 3.9 h |
-| Anvil (`fresco_anvil`) | 0% | 2.0 h |
-| Conte (`fresco_conte`) | 0% | 4.0 h |
-| Stampede (`fresco_stampede1`) | 0% | 6.0 h |
-| Lassen (`lassen`) | 0% | 1.6 h |
-| SuperCloud (`mit_supercloud`) | 0% | 11.0 h |
-| Eagle (`nlr_eagle`) | 0% | 2.3 h |
-| Kestrel (`nlr_kestrel`) | 0% | 4.5 h |
-| Marconi100 (`pm100`) | 0% | 2.2 h |
-| Curie (`pwa_cea_curie`) | 0% | 2.7 h |
-| Seth (`pwa_hpc2n`) | 0% | 4.4 h |
-| ForHLR II (`pwa_kit_fh2`) | 0% | 6.7 h |
-| MetaCentrum (`pwa_metacentrum`) | 0% | 4.7 h |
-| RICC (`pwa_ricc`) | 0% | 3.6 h |
-| Blue Horizon (`pwa_sdsc_blue`) | 0% | 1.2 h |
+| [Aurora](../../docs/datasets/cards/alcf_djc_aurora.md) (`alcf_djc_aurora`) | 0% | 1.7 h |
+| [Polaris](../../docs/datasets/cards/alcf_djc_polaris.md) (`alcf_djc_polaris`) | 0% | 2.0 h |
+| [Theta](../../docs/datasets/cards/alcf_djc_theta.md) (`alcf_djc_theta`) | 0% | 1.2 h |
+| [Mustang](../../docs/datasets/cards/atlas_mustang.md) (`atlas_mustang`) | 0% | 2.5 h |
+| [Trinity](../../docs/datasets/cards/atlas_opentrinity.md) (`atlas_opentrinity`) | 0% | 2.0 h |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku.md) (`fdata_fugaku`) | 0% | 3.9 h |
+| [Anvil](../../docs/datasets/cards/fresco_anvil.md) (`fresco_anvil`) | 0% | 2.0 h |
+| [Conte](../../docs/datasets/cards/fresco_conte.md) (`fresco_conte`) | 0% | 4.0 h |
+| [Stampede](../../docs/datasets/cards/fresco_stampede1.md) (`fresco_stampede1`) | 0% | 6.0 h |
+| [Lassen](../../docs/datasets/cards/lassen.md) (`lassen`) | 0% | 1.6 h |
+| [SuperCloud](../../docs/datasets/cards/mit_supercloud.md) (`mit_supercloud`) | 0% | 11.0 h |
+| [Eagle](../../docs/datasets/cards/nlr_eagle.md) (`nlr_eagle`) | 0% | 2.3 h |
+| [Kestrel](../../docs/datasets/cards/nlr_kestrel.md) (`nlr_kestrel`) | 0% | 4.5 h |
+| [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 0% | 2.2 h |
+| [Curie](../../docs/datasets/cards/pwa_cea_curie.md) (`pwa_cea_curie`) | 0% | 2.7 h |
+| [Seth](../../docs/datasets/cards/pwa_hpc2n.md) (`pwa_hpc2n`) | 0% | 4.4 h |
+| [ForHLR II](../../docs/datasets/cards/pwa_kit_fh2.md) (`pwa_kit_fh2`) | 0% | 6.7 h |
+| [MetaCentrum](../../docs/datasets/cards/pwa_metacentrum.md) (`pwa_metacentrum`) | 0% | 4.7 h |
+| [RICC](../../docs/datasets/cards/pwa_ricc.md) (`pwa_ricc`) | 0% | 3.6 h |
+| [Blue Horizon](../../docs/datasets/cards/pwa_sdsc_blue.md) (`pwa_sdsc_blue`) | 0% | 1.2 h |
 
 ### Average power per node
 
@@ -43,10 +43,10 @@ Rank 8 of 8, with an average headroom of 0% over 4 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| Fugaku (`fdata_fugaku_uopc`) | 0% | 25.6 W/node |
-| Eagle (`nlr_eagle`) | 0% | 92.8 W/node |
-| Kestrel (`nlr_kestrel`) | 0% | 163.1 W/node |
-| Marconi100 (`pm100`) | 0% | 148.2 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 0% | 25.6 W/node |
+| [Eagle](../../docs/datasets/cards/nlr_eagle.md) (`nlr_eagle`) | 0% | 92.8 W/node |
+| [Kestrel](../../docs/datasets/cards/nlr_kestrel.md) (`nlr_kestrel`) | 0% | 163.1 W/node |
+| [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 0% | 148.2 W/node |
 
 ### Peak power per node
 
@@ -54,8 +54,8 @@ Rank 8 of 8, with an average headroom of 0% over 2 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| Fugaku (`fdata_fugaku_uopc`) | 0% | 26.0 W/node |
-| Marconi100 (`pm100`) | 0% | 205.5 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 0% | 26.0 W/node |
+| [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 0% | 205.5 W/node |
 
 ## How it runs
 

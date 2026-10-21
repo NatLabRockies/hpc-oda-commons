@@ -16,10 +16,10 @@ Rank 4 of 8, with an average headroom of 39% over 4 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| Fugaku (`fdata_fugaku_uopc`) | 80% | 7.1 W/node |
-| Eagle (`nlr_eagle`) | 20% | 80.2 W/node |
-| Kestrel (`nlr_kestrel`) | 50% | 95.6 W/node |
-| Marconi100 (`pm100`) | 5% | 145.2 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 80% | 7.1 W/node |
+| [Eagle](../../docs/datasets/cards/nlr_eagle.md) (`nlr_eagle`) | 20% | 80.2 W/node |
+| [Kestrel](../../docs/datasets/cards/nlr_kestrel.md) (`nlr_kestrel`) | 50% | 95.6 W/node |
+| [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 5% | 145.2 W/node |
 
 ### Peak power per node
 
@@ -27,8 +27,8 @@ Rank 4 of 8, with an average headroom of 44% over 2 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| Fugaku (`fdata_fugaku_uopc`) | 79% | 7.4 W/node |
-| Marconi100 (`pm100`) | 8% | 198.8 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 79% | 7.4 W/node |
+| [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 8% | 198.8 W/node |
 
 ## How it runs
 

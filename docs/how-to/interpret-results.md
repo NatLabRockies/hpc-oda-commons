@@ -142,7 +142,7 @@ This writes three files:
 - **`index.html`: one leaderboard per prediction target** (job runtime, average power, peak power), built like the MTEB leaderboard. Each row is a model, then its **Average**, then one column per dataset.
   - **Each cell is headroom captured**: (baseline MAE − model MAE) / (baseline MAE − floor MAE). The baseline is the window mean on that dataset, and the floor is the dataset's error ceiling (`docs/benchmarking/datasets/*.ceiling.json`). 0% means no better than the window mean, 100% reaches the floor, and a negative value (in red) is worse than the window mean.
   - **Headroom or MAE:** the *Show* toggle at the top switches every cell between the two. MAE can't be averaged across datasets, so the Average column shows only with headroom. Your browser remembers the choice.
-  - **Names and links:** rows and columns show model and dataset titles. Each model links to its [card](../models/README.md), each dataset to its card in `docs/benchmarking/datasets/`; hovering shows the id.
+  - **Names and links:** rows and columns show model and dataset titles. Each model links to its [card](../models/README.md), each dataset to its [card](../datasets/cards/README.md); hovering shows the id.
   - **Caveats:** a * on a column header marks a note about that dataset, or about the average; hover over it, or tab to it.
   - **Why not raw MAE:** it isn't comparable across datasets. A Fugaku node draws ~90 W and a Kestrel node ~590 W, and runtime errors differ as much between machines. Within a dataset, headroom orders models exactly as MAE does.
   - **The average** covers every dataset in the table, and is shown only for models that ran on all of them. Otherwise the row says how many it ran ("3/4 datasets") and sits below the ranked rows.

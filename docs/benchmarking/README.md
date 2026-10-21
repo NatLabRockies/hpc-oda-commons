@@ -14,7 +14,9 @@ Predicting a job's runtime from its submission fields: every runtime model on ~2
   selection, dataset roster, error ceilings.
 - [Training lookback](runtime/lookback.md): what the 10/30/120-day lookback axis measured.
 - [Error ceilings](runtime/ceilings.md): how much accuracy each dataset leaves available.
-- [Dataset cards](datasets/): the generated per-dataset windows and ceilings the runner reads.
+- [Dataset cards](../datasets/cards/README.md): every dataset's source, curation,
+  characterization, windows, ceilings and results, generated. The runner reads the windows
+  and ceilings from [`datasets/`](datasets/).
 
 ### Power
 
@@ -42,7 +44,8 @@ the repo. To refresh it after new results:
 1. Collect every bundle under one `runs/` folder: the power runs, and the runtime fleet's
    bundles from the cluster (`bench-matrix collect`).
 2. Run `hpc-oda leaderboard --runs runs --out site/leaderboard`.
-3. Run `hpc-oda models cards`. The [model cards](../models/README.md) carry each model's
+3. Run `hpc-oda models cards` and `hpc-oda datasets cards`. The [model
+   cards](../models/README.md) and [dataset cards](../datasets/cards/README.md) carry the
    results, so they are regenerated from the new leaderboard; a test fails if they're stale.
 4. Open a PR. The `leaderboard.json` diff shows what changed; a test keeps absolute paths off
    the pages.

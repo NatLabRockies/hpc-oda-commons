@@ -13,6 +13,8 @@ normalize (P2/P3) and registry catalog integration (P4) build on top of it.
 
 from __future__ import annotations
 
+import functools
+import importlib.resources as ir
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -88,6 +90,7 @@ class Descriptor:
     size: Mapping[str, Any] | None = None
     systems: tuple[str, ...] = ()
     providers: tuple[str, ...] = ()
+    citation: Mapping[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> Descriptor:
@@ -104,6 +107,7 @@ class Descriptor:
             size=payload.get("size"),
             systems=tuple(str(s) for s in (payload.get("systems") or [])),
             providers=tuple(str(p) for p in (payload.get("providers") or [])),
+            citation=payload.get("citation"),
         )
 
     @property
@@ -118,6 +122,18 @@ class Descriptor:
 
     def supports_domain(self, domain: str) -> bool:
         return domain in self.problem_domains
+
+
+def bundled_descriptor_paths() -> dict[str, Path]:
+    """Each bundled descriptor's file, by its dataset's short name (``pm100``)."""
+    root = Path(str(ir.files("hpc_oda_commons") / "datasets" / "descriptors"))
+    return {path.stem: path for path in sorted(root.glob("*.yml"))}
+
+
+@functools.cache
+def bundled_descriptors() -> dict[str, Descriptor]:
+    """Each bundled descriptor, by its dataset's short name (``pm100``)."""
+    return {name: load_descriptor(path) for name, path in bundled_descriptor_paths().items()}
 
 
 def load_descriptor(path: Path, *, validate: bool = True) -> Descriptor:

@@ -3,15 +3,18 @@ schema_version: oda.dataset.v0.1.0
 name: FRESCO Conte Job Accounting
 version: 1.0.0
 description: >
-  Torque/PBS job accounting from Purdue's Conte cluster, from the FRESCO repository. The
-  premium slice is 12 consecutive months (2015-03 to 2016-02) of the per-event accounting
-  CSVs; the require_nonnull runtime filter keeps only the completed-job (E) records (Q/S
-  events have no runtime). Runtime target = resources_used.walltime (seconds); requested
-  walltime = Resource_List.walltime (seconds); timestamps are MM/DD/YYYY (parsed via a
-  strptime pattern). user/group already anonymized. Fetched from the datadepot over direct HTTPS.
+  Torque/PBS job accounting from Purdue's Conte cluster, from the FRESCO repository: the
+  per-event accounting CSVs for 12 consecutive months, March 2015–February 2016. Only
+  completed-job (E) records have a runtime, so those are the rows kept. Runtime is
+  resources_used.walltime and requested walltime is Resource_List.walltime (seconds);
+  timestamps are MM/DD/YYYY. Users and groups are anonymized at source.
 systems: [Conte]
 providers: [Purdue]
-citation: { url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/" }
+citation:
+  url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/"
+  papers:
+    - title: "Fresco: A Public Multi-Institutional Dataset for Understanding HPC System Behavior and Dependability (PEARC, 2025)"
+      doi: "10.1145/3708035.3736090"
 license:
   spdx: LicenseRef-fresco
   gated: false

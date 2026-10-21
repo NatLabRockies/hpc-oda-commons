@@ -3,13 +3,17 @@ schema_version: oda.dataset.v0.1.0
 name: PWA SDSC Blue Horizon
 version: 1.0.0
 description: >
-  Standard Workload Format log for the SDSC Blue Horizon (IBM SP) system, from the Parallel
-  Workloads Archive (250,440 jobs, 2000-2002). Runtime target = Run Time (seconds); requested
-  walltime = Requested Time (seconds). Absolute UTC submit/start/end are reconstructed from the
-  SWF UnixStartTime header by the swf decoder.
+  Standard Workload Format log of SDSC's Blue Horizon (IBM SP), from the Parallel
+  Workloads Archive (250,440 jobs, 2000–2002). Runtime is Run Time and requested walltime
+  is Requested Time (seconds). Absolute UTC times are reconstructed from the log's
+  UnixStartTime header.
 systems: [Blue Horizon]
 providers: [SDSC]
-citation: { url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_sdsc_blue/" }
+citation:
+  url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_sdsc_blue/"
+  papers:
+    - title: "Experience with using the Parallel Workloads Archive (Journal of Parallel and Distributed Computing, 2014)"
+      doi: "10.1016/j.jpdc.2014.06.013"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [pwa, swf, sdsc, blue-horizon]
 size:

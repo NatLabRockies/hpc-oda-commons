@@ -3,15 +3,18 @@ schema_version: oda.dataset.v0.1.0
 name: PWA CEA-Curie (cleaned)
 version: 1.0.0
 description: >
-  Standard Workload Format log for the CEA Curie system (TGCC/GENCI), cleaned "-cln"
-  release from the Parallel Workloads Archive (312,826 jobs, 2011-2012). Runtime target
-  = Run Time (seconds); requested walltime = Requested Time (seconds). A subset of jobs
-  carry the SWF "no limit" sentinel (2147483647) in Requested Time, which normalizes to
-  null. Absolute UTC
-  submit/start/end reconstructed from the SWF UnixStartTime header.
+  Standard Workload Format log of the CEA Curie system (TGCC/GENCI), the cleaned "-cln"
+  release from the Parallel Workloads Archive (312,826 jobs, 2011–2012). Runtime is Run
+  Time and requested walltime is Requested Time (seconds); the SWF "no limit" sentinel
+  (2147483647) in Requested Time becomes null. Absolute UTC times are reconstructed from
+  the log's UnixStartTime header.
 systems: [Curie]
 providers: [CEA, GENCI]
-citation: { url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_cea_curie/" }
+citation:
+  url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_cea_curie/"
+  papers:
+    - title: "Experience with using the Parallel Workloads Archive (Journal of Parallel and Distributed Computing, 2014)"
+      doi: "10.1016/j.jpdc.2014.06.013"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [pwa, swf, cea, curie]
 size:

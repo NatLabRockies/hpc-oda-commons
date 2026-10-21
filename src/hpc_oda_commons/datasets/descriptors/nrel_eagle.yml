@@ -3,13 +3,17 @@ schema_version: oda.dataset.v0.1.0
 name: NREL Eagle Jobs (OEDI 5860)
 version: 1.0.0
 description: >
-  Per-job SLURM accounting for NREL's Eagle supercomputer (OEDI submission 5860),
-  ~11.03M jobs from 2018 through Feb 2023, as a single parquet. The runtime-prediction
-  target is run_time (seconds); requested walltime = wallclock_req (seconds). Includes
-  requested nodes/processors/GPUs, partition, QOS, and final job state. Home-lab corpus.
+  Per-job Slurm accounting of NREL's Eagle supercomputer (OEDI submission 5860), about
+  11.03M jobs from 2018 through February 2023, in one parquet file. Runtime is run_time
+  and requested walltime is wallclock_req (seconds). Requested nodes, processors and GPUs,
+  partition, QOS and final job state are mapped.
 systems: [Eagle]
 providers: [NREL]
-citation: { url: "https://data.openei.org/submissions/5860" }
+citation:
+  url: "https://data.openei.org/submissions/5860"
+  papers:
+    - title: "Mastering HPC Runtime Prediction: From Observing Patterns to a Methodological Approach (PEARC, 2023)"
+      doi: "10.1145/3569951.3593598"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [eagle, nrel, slurm, oedi, home-lab]
 size:

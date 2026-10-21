@@ -3,13 +3,19 @@ schema_version: oda.dataset.v0.1.0
 name: PWA MetaCentrum (2013-2015)
 version: 1.0.0
 description: >
-  Standard Workload Format log for the Czech MetaCentrum national grid (CESNET), from
-  the Parallel Workloads Archive (5,731,100 jobs, 2013-2015) — the largest premium PWA
-  runtime log. Runtime target = Run Time (seconds); requested walltime = Requested Time
-  (seconds). Absolute UTC submit/start/end reconstructed from the SWF UnixStartTime header.
+  Standard Workload Format log of MetaCentrum, the Czech national grid run by CESNET, from
+  the Parallel Workloads Archive (5,731,100 jobs, 2013–2015). Runtime is Run Time and
+  requested walltime is Requested Time (seconds). Absolute UTC times are reconstructed
+  from the log's UnixStartTime header.
 systems: [MetaCentrum]
 providers: [CESNET]
-citation: { url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_metacentrum2/" }
+citation:
+  url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_metacentrum2/"
+  papers:
+    - title: "Real-Life Experience with Major Reconfiguration of Job Scheduling System (JSSPP, 2015)"
+      doi: "10.1007/978-3-319-61756-5_5"
+    - title: "Experience with using the Parallel Workloads Archive (Journal of Parallel and Distributed Computing, 2014)"
+      doi: "10.1016/j.jpdc.2014.06.013"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [pwa, swf, metacentrum, cesnet, grid]
 size:

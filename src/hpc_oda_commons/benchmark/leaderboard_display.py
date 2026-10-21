@@ -50,55 +50,30 @@ def model_title(model_id: str) -> str:
     return model_titles().get(str(model_id), short_registry_id(str(model_id), prefix="model."))
 
 
-# What a reader sees for each dataset on the leaderboard (#247): the system's name, as its
-# dataset card records it. The power track's F-DATA window shares Fugaku's.
-DATASET_TITLES: dict[str, str] = {
-    "alcf_djc_aurora": "Aurora",
-    "alcf_djc_polaris": "Polaris",
-    "alcf_djc_theta": "Theta",
-    "atlas_mustang": "Mustang",
-    "atlas_opentrinity": "Trinity",
-    "ccin2p3_2024": "CC-IN2P3",
-    "fdata_fugaku": "Fugaku",
-    "fdata_fugaku_uopc": "Fugaku",
-    "fresco_anvil": "Anvil",
-    "fresco_conte": "Conte",
-    "fresco_stampede1": "Stampede",
-    "lassen": "Lassen",
-    "mit_supercloud": "SuperCloud",
-    "nlr_eagle": "Eagle",
-    "nlr_kestrel": "Kestrel",
-    "pm100": "Marconi100",
-    "pwa_cea_curie": "Curie",
-    "pwa_hpc2n": "Seth",
-    "pwa_kit_fh2": "ForHLR II",
-    "pwa_metacentrum": "MetaCentrum",
-    "pwa_ricc": "RICC",
-    "pwa_sdsc_blue": "Blue Horizon",
-}
-
-
 def dataset_title(dataset: str) -> str:
-    """A dataset's title for readers; an unlisted dataset shows its id."""
-    return DATASET_TITLES.get(str(dataset), str(dataset))
+    """A dataset's title for readers: its descriptor's system name (#247, #249). A dataset
+    without a bundled descriptor shows its id."""
+    from hpc_oda_commons.datasets.descriptor import bundled_descriptors
+
+    descriptor = bundled_descriptors().get(str(dataset))
+    if descriptor is None or not descriptor.systems:
+        return str(dataset)
+    return ", ".join(descriptor.systems)
 
 
 # The published pages link into the repo on GitHub (#247).
 REPO_BLOB_URL = "https://github.com/NatLabRockies/hpc-oda-commons/blob/main/"
-# A dataset's page is its card. Power's F-DATA window has no card of its own; the power
-# methodology's roster describes it. Power's other datasets are the same systems as runtime
-# cards, over other dates.
-DATASET_DOCS: dict[str, str] = {
-    "fdata_fugaku_uopc": "docs/benchmarking/power/methodology.md#dataset-roster",
-}
+DATASET_CARDS_DIR = "docs/datasets/cards"
 
 
 def dataset_doc(dataset: str) -> str | None:
-    """The repo path of a dataset's page, or None for a dataset that has no title."""
-    dataset = str(dataset)
-    if dataset not in DATASET_TITLES:
+    """The repo path of a dataset's card (#249), or None for a dataset without a bundled
+    descriptor."""
+    from hpc_oda_commons.datasets.descriptor import bundled_descriptor_paths
+
+    if str(dataset) not in bundled_descriptor_paths():
         return None
-    return DATASET_DOCS.get(dataset, f"docs/benchmarking/datasets/{dataset}.md")
+    return f"{DATASET_CARDS_DIR}/{dataset}.md"
 
 
 LOWER_IS_BETTER = frozenset({"mae", "rmse", "mape", "underprediction_ratio"})

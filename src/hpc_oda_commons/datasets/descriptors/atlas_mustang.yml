@@ -3,14 +3,19 @@ schema_version: oda.dataset.v0.1.0
 name: Atlas Mustang (LANL)
 version: 1.0.0
 description: >
-  LANL Mustang cluster SLURM trace from the Atlas repository (2.1M jobs, 2011-2016).
-  The runtime-prediction target is derived (end_time - start_time); requested walltime
-  = wallclock_limit (a pandas timedelta string). Mustang has no job identifier column,
-  so job_id is a synthesized row-index surrogate. Timestamps carry -06:00/-07:00 offsets
-  and are normalized to UTC. Citation required (USENIX ATC'18).
+  Slurm trace of LANL's Mustang cluster from the Atlas repository (2.1M jobs, 2011–2016).
+  Runtime is end_time − start_time, and requested walltime is wallclock_limit (a pandas
+  timedelta string). Mustang has no job id column, so job_id is a row-index surrogate.
+  Timestamps carry −06:00/−07:00 offsets and are normalized to UTC.
 systems: [Mustang]
 providers: [LANL]
-citation: { url: "https://ftp.pdl.cmu.edu/pub/datasets/ATLAS/" }
+citation:
+  url: "https://ftp.pdl.cmu.edu/pub/datasets/ATLAS/"
+  papers:
+    - title: "On the diversity of cluster workloads and its impact on research results (USENIX ATC, 2018)"
+      url: "https://www.usenix.org/conference/atc18/presentation/amvrosiadis"
+    - title: "The Atlas Cluster Trace Repository (USENIX ;login:, 2018)"
+      url: "https://www.usenix.org/publications/login/winter-2018-vol-43-no-4/amvrosiadis"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [atlas, lanl, mustang, slurm]
 size:

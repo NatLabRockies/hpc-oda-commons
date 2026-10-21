@@ -3,13 +3,17 @@ schema_version: oda.dataset.v0.1.0
 name: PWA RICC (RIKEN Integrated Cluster)
 version: 1.0.0
 description: >
-  Standard Workload Format log for the RIKEN Integrated Cluster of Clusters (RICC), from the
-  Parallel Workloads Archive (447,794 jobs, 2010). Runtime target = Run Time (seconds);
-  requested walltime = Requested Time (seconds). Absolute UTC submit/start/end are
-  reconstructed from the SWF UnixStartTime header by the swf decoder.
+  Standard Workload Format log of the RIKEN Integrated Cluster of Clusters (RICC), from
+  the Parallel Workloads Archive (447,794 jobs, 2010). Runtime is Run Time and requested
+  walltime is Requested Time (seconds). Absolute UTC times are reconstructed from the
+  log's UnixStartTime header.
 systems: [RICC]
 providers: [RIKEN]
-citation: { url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_ricc/" }
+citation:
+  url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_ricc/"
+  papers:
+    - title: "Experience with using the Parallel Workloads Archive (Journal of Parallel and Distributed Computing, 2014)"
+      doi: "10.1016/j.jpdc.2014.06.013"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [pwa, swf, riken, ricc]
 size:
