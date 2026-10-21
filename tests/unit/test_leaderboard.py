@@ -52,6 +52,12 @@ def _make_invalid_bundle(bundle_dir: Path) -> None:
     (bundle_dir / "provenance.json").write_text("{}", encoding="utf-8")
 
 
+def _label(bundle: Path) -> str:
+    """How the leaderboard names a bundle: relative to the runs directory (#245)."""
+    runs = next(p for p in bundle.parents if p.name == "runs")
+    return bundle.relative_to(runs).as_posix()
+
+
 def test_build_leaderboard(tmp_path: Path) -> None:
     bundle_dir = tmp_path / "runs" / "run-1"
     _make_bundle(bundle_dir)
@@ -89,7 +95,7 @@ def test_build_leaderboard_skips_invalid_bundle(tmp_path: Path) -> None:
 
     leaderboard = build_leaderboard(tmp_path / "runs")
     assert len(leaderboard["entries"]) == 1
-    assert leaderboard["entries"][0]["bundle_dir"] == str(good_bundle)
+    assert leaderboard["entries"][0]["bundle_dir"] == _label(good_bundle)
 
 
 def test_build_leaderboard_orders_by_created_at(tmp_path: Path) -> None:
@@ -102,7 +108,7 @@ def test_build_leaderboard_orders_by_created_at(tmp_path: Path) -> None:
 
     leaderboard = build_leaderboard(tmp_path / "runs")
 
-    assert [e["bundle_dir"] for e in leaderboard["entries"]] == [str(older), str(newer)]
+    assert [e["bundle_dir"] for e in leaderboard["entries"]] == [_label(older), _label(newer)]
 
 
 # --- one entry per cell (#166) --------------------------------------------------------
@@ -122,8 +128,8 @@ def test_a_rerun_cell_is_counted_once(tmp_path: Path) -> None:
     leaderboard = build_leaderboard(tmp_path / "runs")
 
     assert len(leaderboard["entries"]) == 1
-    assert leaderboard["entries"][0]["bundle_dir"] == str(second)  # the newer run wins
-    assert [s["bundle_dir"] for s in leaderboard["superseded"]] == [str(first)]
+    assert leaderboard["entries"][0]["bundle_dir"] == _label(second)  # the newer run wins
+    assert [s["bundle_dir"] for s in leaderboard["superseded"]] == [_label(first)]
 
 
 def test_superseded_bundles_are_named_not_silently_dropped(tmp_path: Path) -> None:

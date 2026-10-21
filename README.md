@@ -6,6 +6,8 @@ HPC sites generate enormous volumes of operational data — scheduler logs, acco
 
 hpc-oda-commons fixes this by establishing **community-governed contracts** — versioned schemas, canonical artifacts, and benchmark recipes — that make ODA workflows **discoverable**, **reproducible**, and **comparable**. It pairs these standards with a practical, CLI-first toolkit that lets operators and researchers go from raw logs to standardized results without sending data off-cluster.
 
+**Leaderboard:** <https://natlabrockies.github.io/hpc-oda-commons/leaderboard/>: every model on every dataset, for job runtime and job power.
+
 ## Design Principles
 
 - **Artifacts are the interface.** Every stage of the pipeline reads and writes stable, versioned artifacts (Parquet tables, JSON manifests, result bundles). Standards live in the artifact contracts, not in any particular tool's internals.
