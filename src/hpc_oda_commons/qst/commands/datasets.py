@@ -1,4 +1,4 @@
-"""CLI: ``hpc-oda datasets`` — fetch and prepare public operational datasets."""
+"""CLI: ``hpc-oda datasets`` — fetch, prepare, characterize, card, slice and bound datasets."""
 
 from __future__ import annotations
 
@@ -259,7 +259,7 @@ def datasets_characterize(
     ],
     out: Annotated[
         Path,
-        typer.Option("--out", help="Output directory for the dataset card."),
+        typer.Option("--out", help="Output directory for the runtime card (*.card.json)."),
     ] = Path("docs/benchmarking/datasets"),
     dataset_id: Annotated[
         str | None,
@@ -276,7 +276,7 @@ def datasets_characterize(
         typer.Option(
             "--pin-end",
             help="Keep the window ending on this day (YYYY-MM-DD) instead of choosing one: "
-            "the window a benchmark already ran on (#249).",
+            "the window a benchmark already ran on.",
         ),
     ] = None,
     anchor: Annotated[
@@ -305,11 +305,11 @@ def datasets_characterize(
         ),
     ] = 0.05,
 ) -> None:
-    """Characterize a prepared dataset's health, pick its 3-month benchmark window, write a card.
+    """Check a prepared table's health, choose its benchmark window, write its runtime card.
 
-    Emits ``<stem>.card.json`` under ``--out``, which the benchmark runner consumes; people
-    read it in the dataset's card, so run ``hpc-oda datasets cards`` after. See
-    docs/benchmarking/runtime/methodology.md.
+    Writes `<stem>.card.json` under --out. `recipes write`, `bench-matrix`, `datasets ceiling
+    --card` and the leaderboard read it; people read it on the dataset's card, so run
+    `hpc-oda datasets cards` after. See docs/benchmarking/runtime/methodology.md.
     """
     stem = dataset_id.split(".")[-1] if dataset_id else table_path.parent.name
     did = dataset_id or f"dataset.{stem}"
@@ -373,8 +373,8 @@ def datasets_slice(
 
     The rolling split tests the days before a table's last submit, so cutting the end
     picks the test period, and the start must leave the training lookback. A job is kept
-    if it was submitted by the end of ``--end`` and ended on or after ``--start``, as in
-    ``bench-matrix slice``. Writes ``slice.json`` beside ``--out``.
+    if it was submitted by the end of --end and ended on or after --start, as in
+    `bench-matrix slice`. Writes slice.json beside --out.
     """
     try:
         n = slice_dataset(table_path, out, start, end, window_key="window")
@@ -399,21 +399,24 @@ def datasets_ceiling(
             "--card",
             exists=True,
             readable=True,
-            help="The dataset's *.card.json: derives --n-windows from its test_days, as the "
-            "runtime benchmark does.",
+            help="The dataset's runtime card (*.card.json): sets --n-windows to cover its test "
+            "days. The runtime leaderboard scores 120 windows today, so pass --n-windows 120 to "
+            "match it.",
         ),
     ] = None,
     n_windows: Annotated[
         int | None,
         typer.Option("--n-windows", help="Rolling windows (power: 89). Overrides --card."),
     ] = None,
-    test_window_hours: Annotated[int, typer.Option("--test-window-hours")] = 6,
+    test_window_hours: Annotated[
+        int, typer.Option("--test-window-hours", help="Hours in each rolling test window.")
+    ] = 6,
     skip_windows: Annotated[
         int,
         typer.Option(
             "--skip-windows",
             help="Leading windows with jobs to leave unscored: the walk-forward burn-in, so "
-            "the floor covers the rows a runtime leaderboard score does (#238). Power has one "
+            "the floor covers the rows a runtime leaderboard score does. Power has one "
             "arm and no burn-in: pass 0.",
         ),
     ] = DEFAULT_BURN_IN,
@@ -433,22 +436,25 @@ def datasets_ceiling(
     ] = None,
     start: Annotated[
         str | None,
-        typer.Option("--start", help="Read only the recipe's window: its first day (#249)."),
+        typer.Option("--start", help="Read only the recipe's window: its first day."),
     ] = None,
     end: Annotated[
         str | None,
-        typer.Option("--end", help="Read only the recipe's window: its last day (#249)."),
+        typer.Option("--end", help="Read only the recipe's window: its last day."),
     ] = None,
     require_nonnull: Annotated[
         list[str] | None,
         typer.Option(
             "--require-nonnull",
-            help="Read only rows that have this column, as the recipe does (repeatable, #249).",
+            help="Read only rows that have this column, as the recipe does (repeatable).",
         ),
     ] = None,
     window_by: Annotated[
         str,
-        typer.Option("--by", help="The window keeps overlapping jobs, or those submitted in it."),
+        typer.Option(
+            "--by",
+            help="overlap: keep jobs that overlap the window; submit: keep jobs submitted in it.",
+        ),
     ] = "overlap",
 ) -> None:
     """Compute the minimum error any submit-time predictor could achieve on this table.
@@ -458,7 +464,7 @@ def datasets_ceiling(
     calibrates every model score: an MAE means little without knowing how much accuracy was
     available. Also measures causal memorization -- predicting from same-signature jobs that
     finished earlier -- across a range of lookbacks, which is a deployable strategy rather
-    than a bound. See docs/benchmarking/runtime/methodology.md.
+    than a bound. See docs/benchmarking/runtime/ceilings.md.
     """
     from datetime import datetime, timezone
 
@@ -563,7 +569,7 @@ def datasets_cards(
             "--descriptors",
             exists=True,
             file_okay=False,
-            help="Card the descriptors in this folder, your own among them (#255), instead "
+            help="Card the descriptors in this folder, your own among them, instead "
             "of the bundled ones.",
         ),
     ] = None,
@@ -579,7 +585,7 @@ def datasets_cards(
         typer.Option("--recipes", help="A folder of the datasets' recipes (repeatable)."),
     ] = None,
 ) -> None:
-    """Write a card for every dataset, generated from its files (#249).
+    """Write a card for every dataset, generated from its files.
 
     Each card comes from the dataset's descriptor, its runtime card, the error ceilings, the
     recipes and the leaderboard, so regenerate the cards whenever one of those changes; for

@@ -29,7 +29,7 @@ def models_cards(
         ),
     ] = LEADERBOARD_JSON,
 ) -> None:
-    """Write a card for every registered model, generated from the code (#247).
+    """Write a card for every registered model, generated from the code.
 
     Each card comes from the registry, the benchmark runners, the bundled recipes and the
     leaderboard, so regenerate the cards whenever one of those changes; a unit test fails
