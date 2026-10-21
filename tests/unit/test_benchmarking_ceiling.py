@@ -330,7 +330,7 @@ def test_cli_ceiling_refuses_the_target_as_a_feature(tmp_path) -> None:
     args = ["datasets", "ceiling", _power_parquet(tmp_path), "--target", "avgpcon_per_node"]
     result = CliRunner().invoke(app, [*args, "--extra-feature", "avgpcon_per_node"])
     assert result.exit_code == 1
-    assert "cannot also be a feature" in result.output
+    assert "cannot also be a feature" in " ".join(result.output.split())
 
 
 def test_equal_embeddings_match_across_chunks_with_and_without_null_elements() -> None:
@@ -486,7 +486,7 @@ def test_cli_ceiling_needs_a_card_or_a_window_count(tmp_path) -> None:
 
     result = CliRunner().invoke(app, ["datasets", "ceiling", _power_parquet(tmp_path)])
     assert result.exit_code == 1
-    assert "--card" in result.output
+    assert "--card" in " ".join(result.output.split())
 
 
 def test_cli_ceiling_skips_the_burn_in_by_default(tmp_path) -> None:
@@ -498,4 +498,5 @@ def test_cli_ceiling_skips_the_burn_in_by_default(tmp_path) -> None:
     args = ["datasets", "ceiling", _power_parquet(tmp_path), "--n-windows", "4"]
     result = CliRunner().invoke(app, args)
     assert result.exit_code == 1
-    assert "nothing would be left to score" in result.output
+    # Rich wraps long lines at the terminal's width, so compare with whitespace collapsed.
+    assert "nothing would be left to score" in " ".join(result.output.split())
