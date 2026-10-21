@@ -1,14 +1,16 @@
 dataset_id: dataset.fdata_fugaku
 schema_version: oda.dataset.v0.1.0
-name: F-DATA (Fugaku Jobs, Mar–Sep 2023)
-version: 1.3.0
+name: F-DATA (Fugaku Jobs, 2023–2024)
+version: 2.0.0
 description: >
   Job records of Fugaku (Fujitsu A64FX) from F-DATA, by RIKEN R-CCS and the University of
-  Bologna. The source spans March 2021–April 2024 in 38 monthly parquet files (about 24M
-  jobs, 28 GB); this curation takes March–September 2023. Runtime is duration (seconds).
-  Average and peak job power are mapped whole-job (avgpcon, maxpcon) and per requested
-  node (avgpcon_per_node, maxpcon_per_node). Fugaku takes periodic maintenance outages of
-  about three days.
+  Bologna. The source spans March 2021–April 2024 in 38 monthly files (about 24M jobs,
+  28 GB), each holding the jobs submitted in one month, Japan time. This curation takes
+  March–September 2023 and December 2023–April 2024, so October and November 2023 are
+  absent. Runtime is duration (seconds). Power is mapped whole-job (avgpcon, maxpcon, in
+  watts) and per requested node (avgpcon_per_node, maxpcon_per_node), and each row carries
+  F-DATA's precomputed job embedding. Fugaku takes periodic maintenance outages of about
+  three days.
 systems: [Fugaku]
 providers: ["RIKEN R-CCS", "University of Bologna"]
 citation:
@@ -20,9 +22,9 @@ citation:
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [fugaku, a64fx, fujitsu, arm, power]
 size:
-  default_bytes: 5870701335
+  default_bytes: 9728909819
   full_bytes: 28000000000
-  rows_hint: "Mar-Sep 2023 (7 months); ~24M full"
+  rows_hint: "Mar-Sep 2023 and Dec 2023-Apr 2024 (12 months); ~24M full"
 
 source:
   kind: zenodo
@@ -56,6 +58,26 @@ source:
       url: "https://zenodo.org/records/11467483/files/23_09.parquet"
       sha256: a5fb88d30448ccec00224c43abab62723e1f2bc31db93fc3985650fcc9dbf5b9
       bytes: 455688150
+    - filename: "23_12.parquet"
+      url: "https://zenodo.org/records/11467483/files/23_12.parquet"
+      sha256: a10f8e2103e00e247acf20e41428825f57d9a29afa94b3facb9186e765fd3967
+      bytes: 909941543
+    - filename: "24_01.parquet"
+      url: "https://zenodo.org/records/11467483/files/24_01.parquet"
+      sha256: 3c05e7b9d7c59be3b79c22e8a5bac1fec2298878002b2aeff7f8df11661cad4b
+      bytes: 1050727328
+    - filename: "24_02.parquet"
+      url: "https://zenodo.org/records/11467483/files/24_02.parquet"
+      sha256: f82c004b54dcd8f1d68addf6fd905d9eda409ebefaa6609f338e21a6a5464cc6
+      bytes: 800005340
+    - filename: "24_03.parquet"
+      url: "https://zenodo.org/records/11467483/files/24_03.parquet"
+      sha256: fa53a4a8e6f59fff40725000011ab55789409d7d397f147b22f98bcd9c2805ba
+      bytes: 529395339
+    - filename: "24_04.parquet"
+      url: "https://zenodo.org/records/11467483/files/24_04.parquet"
+      sha256: 7d56cab2d30e8faf3863e72a177c1da6393df960f93d5183e4fdcb56538cec1d
+      bytes: 568138934
 
 decode:
   format: parquet
@@ -78,11 +100,17 @@ targets:
       exit_code: { from: ec, type: integer }
       job_state: { from: "exit state" }
       pclass: { from: pclass }
+      freq_req: { from: freq_req, type: integer }
       avgpcon: { from: avgpcon, type: number }
       maxpcon: { from: maxpcon, type: number }
-      # Per requested node, not per nnuma: Fugaku can pad the allocated node count past
-      # the nodes a job runs on, and power sums only those (see fdata_fugaku_uopc.yml).
+      # The prediction targets: watts per node. F-DATA's power sums the nodes the job ran
+      # on, but nnuma counts the allocated node shape, which Fugaku can pad: 1-node,
+      # 48-core jobs are recorded with nnuma = 48 and would read ~2 W per node. So divide
+      # by requested nodes, which match the nodes used. Null for a job requesting no
+      # nodes (#204). The UoPC paper protocol does the same by default; only its node_count:
+      # allocated option divides by nnuma, as the paper does (#228).
       avgpcon_per_node: { derive: "avgpcon / num_nodes_req" }
       maxpcon_per_node: { derive: "maxpcon / num_nodes_req" }
+      embedding: { from: embedding }
     filter: { require_nonnull: [runtime_seconds] }
     output: { id: fdata_fugaku, path: data/datasets/fdata_fugaku/data.parquet }

@@ -85,6 +85,8 @@ Error ceiling: an MAE floor of 42.6 min over 262,472 scored jobs.
 
 89 daily windows, 60 days of history, power per node the job ran on.
 
+Reads, as its recipes declare: 2023-05-01 → 2023-09-30 (the jobs running or submitted then).
+
 Error ceiling: an MAE floor of 29.1 W/node over 490,260 scored jobs.
 
 | Model | Headroom | MAE |
@@ -100,13 +102,13 @@ Error ceiling: an MAE floor of 29.1 W/node over 490,260 scored jobs.
 
 ## Bundled recipes
 
-| Recipe | Model | Target | Split |
-|---|---|---|---|
-| [`recipe.job_power.baseline_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_avg_eagle.yml) | Baseline (window mean) | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.embedding_knn_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/embedding_knn_rolling_avg_eagle.yml) | Embedding + kNN | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.moe_xgboost_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/moe_xgboost_rolling_avg_eagle.yml) | XGBoost (MoE) | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.random_forest_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_avg_eagle.yml) | Random Forest | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.signature_memorizer_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/signature_memorizer_rolling_avg_eagle.yml) | Signature memorizer | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.tfidf_knn_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_avg_eagle.yml) | TF-IDF + kNN | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.uopc_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_avg_eagle.yml) | UoPC | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.xgboost_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/xgboost_rolling_avg_eagle.yml) | XGBoost | `avgpcon_per_node` | `rolling` |
+| Recipe | Model | Target | Split | Reads |
+|---|---|---|---|---|
+| [`recipe.job_power.baseline_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_avg_eagle.yml) | Baseline (window mean) | `avgpcon_per_node` | `rolling` | 2023-05-01 → 2023-09-30 (the jobs running or submitted then) |
+| [`recipe.job_power.embedding_knn_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/embedding_knn_rolling_avg_eagle.yml) | Embedding + kNN | `avgpcon_per_node` | `rolling` | 2023-05-01 → 2023-09-30 (the jobs running or submitted then) |
+| [`recipe.job_power.moe_xgboost_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/moe_xgboost_rolling_avg_eagle.yml) | XGBoost (MoE) | `avgpcon_per_node` | `rolling` | 2023-05-01 → 2023-09-30 (the jobs running or submitted then) |
+| [`recipe.job_power.random_forest_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_avg_eagle.yml) | Random Forest | `avgpcon_per_node` | `rolling` | 2023-05-01 → 2023-09-30 (the jobs running or submitted then) |
+| [`recipe.job_power.signature_memorizer_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/signature_memorizer_rolling_avg_eagle.yml) | Signature memorizer | `avgpcon_per_node` | `rolling` | 2023-05-01 → 2023-09-30 (the jobs running or submitted then) |
+| [`recipe.job_power.tfidf_knn_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_avg_eagle.yml) | TF-IDF + kNN | `avgpcon_per_node` | `rolling` | 2023-05-01 → 2023-09-30 (the jobs running or submitted then) |
+| [`recipe.job_power.uopc_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_avg_eagle.yml) | UoPC | `avgpcon_per_node` | `rolling` | 2023-05-01 → 2023-09-30 (the jobs running or submitted then) |
+| [`recipe.job_power.xgboost_rolling_avg_eagle`](../../../src/hpc_oda_commons/recipes/job-power/xgboost_rolling_avg_eagle.yml) | XGBoost | `avgpcon_per_node` | `rolling` | 2023-05-01 → 2023-09-30 (the jobs running or submitted then) |

@@ -219,8 +219,9 @@ after that. Nothing raised. The power ceiling's feature-cost pass took a subset 
 this way and its first run reported negative costs, which is impossible.
 
 `hpc-oda datasets ceiling` no longer takes subsets: it codes each field once over the whole
-table and indexes the codes. Dataset preparation filters F-DATA's embedding too, but one
-monthly source file at a time, well under 4 GiB; a check of 2,102 prepared rows against the
-raw files found every embedding intact. `datasets slice` runs before `embed`, so the Eagle
+table and indexes the codes. Dataset preparation filters F-DATA's embedding too, but a
+batch of 50,000 rows at a time, well under 4 GiB; a check of 2,102 prepared rows against the
+raw files found every embedding intact. A recipe's declared window is applied as the file is
+scanned, also a batch at a time (#249), and `datasets slice` runs before `embed`, so the Eagle
 and Kestrel embeddings are never filtered. Avoid `take` and `filter` on list columns that
 large, or check the result.

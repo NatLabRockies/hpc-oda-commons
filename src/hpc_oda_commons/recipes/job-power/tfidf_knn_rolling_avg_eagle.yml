@@ -1,12 +1,10 @@
 # TF-IDF kNN predicting average power per node on NLR Eagle (#217), on the
 # same rolling protocol as F-DATA (#204): 89 daily windows, 60 days of history. The windows
-# end at the table's last submit, so the table is sliced first to end 2023-09-30, the last
+# end at the table's last submit, so the window ends 2023-09-30, the last
 # full quarter before Eagle wound down (its last 89 days have a quarter as many jobs with
 # power, from 159 users).
 #
 #   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/nlr_eagle.yml
-#   hpc-oda datasets slice data/datasets/nlr_eagle/data.parquet \
-#     --start 2023-05-01 --end 2023-09-30 --out data/windows/nlr_eagle_power/data.parquet
 #
 # Every model in recipes/job-power/*_rolling_avg_eagle.yml uses the same split and rows.
 
@@ -19,7 +17,8 @@ schema_version: oda.job.v0.2.0
 
 dataset:
   id: nlr_eagle
-  table_path: data/windows/nlr_eagle_power/data.parquet
+  table_path: data/datasets/nlr_eagle/data.parquet
+  window: { start: "2023-05-01", end: "2023-09-30" }
 
 model:
   id: model.tfidf_knn

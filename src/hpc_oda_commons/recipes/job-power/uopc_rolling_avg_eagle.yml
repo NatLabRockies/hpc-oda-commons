@@ -27,6 +27,7 @@ schema_version: oda.job.v0.2.0
 dataset:
   id: nlr_eagle
   table_path: data/windows/nlr_eagle_power_embedded/data.parquet
+  window: { start: "2023-05-01", end: "2023-09-30" }
 
 model:
   id: model.uopc

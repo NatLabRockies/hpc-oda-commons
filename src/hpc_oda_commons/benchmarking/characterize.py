@@ -260,8 +260,13 @@ def select_window(
     test_days: int = DEFAULT_TEST_DAYS,
     history_days: int = DEFAULT_HISTORY_DAYS,
     gap_min_days: int = DEFAULT_GAP_MIN_DAYS,
+    pinned_end: str | None = None,
 ) -> dict[str, Any]:
     """Choose the rolling-benchmark window per the agreed rule + health gate.
+
+    ``pinned_end`` (``YYYY-MM-DD``) keeps a window a benchmark has already run on instead of
+    choosing one, so a table that grows can be characterized again without moving its
+    window (#249). Its health is still checked.
 
     Places the ``train_days + test_days`` window's END at ``anchor`` of the healthy span,
     then rejects any window that **overlaps a missing block at all** (even partially -- so the
@@ -300,6 +305,31 @@ def select_window(
     )
 
     max_end = lo_day + span_days - 1
+    if pinned_end is not None:
+        end_day = int(np.datetime64(pinned_end, "D").astype("int64"))
+        if not lo_day + win_days - 1 <= end_day <= max_end:
+            raise CharacterizeError(f"pinned window ending {pinned_end} falls outside the span")
+        overlaps = _overlapping_gaps(gap_ranges, end_day - win_days + 1, end_day)
+        result = _window_result(
+            lo_day,
+            series,
+            end_day - win_days + 1,
+            end_day,
+            train_days,
+            test_days,
+            history_days,
+            anchor,
+            _gaps_to_dicts(overlaps),
+            healthy=not overlaps,
+            budget=budget,
+            rationale=(
+                f"pinned to end {pinned_end}, the window the benchmark ran on, so the table "
+                f"can grow without moving it.{shortfall_note} "
+                f"{_gap_note(_gaps_to_dicts(overlaps))}"
+            ).strip(),
+        )
+        result["rule"]["pinned_end"] = pinned_end
+        return result
     # The earliest end that leaves both a full window and its history behind it.
     min_end = lo_day + max(win_days, history_days + test_days) - 1
     if min_end > max_end:

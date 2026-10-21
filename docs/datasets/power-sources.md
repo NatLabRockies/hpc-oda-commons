@@ -14,7 +14,7 @@ check. Anything neither of those confirmed is marked unconfirmed.
 
 | Source | System, span | Jobs | Average | Peak | Status |
 |---|---|---|---|---|---|
-| F-DATA | Fugaku, 2021-03 to 2024-04 | ~24M | yes | yes¹ | **Mapped** (`fdata_fugaku`, `fdata_fugaku_uopc`) |
+| F-DATA | Fugaku, 2021-03 to 2024-04 | ~24M | yes | yes¹ | **Mapped** (`fdata_fugaku`) |
 | PM100 | Marconi100, May–Oct 2020 | 231k | yes | yes² | **Mapped** (`pm100`) |
 | NLR Eagle Jobs (+ energy) | Eagle, 2018-11 to 2024-06 | ~13.8M | yes | via join³ | **Mapped**, average only (`nlr_eagle`) |
 | LLNL LAST (Lassen) | Lassen, 2018-08 to 2020-11 | ~1.47M | yes | no | Registered (`lassen`), power **not mapped yet** (needs a join) |

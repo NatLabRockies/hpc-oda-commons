@@ -69,7 +69,7 @@ Bundled recipes are at `src/hpc_oda_commons/recipes/job-runtime/`:
 - `mlp_rolling.yml` -- feed-forward neural network, rolling evaluation
 - `embedding_knn_rolling.yml` -- embedding-space kNN, rolling evaluation (needs an embedded dataset; see `hpc-oda embed`)
 - `uopc_maxpcon.yml` -- UoPC user-based power prediction, fixed chronological split
-- `../job-power/uopc_paper_reproduction.yml` / `uopc_paper_sensitivity.yml` -- the UoPC paper protocol on F-DATA (`split.method: cutoff`; prepare `datasets/descriptors/fdata_fugaku_uopc.yml` first); see `docs/benchmarking/power/uopc.md`
+- `../job-power/uopc_paper_reproduction.yml` / `uopc_paper_sensitivity.yml` -- the UoPC paper protocol on F-DATA (`split.method: cutoff`; prepare `datasets/descriptors/fdata_fugaku.yml` first); see `docs/benchmarking/power/uopc.md`
 
 v0.1 models:
 - `model.baseline` -- mean predictor (supports fixed and rolling splits)

@@ -23,7 +23,26 @@
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "table_path": { "type": "string", "minLength": 1 },
-        "manifest_path": { "type": "string", "minLength": 1 }
+        "manifest_path": { "type": "string", "minLength": 1 },
+        "window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start", "end"],
+          "description": "The days the benchmark reads, inclusive UTC dates (#249).",
+          "properties": {
+            "start": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+            "end": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+            "by": {
+              "enum": ["overlap", "submit"],
+              "description": "overlap (default): jobs whose submit-to-end interval overlaps the days; submit: jobs submitted in them."
+            }
+          }
+        },
+        "require_nonnull": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Columns a row must have to be read (#249)."
+        }
       }
     },
     "model": {

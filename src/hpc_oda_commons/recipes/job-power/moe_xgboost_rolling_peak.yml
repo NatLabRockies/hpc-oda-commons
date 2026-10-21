@@ -11,8 +11,12 @@ problem_domain:
 schema_version: oda.job.v0.2.0
 
 dataset:
-  id: fdata_fugaku_uopc
-  table_path: data/datasets/fdata_fugaku_uopc/data.parquet
+  id: fdata_fugaku
+  table_path: data/datasets/fdata_fugaku/data.parquet
+  # The jobs submitted December 2023-April 2024, as F-DATA's monthly files cut them: a file
+  # holds a Japan-time month, so December begins at 2023-11-30 15:00 UTC.
+  window: { start: "2023-11-30", end: "2024-04-30", by: submit }
+  require_nonnull: [avgpcon_per_node, maxpcon_per_node, embedding]
 
 model:
   id: model.moe_xgboost

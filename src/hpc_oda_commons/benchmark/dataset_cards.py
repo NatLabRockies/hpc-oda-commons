@@ -91,7 +91,8 @@ def _bundled_recipes() -> dict[str, list[dict[str, Any]]]:
         recipe = yaml.safe_load(path.read_text(encoding="utf-8"))
         if not isinstance(recipe, dict) or "recipe_id" not in recipe:
             continue
-        dataset = str((recipe.get("dataset") or {}).get("id", ""))
+        block = recipe.get("dataset") or {}
+        dataset = str(block.get("id", ""))
         targets = sorted({str(m.get("target")) for m in recipe.get("metrics") or []})
         found.setdefault(dataset, []).append(
             {
@@ -99,10 +100,26 @@ def _bundled_recipes() -> dict[str, list[dict[str, Any]]]:
                 "path": path,
                 "model": str((recipe.get("model") or {}).get("id", "")),
                 "target": ", ".join(targets),
+                "targets": targets,
                 "method": str((recipe.get("split") or {}).get("method", "")),
+                "window": _window_text(block),
             }
         )
     return found
+
+
+def _window_text(block: Mapping[str, Any]) -> str:
+    """What rows a recipe reads, from its declared window and required columns (#249)."""
+    window = block.get("window") or {}
+    if not window:
+        text = "the whole table"
+    else:
+        how = "submitted" if window.get("by") == "submit" else "running or submitted"
+        text = f"{window['start']} → {window['end']} (the jobs {how} then)"
+    required = list(block.get("require_nonnull") or [])
+    if required:
+        text += ", jobs with " + ", ".join(f"`{c}`" for c in required)
+    return text
 
 
 def _source_key(descriptor: Descriptor) -> str | None:
@@ -221,6 +238,7 @@ def _benchmarks(
     card: Mapping[str, Any] | None,
     leaderboard: Mapping[str, Any],
     ceilings: Mapping[tuple[str, str], Mapping[str, Any]],
+    recipes: list[dict[str, Any]],
 ) -> Iterator[str]:
     from hpc_oda_commons.benchmarking.hpc.matrix import MAX_NODE_ROWS
 
@@ -261,6 +279,12 @@ def _benchmarks(
             yield "Its runtime window, from its runtime card:"
             yield ""
             yield from window_lines(dict(card))
+        reads = sorted(
+            {r["window"] for r in recipes if target in r["targets"] and r["method"] == "rolling"}
+        )
+        if target != "runtime_seconds" and reads:
+            yield ""
+            yield (f"Reads, as its recipes declare: {'; '.join(reads)}.")
         ceiling = ceilings.get((name, target))
         if ceiling is not None:
             floor = format_metric_value("mae", float(ceiling["floor"]["mae"]), target=target)
@@ -283,12 +307,12 @@ def _recipes(recipes: list[dict[str, Any]]) -> Iterator[str]:
     if not recipes:
         yield "None."
         return
-    yield "| Recipe | Model | Target | Split |"
-    yield "|---|---|---|---|"
+    yield "| Recipe | Model | Target | Split | Reads |"
+    yield "|---|---|---|---|---|"
     for r in recipes:
         yield (
             f"| [`{r['recipe_id']}`]({_rel(r['path'])}) | {model_title(r['model'])} "
-            f"| `{r['target']}` | `{r['method']}` |"
+            f"| `{r['target']}` | `{r['method']}` | {r['window']} |"
         )
 
 
@@ -323,7 +347,7 @@ def render_dataset_card(
         "",
         *_characterization(card),
         "",
-        *_benchmarks(name, card, leaderboard, ceilings),
+        *_benchmarks(name, card, leaderboard, ceilings, recipes),
         "",
         *_recipes(recipes),
     ]

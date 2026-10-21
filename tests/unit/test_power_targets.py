@@ -149,18 +149,23 @@ def test_rolling_power_recipes_share_one_protocol() -> None:
         recipe = load_recipe(path)
         target = runner.recipe_target(recipe["metrics"])
         shapes.add(tuple(recipe["split"][k] for k in shared))
-        table = recipe["dataset"]["table_path"].replace("_power_embedded/", "_power/")
-        table = table.replace("data/windows/pm100_power/", "data/datasets/pm100/")
-        models.setdefault((target, table), set()).add(recipe["model"]["id"])
+        block = recipe["dataset"]
+        window = tuple((block.get("window") or {}).values())
+        rows = (block["id"], window, tuple(block.get("require_nonnull") or ()))
+        models.setdefault((target, rows), set()).add(recipe["model"]["id"])
     assert len(shapes) == 1, shapes
-    fdata = "data/datasets/fdata_fugaku_uopc/data.parquet"
+    fdata = (
+        "fdata_fugaku",
+        ("2023-11-30", "2024-04-30", "submit"),
+        ("avgpcon_per_node", "maxpcon_per_node", "embedding"),
+    )
     assert set(models) == {
         ("avgpcon_per_node", fdata),
         ("maxpcon_per_node", fdata),
-        ("avgpcon_per_node", "data/windows/nlr_eagle_power/data.parquet"),
-        ("avgpcon_per_node", "data/windows/nlr_kestrel_power/data.parquet"),
-        ("avgpcon_per_node", "data/datasets/pm100/data.parquet"),
-        ("maxpcon_per_node", "data/datasets/pm100/data.parquet"),
+        ("avgpcon_per_node", ("nlr_eagle", ("2023-05-01", "2023-09-30"), ())),
+        ("avgpcon_per_node", ("nlr_kestrel", ("2025-08-01", "2026-01-01"), ())),
+        ("avgpcon_per_node", ("pm100", (), ())),
+        ("maxpcon_per_node", ("pm100", (), ())),
     }
     # Every system runs the same models.
     assert len({frozenset(ids) for ids in models.values()}) == 1, models

@@ -14791,7 +14791,7 @@
       "reason": "protocol 'paper_sensitivity' is a study, not the benchmark"
     }
   ],
-  "generated_at": "2026-10-21T13:26:35.391320Z",
+  "generated_at": "2026-10-21T16:48:04.002308Z",
   "runs_dir": "runs",
   "schema_version": "oda.leaderboard.v0.2.0",
   "superseded": [
@@ -16449,7 +16449,7 @@
       "caption": "89 daily windows, 60 days of history, power per node the job ran on.",
       "dataset_notes": {},
       "datasets": [
-        "fdata_fugaku_uopc",
+        "fdata_fugaku",
         "nlr_eagle",
         "nlr_kestrel",
         "pm100"
@@ -16457,7 +16457,7 @@
       "headroom": true,
       "key": "avgpcon_per_node",
       "roster": [
-        "fdata_fugaku_uopc",
+        "fdata_fugaku",
         "nlr_eagle",
         "nlr_kestrel",
         "pm100"
@@ -16466,7 +16466,7 @@
         {
           "average": 0.5148100999309125,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261017-105042"
               ],
@@ -16505,7 +16505,7 @@
         {
           "average": 0.5125477758339283,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261017-074809"
               ],
@@ -16544,7 +16544,7 @@
         {
           "average": 0.47911661728723937,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261017-131402"
               ],
@@ -16583,7 +16583,7 @@
         {
           "average": 0.3872902302479603,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "uopc-241/benchmark-20261020-190627"
               ],
@@ -16622,7 +16622,7 @@
         {
           "average": 0.37399144104380877,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261016-232437"
               ],
@@ -16661,7 +16661,7 @@
         {
           "average": 0.34810170370338017,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261016-225029"
               ],
@@ -16700,7 +16700,7 @@
         {
           "average": 0.27886582222127954,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261016-192405"
               ],
@@ -16739,7 +16739,7 @@
         {
           "average": 0.0,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261016-181438"
               ],
@@ -16784,20 +16784,20 @@
       "caption": "89 daily windows, 60 days of history, power per node the job ran on.",
       "dataset_notes": {},
       "datasets": [
-        "fdata_fugaku_uopc",
+        "fdata_fugaku",
         "pm100"
       ],
       "headroom": true,
       "key": "maxpcon_per_node",
       "roster": [
-        "fdata_fugaku_uopc",
+        "fdata_fugaku",
         "pm100"
       ],
       "rows": [
         {
           "average": 0.5214268651075427,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261017-174404"
               ],
@@ -16820,7 +16820,7 @@
         {
           "average": 0.5167233640883389,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261017-200209"
               ],
@@ -16843,7 +16843,7 @@
         {
           "average": 0.5069452290065932,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261017-185044"
               ],
@@ -16866,7 +16866,7 @@
         {
           "average": 0.4350686940266685,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "uopc-241/benchmark-20261020-191106"
               ],
@@ -16889,7 +16889,7 @@
         {
           "average": 0.38004500792087675,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261017-171031"
               ],
@@ -16912,7 +16912,7 @@
         {
           "average": 0.354424092975984,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261017-014825"
               ],
@@ -16935,7 +16935,7 @@
         {
           "average": 0.26813204529708085,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261017-011936"
               ],
@@ -16958,7 +16958,7 @@
         {
           "average": 0.0,
           "cells": {
-            "fdata_fugaku_uopc": {
+            "fdata_fugaku": {
               "bundles": [
                 "power-204/benchmark-20261016-230259"
               ],

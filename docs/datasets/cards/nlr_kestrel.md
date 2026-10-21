@@ -78,6 +78,8 @@ Error ceiling: an MAE floor of 2.1 h over 214,640 scored jobs.
 
 89 daily windows, 60 days of history, power per node the job ran on.
 
+Reads, as its recipes declare: 2025-08-01 → 2026-01-01 (the jobs running or submitted then).
+
 Error ceiling: an MAE floor of 27.6 W/node over 638,081 scored jobs.
 
 | Model | Headroom | MAE |
@@ -93,14 +95,14 @@ Error ceiling: an MAE floor of 27.6 W/node over 638,081 scored jobs.
 
 ## Bundled recipes
 
-| Recipe | Model | Target | Split |
-|---|---|---|---|
-| [`recipe.job_power.baseline_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_avg_kestrel.yml) | Baseline (window mean) | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.embedding_knn_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/embedding_knn_rolling_avg_kestrel.yml) | Embedding + kNN | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.moe_xgboost_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/moe_xgboost_rolling_avg_kestrel.yml) | XGBoost (MoE) | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.random_forest_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_avg_kestrel.yml) | Random Forest | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.signature_memorizer_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/signature_memorizer_rolling_avg_kestrel.yml) | Signature memorizer | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.tfidf_knn_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_avg_kestrel.yml) | TF-IDF + kNN | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.uopc_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_avg_kestrel.yml) | UoPC | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_power.xgboost_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/xgboost_rolling_avg_kestrel.yml) | XGBoost | `avgpcon_per_node` | `rolling` |
-| [`recipe.job_runtime.kestrel_moe_best_rolling`](../../../src/hpc_oda_commons/recipes/job-runtime/kestrel_moe_best_rolling.yml) | XGBoost (MoE) | `runtime_seconds` | `rolling` |
+| Recipe | Model | Target | Split | Reads |
+|---|---|---|---|---|
+| [`recipe.job_power.baseline_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_avg_kestrel.yml) | Baseline (window mean) | `avgpcon_per_node` | `rolling` | 2025-08-01 → 2026-01-01 (the jobs running or submitted then) |
+| [`recipe.job_power.embedding_knn_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/embedding_knn_rolling_avg_kestrel.yml) | Embedding + kNN | `avgpcon_per_node` | `rolling` | 2025-08-01 → 2026-01-01 (the jobs running or submitted then) |
+| [`recipe.job_power.moe_xgboost_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/moe_xgboost_rolling_avg_kestrel.yml) | XGBoost (MoE) | `avgpcon_per_node` | `rolling` | 2025-08-01 → 2026-01-01 (the jobs running or submitted then) |
+| [`recipe.job_power.random_forest_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_avg_kestrel.yml) | Random Forest | `avgpcon_per_node` | `rolling` | 2025-08-01 → 2026-01-01 (the jobs running or submitted then) |
+| [`recipe.job_power.signature_memorizer_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/signature_memorizer_rolling_avg_kestrel.yml) | Signature memorizer | `avgpcon_per_node` | `rolling` | 2025-08-01 → 2026-01-01 (the jobs running or submitted then) |
+| [`recipe.job_power.tfidf_knn_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_avg_kestrel.yml) | TF-IDF + kNN | `avgpcon_per_node` | `rolling` | 2025-08-01 → 2026-01-01 (the jobs running or submitted then) |
+| [`recipe.job_power.uopc_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_avg_kestrel.yml) | UoPC | `avgpcon_per_node` | `rolling` | 2025-08-01 → 2026-01-01 (the jobs running or submitted then) |
+| [`recipe.job_power.xgboost_rolling_avg_kestrel`](../../../src/hpc_oda_commons/recipes/job-power/xgboost_rolling_avg_kestrel.yml) | XGBoost | `avgpcon_per_node` | `rolling` | 2025-08-01 → 2026-01-01 (the jobs running or submitted then) |
+| [`recipe.job_runtime.kestrel_moe_best_rolling`](../../../src/hpc_oda_commons/recipes/job-runtime/kestrel_moe_best_rolling.yml) | XGBoost (MoE) | `runtime_seconds` | `rolling` | the whole table |

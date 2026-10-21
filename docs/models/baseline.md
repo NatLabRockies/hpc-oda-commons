@@ -43,7 +43,7 @@ Rank 8 of 8, with an average headroom of 0% over 4 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 0% | 25.6 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku.md) (`fdata_fugaku`) | 0% | 25.6 W/node |
 | [Eagle](../../docs/datasets/cards/nlr_eagle.md) (`nlr_eagle`) | 0% | 92.8 W/node |
 | [Kestrel](../../docs/datasets/cards/nlr_kestrel.md) (`nlr_kestrel`) | 0% | 163.1 W/node |
 | [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 0% | 148.2 W/node |
@@ -54,7 +54,7 @@ Rank 8 of 8, with an average headroom of 0% over 2 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 0% | 26.0 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku.md) (`fdata_fugaku`) | 0% | 26.0 W/node |
 | [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 0% | 205.5 W/node |
 
 ## How it runs
@@ -91,11 +91,11 @@ It predicts the recipe's metric target.
 
 | Recipe | Target | Split | Dataset |
 |---|---|---|---|
-| [`recipe.job_power.baseline_rolling_avg`](../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_avg.yml) | `avgpcon_per_node` | `rolling` | `fdata_fugaku_uopc` |
+| [`recipe.job_power.baseline_rolling_avg`](../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_avg.yml) | `avgpcon_per_node` | `rolling` | `fdata_fugaku` |
 | [`recipe.job_power.baseline_rolling_avg_eagle`](../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_avg_eagle.yml) | `avgpcon_per_node` | `rolling` | `nlr_eagle` |
 | [`recipe.job_power.baseline_rolling_avg_kestrel`](../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_avg_kestrel.yml) | `avgpcon_per_node` | `rolling` | `nlr_kestrel` |
 | [`recipe.job_power.baseline_rolling_avg_pm100`](../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_avg_pm100.yml) | `avgpcon_per_node` | `rolling` | `pm100` |
-| [`recipe.job_power.baseline_rolling_peak`](../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_peak.yml) | `maxpcon_per_node` | `rolling` | `fdata_fugaku_uopc` |
+| [`recipe.job_power.baseline_rolling_peak`](../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_peak.yml) | `maxpcon_per_node` | `rolling` | `fdata_fugaku` |
 | [`recipe.job_power.baseline_rolling_peak_pm100`](../../src/hpc_oda_commons/recipes/job-power/baseline_rolling_peak_pm100.yml) | `maxpcon_per_node` | `rolling` | `pm100` |
 | [`recipe.job_runtime.baseline_tiny`](../../src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml) | `runtime_seconds` | `fixed` | `hpc_oda_commons/datasets/synthetic/job-runtime/tiny` |
 

@@ -18,7 +18,7 @@ from hpc_oda_commons.kernel.validate import (
     SchemaValidationError,
     validate_json,
 )
-from hpc_oda_commons.schema.quality_rules import build_quality_report
+from hpc_oda_commons.schema.quality_rules import QualityAccumulator
 
 JOB_SCHEMA_ID = "oda.job.v0.2.0"
 
@@ -183,6 +183,25 @@ def _summarize_issues(issues: dict[str, dict[str, Any]]) -> list[dict[str, Any]]
     return out
 
 
+_VALIDATION_BATCH_ROWS = 50_000
+
+
+def _merge_issues(
+    total: dict[str, dict[str, Any]],
+    batch: dict[str, dict[str, Any]],
+    *,
+    offset: int,
+    example_limit: int,
+) -> None:
+    """Add one batch's issues to ``total``, with example row indices made table-wide."""
+    for issue, payload in batch.items():
+        bucket = total.setdefault(issue, {"count": 0, "examples": []})
+        bucket["count"] = int(bucket["count"]) + int(payload["count"])
+        for example in payload["examples"]:
+            if len(bucket["examples"]) < example_limit:
+                bucket["examples"].append({**example, "row_index": example["row_index"] + offset})
+
+
 def validate_parquet_with_quality(
     path: Path,
     *,
@@ -195,30 +214,44 @@ def validate_parquet_with_quality(
 ) -> dict[str, Any]:
     """
     Validate parquet rows against schema and emit a quality report.
-    """
-    table = pq.read_table(path)
-    rows: list[dict[str, Any]] = table.to_pylist()
 
-    if not rows:
+    Reads the table a batch at a time (#249): a large table, such as F-DATA with its
+    embeddings, cannot be held as Python rows all at once. Every count is a sum and each
+    issue keeps its first examples, so the result does not depend on the batching.
+    """
+    parquet = pq.ParquetFile(path)
+    if parquet.metadata.num_rows == 0:
         raise SchemaValidationError(
             schema_id=schema_id,
             message="No rows to validate.",
             path=str(path),
         )
 
-    schema_issue_map = collect_schema_issues(
-        rows,
-        schema_id=schema_id,
-        example_limit=error_example_limit,
-    )
+    schema_issue_map: dict[str, dict[str, Any]] = {}
     semantic_issue_map: dict[str, dict[str, Any]] = {}
-    type_issues: list[str] = []
-    if schema_id == JOB_SCHEMA_ID:
-        semantic_issue_map = collect_job_semantic_issues(
-            rows,
+    accumulator = QualityAccumulator()
+    offset = 0
+    for batch in parquet.iter_batches(batch_size=_VALIDATION_BATCH_ROWS):
+        rows: list[dict[str, Any]] = batch.to_pylist()
+        _merge_issues(
+            schema_issue_map,
+            collect_schema_issues(rows, schema_id=schema_id, example_limit=error_example_limit),
+            offset=offset,
             example_limit=error_example_limit,
         )
-        type_issues = collect_job_table_type_issues(table)
+        if schema_id == JOB_SCHEMA_ID:
+            _merge_issues(
+                semantic_issue_map,
+                collect_job_semantic_issues(rows, example_limit=error_example_limit),
+                offset=offset,
+                example_limit=error_example_limit,
+            )
+        accumulator.add(rows)
+        offset += len(rows)
+
+    type_issues: list[str] = []
+    if schema_id == JOB_SCHEMA_ID:
+        type_issues = collect_job_table_type_issues(parquet.schema_arrow.empty_table())
 
     for issue in type_issues:
         schema_issue_map.setdefault(issue, {"issue": issue, "count": 0, "examples": []})[
@@ -235,7 +268,7 @@ def validate_parquet_with_quality(
         "schema_errors": schema_issues,
         "semantic_errors": semantic_issues,
         "schema_sample_rows_requested": sample,
-        "schema_rows_checked": len(rows),
+        "schema_rows_checked": offset,
     }
 
     if strict and (
@@ -256,11 +289,7 @@ def validate_parquet_with_quality(
             path=str(path),
         )
 
-    report = build_quality_report(
-        rows,
-        schema_version=schema_id,
-        ruleset_version=ruleset_version,
-    )
+    report = accumulator.report(schema_version=schema_id, ruleset_version=ruleset_version)
     report["validation"] = validation_summary
 
     if report_path:

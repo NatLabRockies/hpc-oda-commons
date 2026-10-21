@@ -191,7 +191,7 @@ def _recipe(model: str, split: dict) -> dict:
         "recipe_id": "recipe.job_power.uopc_features_test",
         "problem_domain": ["job-power-prediction"],
         "schema_version": "oda.job.v0.2.0",
-        "dataset": {"id": "fdata_fugaku_uopc", "table_path": "data.parquet"},
+        "dataset": {"id": "fdata_fugaku", "table_path": "data.parquet"},
         "model": {"id": model, "version": "0.1.0"},
         "metrics": METRICS,
         "split": split,

@@ -38,17 +38,41 @@ def _unify_temporal(table: pa.Table) -> pa.Table:
     return table
 
 
+def _unified_type(t: pa.DataType) -> pa.DataType:
+    """The type :func:`_unify_temporal` gives a column of type ``t``."""
+    if pa.types.is_timestamp(t) and t.tz is not None and (t.tz != "UTC" or t.unit != "us"):
+        return pa.timestamp("us", tz="UTC")
+    if pa.types.is_duration(t) and t.unit != "us":
+        return pa.duration("us")
+    return t
+
+
 def decode_parquet(
     files: Sequence[Path], dest: Path, *, options: Mapping[str, Any] | None = None
 ) -> None:
+    """Concatenate ``files`` into ``dest``, one file at a time (#249).
+
+    The schemas are unified first, as a permissive concat would, so each file is read,
+    cast and written on its own: a source of many large files (twelve months of F-DATA
+    with its embeddings) never has to fit in memory at once.
+    """
     if not files:
         raise DecodeError("no input files to decode")
     # ``columns`` restricts the read to the mapped source columns — decisive for datasets
     # that carry heavy per-job array columns (e.g. NLR energy time series) we never map.
     columns = list(options["columns"]) if options and options.get("columns") else None
-    tables = [_unify_temporal(pq.read_table(f, columns=columns)) for f in files]
-    table = (
-        tables[0] if len(tables) == 1 else pa.concat_tables(tables, promote_options="permissive")
-    )
+    schemas = []
+    for f in files:
+        schema = pq.read_schema(f)
+        if columns is not None:
+            schema = pa.schema([schema.field(c) for c in columns if c in schema.names])
+        schemas.append(pa.schema([fld.with_type(_unified_type(fld.type)) for fld in schema]))
+    schema = pa.unify_schemas(schemas, promote_options="permissive")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    pq.write_table(table, dest)
+    with pq.ParquetWriter(dest, schema) as writer:
+        for f in files:
+            table = _unify_temporal(pq.read_table(f, columns=columns))
+            for field in schema:
+                if field.name not in table.column_names:
+                    table = table.append_column(field, pa.nulls(table.num_rows, field.type))
+            writer.write_table(table.select(schema.names).cast(schema))

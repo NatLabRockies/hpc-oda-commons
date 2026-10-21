@@ -43,7 +43,7 @@ Rank 3 of 8, with an average headroom of 48% over 4 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 77% | 7.8 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku.md) (`fdata_fugaku`) | 77% | 7.8 W/node |
 | [Eagle](../../docs/datasets/cards/nlr_eagle.md) (`nlr_eagle`) | 42% | 66.2 W/node |
 | [Kestrel](../../docs/datasets/cards/nlr_kestrel.md) (`nlr_kestrel`) | 45% | 101.6 W/node |
 | [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 27% | 132.1 W/node |
@@ -54,7 +54,7 @@ Rank 2 of 8, with an average headroom of 52% over 2 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 77% | 8.0 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku.md) (`fdata_fugaku`) | 77% | 8.0 W/node |
 | [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 26% | 182.8 W/node |
 
 ## How it runs
@@ -130,11 +130,11 @@ Columns named in its settings:
 
 | Recipe | Target | Split | Dataset |
 |---|---|---|---|
-| [`recipe.job_power.random_forest_rolling_avg`](../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_avg.yml) | `avgpcon_per_node` | `rolling` | `fdata_fugaku_uopc` |
+| [`recipe.job_power.random_forest_rolling_avg`](../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_avg.yml) | `avgpcon_per_node` | `rolling` | `fdata_fugaku` |
 | [`recipe.job_power.random_forest_rolling_avg_eagle`](../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_avg_eagle.yml) | `avgpcon_per_node` | `rolling` | `nlr_eagle` |
 | [`recipe.job_power.random_forest_rolling_avg_kestrel`](../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_avg_kestrel.yml) | `avgpcon_per_node` | `rolling` | `nlr_kestrel` |
 | [`recipe.job_power.random_forest_rolling_avg_pm100`](../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_avg_pm100.yml) | `avgpcon_per_node` | `rolling` | `pm100` |
-| [`recipe.job_power.random_forest_rolling_peak`](../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_peak.yml) | `maxpcon_per_node` | `rolling` | `fdata_fugaku_uopc` |
+| [`recipe.job_power.random_forest_rolling_peak`](../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_peak.yml) | `maxpcon_per_node` | `rolling` | `fdata_fugaku` |
 | [`recipe.job_power.random_forest_rolling_peak_pm100`](../../src/hpc_oda_commons/recipes/job-power/random_forest_rolling_peak_pm100.yml) | `maxpcon_per_node` | `rolling` | `pm100` |
 
 ## Source

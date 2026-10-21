@@ -118,7 +118,7 @@ def _cutoff_recipe(**split: object) -> dict:
         "recipe_id": "recipe.job_power.uopc_variant_test",
         "problem_domain": ["job-power-prediction"],
         "schema_version": "oda.job.v0.2.0",
-        "dataset": {"id": "fdata_fugaku_uopc", "table_path": "data.parquet"},
+        "dataset": {"id": "fdata_fugaku", "table_path": "data.parquet"},
         "model": {"id": "model.uopc", "version": "0.1.0"},
         "metrics": [
             {"name": "mae", "target": "avgpcon_per_node"},

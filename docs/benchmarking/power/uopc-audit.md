@@ -310,7 +310,7 @@ Embedding the anonymised tokens would also create false similarity: `jnam_211172
 **A labelled approximation, "paper-style on public data", needs:**
 1. A values-only, comma-separated text format in `hpc-oda embed` with a configurable field
    list. Today there are only `prose` and `kv`, both with labels.
-2. Mapping `jobenv_req` in `fdata_fugaku_uopc.yml`, and allowing frequency and environment
+2. Mapping `jobenv_req` in `fdata_fugaku.yml` (then `fdata_fugaku_uopc.yml`), and allowing frequency and environment
    as serialisable fields.
 3. Making UoPC's extra numeric columns configurable in both modes, including none, so a run
    can use the embedding alone, as the paper does.
@@ -341,7 +341,7 @@ is the likely cause.
 ## How the measurements were made
 
 All figures come from the five Zenodo F-DATA monthly files (`23_12` … `24_04`, 2,930,414
-rows) or the prepared `fdata_fugaku_uopc` table:
+rows) or the prepared `fdata_fugaku_uopc` table (since #249, the Dec 2023–Apr 2024 window of `fdata_fugaku`):
 
 - **Test period** is `adt >= 2024-02-01`, 1,598,494 jobs.
 - **The paper's figures** were rendered at 300 dpi from the PDF and read by eye.

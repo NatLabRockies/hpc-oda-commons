@@ -9,13 +9,14 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from hpc_oda_commons.benchmarking.hpc.slice import read_window, slice_dataset
 from hpc_oda_commons.datasets.descriptor import load_descriptor
 from hpc_oda_commons.datasets.normalize import normalize_target
 from hpc_oda_commons.models.uopc.model import UopcModel
 from hpc_oda_commons.schema.validator import validate_parquet_with_quality
 
 _DESCRIPTORS = Path(str(ir.files("hpc_oda_commons") / "datasets" / "descriptors"))
-_UOPC = _DESCRIPTORS / "fdata_fugaku_uopc.yml"
+_FDATA = _DESCRIPTORS / "fdata_fugaku.yml"
 
 
 def test_every_prepared_table_has_its_own_path() -> None:
@@ -31,14 +32,18 @@ def test_every_prepared_table_has_its_own_path() -> None:
             owners[target.output_path] = path.name
 
 
-def test_fugaku_runtime_window_is_untouched_by_the_power_work() -> None:
-    """The runtime benchmark keeps its seven-month curation (#154) and no slices: the UoPC
-    months live in their own descriptor rather than as a slice that would change the
-    runtime default."""
-    runtime = load_descriptor(_DESCRIPTORS / "fdata_fugaku.yml")
-    files = [r["filename"] for r in runtime.source["resources"]]
-    assert files == [f"23_{m:02d}.parquet" for m in range(3, 10)]
-    assert not runtime.source.get("slices")
+def test_fdata_is_one_dataset_of_the_months_its_benchmarks_read() -> None:
+    """F-DATA is one dataset (#249): the runtime benchmark's March-September 2023 and the
+    power benchmark's December 2023-April 2024. Leaving out October and November keeps the
+    power window's rows exactly those of the old UoPC table: a file holds a Japan-time
+    month's submissions, so the window's first UTC day would catch November's last hours."""
+    fdata = load_descriptor(_FDATA)
+    files = [r["filename"] for r in fdata.source["resources"]]
+    assert files == [f"23_{m:02d}.parquet" for m in range(3, 10)] + [
+        "23_12.parquet",
+        *(f"24_{m:02d}.parquet" for m in range(1, 5)),
+    ]
+    assert not fdata.source.get("slices")
 
 
 def _fdata_month(path: Path, nnuma: list[int] | None = None) -> None:
@@ -78,7 +83,7 @@ def _fdata_month(path: Path, nnuma: list[int] | None = None) -> None:
 
 
 def test_uopc_window_prepares_the_columns_the_paper_protocol_reads(tmp_path: Path) -> None:
-    descriptor = load_descriptor(_UOPC)
+    descriptor = load_descriptor(_FDATA)
     (target,) = descriptor.targets
     raw = tmp_path / "24_02.parquet"
     _fdata_month(raw)
@@ -86,9 +91,11 @@ def test_uopc_window_prepares_the_columns_the_paper_protocol_reads(tmp_path: Pat
 
     summary = normalize_target(raw, target, out)
 
-    table = pq.read_table(out)
-    # The row with no avgpcon is dropped by the descriptor's filter.
-    assert summary["rows_final"] == 5
+    # The descriptor keeps every row with a runtime; the power recipes then read only the
+    # rows with both targets and an embedding, so the row with no avgpcon is left out.
+    assert summary["rows_final"] == 6
+    table = read_window(out, require_nonnull=["avgpcon_per_node", "maxpcon_per_node", "embedding"])
+    assert table.num_rows == 5
     assert {
         "user",
         "submit_time",
@@ -113,13 +120,13 @@ def test_uopc_window_prepares_the_columns_the_paper_protocol_reads(tmp_path: Pat
 
 def test_uopc_window_derives_per_node_power(tmp_path: Path) -> None:
     """The targets every model predicts are computed once, during preparation (#204)."""
-    (target,) = load_descriptor(_UOPC).targets
+    (target,) = load_descriptor(_FDATA).targets
     raw = tmp_path / "24_02.parquet"
     _fdata_month(raw)
     out = tmp_path / "data.parquet"
     normalize_target(raw, target, out)
 
-    rows = pq.read_table(out).to_pylist()
+    rows = read_window(out, require_nonnull=["avgpcon_per_node"]).to_pylist()
     assert [r["avgpcon_per_node"] for r in rows] == [r["avgpcon"] / 2 for r in rows]
     assert [r["maxpcon_per_node"] for r in rows] == [r["maxpcon"] / 2 for r in rows]
     assert {"avgpcon_per_node", "maxpcon_per_node"} <= set(target.target_columns)
@@ -132,13 +139,13 @@ def test_per_node_power_divides_by_requested_nodes_not_a_padded_allocation(
     jobs show nnuma = 48 while their power is one node's. The prepared per-node targets
     divide by requested nodes, and so does the paper protocol by default (#228); its
     node_count="allocated" option divides by nnuma, as the paper does (#204)."""
-    (target,) = load_descriptor(_UOPC).targets
+    (target,) = load_descriptor(_FDATA).targets
     raw = tmp_path / "24_02.parquet"
     _fdata_month(raw, nnuma=[48, 2, 2, 2, 2, 2])
     out = tmp_path / "data.parquet"
     normalize_target(raw, target, out)
 
-    rows = pq.read_table(out).to_pylist()
+    rows = read_window(out, require_nonnull=["avgpcon_per_node"]).to_pylist()
     assert rows[0]["avgpcon_per_node"] == 100.0  # 200 W over 2 requested nodes, not 48
     assert rows[0]["maxpcon_per_node"] == 150.0
 
@@ -163,7 +170,12 @@ def test_fugaku_runtime_window_carries_power_without_changing_its_rows(tmp_path:
     rows = pq.read_table(out).to_pylist()
     assert summary["rows_final"] == 6  # the row without avgpcon is kept
     assert [r["avgpcon_per_node"] for r in rows] == [100.0, 105.0, None, 115.0, 120.0, 125.0]
-    assert "embedding" not in rows[0]  # the runtime fleet embeds with `hpc-oda embed`
+    # F-DATA's own embedding rides along; the runtime fleet's slice leaves it out, because
+    # the runtime protocol embeds every dataset with `hpc-oda embed` (#249).
+    assert "embedding" in rows[0]
+    sliced = tmp_path / "window.parquet"
+    slice_dataset(out, sliced, "2023-01-01", "2024-12-31", drop_columns=("embedding",))
+    assert "embedding" not in pq.read_table(sliced).column_names
 
 
 def test_pm100_power_is_its_node_trace_per_allocated_node(tmp_path: Path) -> None:

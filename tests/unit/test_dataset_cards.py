@@ -31,14 +31,16 @@ def test_every_bundled_dataset_has_a_card() -> None:
     assert {f"{name}.md" for name in bundled_descriptor_paths()} | {"README.md"} == set(_cards())
 
 
-def test_a_card_names_its_source_and_its_siblings() -> None:
+def test_a_card_names_its_source_its_windows_and_its_siblings() -> None:
     cards = _cards()
-    uopc = cards["fdata_fugaku_uopc.md"]
-    assert "[10.5281/zenodo.11467483](https://doi.org/10.5281/zenodo.11467483)" in uopc
-    assert "[F-DATA (Fugaku Jobs, Mar–Sep 2023)](fdata_fugaku.md)" in uopc
+    fdata = cards["fdata_fugaku.md"]
+    assert "[10.5281/zenodo.11467483](https://doi.org/10.5281/zenodo.11467483)" in fdata
+    # One dataset serves both benchmarks, each reading the window its recipes declare.
+    assert "### Job runtime" in fdata and "### Average power per node" in fdata
+    assert "2023-11-30 → 2024-04-30" in fdata
+    assert "[FRESCO Conte Job Accounting](fresco_conte.md)" in cards["fresco_anvil.md"]
     # A dataset with no runtime card is still carded, and says so.
-    assert "Not characterized" in uopc
-    assert "### Average power per node" in uopc
+    assert "Not characterized" in cards["adastra_mi250.md"]
 
 
 def test_a_dataset_too_large_for_a_node_says_why_it_is_off_the_leaderboard() -> None:

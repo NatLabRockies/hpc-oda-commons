@@ -43,7 +43,7 @@ Rank 7 of 8, with an average headroom of 28% over 4 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 52% | 13.6 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku.md) (`fdata_fugaku`) | 52% | 13.6 W/node |
 | [Eagle](../../docs/datasets/cards/nlr_eagle.md) (`nlr_eagle`) | 23% | 78.1 W/node |
 | [Kestrel](../../docs/datasets/cards/nlr_kestrel.md) (`nlr_kestrel`) | 37% | 113.3 W/node |
 | [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 0% | 148.3 W/node |
@@ -54,7 +54,7 @@ Rank 7 of 8, with an average headroom of 27% over 2 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 50% | 14.4 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku.md) (`fdata_fugaku`) | 50% | 14.4 W/node |
 | [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 4% | 202.1 W/node |
 
 ## How it runs
@@ -116,11 +116,11 @@ Columns named in its settings:
 
 | Recipe | Target | Split | Dataset |
 |---|---|---|---|
-| [`recipe.job_power.tfidf_knn_rolling_avg`](../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_avg.yml) | `avgpcon_per_node` | `rolling` | `fdata_fugaku_uopc` |
+| [`recipe.job_power.tfidf_knn_rolling_avg`](../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_avg.yml) | `avgpcon_per_node` | `rolling` | `fdata_fugaku` |
 | [`recipe.job_power.tfidf_knn_rolling_avg_eagle`](../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_avg_eagle.yml) | `avgpcon_per_node` | `rolling` | `nlr_eagle` |
 | [`recipe.job_power.tfidf_knn_rolling_avg_kestrel`](../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_avg_kestrel.yml) | `avgpcon_per_node` | `rolling` | `nlr_kestrel` |
 | [`recipe.job_power.tfidf_knn_rolling_avg_pm100`](../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_avg_pm100.yml) | `avgpcon_per_node` | `rolling` | `pm100` |
-| [`recipe.job_power.tfidf_knn_rolling_peak`](../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_peak.yml) | `maxpcon_per_node` | `rolling` | `fdata_fugaku_uopc` |
+| [`recipe.job_power.tfidf_knn_rolling_peak`](../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_peak.yml) | `maxpcon_per_node` | `rolling` | `fdata_fugaku` |
 | [`recipe.job_power.tfidf_knn_rolling_peak_pm100`](../../src/hpc_oda_commons/recipes/job-power/tfidf_knn_rolling_peak_pm100.yml) | `maxpcon_per_node` | `rolling` | `pm100` |
 
 ## Source

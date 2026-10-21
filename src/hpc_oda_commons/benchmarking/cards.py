@@ -110,7 +110,9 @@ def window_lines(card: dict[str, Any]) -> list[str]:
         f"- **Test period:** {win.get('test_start')} → {win.get('test_end')}",
         f"- **Rows in window:** {_fmt_int(win.get('n_rows'))} "
         f"({_fmt_int(win.get('rate_per_day'))} jobs/day)",
-        f"- **Anchor:** {rule.get('anchor')} of healthy span",
+        f"- **Pinned:** ends {rule['pinned_end']}, the window the benchmark ran on"
+        if rule.get("pinned_end")
+        else f"- **Anchor:** {rule.get('anchor')} of healthy span",
         f"- **Health:** {verdict}",
         f"- **Rationale:** {win.get('rationale')}",
     ]

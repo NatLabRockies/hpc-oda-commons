@@ -142,11 +142,14 @@ reading of the target. Results: [How much accuracy is available](results.md#how-
 Regenerate with:
 
 ```
-hpc-oda datasets ceiling data/datasets/fdata_fugaku_uopc/data.parquet \
-  --target avgpcon_per_node --dataset-id dataset.fdata_fugaku_uopc \
+hpc-oda datasets ceiling data/datasets/fdata_fugaku/data.parquet \
+  --start 2023-11-30 --end 2024-04-30 --by submit \
+  --require-nonnull avgpcon_per_node --require-nonnull maxpcon_per_node \
+  --require-nonnull embedding \
+  --target avgpcon_per_node --dataset-id dataset.fdata_fugaku \
   --n-windows 89 --test-window-hours 24 --skip-windows 0 \
   --extra-feature embedding --extra-feature freq_req \
-  --out docs/benchmarking/datasets/fdata_fugaku_uopc.avgpcon_per_node.ceiling.json
+  --out docs/benchmarking/datasets/fdata_fugaku.avgpcon_per_node.ceiling.json
 ```
 
 The same with `--target maxpcon_per_node`, and for Eagle and Kestrel on
@@ -211,23 +214,27 @@ Agreed on #230.
 Reproduce the gate from a prepared table:
 
 ```python
-import pyarrow.compute as pc
-import pyarrow.parquet as pq
 from hpc_oda_commons.benchmarking.characterize import characterize_table
+from hpc_oda_commons.benchmarking.hpc.slice import read_window
 
-table = pq.read_table("data/datasets/fdata_fugaku_uopc/data.parquet")
-table = table.filter(pc.is_valid(table.column("avgpcon_per_node")))
+table = read_window(
+    "data/datasets/fdata_fugaku/data.parquet",
+    "2023-11-30",
+    "2024-04-30",
+    require_nonnull=["avgpcon_per_node", "maxpcon_per_node", "embedding"],
+    by="submit",
+)
 print(characterize_table(table)["gaps"])  # then keep the blocks inside the window above
 ```
 
-For Eagle and Kestrel, read the sliced tables in `data/windows/nlr_{eagle,kestrel}_power/`;
-for PM100, `data/datasets/pm100/data.parquet`.
+For Eagle and Kestrel, read their recipes' windows the same way; for PM100, the whole of
+`data/datasets/pm100/data.parquet`.
 
 ## Dataset roster
 
 From the public sources with per-job power ([power sources](../../datasets/power-sources.md)):
 
-- **In:** F-DATA (`fdata_fugaku_uopc`, its five UoPC months), NLR Eagle (`nlr_eagle`) and NLR
+- **In:** F-DATA (`fdata_fugaku`, its five UoPC months), NLR Eagle (`nlr_eagle`) and NLR
   Kestrel (`nlr_kestrel`, CPU nodes, shared nodes excluded).
 - **PM100 has no node sharing to exclude.** Its extraction kept only jobs that ran
   exclusively on their nodes ([Zenodo record](https://zenodo.org/records/10127767),

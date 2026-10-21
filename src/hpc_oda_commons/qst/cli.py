@@ -755,7 +755,22 @@ def benchmark(
 
     import pyarrow.parquet as pq
 
-    table = pq.read_table(table_path)
+    # A recipe's declared window and required columns are applied as the table is read
+    # (#249), so a dataset larger than the window never has to fit in memory.
+    window = dataset.get("window") or None
+    require_nonnull = list(dataset.get("require_nonnull") or [])
+    if window or require_nonnull:
+        from hpc_oda_commons.benchmarking.hpc.slice import read_window
+
+        table = read_window(
+            table_path,
+            (window or {}).get("start"),
+            (window or {}).get("end"),
+            require_nonnull=require_nonnull,
+            by=(window or {}).get("by", "overlap"),
+        )
+    else:
+        table = pq.read_table(table_path)
     # Fail loudly on stale v0.1 (ISO-string) job tables instead of letting the
     # missing native timestamps surface as a misleading downstream symptom.
     timestamp_type_issues = collect_job_table_type_issues(table)
@@ -857,6 +872,8 @@ def benchmark(
             or "synthetic_job_runtime_tiny",
             "schema_version": input_schema,
             "hash": ds_hash,
+            **({"window": dict(window)} if window else {}),
+            **({"require_nonnull": require_nonnull} if require_nonnull else {}),
         },
         "notes": f"Benchmark run for {recipe_id}.",
         "timing": {"total_train_eval_seconds": total_train_eval_seconds},

@@ -16,7 +16,7 @@ Rank 4 of 8, with an average headroom of 39% over 4 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 80% | 7.1 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku.md) (`fdata_fugaku`) | 80% | 7.1 W/node |
 | [Eagle](../../docs/datasets/cards/nlr_eagle.md) (`nlr_eagle`) | 20% | 80.2 W/node |
 | [Kestrel](../../docs/datasets/cards/nlr_kestrel.md) (`nlr_kestrel`) | 50% | 95.6 W/node |
 | [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 5% | 145.2 W/node |
@@ -27,7 +27,7 @@ Rank 4 of 8, with an average headroom of 44% over 2 datasets.
 
 | Dataset | Headroom | MAE |
 |---|---:|---:|
-| [Fugaku](../../docs/datasets/cards/fdata_fugaku_uopc.md) (`fdata_fugaku_uopc`) | 79% | 7.4 W/node |
+| [Fugaku](../../docs/datasets/cards/fdata_fugaku.md) (`fdata_fugaku`) | 79% | 7.4 W/node |
 | [Marconi100](../../docs/datasets/cards/pm100.md) (`pm100`) | 8% | 198.8 W/node |
 
 ## How it runs
@@ -130,16 +130,16 @@ Columns named in its settings:
 
 | Recipe | Target | Split | Dataset |
 |---|---|---|---|
-| [`recipe.job_power.uopc_paper_reproduction`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku_uopc` |
-| [`recipe.job_power.uopc_paper_reproduction_paper_setup`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction_paper_setup.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku_uopc` |
-| [`recipe.job_power.uopc_paper_reproduction_unpadded`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction_unpadded.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku_uopc` |
-| [`recipe.job_power.uopc_paper_sensitivity`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku_uopc` |
-| [`recipe.job_power.uopc_paper_sensitivity_smoke`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity_smoke.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku_uopc` |
-| [`recipe.job_power.uopc_rolling_avg`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_avg.yml) | `avgpcon_per_node` | `rolling` | `fdata_fugaku_uopc` |
+| [`recipe.job_power.uopc_paper_reproduction`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku` |
+| [`recipe.job_power.uopc_paper_reproduction_paper_setup`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction_paper_setup.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku` |
+| [`recipe.job_power.uopc_paper_reproduction_unpadded`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction_unpadded.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku` |
+| [`recipe.job_power.uopc_paper_sensitivity`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku` |
+| [`recipe.job_power.uopc_paper_sensitivity_smoke`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_sensitivity_smoke.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku` |
+| [`recipe.job_power.uopc_rolling_avg`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_avg.yml) | `avgpcon_per_node` | `rolling` | `fdata_fugaku` |
 | [`recipe.job_power.uopc_rolling_avg_eagle`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_avg_eagle.yml) | `avgpcon_per_node` | `rolling` | `nlr_eagle` |
 | [`recipe.job_power.uopc_rolling_avg_kestrel`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_avg_kestrel.yml) | `avgpcon_per_node` | `rolling` | `nlr_kestrel` |
 | [`recipe.job_power.uopc_rolling_avg_pm100`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_avg_pm100.yml) | `avgpcon_per_node` | `rolling` | `pm100` |
-| [`recipe.job_power.uopc_rolling_peak`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_peak.yml) | `maxpcon_per_node` | `rolling` | `fdata_fugaku_uopc` |
+| [`recipe.job_power.uopc_rolling_peak`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_peak.yml) | `maxpcon_per_node` | `rolling` | `fdata_fugaku` |
 | [`recipe.job_power.uopc_rolling_peak_pm100`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_peak_pm100.yml) | `maxpcon_per_node` | `rolling` | `pm100` |
 | [`recipe.job_power.uopc_fugaku_maxpcon`](../../src/hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml) | `maxpcon` | `fixed` | `fugaku_24_04` |
 
