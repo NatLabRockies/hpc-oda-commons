@@ -222,6 +222,41 @@ def _apply_select(table: pa.Table, select: Sequence[str], schema: str) -> pa.Tab
     return table.select(keep)
 
 
+def _has_trims(target: Target) -> bool:
+    return any(
+        isinstance(rule, Mapping) and rule.get("trim_quantiles") for rule in target.mapping.values()
+    )
+
+
+def _stream_out(mapped: Path, target: Target, out_path: Path, batch_size: int) -> int:
+    """Filter and select ``mapped`` into ``out_path`` one batch at a time; the rows and their
+    order are those of the whole-table path."""
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    reader = pq.ParquetFile(mapped)
+    rows = 0
+    writer: pq.ParquetWriter | None = None
+    try:
+        for batch in reader.iter_batches(batch_size=batch_size):
+            table = pa.Table.from_batches([batch], schema=reader.schema_arrow)
+            if target.filter:
+                table = _apply_filter(table, target.filter)
+            if target.select:
+                table = _apply_select(table, target.select, target.schema)
+            if writer is None:
+                writer = pq.ParquetWriter(out_path, table.schema)
+            writer.write_table(table)
+            rows += table.num_rows
+        if writer is None:  # an empty table still gets its file
+            empty = reader.schema_arrow.empty_table()
+            if target.select:
+                empty = _apply_select(empty, target.select, target.schema)
+            pq.write_table(empty, out_path)
+    finally:
+        if writer is not None:
+            writer.close()
+    return rows
+
+
 def normalize_target(
     intermediate_parquet: Path,
     target: Target,
@@ -245,6 +280,10 @@ def normalize_target(
         summary = apply_mapping_spec(
             source_parquet, mapping_path, mapped_path, batch_size=batch_size
         )
+        if not target.sample and not _has_trims(target):
+            # Nothing needs the whole table, so filter and write a batch at a time (#249).
+            summary["rows_final"] = _stream_out(mapped_path, target, out_path, batch_size)
+            return summary
         table = pq.read_table(mapped_path)
 
     if target.filter:

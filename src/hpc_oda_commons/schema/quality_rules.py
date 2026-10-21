@@ -82,6 +82,50 @@ def compute_label_distribution(rows: list[dict[str, Any]], label_field: str) -> 
 QUALITY_RULESET_VERSION = "v0.1"
 
 
+class QualityAccumulator:
+    """The quality report's counts, added up one batch of rows at a time, so a table too
+    large to hold as Python rows can still be reported on (#249). Every count is a sum, so
+    the report is the same however the rows are batched."""
+
+    def __init__(self, label_field: str | None = None) -> None:
+        self.label_field = label_field
+        self.rows = 0
+        self.totals: Counter[str] = Counter()
+        self.missing: Counter[str] = Counter()
+        self.timestamp_issues = 0
+        self.negative_runtime = 0
+        self.labels: Counter[str] = Counter()
+
+    def add(self, rows: list[dict[str, Any]]) -> None:
+        self.rows += len(rows)
+        for row in rows:
+            for key in row.keys():
+                self.totals[key] += 1
+                val = row.get(key)
+                if val is None or val == "":
+                    self.missing[key] += 1
+        self.timestamp_issues += compute_timestamp_issues(rows)
+        self.negative_runtime += compute_negative_runtime(rows)
+        if self.label_field:
+            self.labels.update(compute_label_distribution(rows, self.label_field))
+
+    def report(self, *, schema_version: str, ruleset_version: str) -> dict[str, Any]:
+        report: dict[str, Any] = {
+            "schema_version": schema_version,
+            "ruleset_version": ruleset_version,
+            "generated_at": _now_utc_iso(),
+            "row_count": self.rows,
+            "missingness": {
+                key: self.missing[key] / float(self.totals[key]) for key in sorted(self.totals)
+            },
+            "timestamp_issues": self.timestamp_issues,
+            "negative_runtime": self.negative_runtime,
+        }
+        if self.label_field:
+            report["label_distribution"] = dict(self.labels)
+        return report
+
+
 def build_quality_report(
     rows: list[dict[str, Any]],
     *,
@@ -89,17 +133,6 @@ def build_quality_report(
     label_field: str | None = None,
     ruleset_version: str = QUALITY_RULESET_VERSION,
 ) -> dict[str, Any]:
-    report: dict[str, Any] = {
-        "schema_version": schema_version,
-        "ruleset_version": ruleset_version,
-        "generated_at": _now_utc_iso(),
-        "row_count": len(rows),
-        "missingness": compute_missingness(rows),
-        "timestamp_issues": compute_timestamp_issues(rows),
-        "negative_runtime": compute_negative_runtime(rows),
-    }
-
-    if label_field:
-        report["label_distribution"] = compute_label_distribution(rows, label_field)
-
-    return report
+    accumulator = QualityAccumulator(label_field)
+    accumulator.add(rows)
+    return accumulator.report(schema_version=schema_version, ruleset_version=ruleset_version)
