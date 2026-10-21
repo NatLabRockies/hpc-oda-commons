@@ -217,9 +217,13 @@ Reproduce the gate from a prepared table:
 from hpc_oda_commons.benchmarking.characterize import characterize_table
 from hpc_oda_commons.benchmarking.hpc.slice import read_window
 
-table = read_window("data/datasets/fdata_fugaku/data.parquet", "2023-11-30", "2024-04-30",
-                    require_nonnull=["avgpcon_per_node", "maxpcon_per_node", "embedding"],
-                   by="submit")
+table = read_window(
+    "data/datasets/fdata_fugaku/data.parquet",
+    "2023-11-30",
+    "2024-04-30",
+    require_nonnull=["avgpcon_per_node", "maxpcon_per_node", "embedding"],
+    by="submit",
+)
 print(characterize_table(table)["gaps"])  # then keep the blocks inside the window above
 ```
 
