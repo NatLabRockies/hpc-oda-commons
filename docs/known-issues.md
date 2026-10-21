@@ -2,7 +2,7 @@
 
 ## MAJOR — Cross-environment numeric reproducibility of fitted models
 
-**Status:** open · **Severity:** major · **Affects:** all fitted rolling models — XGBoost, Random Forest, MLP, TF-IDF kNN, Embedding kNN, and UoPC — model outputs (the Embedding kNN model's optional torch/faiss backends add a second axis of variance beyond BLAS) · **Tracking:** [#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)
+**Status:** open · **Severity:** major · **Affects:** all fitted rolling models — XGBoost, MoE XGBoost, Random Forest, MLP, TF-IDF kNN, Embedding kNN, and UoPC — model outputs (the Embedding kNN model's optional torch/faiss backends add a second axis of variance beyond BLAS) · **Tracking:** [#2](https://github.com/NatLabRockies/hpc-oda-commons/issues/2)
 
 ### Summary
 
@@ -145,10 +145,10 @@ abort the whole run.
 **Status:** handled · **Tracking:** [#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204), [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125)
 
 F-DATA's `nnuma` (allocated nodes) can exceed the nodes a job ran on, while `avgpcon` and
-`maxpcon` sum only those nodes. In the UoPC test months, 137k jobs (8.6%, 11 users) request
-and use 1 node with 48 cores, draw ~91 W, and show `nnuma` = 48: per allocated node they
-read 1.9 W. The Commons' per-node power targets (`avgpcon_per_node`, `maxpcon_per_node` on
-both Fugaku descriptors) therefore divide by requested nodes, and so does the UoPC
+`maxpcon` sum only those nodes, so per allocated node many jobs read a fraction of their
+real power ([the numbers](benchmarking/power/uopc.md#nodes-requested-not-allocated)). The
+Commons' per-node power targets (`avgpcon_per_node`, `maxpcon_per_node` in the `fdata_fugaku`
+descriptor) therefore divide by requested nodes, and so does the UoPC
 reproduction since #228. Only its paper-comparison recipes divide by `nnuma`, as the paper
 does ([why](benchmarking/power/uopc.md#nodes-requested-not-allocated)).
 
@@ -199,8 +199,9 @@ A deployment would fit the scaling on history alone. See
 
 **Status:** workaround · **Tracking:** [#219](https://github.com/NatLabRockies/hpc-oda-commons/issues/219)
 
-The `embed` extra installs torch. torch and scikit-learn each ship their own OpenMP runtime
-(`libomp.dylib`). On macOS, a process that imports torch and then fits XGBoost segfaults.
+The `embed` extra installs torch. torch ships its own OpenMP runtime (`libomp.dylib`), and
+XGBoost loads another (on a pip install, the copy scikit-learn ships). On macOS, a process
+that imports torch and then fits XGBoost segfaults.
 In this repo that happens in the unit tests, and in a benchmark whose model imports torch
 before a tree model fits. Installing torch also changes what embedding kNN's
 `backend: auto` picks, from numpy to torch.

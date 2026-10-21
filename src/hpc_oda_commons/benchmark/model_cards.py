@@ -6,6 +6,7 @@ something the repo already holds:
 
 - the registry, built from ``models/<name>/model.yml`` and the recipes: the model's title,
   description and targets;
+- ``model.yml``'s optional ``method``: how the model works, a fixed fact kept beside its code;
 - ``benchmark.runner.RUNNERS``: the split methods it runs under, the recipe keys each
   runner reads (found by reading the runner's source), and the dataclass it configures;
 - the bundled recipes under ``recipes/``;
@@ -227,6 +228,17 @@ def _bundled_recipes(model_id: str) -> list[dict[str, Any]]:
 # --- writing a card ------------------------------------------------------------------------
 
 
+def _method(model_id: str) -> Iterator[str]:
+    """The ``method`` notes in the model's ``model.yml``, if it has any."""
+    meta_path = Path(__file__).resolve().parents[1] / "models" / model_id.split(".", 1)[1]
+    meta = yaml.safe_load((meta_path / "model.yml").read_text(encoding="utf-8")) or {}
+    text = str(meta.get("method") or "").strip()
+    if text:
+        yield "## Method"
+        yield ""
+        yield text
+
+
 def _results(model_id: str, leaderboard: Mapping[str, Any]) -> Iterator[str]:
     tables = [
         t for t in leaderboard.get("tables", []) if any(r["model"] == model_id for r in t["rows"])
@@ -398,6 +410,8 @@ def render_model_card(
         _NOTICE,
         "",
         entry.description,
+        "",
+        *_method(entry.id),
         "",
         *_results(entry.id, leaderboard),
         "",

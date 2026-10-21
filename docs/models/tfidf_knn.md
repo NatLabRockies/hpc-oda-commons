@@ -6,6 +6,20 @@
 
 TF-IDF vectors of the job's submit-time fields, with k-nearest-neighbour regression.
 
+## Method
+
+1. **Text:** the job's string-valued submit-time fields (from the shared feature
+   allowlist), joined into one string per job.
+2. **Vectors:** a `HashingVectorizer` hashes the text into a fixed-width sparse matrix, and
+   TF-IDF weights it, fitted on each window's training rows.
+3. **Neighbours:** the `k` training jobs nearest by cosine distance.
+4. **Prediction:** their targets, weighted by similarity (uniform when every similarity is
+   zero).
+
+Hashing is stateless, so every row is hashed once up front and each rolling window scores
+a slice of that matrix. The windows are independent, so `window_n_jobs` above 1 runs them
+in parallel, with the same results.
+
 ## Results
 
 From the [leaderboard](https://natlabrockies.github.io/hpc-oda-commons/leaderboard/) of 2026-10-21. Headroom is the share of the error between the window mean and the dataset's error ceiling that the model removes; the leaderboard explains it.
