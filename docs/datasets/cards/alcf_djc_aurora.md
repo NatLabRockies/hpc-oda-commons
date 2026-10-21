@@ -19,6 +19,7 @@ DIM_JOB_COMPOSITE job accounting from Argonne's Aurora supercomputer, 2025-01 th
 - **Fetched:** 2 files via `manual`, 83.2 MB (download by hand: the source needs registration)
     - `ANL-ALCF-DJC-AURORA_20250127_20251231.csv.gz`, 61.5 MB
     - `ANL-ALCF-DJC-AURORA_20260101_20260716.csv.gz`, 21.7 MB
+- **How to get them:** ALCF DJC is public data behind a one-time name/email form. In a browser open https://reports.alcf.anl.gov/data/aurora.html, click a DIM_JOB_COMPOSITE download link, complete the short form (first/last name + email) once, then download both Aurora ANL-ALCF-DJC-AURORA_*.csv.gz files into one directory. Run `hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/alcf_djc_aurora.yml --from <dir>` pointing at that directory (each file's sha256 is checksum-verified before normalization). See docs/datasets/alcf-djc-ingest.md for the full recipe.
 - **Prepared table:** `data/datasets/alcf_djc_aurora/data.parquet` (`oda.job.v0.2.0`)
 - **Targets:** `runtime_seconds` (job runtime)
 - **Rows kept:** `require_nonnull`: ["runtime_seconds", "start_time", "end_time"]; `require_positive`: ["allocated_cpus"]; `require_end_after_start`: true
@@ -61,6 +62,8 @@ Its runtime window, from its runtime card:
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
+
+The leaderboard scores the last 30 days of this 90-day test period today: 120 windows of 6 hours.
 
 Error ceiling: an MAE floor of 31.7 min over 22,753 scored jobs.
 

@@ -12605,8 +12605,9 @@
       "created_at": "2026-10-16T19:44:51.404964Z",
       "dataset": {
         "hash": "c0a08791ca7a4df958b455dbce1bbfebb130a4e0516fd3678974841dbf291da2",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "89aef4ecd3beb2860c6a26f437f75cd693f27ddedfe2170f535e01cd04f02e7a",
@@ -12637,8 +12638,9 @@
       "created_at": "2026-10-16T22:14:38.845508Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "406bf7a320ee6d4a274e8723314600a06c88792018cb58a90d71a09ca437f68e",
@@ -12669,8 +12671,9 @@
       "created_at": "2026-10-16T23:24:05.580138Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "406bf7a320ee6d4a274e8723314600a06c88792018cb58a90d71a09ca437f68e",
@@ -12701,8 +12704,9 @@
       "created_at": "2026-10-17T02:50:29.355958Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "f5447282da0186eb6dc9e7d1c033e255565a8654a9c5df431b5ca3b842ba033b",
@@ -12733,8 +12737,9 @@
       "created_at": "2026-10-17T03:02:59.874329Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "f5447282da0186eb6dc9e7d1c033e255565a8654a9c5df431b5ca3b842ba033b",
@@ -12765,8 +12770,9 @@
       "created_at": "2026-10-17T03:24:37.783226Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "f5447282da0186eb6dc9e7d1c033e255565a8654a9c5df431b5ca3b842ba033b",
@@ -12797,8 +12803,9 @@
       "created_at": "2026-10-17T05:19:36.027933Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "f5447282da0186eb6dc9e7d1c033e255565a8654a9c5df431b5ca3b842ba033b",
@@ -12829,8 +12836,9 @@
       "created_at": "2026-10-17T05:48:25.276540Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "f5447282da0186eb6dc9e7d1c033e255565a8654a9c5df431b5ca3b842ba033b",
@@ -12861,8 +12869,9 @@
       "created_at": "2026-10-17T11:48:09.028799Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "f5447282da0186eb6dc9e7d1c033e255565a8654a9c5df431b5ca3b842ba033b",
@@ -12893,8 +12902,9 @@
       "created_at": "2026-10-17T14:50:42.278281Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "bf42ff6102dab5f46ecadf6b611d14f978a60462c7828026db3dd839a8c5eeeb",
@@ -12925,8 +12935,9 @@
       "created_at": "2026-10-17T17:14:02.601992Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "bf42ff6102dab5f46ecadf6b611d14f978a60462c7828026db3dd839a8c5eeeb",
@@ -12957,8 +12968,9 @@
       "created_at": "2026-10-17T21:10:31.528850Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "bf42ff6102dab5f46ecadf6b611d14f978a60462c7828026db3dd839a8c5eeeb",
@@ -12989,8 +13001,9 @@
       "created_at": "2026-10-17T21:44:04.542838Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "bf42ff6102dab5f46ecadf6b611d14f978a60462c7828026db3dd839a8c5eeeb",
@@ -13021,8 +13034,9 @@
       "created_at": "2026-10-17T22:50:44.440339Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "bf42ff6102dab5f46ecadf6b611d14f978a60462c7828026db3dd839a8c5eeeb",
@@ -13053,8 +13067,9 @@
       "created_at": "2026-10-18T00:02:09.270706Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "bf42ff6102dab5f46ecadf6b611d14f978a60462c7828026db3dd839a8c5eeeb",
@@ -13085,8 +13100,9 @@
       "created_at": "2026-10-18T12:42:11.125820Z",
       "dataset": {
         "hash": "767f5af9ef9214f4c4dea9c0c040ad5df1f55a7127a3fd6651a9faa99ab36805",
-        "id": "nlr_eagle_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_eagle",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_eagle_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13117,8 +13133,9 @@
       "created_at": "2026-10-18T12:47:45.907154Z",
       "dataset": {
         "hash": "767f5af9ef9214f4c4dea9c0c040ad5df1f55a7127a3fd6651a9faa99ab36805",
-        "id": "nlr_eagle_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_eagle",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_eagle_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13149,8 +13166,9 @@
       "created_at": "2026-10-18T13:01:48.383957Z",
       "dataset": {
         "hash": "767f5af9ef9214f4c4dea9c0c040ad5df1f55a7127a3fd6651a9faa99ab36805",
-        "id": "nlr_eagle_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_eagle",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_eagle_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13181,8 +13199,9 @@
       "created_at": "2026-10-18T13:28:20.591040Z",
       "dataset": {
         "hash": "767f5af9ef9214f4c4dea9c0c040ad5df1f55a7127a3fd6651a9faa99ab36805",
-        "id": "nlr_eagle_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_eagle",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_eagle_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13213,8 +13232,9 @@
       "created_at": "2026-10-18T13:39:06.872551Z",
       "dataset": {
         "hash": "767f5af9ef9214f4c4dea9c0c040ad5df1f55a7127a3fd6651a9faa99ab36805",
-        "id": "nlr_eagle_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_eagle",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_eagle_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13245,8 +13265,9 @@
       "created_at": "2026-10-18T13:48:31.370514Z",
       "dataset": {
         "hash": "767f5af9ef9214f4c4dea9c0c040ad5df1f55a7127a3fd6651a9faa99ab36805",
-        "id": "nlr_eagle_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_eagle",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_eagle_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13277,8 +13298,9 @@
       "created_at": "2026-10-18T13:51:14.760689Z",
       "dataset": {
         "hash": "0968a876a4b391531e085eeb8a9179bfe32ef2d92961fcb6b6e1797bcee1a986",
-        "id": "nlr_kestrel_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_kestrel",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_kestrel_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13309,8 +13331,9 @@
       "created_at": "2026-10-18T13:59:33.804614Z",
       "dataset": {
         "hash": "0968a876a4b391531e085eeb8a9179bfe32ef2d92961fcb6b6e1797bcee1a986",
-        "id": "nlr_kestrel_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_kestrel",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_kestrel_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13341,8 +13364,9 @@
       "created_at": "2026-10-18T14:26:14.003160Z",
       "dataset": {
         "hash": "0968a876a4b391531e085eeb8a9179bfe32ef2d92961fcb6b6e1797bcee1a986",
-        "id": "nlr_kestrel_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_kestrel",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_kestrel_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13373,8 +13397,9 @@
       "created_at": "2026-10-18T15:09:25.388380Z",
       "dataset": {
         "hash": "0968a876a4b391531e085eeb8a9179bfe32ef2d92961fcb6b6e1797bcee1a986",
-        "id": "nlr_kestrel_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_kestrel",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_kestrel_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13405,8 +13430,9 @@
       "created_at": "2026-10-18T15:24:09.196854Z",
       "dataset": {
         "hash": "0968a876a4b391531e085eeb8a9179bfe32ef2d92961fcb6b6e1797bcee1a986",
-        "id": "nlr_kestrel_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_kestrel",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_kestrel_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13437,8 +13463,9 @@
       "created_at": "2026-10-18T15:38:56.456716Z",
       "dataset": {
         "hash": "0968a876a4b391531e085eeb8a9179bfe32ef2d92961fcb6b6e1797bcee1a986",
-        "id": "nlr_kestrel_power",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_kestrel",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_kestrel_power"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13469,8 +13496,9 @@
       "created_at": "2026-10-19T01:11:12.135635Z",
       "dataset": {
         "hash": "2bb72caf2bb56db230aefcdf6a401eba210d9ceea26b6ef101092770363c1599",
-        "id": "nlr_eagle_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_eagle",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_eagle_power_embedded"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13501,8 +13529,9 @@
       "created_at": "2026-10-19T01:40:31.002673Z",
       "dataset": {
         "hash": "023bbaf91b92352078ae788ef32b5d4e0dd02a97c41a210b910a0736312882e8",
-        "id": "nlr_kestrel_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_kestrel",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_kestrel_power_embedded"
       },
       "integrity": {
         "code_hash": "da25704b33ee6c6c9b57df8acedbc9c6f34f9bad1c2057c8e4afa55df48ad7a9",
@@ -13533,8 +13562,9 @@
       "created_at": "2026-10-19T17:34:11.244408Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "e92167bc56583eb876eca37bec449a399ac8029ccbf05c9af3ee78f24eaf156d",
@@ -13565,8 +13595,9 @@
       "created_at": "2026-10-19T18:06:20.717559Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "e92167bc56583eb876eca37bec449a399ac8029ccbf05c9af3ee78f24eaf156d",
@@ -13597,8 +13628,9 @@
       "created_at": "2026-10-19T18:40:27.733184Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "16c0e648619063a36e5bbe90d66904831f9133bf86e06dcf0e595f40fa9c7fa6",
@@ -13629,8 +13661,9 @@
       "created_at": "2026-10-19T18:45:01.328679Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "16c0e648619063a36e5bbe90d66904831f9133bf86e06dcf0e595f40fa9c7fa6",
@@ -13661,8 +13694,9 @@
       "created_at": "2026-10-19T18:49:27.631046Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "16c0e648619063a36e5bbe90d66904831f9133bf86e06dcf0e595f40fa9c7fa6",
@@ -13693,8 +13727,9 @@
       "created_at": "2026-10-19T18:54:06.914183Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "16c0e648619063a36e5bbe90d66904831f9133bf86e06dcf0e595f40fa9c7fa6",
@@ -13725,8 +13760,9 @@
       "created_at": "2026-10-19T18:55:57.871329Z",
       "dataset": {
         "hash": "2bb72caf2bb56db230aefcdf6a401eba210d9ceea26b6ef101092770363c1599",
-        "id": "nlr_eagle_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_eagle",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_eagle_power_embedded"
       },
       "integrity": {
         "code_hash": "16c0e648619063a36e5bbe90d66904831f9133bf86e06dcf0e595f40fa9c7fa6",
@@ -13757,8 +13793,9 @@
       "created_at": "2026-10-19T18:57:53.032971Z",
       "dataset": {
         "hash": "2bb72caf2bb56db230aefcdf6a401eba210d9ceea26b6ef101092770363c1599",
-        "id": "nlr_eagle_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_eagle",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_eagle_power_embedded"
       },
       "integrity": {
         "code_hash": "16c0e648619063a36e5bbe90d66904831f9133bf86e06dcf0e595f40fa9c7fa6",
@@ -13789,8 +13826,9 @@
       "created_at": "2026-10-19T19:00:51.473262Z",
       "dataset": {
         "hash": "023bbaf91b92352078ae788ef32b5d4e0dd02a97c41a210b910a0736312882e8",
-        "id": "nlr_kestrel_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_kestrel",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_kestrel_power_embedded"
       },
       "integrity": {
         "code_hash": "16c0e648619063a36e5bbe90d66904831f9133bf86e06dcf0e595f40fa9c7fa6",
@@ -13821,8 +13859,9 @@
       "created_at": "2026-10-19T19:03:50.424838Z",
       "dataset": {
         "hash": "023bbaf91b92352078ae788ef32b5d4e0dd02a97c41a210b910a0736312882e8",
-        "id": "nlr_kestrel_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_kestrel",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_kestrel_power_embedded"
       },
       "integrity": {
         "code_hash": "16c0e648619063a36e5bbe90d66904831f9133bf86e06dcf0e595f40fa9c7fa6",
@@ -13853,8 +13892,9 @@
       "created_at": "2026-10-19T19:27:01.516713Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "16c0e648619063a36e5bbe90d66904831f9133bf86e06dcf0e595f40fa9c7fa6",
@@ -13885,8 +13925,9 @@
       "created_at": "2026-10-19T21:53:09.633047Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "16c0e648619063a36e5bbe90d66904831f9133bf86e06dcf0e595f40fa9c7fa6",
@@ -14013,8 +14054,9 @@
       "created_at": "2026-10-20T18:16:22.346907Z",
       "dataset": {
         "hash": "3fe4cd6cd00da88f9ca983df48d7feae992b15ef6e45f16abe6beb4b7b378b93",
-        "id": "pm100_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "pm100",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "pm100_power_embedded"
       },
       "integrity": {
         "code_hash": "976ee5463e541b24f0613e2e74bc9b973066f06ab179149b9cd5c640e19fe7c4",
@@ -14237,8 +14279,9 @@
       "created_at": "2026-10-20T18:50:54.773826Z",
       "dataset": {
         "hash": "3fe4cd6cd00da88f9ca983df48d7feae992b15ef6e45f16abe6beb4b7b378b93",
-        "id": "pm100_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "pm100",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "pm100_power_embedded"
       },
       "integrity": {
         "code_hash": "976ee5463e541b24f0613e2e74bc9b973066f06ab179149b9cd5c640e19fe7c4",
@@ -14365,8 +14408,9 @@
       "created_at": "2026-10-20T22:37:16.474252Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "b121ff8f797f91f3ba5ca1046e4d853f5df688f2f5c78470c7178c00c5a3fc41",
@@ -14397,8 +14441,9 @@
       "created_at": "2026-10-20T22:55:53.010113Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "b121ff8f797f91f3ba5ca1046e4d853f5df688f2f5c78470c7178c00c5a3fc41",
@@ -14429,8 +14474,9 @@
       "created_at": "2026-10-20T23:06:27.654221Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "071d6cdafc929cccde23524353f6ca50e60aecc00ca0b358ac541cf6dc22f574",
@@ -14461,8 +14507,9 @@
       "created_at": "2026-10-20T23:11:06.271861Z",
       "dataset": {
         "hash": "27c9bf433aca2a79aeaace25f59b995884c0dfd5daa3c46eb1a3c7a94f9490c1",
-        "id": "fdata_fugaku_uopc",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "fdata_fugaku",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "fdata_fugaku_uopc"
       },
       "integrity": {
         "code_hash": "071d6cdafc929cccde23524353f6ca50e60aecc00ca0b358ac541cf6dc22f574",
@@ -14493,8 +14540,9 @@
       "created_at": "2026-10-20T23:13:20.895831Z",
       "dataset": {
         "hash": "2bb72caf2bb56db230aefcdf6a401eba210d9ceea26b6ef101092770363c1599",
-        "id": "nlr_eagle_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_eagle",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_eagle_power_embedded"
       },
       "integrity": {
         "code_hash": "071d6cdafc929cccde23524353f6ca50e60aecc00ca0b358ac541cf6dc22f574",
@@ -14525,8 +14573,9 @@
       "created_at": "2026-10-20T23:16:32.768469Z",
       "dataset": {
         "hash": "023bbaf91b92352078ae788ef32b5d4e0dd02a97c41a210b910a0736312882e8",
-        "id": "nlr_kestrel_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "nlr_kestrel",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "nlr_kestrel_power_embedded"
       },
       "integrity": {
         "code_hash": "071d6cdafc929cccde23524353f6ca50e60aecc00ca0b358ac541cf6dc22f574",
@@ -14557,8 +14606,9 @@
       "created_at": "2026-10-20T23:17:03.983748Z",
       "dataset": {
         "hash": "3fe4cd6cd00da88f9ca983df48d7feae992b15ef6e45f16abe6beb4b7b378b93",
-        "id": "pm100_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "pm100",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "pm100_power_embedded"
       },
       "integrity": {
         "code_hash": "071d6cdafc929cccde23524353f6ca50e60aecc00ca0b358ac541cf6dc22f574",
@@ -14589,8 +14639,9 @@
       "created_at": "2026-10-20T23:17:40.322651Z",
       "dataset": {
         "hash": "3fe4cd6cd00da88f9ca983df48d7feae992b15ef6e45f16abe6beb4b7b378b93",
-        "id": "pm100_power_embedded",
-        "schema_version": "oda.job.v0.2.0"
+        "id": "pm100",
+        "schema_version": "oda.job.v0.2.0",
+        "table": "pm100_power_embedded"
       },
       "integrity": {
         "code_hash": "071d6cdafc929cccde23524353f6ca50e60aecc00ca0b358ac541cf6dc22f574",
@@ -14791,7 +14842,7 @@
       "reason": "protocol 'paper_sensitivity' is a study, not the benchmark"
     }
   ],
-  "generated_at": "2026-10-21T16:48:04.002308Z",
+  "generated_at": "2026-10-21T23:26:23.906783Z",
   "runs_dir": "runs",
   "schema_version": "oda.leaderboard.v0.2.0",
   "superseded": [

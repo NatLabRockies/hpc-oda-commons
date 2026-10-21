@@ -91,6 +91,20 @@ def _cell_key(entry: dict[str, Any]) -> tuple[Any, ...]:
     return ("bundle", entry.get("bundle_dir"))
 
 
+def _registered_dataset(table: str, registered: Sequence[str]) -> str:
+    """The dataset a bundle's recorded table belongs to.
+
+    A bundle records its table's folder name, which for a slice or an embedded copy carries a
+    suffix (``nlr_eagle_power_embedded``, ``fdata_fugaku_uopc`` before #249). The dataset is
+    the registered name the folder starts with; a table of no registered dataset keeps its
+    own name.
+    """
+    if table in registered:
+        return table
+    matches = [name for name in registered if table.startswith(f"{name}_")]
+    return max(matches, key=len) if matches else table
+
+
 def _bundle_label(bundle_dir: Path, runs_dir: Path) -> str:
     """A bundle's path relative to the runs directory, as the leaderboard records it.
 
@@ -156,6 +170,16 @@ def build_leaderboard(
         newest[key] = entry
 
     kept = sorted(newest.values(), key=lambda e: e.get("created_at") or "")
+    # Name each run's dataset as the tables do; the table the run read is kept beside it.
+    from hpc_oda_commons.datasets.descriptor import bundled_descriptor_paths
+
+    registered = sorted(bundled_descriptor_paths())
+    for entry in [*kept, *superseded]:
+        dataset = entry.get("dataset") or {}
+        table = str(dataset.get("id") or "")
+        name = _registered_dataset(table, registered)
+        if name != table:
+            entry["dataset"] = {**dataset, "id": name, "table": table}
     return {
         "schema_version": LEADERBOARD_FORMAT_VERSION,
         "generated_at": _now_utc_iso(),

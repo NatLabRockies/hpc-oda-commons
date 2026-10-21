@@ -62,6 +62,8 @@ Its runtime window, from its runtime card:
 - **Health:** ✅ healthy
 - **Rationale:** anchor (80%) window overlapped a missing block; shifted 15d to the nearest window clear of every block.
 
+The leaderboard scores the last 30 days of this 90-day test period today: 120 windows of 6 hours.
+
 Error ceiling: an MAE floor of 2.1 h over 214,640 scored jobs.
 
 | Model | Headroom | MAE |

@@ -23,7 +23,7 @@ tags: [alcf, argonne, theta, knl, pbs, cobalt]
 size:
   default_bytes: 57777942
   full_bytes: 57777942
-  rows_hint: "540,391 jobs (Theta, 2017-2023); KNL, decommissioned end of 2023"
+  rows_hint: "540,391 jobs (Theta, 2017 to January 2024); KNL, decommissioned end of 2023"
 
 source:
   kind: manual
@@ -32,7 +32,7 @@ source:
     https://reports.alcf.anl.gov/data/theta.html, click a DIM_JOB_COMPOSITE download link,
     complete the short form (first/last name + email) once, then download all eight Theta
     ANL-ALCF-DJC-THETA_*.csv.gz files into one directory. Run
-    `hpc-oda datasets prepare dataset.alcf_djc_theta --from <dir>` pointing at that
+    `hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/alcf_djc_theta.yml --from <dir>` pointing at that
     directory (each file's sha256 is checksum-verified before normalization). See
     docs/datasets/alcf-djc-ingest.md for the full recipe.
   resources:
