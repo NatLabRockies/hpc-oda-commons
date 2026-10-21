@@ -31,6 +31,7 @@ import yaml
 
 from hpc_oda_commons.benchmark.leaderboard_display import (
     card_name,
+    dataset_doc,
     dataset_title,
     format_headroom,
     format_metric_value,
@@ -264,7 +265,10 @@ def _results(model_id: str, leaderboard: Mapping[str, Any]) -> Iterator[str]:
                 continue
             headroom = "—" if cell.get("headroom") is None else format_headroom(cell["headroom"])
             mae = format_metric_value("mae", float(cell["mae"]), target=table["target"])
-            yield f"| {dataset_title(dataset)} (`{dataset}`) | {headroom} | {mae} |"
+            title = dataset_title(dataset)
+            doc = dataset_doc(dataset)
+            name = f"[{title}](../../{doc})" if doc else title
+            yield f"| {name} (`{dataset}`) | {headroom} | {mae} |"
 
 
 def _how_it_runs(model_id: str, runners: Mapping[tuple[str, str], Any]) -> Iterator[str]:

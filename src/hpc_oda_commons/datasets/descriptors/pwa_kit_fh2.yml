@@ -3,13 +3,19 @@ schema_version: oda.dataset.v0.1.0
 name: PWA KIT-FH2 (ForHLR II)
 version: 1.0.0
 description: >
-  Standard Workload Format log for the ForHLR II (KIT-FH2) cluster, from the Parallel
-  Workloads Archive (114,355 jobs, 2016-2018). Runtime-prediction target = Run Time
-  (seconds); requested walltime = Requested Time (seconds). Absolute UTC submit/start/end
-  are reconstructed from the SWF UnixStartTime header by the swf decoder.
-systems: [ForHLR-II]
+  Standard Workload Format log of the ForHLR II cluster at KIT (KIT-FH2), from the
+  Parallel Workloads Archive (114,355 jobs, 2016–2018). Runtime is Run Time and requested
+  walltime is Requested Time (seconds). Absolute UTC times are reconstructed from the
+  log's UnixStartTime header.
+systems: [ForHLR II]
 providers: [KIT]
-citation: { url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_kit_fh2/" }
+citation:
+  url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_kit_fh2/"
+  papers:
+    - title: "On the Quality of Wall Time Estimates for Resource Allocation Prediction (ICPP Workshops, 2019)"
+      doi: "10.1145/3339186.3339204"
+    - title: "Experience with using the Parallel Workloads Archive (Journal of Parallel and Distributed Computing, 2014)"
+      doi: "10.1016/j.jpdc.2014.06.013"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [pwa, swf, kit, forhlr2]
 size:

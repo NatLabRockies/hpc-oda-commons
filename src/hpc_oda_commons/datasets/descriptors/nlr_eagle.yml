@@ -3,19 +3,15 @@ schema_version: oda.dataset.v0.1.0
 name: NLR Eagle Jobs (anonymized)
 version: 1.1.0
 description: >
-  Anonymized SLURM sacct job records from the NLR Eagle HPC system, 2019-2024 full
-  lifetime, ~13.8M jobs, as a zipped Hive-partitioned Parquet dataset (job records only;
-  the separate energy variant is excluded). The runtime-prediction target is derived
-  (end_time - start_time) from the DST-correct tz-aware timestamp columns; requested
-  walltime = wallclock_req (an Arrow duration). user/account are already hashed in the
-  source. Home-lab; the definitive modern Eagle corpus.
-  Average job power is mapped too (#206): node_energy_total_watt_hours is the job's node
-  energy summed over its nodes, so whole-job average watts = energy / runtime and per
-  node = that / nodes_used (avgpcon, avgpcon_per_node). It agrees exactly with the
-  per-node averages in the separate energy variant. A 0 Wh reading means no reading and
-  is null; most missing readings are already null. Per-node values below the 0.1th or
-  above the 99.9th percentile become null (#216), since a few readings are impossible.
-  No peak power in this file. Rows are still filtered on runtime only.
+  Anonymized Slurm sacct job records of NLR's Eagle system over its 2019–2024 lifetime
+  (about 13.8M jobs), as a zipped Hive-partitioned Parquet dataset: the job records, not
+  the separate energy variant. Runtime is end_time − start_time from the DST-correct
+  timestamp columns; requested walltime is wallclock_req. Users and accounts are hashed at
+  source. Average power: node_energy_total_watt_hours is the job's energy summed over its
+  nodes, so whole-job watts are energy ÷ runtime (avgpcon) and per node that ÷ nodes_used
+  (avgpcon_per_node), which matches the energy variant's per-node averages exactly. A 0 Wh
+  reading means no reading and becomes null, as do per-node values outside the
+  0.1st–99.9th percentiles, since a few readings are impossible. There is no peak power.
 systems: [Eagle]
 providers: [NLR, "National Laboratory of the Rockies"]
 citation: { doi: "10.7799/3023273", url: "https://data.nlr.gov/submissions/295" }

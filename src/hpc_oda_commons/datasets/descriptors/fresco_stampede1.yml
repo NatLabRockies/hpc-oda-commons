@@ -3,17 +3,19 @@ schema_version: oda.dataset.v0.1.0
 name: FRESCO Stampede1 Job Accounting
 version: 1.0.0
 description: >
-  Slurm job accounting for TACC's Stampede1 supercomputer, from the FRESCO repository:
-  a single ~1.13 GB CSV of ~8.7M jobs (2013-2018). The runtime-prediction target is derived
-  (end_time - start_time); requested walltime = the walltime column (minutes). Timestamps are
-  MM/DD/YYYY (parsed via a strptime pattern). Nodes/cpus, queue, and exit status are features;
-  user/account/jobID are already anonymized at source. A require_end_after_start filter drops
-  the few inverted-timestamp rows and require_positive keeps allocated_cpus >= 1; a couple of
-  rows carry corrupt epoch-era start timestamps (2 rows exceed 8 days out of 8.34M) and are
-  left as negligible outliers. Fetched from the datadepot over direct HTTPS (no Globus).
-systems: [Stampede1]
+  Slurm job accounting of TACC's Stampede supercomputer (Stampede1), from the FRESCO
+  repository: one CSV of about 8.7M jobs, 2013–2018. Runtime is end_time − start_time, and
+  requested walltime is the walltime column (minutes); timestamps are MM/DD/YYYY. Users,
+  accounts and job ids are anonymized at source. Rows whose end precedes their start are
+  dropped, and allocated_cpus must be at least 1; a couple of rows with corrupt epoch-era
+  start times remain.
+systems: [Stampede]
 providers: [TACC, Purdue]
-citation: { url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/" }
+citation:
+  url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/"
+  papers:
+    - title: "Fresco: A Public Multi-Institutional Dataset for Understanding HPC System Behavior and Dependability (PEARC, 2025)"
+      doi: "10.1145/3708035.3736090"
 license:
   spdx: LicenseRef-fresco
   gated: false

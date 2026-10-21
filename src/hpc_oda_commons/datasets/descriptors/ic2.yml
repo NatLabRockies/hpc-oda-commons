@@ -3,14 +3,19 @@ schema_version: oda.dataset.v0.1.0
 name: IC2 Integrated Cloud + HPC Jobs
 version: 1.0.0
 description: >
-  Purpose-built runtime + resource-utilization dataset spanning integrated cloud and HPC
-  platforms (IC2, ALCF Polaris, AWS), from "Predicting Runtime and Resource Utilization of
-  Jobs on Integrated Cloud and HPC Systems". Per-task records are flattened from nested
-  workloads (per-node metric arrays dropped) by the json decoder. The runtime-prediction
-  target is derived (finish_time - start_time); timestamps are Unix epoch floats; there is
-  no requested walltime. `platform` distinguishes the three systems.
+  Runtime and resource-utilization records of tasks run on integrated cloud and HPC
+  platforms (IC2, ALCF Polaris and AWS), from "Predicting Runtime and Resource Utilization
+  of Jobs on Integrated Cloud and HPC Systems". The nested workload JSON is flattened to
+  one row per task, dropping the per-node metric arrays. Runtime is finish_time −
+  start_time; timestamps are Unix epoch floats; there is no requested walltime. `platform`
+  names the system.
 systems: [IC2, Polaris, AWS]
-citation: { doi: "10.5281/zenodo.15545096", url: "https://zenodo.org/records/15545096" }
+citation:
+  doi: "10.5281/zenodo.15545096"
+  url: "https://zenodo.org/records/15545096"
+  papers:
+    - title: "Predicting Runtime and Resource Utilization of Jobs on Integrated Cloud and HPC Systems (Future Generation Computer Systems, 2026)"
+      doi: "10.1016/j.future.2025.108230"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [ic2, polaris, aws, cloud, hpc, json]
 size:

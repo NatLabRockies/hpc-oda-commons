@@ -3,15 +3,20 @@ schema_version: oda.dataset.v0.1.0
 name: MIT Supercloud Datacenter Challenge (scheduler)
 version: 1.0.0
 description: >
-  Raw slurmdbd scheduler log from the MIT Supercloud Datacenter Challenge (202201 release),
-  ~396k jobs spanning Jan–Oct 2021 (~9 months; 202201 is the release tag, not a data month),
-  modern SLURM + GPU. Only the ~103 MB scheduler CSV is used; the ~2 TB node telemetry is excluded. Runtime target is derived (time_end - time_start);
-  requested walltime = timelimit (minutes; 4294967295 is the SLURM "unlimited" sentinel,
-  normalized to null).
-  Timestamps are Unix epoch seconds; state is a numeric SLURM state code.
-systems: [Supercloud]
+  The slurmdbd scheduler log from the MIT SuperCloud Datacenter Challenge, 202201 release
+  (a release tag, not a data month): about 396k jobs, January–October 2021, including GPU
+  jobs. Only the 103 MB scheduler CSV is used, not the ~2 TB of node telemetry. Runtime is
+  time_end − time_start; requested walltime is timelimit in minutes, with the 4294967295
+  "unlimited" sentinel made null. Timestamps are Unix epoch seconds; state is a numeric
+  Slurm state code.
+systems: [SuperCloud]
 providers: [MIT, "MIT Lincoln Laboratory"]
-citation: { url: "https://dcc.mit.edu/" }
+citation:
+  doi: "10.60489/roda.r3c0pq"
+  url: "https://dcc.mit.edu/"
+  papers:
+    - title: "The MIT Supercloud Dataset (IEEE HPEC, 2021)"
+      doi: "10.1109/HPEC49654.2021.9622850"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [mit, supercloud, slurm, gpu, s3]
 size:

@@ -55,6 +55,7 @@ hpc-oda leaderboard --runs runs --out leaderboard
 | `hpc-oda benchmark -v <recipe.yml>` | Benchmark with verbose progress | Same, with console output |
 | `hpc-oda leaderboard --runs <dir> --out <dir>` | One leaderboard per target, plus every run | `leaderboard.json` + `index.html` + `runs.html` |
 | `hpc-oda models cards` | A card per registered model, generated from the code and the leaderboard | `docs/models/<model>.md` + `README.md` |
+| `hpc-oda datasets cards` | A card per bundled dataset: source and DOI, curation, characterization, windows, ceilings and results, generated | `docs/datasets/cards/<dataset>.md` + `README.md` |
 | `hpc-oda record-hash` | Record source hash for current git commit | `integrity/known_hashes.json` |
 | `hpc-oda browse` | List registry entries (adapters, models, recipes) | Console output |
 | `hpc-oda info <entry_id>` | Show metadata for a registry entry | Console output |

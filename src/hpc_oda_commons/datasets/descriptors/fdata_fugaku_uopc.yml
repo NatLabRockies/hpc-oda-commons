@@ -3,18 +3,18 @@ schema_version: oda.dataset.v0.1.0
 name: F-DATA (Fugaku Jobs, Dec 2023–Apr 2024, UoPC window)
 version: 1.0.0
 description: >
-  Fujitsu/Fugaku job records from F-DATA (RIKEN R-CCS / University of Bologna), curated
-  for job power prediction. This is the five-month window (2023-12 through 2024-04) the
-  UoPC paper evaluates on (Antici et al., IEEE 11017729), tested from 2024-02-01. It is a
-  separate dataset from `dataset.fdata_fugaku` on purpose: the two cover
-  different months, and sharing one descriptor would mean sharing one prepared table, so
-  preparing either window would overwrite the other's. Power targets are avgpcon and
-  maxpcon (watts, whole job), also given per requested node as avgpcon_per_node and
-  maxpcon_per_node, the columns every model predicts. Each row
-  also carries F-DATA's precomputed job `embedding`, which UoPC uses as its main feature.
+  Job records of Fugaku (Fujitsu A64FX) from F-DATA, by RIKEN R-CCS and the University of
+  Bologna: December 2023–April 2024, the months the UoPC paper evaluates on. Power is
+  mapped whole-job (avgpcon, maxpcon, in watts) and per requested node (avgpcon_per_node,
+  maxpcon_per_node). Each row also carries F-DATA's precomputed job embedding.
 systems: [Fugaku]
 providers: ["RIKEN R-CCS", "University of Bologna"]
-citation: { doi: "10.5281/zenodo.11467483", url: "https://zenodo.org/records/11467483" }
+citation:
+  doi: "10.5281/zenodo.11467483"
+  url: "https://zenodo.org/records/11467483"
+  papers:
+    - title: "F-DATA: A Fugaku Workload Dataset for Job-centric Predictive Modelling in HPC Systems (Scientific Data, 2025)"
+      doi: "10.1038/s41597-025-05633-1"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [fugaku, a64fx, fujitsu, arm, power, uopc]
 size:

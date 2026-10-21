@@ -3,19 +3,16 @@ schema_version: oda.dataset.v0.1.0
 name: NLR Kestrel Jobs (anonymized)
 version: 1.1.0
 description: >
-  Anonymized SLURM sacct job records from the NLR Kestrel HPC system (H100 GPUs),
-  Aug 2023 - Dec 2025, ~11M jobs, as a zipped Hive-partitioned Parquet dataset. The
-  runtime-prediction target is derived (end_time - start_time); requested walltime =
-  wallclock_req (an Arrow duration). Timestamps are tz-aware and normalized to UTC on
-  decode. user/account are already hashed in the source. Home-lab; freshest corpus.
-  Average job power is mapped too (#209): consumed_energy_raw_joules is Slurm's job
-  energy summed over its nodes, so whole-job average watts = energy / runtime and per
-  node = that / nodes_used (avgpcon, avgpcon_per_node). CPU nodes only: GPU jobs carry
-  no energy. On a shared node Slurm reports the node's energy, which is not the job's,
-  so power is null for a job that shared its node (shared_job_count >= 1, or a shared*
-  partition). 0 J is no reading. Per-node values below the 0.1th or above the 99.9th
-  percentile become null (#216), since a few readings are impossible. Rows are still
-  filtered on runtime only.
+  Anonymized Slurm sacct job records of NLR's Kestrel system (with H100 GPUs), August
+  2023–December 2025 (about 11M jobs), as a zipped Hive-partitioned Parquet dataset.
+  Runtime is end_time − start_time; requested walltime is wallclock_req; timestamps are
+  normalized to UTC. Users and accounts are hashed at source. Average power:
+  consumed_energy_raw_joules is Slurm's job energy summed over its nodes, so whole-job
+  watts are energy ÷ runtime (avgpcon) and per node that ÷ nodes_used (avgpcon_per_node).
+  Only CPU nodes record energy. On a shared node Slurm reports the node's energy, not the
+  job's, so power is null for a job that shared its node (shared_job_count ≥ 1, or a
+  shared* partition). 0 J means no reading. Per-node values outside the 0.1st–99.9th
+  percentiles become null.
 systems: [Kestrel]
 providers: [NLR, "National Laboratory of the Rockies"]
 citation: { doi: "10.7799/3023270", url: "https://data.nlr.gov/submissions/302" }

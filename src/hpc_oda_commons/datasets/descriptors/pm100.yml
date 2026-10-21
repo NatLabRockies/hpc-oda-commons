@@ -3,17 +3,20 @@ schema_version: oda.dataset.v0.1.0
 name: PM100 (Marconi100 Jobs)
 version: 1.1.0
 description: >
-  Per-job SLURM accounting table curated from the Marconi100 "M100 ExaData"
-  job_table (231,238 jobs, May-Oct 2020), with runtime, requested time limit,
-  requested/allocated nodes/cores/GPUs, and per-job power. The runtime-prediction
-  target is run_time (seconds). Power: node_power_consumption is the job's total node
-  power in watts across its allocated nodes, sampled every 20 s (it scales linearly with
-  node count, ~700 W per node). Its mean and maximum give avgpcon/maxpcon, and per
-  allocated node avgpcon_per_node/maxpcon_per_node (#204). Rows are still filtered on
-  runtime only.
+  Per-job Slurm accounting of Marconi100 (CINECA), curated as PM100 from the M100 ExaData
+  job_table: 231,238 jobs, May–October 2020, with runtime, requested time limit, requested
+  and allocated nodes, cores and GPUs, and per-job power. node_power_consumption is the
+  job's total node power in watts across its allocated nodes, sampled every 20 s (about
+  700 W per node). Its mean and maximum give avgpcon and maxpcon, and per allocated node
+  avgpcon_per_node and maxpcon_per_node.
 systems: [Marconi100]
 providers: ["University of Bologna", "CINECA"]
-citation: { doi: "10.5281/zenodo.10127767", url: "https://zenodo.org/records/10127767" }
+citation:
+  doi: "10.5281/zenodo.10127767"
+  url: "https://zenodo.org/records/10127767"
+  papers:
+    - title: "PM100: A Job Power Consumption Dataset of a Large-scale Production HPC System (SC Workshops, 2023)"
+      doi: "10.1145/3624062.3624263"
 license: { spdx: CC-BY-4.0, gated: false }
 tags: [marconi100, slurm, power, benchmark]
 size:

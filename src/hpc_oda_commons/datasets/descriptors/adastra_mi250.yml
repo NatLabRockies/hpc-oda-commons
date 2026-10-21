@@ -3,11 +3,10 @@ schema_version: oda.dataset.v0.1.0
 name: Adastra MI250 Jobs (15 days)
 version: 1.0.0
 description: >
-  SLURM per-job records from Adastra (CINES, HPE Cray EX, AMD MI250), a 15-day
-  window in 2024 (15,285 jobs). Runtime-prediction target = run_time (seconds).
-  Per-job node/CPU/mem power columns are available for a later power phase. Note:
-  the source time_limit column is an absolute epoch deadline (not a requested
-  duration), so requested walltime is intentionally not mapped.
+  Slurm per-job records from Adastra (CINES; HPE Cray EX with AMD MI250 GPUs), a 15-day
+  window in 2024 (15,285 jobs). The source also has per-job node, CPU and memory power
+  columns, which this curation does not map. Its time_limit is an absolute epoch deadline,
+  not a requested duration, so requested walltime is not mapped.
 systems: [Adastra]
 providers: [CINES]
 citation: { doi: "10.5281/zenodo.14007065", url: "https://zenodo.org/records/14007065" }

@@ -14791,7 +14791,7 @@
       "reason": "protocol 'paper_sensitivity' is a study, not the benchmark"
     }
   ],
-  "generated_at": "2026-10-21T13:01:49.774418Z",
+  "generated_at": "2026-10-21T13:26:35.391320Z",
   "runs_dir": "runs",
   "schema_version": "oda.leaderboard.v0.2.0",
   "superseded": [
