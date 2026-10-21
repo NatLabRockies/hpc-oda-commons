@@ -72,6 +72,7 @@ from hpc_oda_commons.qst.commands.datasets import (
 )
 from hpc_oda_commons.qst.commands.embed import embed
 from hpc_oda_commons.qst.commands.info import info
+from hpc_oda_commons.qst.commands.models import models_app
 from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
 from hpc_oda_commons.schema.validator import (
     collect_job_table_type_issues,
@@ -101,6 +102,7 @@ bench_matrix_app = typer.Typer(
     add_completion=False, help="Plan the full model x dataset benchmark for an HPC cluster."
 )
 app.add_typer(bench_matrix_app, name="bench-matrix")
+app.add_typer(models_app, name="models")
 bench_matrix_app.command("plan")(bench_matrix_plan)
 bench_matrix_app.command("slice")(bench_matrix_slice)
 bench_matrix_app.command("stage")(bench_matrix_stage)
