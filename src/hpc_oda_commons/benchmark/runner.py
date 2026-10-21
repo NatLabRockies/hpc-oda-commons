@@ -5,7 +5,8 @@ Benchmark execution logic for HPC ODA Commons models.
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, is_dataclass
+from collections.abc import Callable
+from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any
 
 from tqdm import tqdm
@@ -51,6 +52,10 @@ from hpc_oda_commons.models.job_runtime_moe_xgboost.model import (
 from hpc_oda_commons.models.job_runtime_random_forest.model import (
     JobRuntimeRandomForestConfig,
     JobRuntimeRandomForestModel,
+)
+from hpc_oda_commons.models.job_runtime_signature_memorizer import (
+    JobRuntimeSignatureMemorizerModel,
+    SignatureMemorizerConfig,
 )
 from hpc_oda_commons.models.job_runtime_tfidf_knn.model import (
     JobRuntimeTfidfKnnConfig,
@@ -135,9 +140,11 @@ def run_fixed_baseline(
     *,
     split: dict[str, Any],
     metric_defs: list[dict[str, Any]],
+    verbose: bool = False,
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed train/test split benchmark with the baseline model."""
+    _ = verbose  # one call shape for every runner (RUNNERS); this one has no progress
     target = _target_for(metric_defs)
     train_fraction = float(split.get("train_fraction", 0.8))
     n_train = max(1, int(len(rows) * train_fraction))
@@ -625,11 +632,6 @@ def run_rolling_signature_memorizer(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the signature-memorization baseline."""
-    from hpc_oda_commons.models.job_runtime_signature_memorizer import (
-        JobRuntimeSignatureMemorizerModel,
-        SignatureMemorizerConfig,
-    )
-
     defaults = SignatureMemorizerConfig()
     model = JobRuntimeSignatureMemorizerModel(
         config=SignatureMemorizerConfig(
@@ -825,3 +827,44 @@ def run_rolling_moe_xgboost(
         verbose=verbose,
         capture_artifacts=capture_artifacts,
     )
+
+
+@dataclass(frozen=True)
+class RunnerSpec:
+    """How ``hpc-oda benchmark`` runs one model under one split method.
+
+    ``config`` is the dataclass the runner configures the model with, or None when the
+    recipe's split keys are the runner's only settings. The model cards are generated from
+    this table (#247), so it is the one record of which model runs under which split.
+    """
+
+    run: Callable[..., tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]]
+    config: type | None
+
+
+RUNNERS: dict[tuple[str, str], RunnerSpec] = {
+    ("model.job_runtime_baseline", "fixed"): RunnerSpec(run_fixed_baseline, None),
+    ("model.job_runtime_baseline", "rolling"): RunnerSpec(run_rolling_baseline, None),
+    ("model.job_power_uopc", "fixed"): RunnerSpec(run_fixed_uopc, JobPowerUopcConfig),
+    ("model.job_power_uopc", "rolling"): RunnerSpec(run_rolling_uopc, JobPowerUopcRollingConfig),
+    ("model.job_power_uopc", "cutoff"): RunnerSpec(run_cutoff_uopc, None),
+    ("model.job_runtime_tfidf_knn", "rolling"): RunnerSpec(
+        run_rolling_tfidf_knn, JobRuntimeTfidfKnnConfig
+    ),
+    ("model.job_runtime_embedding_knn", "rolling"): RunnerSpec(
+        run_rolling_embedding_knn, JobRuntimeEmbeddingKnnConfig
+    ),
+    ("model.job_runtime_xgboost", "rolling"): RunnerSpec(
+        run_rolling_xgboost, JobRuntimeXGBoostConfig
+    ),
+    ("model.job_runtime_random_forest", "rolling"): RunnerSpec(
+        run_rolling_random_forest, JobRuntimeRandomForestConfig
+    ),
+    ("model.job_runtime_signature_memorizer", "rolling"): RunnerSpec(
+        run_rolling_signature_memorizer, SignatureMemorizerConfig
+    ),
+    ("model.job_runtime_mlp", "rolling"): RunnerSpec(run_rolling_mlp, JobRuntimeMlpConfig),
+    ("model.job_runtime_moe_xgboost", "rolling"): RunnerSpec(
+        run_rolling_moe_xgboost, MoEXGBoostConfig
+    ),
+}

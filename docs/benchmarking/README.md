@@ -42,7 +42,9 @@ the repo. To refresh it after new results:
 1. Collect every bundle under one `runs/` folder: the power runs, and the runtime fleet's
    bundles from the cluster (`bench-matrix collect`).
 2. Run `hpc-oda leaderboard --runs runs --out site/leaderboard`.
-3. Open a PR. The `leaderboard.json` diff shows what changed; a test keeps absolute paths off
+3. Run `hpc-oda models cards`. The [model cards](../models/README.md) carry each model's
+   results, so they are regenerated from the new leaderboard; a test fails if they're stale.
+4. Open a PR. The `leaderboard.json` diff shows what changed; a test keeps absolute paths off
    the pages.
 
 ## Shared

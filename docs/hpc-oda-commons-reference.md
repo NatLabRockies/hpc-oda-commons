@@ -229,6 +229,7 @@ The CLI is built on Typer and exposed as the `hpc-oda` command. It provides a co
 | `hpc-oda validate <path>` | Validate artifacts against their schemas. Accepts result bundles, manifests, or Parquet files. |
 | `hpc-oda embed <parquet> --out <path>` | Serialize job rows to text and encode them into a dense `embedding` column (for `model.job_runtime_embedding_knn`). Writes an embedded Parquet + provenance manifest. `--model stub` needs no download; real models need the `embed` extra. |
 | `hpc-oda leaderboard --runs <dir> --out <dir>` | One leaderboard per prediction target (a row per model, headroom per dataset, an average), plus `runs.html` listing every bundle and why any was not counted. |
+| `hpc-oda models cards [--out docs/models]` | A card for every registered model, generated from the registry, the benchmark runners, the bundled recipes and the leaderboard. |
 | `hpc-oda record-hash` | Record the current source code hash and git commit in `integrity/known_hashes.json`. Run after tests pass on a clean commit. |
 | `hpc-oda browse` | Browse the registry snapshot. Supports filters: `--tag`, `--type`, `--source`, `--input-schema`, `--output-schema`. |
 | `hpc-oda info <entry_id>` | Display detailed metadata for a registry entry (adapter, model, or recipe). |
@@ -323,7 +324,7 @@ Each ingestion run produces a directory under `data/ingested/<adapter>/<run_id>/
 
 ## 7. Prediction Models
 
-HPC ODA Commons ships eight models: seven for job runtime prediction (baseline, XGBoost, Random Forest, MLP, MoE XGBoost, TF-IDF + kNN, Embedding + kNN) and one for job power prediction (per-user kNN). The runtime models operate on `rows`, a list of dictionaries conforming to the job schema, with `runtime_seconds` as the target field. The XGBoost, Random Forest, and MLP models are rolling-tabular models that share a common base class (`RollingTabularModel`); the shared rolling split (`split.py`) and categorical preprocessing now live in `models/rolling_tabular/`, so they are no longer XGBoost-only.
+HPC ODA Commons ships nine models. **Each has a card, generated from the code: [docs/models](models/README.md)**: what it is, how it runs, what it reads, its settings with their defaults, the recipes that run it, and its leaderboard results. The cards are the reference for those facts; the sections below add background. Eight models (baseline, signature memorizer, XGBoost, XGBoost (MoE), Random Forest, MLP, TF-IDF + kNN, Embedding + kNN) predict whichever target the recipe names, runtime or power; UoPC predicts power only. The runtime models operate on `rows`, a list of dictionaries conforming to the job schema, with `runtime_seconds` as the target field. The XGBoost, Random Forest, and MLP models are rolling-tabular models that share a common base class (`RollingTabularModel`); the shared rolling split (`split.py`) and categorical preprocessing now live in `models/rolling_tabular/`, so they are no longer XGBoost-only.
 
 ### 7.1 Baseline Model (`model.job_runtime_baseline`)
 

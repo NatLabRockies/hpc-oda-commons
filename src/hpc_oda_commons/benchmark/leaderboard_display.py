@@ -4,6 +4,7 @@ Shared formatting helpers for leaderboard HTML and CLI views.
 
 from __future__ import annotations
 
+import functools
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,84 @@ POWER_TARGET_UNITS: dict[str, str] = {
     "avgpcon": "W",
     "maxpcon": "W",
 }
+
+
+@functools.cache
+def model_titles() -> dict[str, str]:
+    """Each registered model's title for readers: its registry ``name`` (#247).
+
+    The ids stay as they are in recipes and bundles; the job_runtime_ prefix predates power
+    and is not a reader's concern. The registry is the one place a model's name is kept.
+    """
+    from hpc_oda_commons.registry.snapshot import load_registry_index
+
+    return {
+        entry.id: entry.name
+        for entry in load_registry_index().entries
+        if entry.entry_type == "model"
+    }
+
+
+def card_name(model_id: str) -> str:
+    """A model card's file name under ``docs/models/``: the id without ``model.`` (#247)."""
+    return f"{model_id.removeprefix('model.')}.md"
+
+
+def model_title(model_id: str) -> str:
+    """A model's title for readers; an unregistered model shows its short id."""
+    return model_titles().get(str(model_id), short_registry_id(str(model_id), prefix="model."))
+
+
+# What a reader sees for each dataset on the leaderboard (#247): the system's name, as its
+# dataset card records it. The power track's F-DATA window shares Fugaku's.
+DATASET_TITLES: dict[str, str] = {
+    "alcf_djc_aurora": "Aurora",
+    "alcf_djc_polaris": "Polaris",
+    "alcf_djc_theta": "Theta",
+    "atlas_mustang": "Mustang",
+    "atlas_opentrinity": "Trinity",
+    "ccin2p3_2024": "CC-IN2P3",
+    "fdata_fugaku": "Fugaku",
+    "fdata_fugaku_uopc": "Fugaku",
+    "fresco_anvil": "Anvil",
+    "fresco_conte": "Conte",
+    "fresco_stampede1": "Stampede",
+    "lassen": "Lassen",
+    "mit_supercloud": "SuperCloud",
+    "nlr_eagle": "Eagle",
+    "nlr_kestrel": "Kestrel",
+    "pm100": "Marconi100",
+    "pwa_cea_curie": "Curie",
+    "pwa_hpc2n": "Seth",
+    "pwa_kit_fh2": "ForHLR II",
+    "pwa_metacentrum": "MetaCentrum",
+    "pwa_ricc": "RICC",
+    "pwa_sdsc_blue": "Blue Horizon",
+}
+
+
+def dataset_title(dataset: str) -> str:
+    """A dataset's title for readers; an unlisted dataset shows its id."""
+    return DATASET_TITLES.get(str(dataset), str(dataset))
+
+
+# The published pages link into the repo on GitHub (#247).
+REPO_BLOB_URL = "https://github.com/NatLabRockies/hpc-oda-commons/blob/main/"
+# A dataset's page is its card. Power's F-DATA window has no card of its own; the power
+# methodology's roster describes it. Power's other datasets are the same systems as runtime
+# cards, over other dates.
+DATASET_DOCS: dict[str, str] = {
+    "fdata_fugaku_uopc": "docs/benchmarking/power/methodology.md#dataset-roster",
+}
+
+
+def dataset_doc(dataset: str) -> str | None:
+    """The repo path of a dataset's page, or None for a dataset that has no title."""
+    dataset = str(dataset)
+    if dataset not in DATASET_TITLES:
+        return None
+    return DATASET_DOCS.get(dataset, f"docs/benchmarking/datasets/{dataset}.md")
+
 
 LOWER_IS_BETTER = frozenset({"mae", "rmse", "mape", "underprediction_ratio"})
 HIGHER_IS_BETTER = frozenset({"r2"})
@@ -251,6 +330,7 @@ def prepare_leaderboard_rows(
                 ),
                 "model_id": str(model.get("id", "")),
                 "model_short": short_registry_id(str(model.get("id", "")), prefix="model."),
+                "model_title": model_title(str(model.get("id", ""))),
                 "model_version": str(model.get("version", "")),
                 "dataset_label": short_dataset_label(
                     str(dataset.get("id", "")),

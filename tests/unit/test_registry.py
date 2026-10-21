@@ -89,7 +89,7 @@ def test_browse_command_outputs_entries(capsys: pytest.CaptureFixture[str]) -> N
 def test_info_command_outputs_details(capsys: pytest.CaptureFixture[str]) -> None:
     info("model.job_runtime_baseline", snapshot=None)
     captured = capsys.readouterr().out
-    assert "Job Runtime Baseline" in captured
+    assert "Baseline (window mean)" in captured
 
 
 def test_dataset_entry_type_supported() -> None:

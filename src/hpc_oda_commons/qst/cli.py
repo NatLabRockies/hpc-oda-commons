@@ -21,20 +21,7 @@ from hpc_oda_commons.benchmark.run_extras import (
     parse_run_extras,
     write_run_extras,
 )
-from hpc_oda_commons.benchmark.runner import (
-    run_cutoff_uopc,
-    run_fixed_baseline,
-    run_fixed_uopc,
-    run_rolling_baseline,
-    run_rolling_embedding_knn,
-    run_rolling_mlp,
-    run_rolling_moe_xgboost,
-    run_rolling_random_forest,
-    run_rolling_signature_memorizer,
-    run_rolling_tfidf_knn,
-    run_rolling_uopc,
-    run_rolling_xgboost,
-)
+from hpc_oda_commons.benchmark.runner import RUNNERS
 from hpc_oda_commons.benchmark.table_rows import table_to_rows
 from hpc_oda_commons.datasets.synthetic import (
     generate_tiny_runtime_dataset,
@@ -85,6 +72,7 @@ from hpc_oda_commons.qst.commands.datasets import (
 )
 from hpc_oda_commons.qst.commands.embed import embed
 from hpc_oda_commons.qst.commands.info import info
+from hpc_oda_commons.qst.commands.models import models_app
 from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
 from hpc_oda_commons.schema.validator import (
     collect_job_table_type_issues,
@@ -114,6 +102,7 @@ bench_matrix_app = typer.Typer(
     add_completion=False, help="Plan the full model x dataset benchmark for an HPC cluster."
 )
 app.add_typer(bench_matrix_app, name="bench-matrix")
+app.add_typer(models_app, name="models")
 bench_matrix_app.command("plan")(bench_matrix_plan)
 bench_matrix_app.command("slice")(bench_matrix_slice)
 bench_matrix_app.command("stage")(bench_matrix_stage)
@@ -801,102 +790,18 @@ def benchmark(
         )
 
     train_eval_started = time.perf_counter()
-    if model_id == "model.job_runtime_baseline" and split_method == "fixed":
-        metrics, metrics_payload, artifacts = run_fixed_baseline(
-            rows, split=split, metric_defs=metric_defs, capture_artifacts=capture_artifacts
-        )
-    elif model_id == "model.job_power_uopc" and split_method == "fixed":
-        metrics, metrics_payload, artifacts = run_fixed_uopc(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    elif model_id == "model.job_power_uopc" and split_method == "rolling":
-        metrics, metrics_payload, artifacts = run_rolling_uopc(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    elif model_id == "model.job_power_uopc" and split_method == "cutoff":
-        metrics, metrics_payload, artifacts = run_cutoff_uopc(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    elif model_id == "model.job_runtime_baseline" and split_method == "rolling":
-        metrics, metrics_payload, artifacts = run_rolling_baseline(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    elif model_id == "model.job_runtime_tfidf_knn" and split_method == "rolling":
-        metrics, metrics_payload, artifacts = run_rolling_tfidf_knn(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    elif model_id == "model.job_runtime_embedding_knn" and split_method == "rolling":
-        metrics, metrics_payload, artifacts = run_rolling_embedding_knn(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    elif model_id == "model.job_runtime_xgboost" and split_method == "rolling":
-        metrics, metrics_payload, artifacts = run_rolling_xgboost(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    elif model_id == "model.job_runtime_random_forest" and split_method == "rolling":
-        metrics, metrics_payload, artifacts = run_rolling_random_forest(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    elif model_id == "model.job_runtime_signature_memorizer" and split_method == "rolling":
-        metrics, metrics_payload, artifacts = run_rolling_signature_memorizer(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    elif model_id == "model.job_runtime_mlp" and split_method == "rolling":
-        metrics, metrics_payload, artifacts = run_rolling_mlp(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    elif model_id == "model.job_runtime_moe_xgboost" and split_method == "rolling":
-        metrics, metrics_payload, artifacts = run_rolling_moe_xgboost(
-            rows,
-            split=split,
-            metric_defs=metric_defs,
-            verbose=verbose,
-            capture_artifacts=capture_artifacts,
-        )
-    else:
+    runner_spec = RUNNERS.get((model_id, split_method))
+    if runner_spec is None:
         raise typer.BadParameter(
             f"Unsupported model/split combination: model={model_id}, split.method={split_method}"
         )
+    metrics, metrics_payload, artifacts = runner_spec.run(
+        rows,
+        split=split,
+        metric_defs=metric_defs,
+        verbose=verbose,
+        capture_artifacts=capture_artifacts,
+    )
     total_train_eval_seconds = round(time.perf_counter() - train_eval_started, 3)
 
     prov = build_provenance(

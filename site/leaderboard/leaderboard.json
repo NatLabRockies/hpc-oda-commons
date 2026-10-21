@@ -14791,7 +14791,7 @@
       "reason": "protocol 'paper_sensitivity' is a study, not the benchmark"
     }
   ],
-  "generated_at": "2026-10-21T09:29:26.649850Z",
+  "generated_at": "2026-10-21T10:55:02.295240Z",
   "runs_dir": "runs",
   "schema_version": "oda.leaderboard.v0.2.0",
   "superseded": [
@@ -14938,6 +14938,12 @@
   ],
   "tables": [
     {
+      "average_note": "",
+      "caption": "30 days in 6-hour windows; each model's lookback (10, 30 or 120 days) chosen walk-forward.",
+      "dataset_notes": {
+        "alcf_djc_polaris": "The baseline's walk-forward pick scores 14% worse here than its best single lookback, so headroom reads high: XGBoost (MoE)'s 67% would be 58% against the better baseline.",
+        "atlas_opentrinity": "The 120-day lookback trained on the ~50 days of history this dataset's slice holds."
+      },
       "datasets": [
         "alcf_djc_aurora",
         "alcf_djc_polaris",
@@ -14962,7 +14968,6 @@
       ],
       "headroom": true,
       "key": "runtime",
-      "note": "30-day test, 10/30/120-day lookbacks. On alcf_djc_polaris the baseline's walk-forward pick scores 14% worse than its best single lookback, so headroom there reads high.",
       "roster": [
         "alcf_djc_aurora",
         "alcf_djc_polaris",
@@ -16440,6 +16445,9 @@
       "title": "Job runtime"
     },
     {
+      "average_note": "",
+      "caption": "89 daily windows, 60 days of history, power per node the job ran on.",
+      "dataset_notes": {},
       "datasets": [
         "fdata_fugaku_uopc",
         "nlr_eagle",
@@ -16448,7 +16456,6 @@
       ],
       "headroom": true,
       "key": "avgpcon_per_node",
-      "note": "",
       "roster": [
         "fdata_fugaku_uopc",
         "nlr_eagle",
@@ -16773,13 +16780,15 @@
       "title": "Average power per node"
     },
     {
+      "average_note": "F-DATA and PM100 define peak differently; the average mixes the two.",
+      "caption": "89 daily windows, 60 days of history, power per node the job ran on.",
+      "dataset_notes": {},
       "datasets": [
         "fdata_fugaku_uopc",
         "pm100"
       ],
       "headroom": true,
       "key": "maxpcon_per_node",
-      "note": "F-DATA and PM100 define peak differently; the average mixes the two.",
       "roster": [
         "fdata_fugaku_uopc",
         "pm100"
