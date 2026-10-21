@@ -74,6 +74,7 @@ from hpc_oda_commons.qst.commands.datasets import (
 from hpc_oda_commons.qst.commands.embed import embed
 from hpc_oda_commons.qst.commands.info import info
 from hpc_oda_commons.qst.commands.models import models_app
+from hpc_oda_commons.qst.commands.recipes import recipes_app
 from hpc_oda_commons.qst.ingest_suggestions import build_ingest_suggestions
 from hpc_oda_commons.schema.validator import (
     collect_job_table_type_issues,
@@ -105,6 +106,7 @@ bench_matrix_app = typer.Typer(
 )
 app.add_typer(bench_matrix_app, name="bench-matrix")
 app.add_typer(models_app, name="models")
+app.add_typer(recipes_app, name="recipes")
 bench_matrix_app.command("plan")(bench_matrix_plan)
 bench_matrix_app.command("slice")(bench_matrix_slice)
 bench_matrix_app.command("stage")(bench_matrix_stage)
@@ -1040,6 +1042,14 @@ def leaderboard(
             help="Directory of error ceilings and dataset cards, for headroom and rosters.",
         ),
     ] = Path("docs/benchmarking/datasets"),
+    recipes: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--recipes",
+            help="A folder of power recipes from `hpc-oda recipes write`, whose runs count "
+            "(repeatable).",
+        ),
+    ] = None,
 ) -> None:
     """
     Generate leaderboard.json, index.html and runs.html from result bundles under runs/.
@@ -1050,7 +1060,9 @@ def leaderboard(
     runs_dir = runs if runs.is_absolute() else Path.cwd() / runs
     out_dir = out if out.is_absolute() else Path.cwd() / out
 
-    leaderboard_data = build_leaderboard(runs_dir, ceilings_dir=ceilings, cards_dir=ceilings)
+    leaderboard_data = build_leaderboard(
+        runs_dir, ceilings_dir=ceilings, cards_dir=ceilings, recipe_dirs=recipes or ()
+    )
     json_path = write_leaderboard(leaderboard_data, out_dir)
     html_path, runs_path = write_leaderboard_pages(leaderboard_data, out_dir)
 

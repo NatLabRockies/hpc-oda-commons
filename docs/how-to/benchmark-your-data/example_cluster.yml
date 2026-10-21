@@ -1,0 +1,56 @@
+# The descriptor for the made-up export that make_example_export.py writes: a template for
+# your own. Copy it, change the names, the file and the columns, and keep what applies.
+dataset_id: dataset.example_cluster
+schema_version: oda.dataset.v0.1.0
+name: Example Cluster Jobs (made-up sacct export)
+version: 1.0.0
+description: >
+  A made-up Slurm accounting export of 240 days of jobs from 30 users, written by
+  make_example_export.py, with each job's consumed energy. Use it to try the guide.
+systems: [Example Cluster]
+providers: ["Your site"]
+license: { spdx: LicenseRef-private, gated: true }
+tags: [slurm, sacct, example]
+
+source:
+  # Your data is never downloaded: it is a file you already have. prepare checks its
+  # checksum, so the prepared table is tied to this exact export.
+  kind: manual
+  instructions: >
+    Run make_example_export.py, then pass its output folder to
+    `hpc-oda datasets prepare <this file> --from <folder>`.
+  resources:
+    - filename: example_cluster_sacct.txt
+      sha256: 22e556c96d3b64e4321fa42e65c0fdb1ff8d8cccf8ce872639c07d04b39b9814
+      bytes: 1306624
+
+decode:
+  format: csv
+  options: { delimiter: "|" }
+
+targets:
+  - schema: oda.job.v0.2.0
+    mapping:
+      job_id: { from: JobID }
+      submit_time: { from: Submit, type: timestamp, format: iso8601 }
+      start_time: { from: Start, type: timestamp, format: iso8601 }
+      end_time: { from: End, type: timestamp, format: iso8601 }
+      runtime_seconds: { from: ElapsedRaw, type: duration, unit: seconds }
+      requested_seconds: { from: TimelimitRaw, type: duration, unit: minutes }
+      # Hashed as they are read, so no user or account name reaches the prepared table.
+      # Set HPC_ODA_HASH_SALT to salt the hashes.
+      user: { from: User, type: hash_identifier }
+      account: { from: Account, type: hash_identifier }
+      partition: { from: Partition }
+      qos: { from: QOS }
+      name: { from: JobName }
+      num_nodes_req: { from: ReqNodes, type: integer }
+      num_nodes_alloc: { from: NNodes, type: integer }
+      num_cores_req: { from: ReqCPUS, type: integer }
+      job_state: { from: State }
+      # Power, from Slurm's energy counter: joules over the job's nodes. 0 means no reading.
+      energy_joules: { from: ConsumedEnergyRaw, type: energy, unit: j, null_values: [0] }
+      avgpcon: { derive: "energy_joules / runtime_seconds" }
+      avgpcon_per_node: { derive: "avgpcon / num_nodes_alloc" }
+    filter: { require_nonnull: [runtime_seconds] }
+    output: { id: example_cluster, path: data/datasets/example_cluster/data.parquet }

@@ -7,6 +7,7 @@ from __future__ import annotations
 import ast
 import json
 import re
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -107,6 +108,7 @@ def build_leaderboard(
     *,
     ceilings_dir: Path = DEFAULT_CEILINGS_DIR,
     cards_dir: Path = DEFAULT_CEILINGS_DIR,
+    recipe_dirs: Sequence[Path] = (),
 ) -> dict[str, Any]:
     """The per-target leaderboards, and one entry per benchmark cell -- the newest bundle wins.
 
@@ -114,6 +116,7 @@ def build_leaderboard(
     column per dataset, scored by headroom against ``ceilings_dir``'s error ceilings, from the
     bundles that ran that target's benchmark protocol. ``excluded`` names every other bundle
     and why. The runtime roster and protocol come from the dataset cards in ``cards_dir``.
+    Power runs count from the bundled recipes and any in ``recipe_dirs`` (#255).
 
     Bundles are written to ``runs/<dataset>/<model>/benchmark-<timestamp>/``, so a cell that
     runs twice leaves two of them. Re-running a cell is the normal repair path, and emitting
@@ -142,6 +145,7 @@ def build_leaderboard(
         [(entry, payloads[str(entry["bundle_dir"])]) for entry in entries],
         ceilings_dir=ceilings_dir,
         cards=_load_cards_or_none(cards_dir),
+        recipe_dirs=recipe_dirs,
     )
     newest: dict[tuple[Any, ...], dict[str, Any]] = {}
     superseded: list[dict[str, Any]] = []
