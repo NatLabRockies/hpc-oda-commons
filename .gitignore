@@ -102,6 +102,7 @@ temp/
 /results/
 /runs/
 /outputs/
+/reports/
 
 # =========================
 # Data artifacts (keep manifests, ignore big/binary by default)
@@ -129,8 +130,6 @@ temp/
 *.xz
 
 # Allow specific tiny demo artifacts if you choose to keep them in-repo:
-!datasets/synthetic/job-failure/tiny/data.parquet
-!tests/fixtures/expected_job_table.parquet
 !src/hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet
 
 # =========================

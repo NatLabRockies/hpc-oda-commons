@@ -14,7 +14,7 @@ repos:
 
   # Ruff: lint + format (fast, deterministic)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.7
+    rev: v0.17.1
     hooks:
       - id: ruff
         args: ["--fix"]
