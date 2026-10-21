@@ -1112,7 +1112,10 @@ def test_benchmark_routes_a_uopc_cutoff_recipe_to_the_paper_protocol(
         metrics = {"mae": 3.0, "rmse": 4.0}
         return metrics, {**metrics, "definitions": metric_defs}, runner.BenchmarkArtifacts()
 
-    monkeypatch.setattr(cli, "run_cutoff_uopc", fake_run_cutoff_uopc)
+    key = ("model.job_power_uopc", "cutoff")
+    monkeypatch.setitem(
+        runner.RUNNERS, key, runner.RunnerSpec(fake_run_cutoff_uopc, runner.RUNNERS[key].config)
+    )
     monkeypatch.chdir(tmp_path)
 
     table_path = tmp_path / "power.parquet"
