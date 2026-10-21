@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 118,
+    "scored_windows": 98
   },
-  "scored_rows": 28248,
+  "scored_rows": 22753,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "account",
     "award_category",
@@ -18,94 +21,94 @@
     "user"
   ],
   "floor": {
-    "mae": 1989.3157391673747,
-    "rmse": 10625.883177253678,
-    "signatures": 3912,
+    "mae": 1904.9071770755504,
+    "rmse": 10270.004385800716,
+    "signatures": 3220,
     "group_sizes": {
       "min": 1,
       "median": 2.0,
-      "max": 797,
-      "singleton_row_share": 0.05451713395638629
+      "max": 788,
+      "singleton_row_share": 0.057311123807849515
     }
   },
   "feature_cost": [
     {
       "feature": "machine",
-      "floor_mae_without": 1989.3157391673747,
+      "floor_mae_without": 1904.9071770755504,
       "cost": 0.0
     },
     {
       "feature": "num_cores_req",
-      "floor_mae_without": 1989.3157391673747,
+      "floor_mae_without": 1904.9071770755504,
       "cost": 0.0
     },
     {
       "feature": "num_nodes_req",
-      "floor_mae_without": 1989.3157391673747,
+      "floor_mae_without": 1904.9071770755504,
       "cost": 0.0
     },
     {
       "feature": "science_field",
-      "floor_mae_without": 1989.3157391673747,
+      "floor_mae_without": 1904.9071770755504,
       "cost": 0.0
     },
     {
-      "feature": "award_category",
-      "floor_mae_without": 1989.5962900028321,
-      "cost": 0.2805508354574613
+      "feature": "account",
+      "floor_mae_without": 1905.2051158089043,
+      "cost": 0.29793873335393073
     },
     {
-      "feature": "account",
-      "floor_mae_without": 1989.6719059756442,
-      "cost": 0.35616680826956326
+      "feature": "award_category",
+      "floor_mae_without": 1905.2914340966026,
+      "cost": 0.38425702105223536
     },
     {
       "feature": "queue",
-      "floor_mae_without": 2029.4364202775419,
-      "cost": 40.1206811101672
+      "floor_mae_without": 1945.1774711027117,
+      "cost": 40.2702940271613
     },
     {
       "feature": "user",
-      "floor_mae_without": 2077.8329085244973,
-      "cost": 88.51716935712261
+      "floor_mae_without": 1975.9814969454578,
+      "cost": 71.07431986990741
     },
     {
       "feature": "requested_seconds",
-      "floor_mae_without": 2718.39170914755,
-      "cost": 729.0759699801754
+      "floor_mae_without": 2563.1647255306993,
+      "cost": 658.2575484551489
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 3572.316323279524,
-        "coverage": 0.5621636930048145,
-        "rows": 28248
+        "mae": 3453.205467410891,
+        "coverage": 0.5769349096822397,
+        "rows": 22753
       },
       "10d": {
-        "mae": 3419.881531435854,
-        "coverage": 0.7343528745397905,
-        "rows": 28248
+        "mae": 3364.4961983035205,
+        "coverage": 0.75080209203182,
+        "rows": 22753
       },
       "30d": {
-        "mae": 3306.1641178136506,
-        "coverage": 0.7714882469555366,
-        "rows": 28248
+        "mae": 3241.7337493956843,
+        "coverage": 0.7926866786797345,
+        "rows": 22753
       },
       "60d": {
-        "mae": 3297.770691730388,
-        "coverage": 0.780373831775701,
-        "rows": 28248
+        "mae": 3238.932052916099,
+        "coverage": 0.8019162308267042,
+        "rows": 22753
       },
       "120d": {
-        "mae": 3451.1475325686774,
-        "coverage": 0.7864627584253753,
-        "rows": 28248
+        "mae": 3424.69373269459,
+        "coverage": 0.8081132158396694,
+        "rows": 22753
       },
       "all": {
-        "mae": 3452.432225290286,
-        "coverage": 0.7871353724157463,
-        "rows": 28248
+        "mae": 3425.836834703116,
+        "coverage": 0.8089482705577287,
+        "rows": 22753
       }
     },
     "best_lookback": "60d",
@@ -114,18 +117,18 @@
       "num_cores_req",
       "num_nodes_req",
       "science_field",
-      "award_category",
       "account",
+      "award_category",
       "queue",
       "user",
       "requested_seconds"
     ],
     "backoff_at_best": {
-      "mae": 3304.128699376947,
-      "coverage": 0.780373831775701,
-      "rows": 28248
+      "mae": 3231.0642113127938,
+      "coverage": 0.8019162308267042,
+      "rows": 22753
     }
   },
   "dataset_id": "alcf_djc_aurora",
-  "generated_at": "2026-08-26T22:39:33.433857Z"
+  "generated_at": "2026-10-21T03:08:47.063362Z"
 }

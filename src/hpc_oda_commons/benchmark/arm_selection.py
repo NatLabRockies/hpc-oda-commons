@@ -51,6 +51,20 @@ class ArmSelectionError(ValueError):
     """The arms cannot be compared as given."""
 
 
+def legacy_arm_config(metrics: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Stand in for ``run_config`` on bundles written before it existed (#197).
+
+    Those bundles record three split fields in their summary and nothing else, so the training
+    lookback is the only axis they can express. Falling back to it keeps every result measured
+    so far rankable instead of stranding it behind a format change.
+    """
+    summary = metrics.get("summary") or {}
+    lookback = summary.get("training_lookback_days")
+    if lookback is None:
+        return None
+    return {"training_lookback_days": int(lookback)}
+
+
 # Knobs that change how a run executes but not what it computes. If two bundles differ only
 # here they are the same configuration measured twice, not two arms -- so they are excluded
 # before deciding what distinguishes a cell's bundles. (``window_n_jobs`` can shift a metric

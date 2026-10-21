@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 120,
+    "scored_windows": 100
   },
-  "scored_rows": 11586,
+  "scored_rows": 9879,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "num_cores_req",
     "queue",
@@ -13,69 +16,69 @@
     "user"
   ],
   "floor": {
-    "mae": 784.0222682547902,
-    "rmse": 4549.166664013524,
-    "signatures": 766,
+    "mae": 696.2995242433444,
+    "rmse": 3875.2089994705757,
+    "signatures": 640,
     "group_sizes": {
       "min": 1,
       "median": 2.0,
-      "max": 1030,
-      "singleton_row_share": 0.025375453133091662
+      "max": 943,
+      "singleton_row_share": 0.02530620508148598
     }
   },
   "feature_cost": [
     {
       "feature": "queue",
-      "floor_mae_without": 820.0237355428966,
-      "cost": 36.00146728810637
+      "floor_mae_without": 721.9815770827007,
+      "cost": 25.682052839356288
     },
     {
       "feature": "num_cores_req",
-      "floor_mae_without": 848.509925772484,
-      "cost": 64.48765751769383
+      "floor_mae_without": 759.1637817592874,
+      "cost": 62.864257515942995
     },
     {
       "feature": "requested_seconds",
-      "floor_mae_without": 1000.3528396340411,
-      "cost": 216.33057137925084
+      "floor_mae_without": 907.8953335357829,
+      "cost": 211.5958092924385
     },
     {
       "feature": "user",
-      "floor_mae_without": 1076.297773174521,
-      "cost": 292.2755049197307
+      "floor_mae_without": 978.5421601376657,
+      "cost": 282.2426358943213
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 2386.744001380977,
-        "coverage": 0.6849646124633177,
-        "rows": 11586
+        "mae": 2317.3582346391336,
+        "coverage": 0.6971353375847757,
+        "rows": 9879
       },
       "10d": {
-        "mae": 1798.524555498015,
-        "coverage": 0.8339375107888831,
-        "rows": 11586
+        "mae": 1794.0733879947363,
+        "coverage": 0.844721125620002,
+        "rows": 9879
       },
       "30d": {
-        "mae": 1738.3792076644227,
-        "coverage": 0.86078025202831,
-        "rows": 11586
+        "mae": 1673.183824273712,
+        "coverage": 0.8648648648648649,
+        "rows": 9879
       },
       "60d": {
-        "mae": 1701.3821422406352,
-        "coverage": 0.8736406007250129,
-        "rows": 11586
+        "mae": 1628.1082599453387,
+        "coverage": 0.8769106184836521,
+        "rows": 9879
       },
       "120d": {
-        "mae": 1670.6083203866735,
-        "coverage": 0.8835663732090454,
-        "rows": 11586
+        "mae": 1589.719252960826,
+        "coverage": 0.8875392246178763,
+        "rows": 9879
       },
       "all": {
-        "mae": 1682.9215432418437,
-        "coverage": 0.8836526842741239,
-        "rows": 11586
+        "mae": 1604.2118635489421,
+        "coverage": 0.8876404494382022,
+        "rows": 9879
       }
     },
     "best_lookback": "120d",
@@ -86,11 +89,11 @@
       "user"
     ],
     "backoff_at_best": {
-      "mae": 1652.048808907302,
-      "coverage": 0.8835663732090454,
-      "rows": 11586
+      "mae": 1565.0772345379087,
+      "coverage": 0.8875392246178763,
+      "rows": 9879
     }
   },
   "dataset_id": "pwa_sdsc_blue",
-  "generated_at": "2026-08-26T22:51:42.610884Z"
+  "generated_at": "2026-10-21T03:09:05.639531Z"
 }

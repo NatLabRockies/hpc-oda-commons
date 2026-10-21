@@ -17,6 +17,7 @@ from hpc_oda_commons.benchmark.arm_selection import (
     Arm,
     ArmSelectionError,
     derive_arm_keys,
+    legacy_arm_config,
     walk_forward,
 )
 from hpc_oda_commons.benchmark.leaderboard_display import infer_prediction_target
@@ -182,20 +183,6 @@ def _arm_sort_key(arm_key: str) -> tuple:
     return tuple(parts)
 
 
-def _legacy_arm_config(metrics: dict[str, Any]) -> dict[str, Any] | None:
-    """Stand in for ``run_config`` on bundles written before it existed (#197).
-
-    Those bundles record three split fields in their summary and nothing else, so the training
-    lookback is the only axis they can express. Falling back to it keeps every result measured
-    so far rankable instead of stranding it behind a format change.
-    """
-    summary = metrics.get("summary") or {}
-    lookback = summary.get("training_lookback_days")
-    if lookback is None:
-        return None
-    return {"training_lookback_days": int(lookback)}
-
-
 _LEGACY_SET_REPR = re.compile(r"^(?:frozenset|set)\((.*)\)$", re.DOTALL)
 
 
@@ -249,7 +236,7 @@ def build_arm_ranking(
             _result, metrics, _prov = read_result_bundle(bundle_dir, validate=False)
         except Exception:
             continue
-        config = metrics.get("run_config") or _legacy_arm_config(metrics)
+        config = metrics.get("run_config") or legacy_arm_config(metrics)
         if config is None:
             continue
         entry["_config"] = _normalize_legacy_sets(config)

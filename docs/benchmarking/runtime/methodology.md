@@ -239,13 +239,16 @@ without it a floor cannot be judged tight or vacuous.
 reproducible across machines: no fitting, no BLAS, no thread-order summation. It is not
 subject to the caveat in [`known-issues.md`](../../known-issues.md).
 
-**What it revealed.** Across the 20 benchmark datasets the best model captures a median **75%**
-of the available headroom, and the ordering inverts the raw leaderboard — `pwa_hpc2n` looks
-mediocre at MAE 5,821 but has captured 94%, while `nlr_kestrel` sits last at 51%. Alongside the
-bound, the tool measures *causal memorization* — predict from same-signature jobs that finished
-earlier — which is a deployable strategy rather than a bound, and which beats all six fitted
-models on 9 of 20 datasets (#171). Sweeping its lookback also showed the fixed
-`training_lookback_days: 120` is optimal for only 6 of 20 datasets (#170).
+**What it revealed.** On the fleet of 2026-08-26, scored walk-forward ([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)), the
+best model captures a median **77%** of the available headroom across the 20 benchmark
+datasets. It ranges from 21% on `nlr_eagle` to 90% on `pwa_hpc2n`, which raw MAE cannot show: the two
+best MAEs, 6,956 s and 4,535 s, are within a factor of two, but one has captured a fifth of what
+was available and the other nine-tenths. MoE XGBoost is the best model on 11 datasets, the signature memorizer on 6 and
+XGBoost on 3. Alongside the bound, the tool measures *causal memorization* — predict from
+same-signature jobs that finished earlier — which is a deployable strategy rather than a bound;
+on the 2026-08-25 fleet run it beat all six fitted models on 9 of 20 datasets (#171). Sweeping
+its lookback also showed that a fixed `training_lookback_days: 120` was optimal for only 6 of 20
+datasets (#170).
 
 Per-dataset results are tracked as `docs/benchmarking/datasets/<dataset>.ceiling.json`, with a cross-dataset
 summary in [`ceilings.md`](ceilings.md).
@@ -253,10 +256,20 @@ summary in [`ceilings.md`](ceilings.md).
 **The leaderboard** (#237) has one runtime table: a row per model, a column per dataset,
 each cell the walk-forward policy's MAE. A cell shows headroom captured, and a model an
 average across datasets, only when the floor, the baseline and the cell cover the same jobs
-([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)): the card's windows past the 20-window burn-in. Ceilings computed
-with `--card` and the default `--skip-windows` do. The ceilings from 2026-08-26 were computed
-on 120 × 6 h windows without a burn-in, so until they are regenerated the runtime cells show
-MAE alone ([reading the leaderboard](../../how-to/interpret-results.md#reading-the-leaderboard)).
+([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)).
+- **What counts today** is the fleet that has run (plan `20260826-231908`): 30 days of test
+  in 120 × 6 h windows, at 10, 30 and 120 days of lookback, scored past the 20-window burn-in.
+  The cards ask for 90 days ([#191](https://github.com/NatLabRockies/hpc-oda-commons/issues/191)), but no fleet has run that yet; the leaderboard
+  moves to the cards' windows when one does, and the ceilings are regenerated with `--card`.
+- **The ceilings match it** (computed 2026-10-21 with `--n-windows 120 --skip-windows 20`):
+  every one of the 140 cells covers exactly its ceiling's jobs.
+- **Two caveats.** On `alcf_djc_polaris` the baseline's walk-forward pick scores 14% worse
+  than its best single lookback (7,295 s against 6,295 s), so headroom there reads high: MoE
+  XGBoost's 67% would be about 58% against the better baseline. On the other 19 datasets the
+  gap is at most 5% of the headroom. And on `atlas_opentrinity` the "120-day" lookback trained
+  on the ~50 days its slice holds ([#191](https://github.com/NatLabRockies/hpc-oda-commons/issues/191)).
+
+See [reading the leaderboard](../../how-to/interpret-results.md#reading-the-leaderboard).
 
 **Deliberately not included:** leave-one-out. It is neither the floor (the optimal function has
 no "leave out" in its definition) nor achievable (a row's peers include jobs that ran *after*

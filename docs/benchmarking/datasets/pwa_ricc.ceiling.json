@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 116,
+    "scored_windows": 96
   },
-  "scored_rows": 117639,
+  "scored_rows": 110254,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "num_cores_req",
     "queue",
@@ -13,69 +16,69 @@
     "user"
   ],
   "floor": {
-    "mae": 4446.263475548075,
-    "rmse": 19869.880233749333,
-    "signatures": 770,
+    "mae": 4083.8564315126887,
+    "rmse": 19067.096221244272,
+    "signatures": 664,
     "group_sizes": {
       "min": 1,
       "median": 3.0,
       "max": 37081,
-      "singleton_row_share": 0.0022271525599503565
+      "singleton_row_share": 0.002149581874580514
     }
   },
   "feature_cost": [
     {
       "feature": "queue",
-      "floor_mae_without": 4446.300130058909,
-      "cost": 0.036654510834523535
+      "floor_mae_without": 4083.8955412048545,
+      "cost": 0.03910969216576632
     },
     {
       "feature": "num_cores_req",
-      "floor_mae_without": 4497.12673518136,
-      "cost": 50.86325963328545
+      "floor_mae_without": 4125.886144720373,
+      "cost": 42.029713207683926
     },
     {
       "feature": "requested_seconds",
-      "floor_mae_without": 5052.815817883525,
-      "cost": 606.5523423354498
+      "floor_mae_without": 4612.701988136485,
+      "cost": 528.8455566237963
     },
     {
       "feature": "user",
-      "floor_mae_without": 6569.114315830634,
-      "cost": 2122.850840282559
+      "floor_mae_without": 6328.9049286193695,
+      "cost": 2245.0484971066808
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 7807.811576092962,
-        "coverage": 0.6946675847295539,
-        "rows": 117639
+        "mae": 7080.412647160194,
+        "coverage": 0.6958296297639995,
+        "rows": 110254
       },
       "10d": {
-        "mae": 5562.949430035957,
-        "coverage": 0.7947449400283919,
-        "rows": 117639
+        "mae": 5275.3273849474845,
+        "coverage": 0.7944927168175304,
+        "rows": 110254
       },
       "30d": {
-        "mae": 5455.463634508964,
-        "coverage": 0.8041210822941371,
-        "rows": 117639
+        "mae": 5133.987034484009,
+        "coverage": 0.8007963429898235,
+        "rows": 110254
       },
       "60d": {
-        "mae": 5539.877009325139,
-        "coverage": 0.8603439335594488,
-        "rows": 117639
+        "mae": 5230.131786601846,
+        "coverage": 0.8606490467466033,
+        "rows": 110254
       },
       "120d": {
-        "mae": 5697.967055993336,
-        "coverage": 0.9303462287166671,
-        "rows": 117639
+        "mae": 5404.081588876594,
+        "coverage": 0.9352857946196963,
+        "rows": 110254
       },
       "all": {
-        "mae": 5698.040649784511,
-        "coverage": 0.9303462287166671,
-        "rows": 117639
+        "mae": 5404.160112104776,
+        "coverage": 0.9352857946196963,
+        "rows": 110254
       }
     },
     "best_lookback": "30d",
@@ -86,11 +89,11 @@
       "user"
     ],
     "backoff_at_best": {
-      "mae": 5965.0647361844285,
-      "coverage": 0.8041210822941371,
-      "rows": 117639
+      "mae": 5604.854622054529,
+      "coverage": 0.8007963429898235,
+      "rows": 110254
     }
   },
   "dataset_id": "pwa_ricc",
-  "generated_at": "2026-08-26T22:51:37.621681Z"
+  "generated_at": "2026-10-21T03:09:10.267088Z"
 }

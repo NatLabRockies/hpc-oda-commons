@@ -11,11 +11,14 @@ Machine-readable form: `docs/benchmarking/datasets/<dataset>.ceiling.json`, rege
 
 ```
 hpc-oda datasets ceiling <windowed-parquet> --dataset-id <ds> \
-  --card docs/benchmarking/datasets/<ds>.card.json \
+  --n-windows 120 --skip-windows 20 \
   --out docs/benchmarking/datasets/<ds>.ceiling.json
 ```
 
-`--card` takes the window count from the card's `test_days`, as the benchmark does, and
+The tables below were computed this way on 2026-10-21, on the slices the runtime fleet of
+2026-08-26 ran on: its 120 × 6 h windows, past the 20-window walk-forward burn-in. When a fleet
+runs the cards' 90 days ([#191](https://github.com/NatLabRockies/hpc-oda-commons/issues/191)),
+`--card` takes the window count from the card's `test_days` instead.
 `--skip-windows` (default 20) leaves the walk-forward burn-in unscored. Only windows that hold
 jobs count towards it, as in walk-forward, so the floor covers exactly the jobs a leaderboard
 cell is scored on ([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)). No training lookback is involved: the floor
@@ -24,34 +27,34 @@ and the feature costs use only the scored jobs, and causal memorization sweeps i
 These involve no fitting and no BLAS, so unlike the fitted-model metrics they are byte-stable
 across machines: a diff means a real change.
 
-> **Nothing here depends on a particular fleet run.** Model scores are deliberately absent so
-> this file cannot go stale — compare against them with `bench-matrix aggregate`, whose output
-> carries its own plan id.
+> **No model scores here.** They are deliberately absent so this file cannot go stale —
+> compare against them on the leaderboard (`hpc-oda leaderboard`, `bench-matrix aggregate`).
+> The floors depend only on which jobs are scored, which is set by the fleet's windows.
 
 ## The floor, per dataset
 
 | dataset | scored rows | signatures | floor MAE | floor RMSE |
 |---|---:|---:|---:|---:|
-| `alcf_djc_aurora` | 28,248 | 3,912 | 1,989 | 10,626 |
-| `alcf_djc_polaris` | 23,895 | 1,809 | 2,310 | 12,531 |
-| `alcf_djc_theta` | 4,967 | 523 | 779 | 3,327 |
-| `atlas_mustang` | 14,974 | 767 | 2,816 | 9,071 |
-| `atlas_opentrinity` | 9,963 | 734 | 1,644 | 10,183 |
-| `fdata_fugaku` | 988,236 | 140,675 | 2,809 | 12,603 |
-| `fresco_anvil` | 121,886 | 3,870 | 2,383 | 15,344 |
-| `fresco_conte` | 57,030 | 858 | 5,515 | 35,178 |
-| `fresco_stampede1` | 103,064 | 4,574 | 7,719 | 21,891 |
-| `lassen` | 77,876 | 719 | 1,940 | 5,712 |
-| `mit_supercloud` | 32,278 | 913 | 20,079 | 60,874 |
-| `nlr_eagle` | 328,566 | 2,699 | 2,776 | 16,898 |
-| `nlr_kestrel` | 254,338 | 4,451 | 7,347 | 24,114 |
-| `pm100` | 45,181 | 1,594 | 2,913 | 9,653 |
-| `pwa_cea_curie` | 45,255 | 2,553 | 3,683 | 10,841 |
-| `pwa_hpc2n` | 8,457 | 461 | 4,632 | 21,872 |
-| `pwa_kit_fh2` | 6,739 | 450 | 8,391 | 25,527 |
-| `pwa_metacentrum` | 308,435 | 1,790 | 9,796 | 76,721 |
-| `pwa_ricc` | 117,639 | 770 | 4,446 | 19,870 |
-| `pwa_sdsc_blue` | 11,586 | 766 | 784 | 4,549 |
+| `alcf_djc_aurora` | 22,753 | 3,220 | 1,905 | 10,270 |
+| `alcf_djc_polaris` | 15,081 | 1,577 | 2,556 | 12,509 |
+| `alcf_djc_theta` | 4,106 | 443 | 828 | 3,544 |
+| `atlas_mustang` | 13,407 | 665 | 2,090 | 7,388 |
+| `atlas_opentrinity` | 8,413 | 613 | 1,678 | 10,727 |
+| `fdata_fugaku` | 854,381 | 123,447 | 2,743 | 12,909 |
+| `fresco_anvil` | 115,442 | 3,596 | 2,045 | 14,027 |
+| `fresco_conte` | 49,437 | 754 | 4,870 | 32,976 |
+| `fresco_stampede1` | 86,911 | 3,822 | 7,414 | 21,591 |
+| `lassen` | 65,193 | 633 | 1,609 | 3,956 |
+| `mit_supercloud` | 29,194 | 775 | 17,251 | 56,908 |
+| `nlr_eagle` | 262,472 | 2,262 | 2,554 | 15,484 |
+| `nlr_kestrel` | 214,640 | 3,840 | 7,633 | 23,154 |
+| `pm100` | 40,395 | 1,456 | 2,818 | 9,373 |
+| `pwa_cea_curie` | 38,407 | 2,126 | 3,492 | 10,876 |
+| `pwa_hpc2n` | 7,293 | 426 | 3,294 | 17,919 |
+| `pwa_kit_fh2` | 5,748 | 393 | 7,115 | 22,856 |
+| `pwa_metacentrum` | 273,407 | 1,632 | 9,876 | 74,146 |
+| `pwa_ricc` | 110,254 | 664 | 4,084 | 19,067 |
+| `pwa_sdsc_blue` | 9,879 | 640 | 696 | 3,875 |
 
 A model's MAE is only interpretable against these. A low score can mean an easy dataset rather
 than a good model.
@@ -64,26 +67,26 @@ signature are rows the bound cannot constrain.
 
 | dataset | group size min / median / max | rows alone in their signature |
 |---|---|---:|
-| `alcf_djc_aurora` | 1 / 2 / 797 | 5.5% |
-| `alcf_djc_polaris` | 1 / 2 / 6,309 | 3.1% |
-| `alcf_djc_theta` | 1 / 3 / 438 | 3.5% |
-| `atlas_mustang` | 1 / 2 / 4,828 | 2.1% |
-| `atlas_opentrinity` | 1 / 2 / 2,062 | 2.9% |
-| `fdata_fugaku` | 1 / 1 / 138,912 | 12.5%  ⚠️ loose |
+| `alcf_djc_aurora` | 1 / 2 / 788 | 5.7% |
+| `alcf_djc_polaris` | 1 / 2 / 825 | 4.0% |
+| `alcf_djc_theta` | 1 / 3 / 367 | 3.5% |
+| `atlas_mustang` | 1 / 2 / 4,821 | 2.0% |
+| `atlas_opentrinity` | 1 / 2 / 1,839 | 2.9% |
+| `fdata_fugaku` | 1 / 1 / 138,912 | 12.6%  ⚠️ loose |
 | `fresco_anvil` | 1 / 2 / 50,755 | 1.3% |
-| `fresco_conte` | 1 / 4 / 5,342 | 0.3% |
+| `fresco_conte` | 1 / 5 / 5,342 | 0.4% |
 | `fresco_stampede1` | 1 / 4 / 4,857 | 1.0% |
-| `lassen` | 1 / 6 / 28,287 | 0.2% |
-| `mit_supercloud` | 1 / 4 / 7,122 | 0.8% |
-| `nlr_eagle` | 1 / 3 / 141,740 | 0.3% |
+| `lassen` | 1 / 6 / 23,102 | 0.2% |
+| `mit_supercloud` | 1 / 4 / 6,661 | 0.7% |
+| `nlr_eagle` | 1 / 3 / 114,560 | 0.3% |
 | `nlr_kestrel` | 1 / 3 / 11,840 | 0.6% |
-| `pm100` | 1 / 3 / 9,438 | 1.1% |
-| `pwa_cea_curie` | 1 / 3 / 3,166 | 1.8% |
-| `pwa_hpc2n` | 1 / 3 / 1,040 | 1.5% |
-| `pwa_kit_fh2` | 1 / 3 / 1,064 | 1.9% |
+| `pm100` | 1 / 3 / 7,284 | 1.1% |
+| `pwa_cea_curie` | 1 / 3 / 3,166 | 1.7% |
+| `pwa_hpc2n` | 1 / 3 / 1,040 | 1.6% |
+| `pwa_kit_fh2` | 1 / 3 / 1,008 | 1.9% |
 | `pwa_metacentrum` | 1 / 2 / 66,077 | 0.2% |
 | `pwa_ricc` | 1 / 3 / 37,081 | 0.2% |
-| `pwa_sdsc_blue` | 1 / 2 / 1,030 | 2.5% |
+| `pwa_sdsc_blue` | 1 / 2 / 943 | 2.5% |
 
 `fdata_fugaku` is the one loose bound in the fleet: 12.5% of its rows are alone in their
 signature, because its `name` column pushes the signature count to six figures. Its floor
@@ -96,29 +99,29 @@ earlier. Coverage is the share of scored rows whose signature had been seen at a
 
 | dataset | 1d | 10d | 30d | 60d | 120d | all | best | coverage |
 |---|---:|---:|---:|---:|---:|---:|:--:|---:|
-| `alcf_djc_aurora` | 3,572 | 3,420 | 3,306 | **3,298** | 3,451 | 3,452 | 60d | 78% |
-| `alcf_djc_polaris` | 3,705 | 3,778 | 3,736 | 3,629 | **3,345** | 3,367 | 120d | 89% |
-| `alcf_djc_theta` | 2,366 | 1,618 | 1,505 | 1,488 | 1,481 | **1,466** | all | 87% |
-| `atlas_mustang` | 6,048 | 5,224 | 5,057 | **4,661** | 4,709 | 4,699 | 60d | 90% |
-| `atlas_opentrinity` | 4,681 | 2,631 | **2,624** | 2,800 | 2,785 | 2,785 | 30d | 69% |
-| `fdata_fugaku` | 8,998 | 7,970 | **7,396** | 7,401 | 7,410 | 7,411 | 30d | 73% |
-| `fresco_anvil` | 3,880 | **3,508** | 4,024 | 3,852 | 3,556 | 3,555 | 10d | 91% |
-| `fresco_conte` | 9,200 | 8,416 | 7,845 | 8,097 | **7,673** | 7,691 | 120d | 97% |
-| `fresco_stampede1` | 13,530 | 10,863 | 10,922 | 11,004 | **10,847** | 10,913 | 120d | 91% |
-| `lassen` | 3,665 | **3,505** | 4,208 | 4,371 | 4,391 | 4,364 | 10d | 79% |
-| `mit_supercloud` | **29,684** | 33,719 | 32,875 | 33,179 | 33,042 | 33,001 | 1d | 71% |
-| `nlr_eagle` | 7,464 | **5,277** | 6,350 | 6,401 | 6,891 | 7,331 | 10d | 81% |
-| `nlr_kestrel` | 13,472 | 11,103 | **10,687** | 10,697 | 10,954 | 11,117 | 30d | 71% |
-| `pm100` | 4,292 | 3,918 | 3,879 | 3,881 | **3,814** | 3,814 | 120d | 90% |
-| `pwa_cea_curie` | 6,258 | **5,072** | 5,330 | 5,209 | 5,185 | 5,194 | 10d | 81% |
-| `pwa_hpc2n` | 9,883 | 6,790 | 6,889 | 7,124 | 6,591 | **6,512** | all | 81% |
-| `pwa_kit_fh2` | 16,814 | 13,521 | 12,984 | **12,741** | 12,831 | 12,838 | 60d | 85% |
-| `pwa_metacentrum` | 13,708 | 12,835 | 12,233 | 11,968 | **11,926** | 12,065 | 120d | 95% |
-| `pwa_ricc` | 7,808 | 5,563 | **5,455** | 5,540 | 5,698 | 5,698 | 30d | 80% |
-| `pwa_sdsc_blue` | 2,387 | 1,799 | 1,738 | 1,701 | **1,671** | 1,683 | 120d | 88% |
+| `alcf_djc_aurora` | 3,453 | 3,364 | 3,242 | **3,239** | 3,425 | 3,426 | 60d | 80% |
+| `alcf_djc_polaris` | 4,516 | 4,302 | 4,150 | **3,869** | 3,891 | 3,926 | 60d | 83% |
+| `alcf_djc_theta` | 2,503 | 1,702 | 1,583 | 1,551 | 1,558 | **1,541** | all | 87% |
+| `atlas_mustang` | 4,943 | 4,221 | 4,051 | **3,561** | 3,590 | 3,578 | 60d | 91% |
+| `atlas_opentrinity` | 3,575 | 2,710 | **2,668** | 2,743 | 2,725 | 2,725 | 30d | 69% |
+| `fdata_fugaku` | 8,624 | 7,466 | 6,918 | **6,902** | 6,912 | 6,914 | 60d | 73% |
+| `fresco_anvil` | 3,379 | 3,120 | 3,422 | 3,354 | **3,098** | 3,098 | 120d | 95% |
+| `fresco_conte` | 8,554 | 7,748 | 7,340 | 7,501 | **6,924** | 6,953 | 120d | 97% |
+| `fresco_stampede1` | 13,343 | **10,462** | 10,639 | 10,715 | 10,546 | 10,626 | 10d | 81% |
+| `lassen` | 3,236 | **2,974** | 3,883 | 4,071 | 4,076 | 4,044 | 10d | 79% |
+| `mit_supercloud` | **28,645** | 31,494 | 30,908 | 31,285 | 31,181 | 31,135 | 1d | 72% |
+| `nlr_eagle` | 8,188 | **5,393** | 6,771 | 6,943 | 7,569 | 8,121 | 10d | 85% |
+| `nlr_kestrel` | 13,731 | 11,144 | **10,895** | 10,907 | 11,104 | 11,299 | 30d | 70% |
+| `pm100` | 4,108 | 3,821 | 3,784 | 3,762 | **3,693** | 3,693 | 120d | 90% |
+| `pwa_cea_curie` | 6,030 | **4,892** | 5,157 | 4,996 | 4,968 | 4,978 | 10d | 81% |
+| `pwa_hpc2n` | 7,028 | **5,207** | 5,566 | 5,737 | 5,326 | 5,261 | 10d | 76% |
+| `pwa_kit_fh2` | 15,682 | 12,415 | 11,528 | **11,402** | 11,575 | 11,592 | 60d | 87% |
+| `pwa_metacentrum` | 14,105 | 13,130 | 12,446 | 12,163 | **12,103** | 12,262 | 120d | 94% |
+| `pwa_ricc` | 7,080 | 5,275 | **5,134** | 5,230 | 5,404 | 5,404 | 30d | 80% |
+| `pwa_sdsc_blue` | 2,317 | 1,794 | 1,673 | 1,628 | **1,590** | 1,604 | 120d | 89% |
 
-Optimal lookback: 1d ×1, 10d ×4, 30d ×4, 60d ×3, 120d ×6, all ×2. At the time the benchmark
-fixed `training_lookback_days: 120` for every dataset, which is optimal for 6 of 20. Since
+Optimal lookback: 1d ×1, 10d ×5, 30d ×3, 60d ×5, 120d ×5, all ×1. The benchmark once fixed
+`training_lookback_days: 120` for every dataset, which is optimal here for 5 of 20. Since
 [#170](https://github.com/NatLabRockies/hpc-oda-commons/issues/170) it runs every model at
 10, 30 and 120 days and chooses among them walk-forward. How this
 strategy compares against the fitted models is tracked in
@@ -128,6 +131,6 @@ strategy compares against the fitted models is tracked in
 
 Each dataset's `.ceiling.json` records how far its floor rises without each feature — which
 identifies where the signal lives, and orders the fallback when no exact signature match
-exists. On `fdata_fugaku`, dropping `name` raises the floor by 73%; on `nlr_kestrel` no single
-feature is worth more than 9%.
+exists. On `fdata_fugaku`, dropping `name` raises the floor by 67%; on `nlr_kestrel` no single
+feature is worth more than 6%.
 

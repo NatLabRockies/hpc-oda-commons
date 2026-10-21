@@ -3,9 +3,12 @@
   "split": {
     "n_windows": 120,
     "test_window_hours": 6,
-    "training_lookback_days": 120
+    "skip_windows": 20,
+    "windows_with_jobs": 110,
+    "scored_windows": 90
   },
-  "scored_rows": 9963,
+  "scored_rows": 8413,
+  "target_field": "runtime_seconds",
   "feature_fields": [
     "account",
     "num_nodes_req",
@@ -14,74 +17,74 @@
     "user"
   ],
   "floor": {
-    "mae": 1644.2910769848438,
-    "rmse": 10183.470508994656,
-    "signatures": 734,
+    "mae": 1678.03554023535,
+    "rmse": 10726.65792195022,
+    "signatures": 613,
     "group_sizes": {
       "min": 1,
       "median": 2.0,
-      "max": 2062,
-      "singleton_row_share": 0.02880658436213992
+      "max": 1839,
+      "singleton_row_share": 0.02888387020087959
     }
   },
   "feature_cost": [
     {
       "feature": "account",
-      "floor_mae_without": 1644.2910769848438,
+      "floor_mae_without": 1678.03554023535,
       "cost": 0.0
     },
     {
       "feature": "user",
-      "floor_mae_without": 1644.2910769848438,
+      "floor_mae_without": 1678.03554023535,
       "cost": 0.0
     },
     {
       "feature": "num_nodes_req",
-      "floor_mae_without": 1657.3372478169226,
-      "cost": 13.046170832078815
+      "floor_mae_without": 1693.5473671698562,
+      "cost": 15.511826934506189
     },
     {
       "feature": "num_tasks_req",
-      "floor_mae_without": 1701.2025494329018,
-      "cost": 56.91147244805802
+      "floor_mae_without": 1745.1410911684297,
+      "cost": 67.10555093307971
     },
     {
       "feature": "requested_seconds",
-      "floor_mae_without": 2311.2676904546825,
-      "cost": 666.9766134698386
+      "floor_mae_without": 2381.188517770118,
+      "cost": 703.1529775347678
     }
   ],
   "causal_memorization": {
     "sweep": {
       "1d": {
-        "mae": 4681.419301415236,
-        "coverage": 0.36224028906955735,
-        "rows": 9963
+        "mae": 3575.0112326161893,
+        "coverage": 0.39890645429692145,
+        "rows": 8413
       },
       "10d": {
-        "mae": 2631.448710227843,
-        "coverage": 0.5570611261668172,
-        "rows": 9963
+        "mae": 2709.5536075121836,
+        "coverage": 0.5665042196600499,
+        "rows": 8413
       },
       "30d": {
-        "mae": 2624.3299708923014,
-        "coverage": 0.6917595101876944,
-        "rows": 9963
+        "mae": 2668.4670153334127,
+        "coverage": 0.6888149292761203,
+        "rows": 8413
       },
       "60d": {
-        "mae": 2800.2748168222424,
-        "coverage": 0.7177556960754793,
-        "rows": 9963
+        "mae": 2742.7244740282895,
+        "coverage": 0.7190062997741591,
+        "rows": 8413
       },
       "120d": {
-        "mae": 2785.0261969286357,
-        "coverage": 0.7249824350095353,
-        "rows": 9963
+        "mae": 2724.666468560561,
+        "coverage": 0.7275644835373826,
+        "rows": 8413
       },
       "all": {
-        "mae": 2785.0261969286357,
-        "coverage": 0.7249824350095353,
-        "rows": 9963
+        "mae": 2724.666468560561,
+        "coverage": 0.7275644835373826,
+        "rows": 8413
       }
     },
     "best_lookback": "30d",
@@ -93,11 +96,11 @@
       "requested_seconds"
     ],
     "backoff_at_best": {
-      "mae": 3140.1631536685736,
-      "coverage": 0.6917595101876944,
-      "rows": 9963
+      "mae": 3275.6224295732795,
+      "coverage": 0.6888149292761203,
+      "rows": 8413
     }
   },
   "dataset_id": "atlas_opentrinity",
-  "generated_at": "2026-08-26T22:39:56.353253Z"
+  "generated_at": "2026-10-21T03:08:39.699116Z"
 }
