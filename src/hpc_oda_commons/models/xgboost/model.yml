@@ -1,0 +1,8 @@
+# What this model is: fixed facts kept next to its code (#249). Its id comes from the folder,
+# the tasks it serves from the recipes that run it, and its dependencies from its imports.
+name: XGBoost
+version: 0.1.0
+object: XGBoostModel
+description: >
+  Gradient-boosted trees (XGBoost) over the job's submit-time features, with categorical
+  columns one-hot encoded and reduced by truncated SVD.

@@ -1,5 +1,5 @@
 """
-Implements  (Find pillar via registry snapshot).
+Implements  (Find pillar via the registry).
 """
 
 from __future__ import annotations
@@ -37,7 +37,10 @@ def browse(
     snapshot: Annotated[
         Path | None,
         typer.Option(
-            "--snapshot", exists=True, readable=True, help="Path to registry snapshot JSON."
+            "--snapshot",
+            exists=True,
+            readable=True,
+            help="Read this registry snapshot JSON instead of the package's registry.",
         ),
     ] = None,
 ) -> None:

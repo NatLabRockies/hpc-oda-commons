@@ -4,7 +4,8 @@ A card says what a model is, how it runs, what it reads, its settings, the bundl
 that run it, and where it stands on the published leaderboard. Every line comes from
 something the repo already holds:
 
-- the registry (``registry/snapshot.json``): the model's title, description and targets;
+- the registry, built from ``models/<name>/model.yml`` and the recipes: the model's title,
+  description and targets;
 - ``benchmark.runner.RUNNERS``: the split methods it runs under, the recipe keys each
   runner reads (found by reading the runner's source), and the dataclass it configures;
 - the bundled recipes under ``recipes/``;

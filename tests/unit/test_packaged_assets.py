@@ -5,7 +5,6 @@ import importlib.resources as ir
 import pyarrow.parquet as pq
 
 from hpc_oda_commons.kernel.schemas import load_schema
-from hpc_oda_commons.registry.snapshot import snapshot_resource_path
 
 
 def test_packaged_schemas_load() -> None:
@@ -21,9 +20,11 @@ def test_packaged_schemas_load() -> None:
         assert load_schema(schema_id)
 
 
-def test_packaged_registry_snapshot_exists() -> None:
-    path = snapshot_resource_path()
-    assert path.exists()
+def test_packaged_registry_sources_exist() -> None:
+    """The registry is built from these at run time (#249), so they must ship."""
+    base = ir.files("hpc_oda_commons")
+    assert (base / "models" / "baseline" / "model.yml").is_file()
+    assert (base / "adapters" / "slurmctld" / "adapter.yml").is_file()
 
 
 def test_packaged_recipe_and_dataset_assets_exist() -> None:

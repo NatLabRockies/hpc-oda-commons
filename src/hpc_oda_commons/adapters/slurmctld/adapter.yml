@@ -1,0 +1,10 @@
+# What this adapter is: fixed facts kept next to its code (#249). Its id comes from the folder.
+name: SLURM slurmctld Log Adapter
+version: 0.1.0
+object: SlurmctldAdapter
+description: >
+  Parses slurmctld logs into oda.job.v0.2.0 job tables: each job's id, start and end
+  times, runtime, node list, allocated CPUs and partition.
+supported_sources: [slurmctld]
+output_schema_version: oda.job.v0.2.0
+problem_domain: [job-runtime-prediction]

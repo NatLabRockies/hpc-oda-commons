@@ -78,7 +78,6 @@
         "id",
         "entry_type",
         "name",
-        "version",
         "problem_domain",
         "description"
       ],
@@ -129,7 +128,7 @@
             "required": ["entry_type"]
           },
           "then": {
-            "required": ["supported_sources", "output_schema_version", "reference"]
+            "required": ["version", "supported_sources", "output_schema_version", "reference"]
           }
         },
         {
@@ -138,7 +137,7 @@
             "required": ["entry_type"]
           },
           "then": {
-            "required": ["supported_sources", "input_schema_version", "output_schema_version", "reference"]
+            "required": ["version", "input_schema_version", "reference"]
           }
         },
         {
@@ -147,7 +146,7 @@
             "required": ["entry_type"]
           },
           "then": {
-            "required": ["supported_sources", "input_schema_version", "reference"]
+            "required": ["input_schema_version", "reference"]
           }
         },
         {
@@ -156,7 +155,7 @@
             "required": ["entry_type"]
           },
           "then": {
-            "required": ["reference"]
+            "required": ["version", "reference"]
           }
         }
       ]

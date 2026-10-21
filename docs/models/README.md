@@ -8,7 +8,7 @@ Each model's card. Where they stand: the [leaderboard](https://natlabrockies.git
 |---|---|---|
 | [Baseline (window mean)](baseline.md) | `model.baseline` | job runtime, job power |
 | [Embedding + kNN](embedding_knn.md) | `model.embedding_knn` | job runtime, job power |
-| [MLP](mlp.md) | `model.mlp` | job runtime, job power |
+| [MLP](mlp.md) | `model.mlp` | job runtime |
 | [Random Forest](random_forest.md) | `model.random_forest` | job runtime, job power |
 | [Signature memorizer](signature_memorizer.md) | `model.signature_memorizer` | job runtime, job power |
 | [TF-IDF + kNN](tfidf_knn.md) | `model.tfidf_knn` | job runtime, job power |

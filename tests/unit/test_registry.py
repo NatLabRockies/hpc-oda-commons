@@ -38,19 +38,9 @@ def test_index_filters_by_tag_and_source() -> None:
     assert "recipe.job_runtime.baseline_tiny" in job_runtime_ids
     assert "recipe.job_runtime.xgb_hourly_recent" in job_runtime_ids
 
+    # Only an adapter reads a source; models and recipes read oda.job tables (#249).
     slurm = index.filter(source="slurmctld")
-    slurm_ids = {entry.id for entry in slurm}
-    # The v0.1 slurm-sourced adapter/model/recipe entries are all present. Dataset
-    # entries carry no `supported_sources` (a dataset isn't a source), so they are
-    # intentionally excluded from the source filter even when tagged job-runtime.
-    slurm_sourced = {
-        "adapter.slurmctld",
-        "model.baseline",
-        "model.xgboost",
-        "recipe.job_runtime.baseline_tiny",
-        "recipe.job_runtime.xgb_hourly_recent",
-    }
-    assert slurm_sourced.issubset(slurm_ids)
+    assert {entry.id for entry in slurm} == {"adapter.slurmctld"}
 
 
 def test_index_filters_by_entry_type() -> None:
@@ -60,14 +50,14 @@ def test_index_filters_by_entry_type() -> None:
     models = index.filter(entry_type="model")
     assert [entry.id for entry in models] == [
         "model.baseline",
-        "model.xgboost",
-        "model.moe_xgboost",
-        "model.tfidf_knn",
         "model.embedding_knn",
-        "model.signature_memorizer",
-        "model.random_forest",
         "model.mlp",
+        "model.moe_xgboost",
+        "model.random_forest",
+        "model.signature_memorizer",
+        "model.tfidf_knn",
         "model.uopc",
+        "model.xgboost",
     ]
 
 
@@ -114,8 +104,7 @@ def test_dataset_entry_type_supported() -> None:
 
 
 def test_browse_accepts_dataset_type() -> None:
-    # No dataset entries in the bundled snapshot yet; --type dataset must be accepted
-    # (not rejected as invalid) and simply match nothing.
+    # --type dataset must be accepted, not rejected as invalid.
     browse(
         tag=None,
         entry_type="dataset",

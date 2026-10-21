@@ -1,0 +1,9 @@
+# What this model is: fixed facts kept next to its code (#249). Its id comes from the folder,
+# the tasks it serves from the recipes that run it, and its dependencies from its imports.
+name: Signature memorizer
+version: 0.1.0
+object: SignatureMemorizerModel
+description: >
+  Predicts the median target of past training jobs whose submit-time features are
+  identical. No fitting. When nothing matches, it drops features cheapest-first, and it
+  reports how many jobs matched exactly alongside its metrics.
