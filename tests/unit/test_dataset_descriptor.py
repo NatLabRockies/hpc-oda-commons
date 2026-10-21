@@ -15,12 +15,11 @@ from hpc_oda_commons.kernel.validate import SchemaValidationError
 
 def _valid_descriptor() -> dict:
     return {
-        "dataset_id": "dataset.job_power.fdata_fugaku",
+        "dataset_id": "dataset.fdata_fugaku",
         "schema_version": "oda.dataset.v0.1.0",
         "name": "F-DATA (Fugaku Job Records)",
         "version": "1.0.0",
         "description": "Fugaku job records with per-job power for runtime and power prediction.",
-        "problem_domains": ["job-runtime-prediction", "job-power-prediction"],
         "systems": ["Fugaku"],
         "providers": ["RIKEN R-CCS", "Univ. Bologna"],
         "license": {"spdx": "CC-BY-4.0", "gated": False},
@@ -53,14 +52,6 @@ def _valid_descriptor() -> dict:
         "targets": [
             {
                 "schema": "oda.job.v0.2.0",
-                "capabilities": [
-                    {
-                        "problem_domain": "job-runtime-prediction",
-                        "target_column": "runtime_seconds",
-                    },
-                    {"problem_domain": "job-power-prediction", "target_column": "maxpcon"},
-                ],
-                "suitable_models": ["model.xgboost", "model.uopc"],
                 "mapping": {
                     "job_id": {"from": "jobid", "type": "hash_identifier"},
                     "start_time": {"from": "sdt", "type": "timestamp", "format": "epoch_s"},
@@ -90,16 +81,21 @@ def test_validate_descriptor_ok() -> None:
     validate_descriptor(_valid_descriptor())
 
 
-def test_from_dict_exposes_identity_and_capabilities() -> None:
+def test_from_dict_derives_tasks_from_the_mapping() -> None:
+    """What a dataset can be used for comes from its target columns, not a list (#249)."""
     desc = Descriptor.from_dict(_valid_descriptor())
-    assert desc.dataset_id == "dataset.job_power.fdata_fugaku"
+    assert desc.dataset_id == "dataset.fdata_fugaku"
+    assert desc.target_columns == ("runtime_seconds", "maxpcon")
+    assert desc.problem_domains == ("job-runtime-prediction", "job-power-prediction")
     assert desc.supports_domain("job-power-prediction")
     assert not desc.supports_domain("failure-analysis")
-    assert desc.supports_model("model.uopc")
-    assert not desc.supports_model("model.does_not_exist")
-    caps = {(c.problem_domain, c.target_column) for c in desc.capabilities()}
-    assert ("job-power-prediction", "maxpcon") in caps
     assert "maxpcon" in desc.targets[0].produced_columns
+
+
+def test_dropping_a_target_column_drops_its_task() -> None:
+    payload = _valid_descriptor()
+    del payload["targets"][0]["mapping"]["maxpcon"]
+    assert Descriptor.from_dict(payload).problem_domains == ("job-runtime-prediction",)
 
 
 def test_missing_required_field_fails() -> None:
@@ -126,21 +122,16 @@ def test_trim_quantiles_must_be_an_ordered_pair_of_quantiles(trim, match) -> Non
         validate_descriptor(payload)
 
 
-def test_capability_target_column_must_be_produced_by_mapping() -> None:
+def test_retired_fields_are_accepted_and_ignored() -> None:
+    """A descriptor written before #249 still validates; its declared tasks don't count."""
     payload = _valid_descriptor()
-    # Claim a power capability but drop maxpcon from the mapping.
-    del payload["targets"][0]["mapping"]["maxpcon"]
-    with pytest.raises(SchemaValidationError, match="maxpcon"):
-        validate_descriptor(payload)
-
-
-def test_capability_domain_must_be_declared() -> None:
-    payload = _valid_descriptor()
-    payload["targets"][0]["capabilities"].append(
+    payload["problem_domains"] = ["anomaly-detection"]
+    payload["targets"][0]["capabilities"] = [
         {"problem_domain": "anomaly-detection", "target_column": "maxpcon"}
-    )
-    with pytest.raises(SchemaValidationError, match="problem_domains"):
-        validate_descriptor(payload)
+    ]
+    payload["targets"][0]["suitable_models"] = ["model.xgboost"]
+    validate_descriptor(payload)
+    assert not Descriptor.from_dict(payload).supports_domain("anomaly-detection")
 
 
 def test_non_manual_resource_requires_url() -> None:

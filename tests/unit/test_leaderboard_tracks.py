@@ -90,8 +90,8 @@ def _ceiling(
 def power_runs(tmp_path: Path) -> tuple[Path, Path]:
     """PM100 and Eagle average power: a baseline, XGBoost on both, MoE on PM100 only."""
     runs, ceilings = tmp_path / "runs", tmp_path / "ceilings"
-    _ceiling(ceilings, "dataset.job_runtime.pm100", "avgpcon_per_node", 100.0)
-    _ceiling(ceilings, "dataset.job_runtime.nlr_eagle", "avgpcon_per_node", 20.0)
+    _ceiling(ceilings, "dataset.pm100", "avgpcon_per_node", 100.0)
+    _ceiling(ceilings, "dataset.nlr_eagle", "avgpcon_per_node", 20.0)
     for system, base, xgb in (("pm100", 150.0, 125.0), ("eagle", 90.0, 62.0)):
         _bundle(
             runs,
@@ -166,7 +166,7 @@ def test_bundles_take_their_dataset_from_the_recipe(power_runs) -> None:
 def test_the_roster_comes_from_the_ceiling_files(power_runs) -> None:
     """A dataset with a ceiling but no runs is a column, and blanks every average."""
     runs, ceilings = power_runs
-    _ceiling(ceilings, "dataset.job_runtime.nlr_kestrel", "avgpcon_per_node", 25.0)
+    _ceiling(ceilings, "dataset.nlr_kestrel", "avgpcon_per_node", 25.0)
     table = _table(
         build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings), "avgpcon_per_node"
     )
@@ -240,7 +240,7 @@ def test_a_rerun_replaces_its_cell_and_is_named(power_runs) -> None:
 
 def test_each_target_has_its_own_table(power_runs) -> None:
     runs, ceilings = power_runs
-    _ceiling(ceilings, "dataset.job_runtime.pm100", "maxpcon_per_node", 120.0)
+    _ceiling(ceilings, "dataset.pm100", "maxpcon_per_node", 120.0)
     _bundle(
         runs,
         recipe_id="recipe.job_power.xgboost_rolling_peak_pm100",
@@ -330,7 +330,7 @@ def test_runtime_cells_use_the_walk_forward_choice(tmp_path: Path) -> None:
 
 
 def _runtime_tables(tmp_path: Path, ceiling_rows: int) -> dict:
-    _ceiling(tmp_path, "dataset.job_runtime.lassen", "runtime_seconds", 1.0, ceiling_rows)
+    _ceiling(tmp_path, "dataset.lassen", "runtime_seconds", 1.0, ceiling_rows)
     pairs = _runtime_pairs("model.baseline", {10: [9.0] * 4, 30: [9.5] * 4})
     pairs += _runtime_pairs("model.xgboost", {10: [5.0] * 4, 30: [6.0] * 4})
     tables, _ = build_tables(
@@ -413,7 +413,7 @@ def test_a_dataset_too_large_to_plan_has_no_runtime_column(tmp_path: Path) -> No
 
 def test_a_power_cell_on_other_jobs_gets_no_headroom(power_runs) -> None:
     runs, ceilings = power_runs
-    _ceiling(ceilings, "dataset.job_runtime.pm100", "avgpcon_per_node", 100.0, ROWS + 1)
+    _ceiling(ceilings, "dataset.pm100", "avgpcon_per_node", 100.0, ROWS + 1)
     leaderboard = build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
 
     cell = _row(_table(leaderboard, "avgpcon_per_node"), "model.xgboost")["cells"]

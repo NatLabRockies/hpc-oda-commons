@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.fdata_fugaku
+dataset_id: dataset.fdata_fugaku
 schema_version: oda.dataset.v0.1.0
 name: F-DATA (Fugaku Jobs, Mar–Sep 2023)
 version: 1.3.0
@@ -16,7 +16,6 @@ description: >
   requested node (avgpcon_per_node, maxpcon_per_node), so the runtime models can be
   pointed at power on this window (#204). The rows are the runtime benchmark's: the
   filter is still on runtime, so a job without power keeps its runtime row.
-problem_domains: [job-runtime-prediction, job-power-prediction]
 systems: [Fugaku]
 providers: ["RIKEN R-CCS", "University of Bologna"]
 citation: { doi: "10.5281/zenodo.11467483", url: "https://zenodo.org/records/11467483" }
@@ -65,11 +64,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-      - { problem_domain: job-power-prediction, target_column: avgpcon_per_node }
-      - { problem_domain: job-power-prediction, target_column: maxpcon_per_node }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: jid }
       start_time: { from: sdt, type: timestamp, format: iso8601 }

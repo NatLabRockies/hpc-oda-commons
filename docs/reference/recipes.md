@@ -113,7 +113,7 @@ run:
 
 ```bash
 # 1. Prepare the canonical table -> data/datasets/nlr_kestrel/data.parquet
-hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/nlr_kestrel.yml
+hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/nlr_kestrel.yml
 
 # 2. Slice to the benchmark window -> data/windows/nlr_kestrel/{data.parquet,slice.json}
 hpc-oda bench-matrix slice --dataset nlr_kestrel --extra-lookback-days 60 --out data/windows

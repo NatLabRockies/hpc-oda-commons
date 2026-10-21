@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.nlr_kestrel
+dataset_id: dataset.nlr_kestrel
 schema_version: oda.dataset.v0.1.0
 name: NLR Kestrel Jobs (anonymized)
 version: 1.1.0
@@ -16,7 +16,6 @@ description: >
   partition). 0 J is no reading. Per-node values below the 0.1th or above the 99.9th
   percentile become null (#216), since a few readings are impossible. Rows are still
   filtered on runtime only.
-problem_domains: [job-runtime-prediction, job-power-prediction]
 systems: [Kestrel]
 providers: [NLR, "National Laboratory of the Rockies"]
 citation: { doi: "10.7799/3023270", url: "https://data.nlr.gov/submissions/302" }
@@ -43,10 +42,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-      - { problem_domain: job-power-prediction, target_column: avgpcon_per_node }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: id }
       submit_time: { from: submit_time }

@@ -3,7 +3,7 @@
 # (docs/benchmarking/power/methodology.md). The windows end at the table's last submit,
 # so they test PM100's last 89 days, 2020-07-17 to 2020-10-14.
 #
-#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/pm100.yml
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/pm100.yml
 #
 # PM100 ships no job embedding, so one is computed from the submission fields
 # (partition, qos, user, requested walltime, nodes and cores, weekday and hour of

@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.fresco_stampede1
+dataset_id: dataset.fresco_stampede1
 schema_version: oda.dataset.v0.1.0
 name: FRESCO Stampede1 Job Accounting
 version: 1.0.0
@@ -11,7 +11,6 @@ description: >
   the few inverted-timestamp rows and require_positive keeps allocated_cpus >= 1; a couple of
   rows carry corrupt epoch-era start timestamps (2 rows exceed 8 days out of 8.34M) and are
   left as negligible outliers. Fetched from the datadepot over direct HTTPS (no Globus).
-problem_domains: [job-runtime-prediction]
 systems: [Stampede1]
 providers: [TACC, Purdue]
 citation: { url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/" }
@@ -38,9 +37,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: jobID }
       submit_time: { from: submit, type: timestamp, format: "%m/%d/%Y %H:%M:%S" }

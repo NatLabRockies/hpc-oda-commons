@@ -1,47 +1,55 @@
-dataset_id: dataset.job_runtime.alcf_djc_aurora
+dataset_id: dataset.alcf_djc_polaris
 schema_version: oda.dataset.v0.1.0
-name: ALCF DJC — Aurora (2025–2026)
-version: 1.1.0
+name: ALCF DJC — Polaris (2022–2026)
+version: 1.2.0
 description: >
-  DIM_JOB_COMPOSITE job accounting from Argonne's Aurora supercomputer, all published years
-  (2025-01 through 2026-07, two files), from the ALCF public DATA CATALOG. Same schema as the
-  Polaris DJC dataset: PBS scheduler data with real requested walltime (WALLTIME_SECONDS) and
-  elapsed runtime (RUNTIME_SECONDS), plus cores/nodes used+requested, queue, exit status, machine,
-  award category, and science field; user/project pre-anonymized. Primary-quality. ALCF gates
+  DIM_JOB_COMPOSITE job accounting from Argonne's Polaris supercomputer, all published years
+  (2022-08 through 2026-07, five files), from the ALCF public DATA CATALOG. Cobalt/PBS scheduler
+  data with real requested walltime (WALLTIME_SECONDS) and elapsed runtime (RUNTIME_SECONDS), plus
+  cores/nodes used+requested, queue, exit status, machine, award category, and science field;
+  user/project pre-anonymized (USERNAME_GENID / PROJECT_NAME_GENID). Primary-quality. ALCF gates
   downloads behind a one-time name/email form, so this is a `manual`-kind dataset: fetch the files
-  yourself, then `datasets prepare --from <dir>` checksum-verifies and normalizes them. See
-  docs/datasets/alcf-djc-ingest.md.
-problem_domains: [job-runtime-prediction]
-systems: [Aurora]
+  yourself (see the instructions), then `datasets prepare --from <dir>` checksum-verifies and
+  normalizes them. See docs/datasets/alcf-djc-ingest.md.
+systems: [Polaris]
 providers: [ALCF, Argonne]
 citation: { url: "https://reports.alcf.anl.gov/data/index.html" }
 license:
   spdx: LicenseRef-alcf-public
   gated: true
   notes: "ALCF Public Data; download requires a one-time name/email form. License unstated; cite ALCF."
-tags: [alcf, argonne, aurora, pbs, cobalt]
+tags: [alcf, argonne, polaris, pbs, cobalt]
 size:
-  default_bytes: 79571194
-  full_bytes: 79571194
-  rows_hint: "927,999 jobs (Aurora, 2025-2026)"
+  default_bytes: 49840924
+  full_bytes: 49840924
+  rows_hint: "1,000,194 jobs (Polaris, 2022-2026)"
 
 source:
   kind: manual
   instructions: >
     ALCF DJC is public data behind a one-time name/email form. In a browser open
-    https://reports.alcf.anl.gov/data/aurora.html, click a DIM_JOB_COMPOSITE download link,
-    complete the short form (first/last name + email) once, then download both Aurora
-    ANL-ALCF-DJC-AURORA_*.csv.gz files into one directory. Run
-    `hpc-oda datasets prepare dataset.job_runtime.alcf_djc_aurora --from <dir>` pointing at that
+    https://reports.alcf.anl.gov/data/polaris.html, click a DIM_JOB_COMPOSITE download link,
+    complete the short form (first/last name + email) once, then download all five Polaris
+    ANL-ALCF-DJC-POLARIS_*.csv.gz files into one directory. Run
+    `hpc-oda datasets prepare dataset.alcf_djc_polaris --from <dir>` pointing at that
     directory (each file's sha256 is checksum-verified before normalization). See
     docs/datasets/alcf-djc-ingest.md for the full recipe.
   resources:
-    - filename: ANL-ALCF-DJC-AURORA_20250127_20251231.csv.gz
-      sha256: 33e829a855567924569fa06a92cfa64215922f1fffd1b7a1dd57f17b2ddd6491
-      bytes: 61534432
-    - filename: ANL-ALCF-DJC-AURORA_20260101_20260716.csv.gz
-      sha256: 7ca7f8259524d85ba9e8a9bb0f1f2f9e3fb112fe4451b77a9c55d510ad9d3d67
-      bytes: 21656320
+    - filename: ANL-ALCF-DJC-POLARIS_20220809_20221231.csv.gz
+      sha256: d9e632dc2cee0ead881c0bcb4815bace5ee6cf99582ff9c95a0074b58c63aa0a
+      bytes: 2261468
+    - filename: ANL-ALCF-DJC-POLARIS_20230101_20231231.csv.gz
+      sha256: f6802c1a1ffeb6fca842a16fe667ebd6d2601649f11093bbf0780dfb49654da1
+      bytes: 10584138
+    - filename: ANL-ALCF-DJC-POLARIS_20240101_20241231.csv.gz
+      sha256: efc3fcff5179268589a0fe4dfa80bc6820e0220608093f4f9328f9aac998e583
+      bytes: 15346240
+    - filename: ANL-ALCF-DJC-POLARIS_20250101_20251231.csv.gz
+      sha256: 79669f76be0c7f0fe65fb6df9e789994f7372634faa028eff108181a4597429a
+      bytes: 13545833
+    - filename: ANL-ALCF-DJC-POLARIS_20260101_20260716.csv.gz
+      sha256: 427abee8105cf8de46ccea782bf683fff9aba3b20b7fef3c2b7ba675474f99f0
+      bytes: 10003961
 
 decode:
   format: csv
@@ -70,9 +78,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: JOB_NAME }
       submit_time: { from: QUEUED_TIMESTAMP, type: timestamp, format: iso8601 }
@@ -95,4 +100,4 @@ targets:
       require_nonnull: [runtime_seconds, start_time, end_time]
       require_positive: [allocated_cpus]
       require_end_after_start: true
-    output: { id: alcf_djc_aurora, path: data/datasets/alcf_djc_aurora/data.parquet }
+    output: { id: alcf_djc_polaris, path: data/datasets/alcf_djc_polaris/data.parquet }

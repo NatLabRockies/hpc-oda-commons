@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.fresco_conte",
+  "dataset_id": "dataset.fresco_conte",
   "generated_at": "2026-08-27T12:58:53.671794+00:00",
   "source": {
     "table_path": "data/datasets/fresco_conte/data.parquet",
     "system": "Conte",
-    "descriptor": "dataset.job_runtime.fresco_conte"
+    "descriptor": "dataset.fresco_conte"
   },
   "characterization": {
     "n_rows": 1042125,

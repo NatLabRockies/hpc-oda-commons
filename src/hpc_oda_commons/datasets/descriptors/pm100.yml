@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.pm100
+dataset_id: dataset.pm100
 schema_version: oda.dataset.v0.1.0
 name: PM100 (Marconi100 Jobs)
 version: 1.1.0
@@ -11,7 +11,6 @@ description: >
   node count, ~700 W per node). Its mean and maximum give avgpcon/maxpcon, and per
   allocated node avgpcon_per_node/maxpcon_per_node (#204). Rows are still filtered on
   runtime only.
-problem_domains: [job-runtime-prediction, job-power-prediction]
 systems: [Marconi100]
 providers: ["University of Bologna", "CINECA"]
 citation: { doi: "10.5281/zenodo.10127767", url: "https://zenodo.org/records/10127767" }
@@ -36,11 +35,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-      - { problem_domain: job-power-prediction, target_column: avgpcon_per_node }
-      - { problem_domain: job-power-prediction, target_column: maxpcon_per_node }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       # Required job fields. PM100 timestamps are already timestamp[us, tz=UTC].
       job_id: { from: job_id }

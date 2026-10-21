@@ -10,7 +10,6 @@
     "name",
     "version",
     "description",
-    "problem_domains",
     "source",
     "decode",
     "targets"
@@ -115,7 +114,7 @@
     "dataset_id": {
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9_.-]{1,80}[a-z0-9]$",
-      "description": "Stable dataset id, e.g., dataset.job_power.fdata_fugaku."
+      "description": "Stable dataset id, e.g., dataset.pm100. It names the data, not a task (#249)."
     },
     "schema_version": {
       "type": "string",
@@ -129,7 +128,7 @@
       "type": "array",
       "minItems": 1,
       "items": { "$ref": "#/$defs/slug" },
-      "description": "ODA task domains this dataset can serve."
+      "description": "Retired (#249) and ignored: the tasks a dataset serves are derived from the target columns its mapping produces."
     },
     "systems": { "type": "array", "items": { "type": "string" } },
     "providers": { "type": "array", "items": { "type": "string" } },
@@ -256,7 +255,7 @@
           "schema": { "$ref": "#/$defs/schema_id" },
           "capabilities": {
             "type": "array",
-            "description": "Which model types this target drives; validated against the mapping outputs.",
+            "description": "Retired (#249) and ignored: derived from the target columns the mapping produces.",
             "items": {
               "type": "object",
               "additionalProperties": false,
@@ -270,7 +269,7 @@
           "suitable_models": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Optional curated model ids known to work with this target."
+            "description": "Retired (#249) and ignored: which models ran on a dataset comes from its results."
           },
           "mapping": {
             "type": "object",

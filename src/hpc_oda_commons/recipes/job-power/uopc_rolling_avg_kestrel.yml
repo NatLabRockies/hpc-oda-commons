@@ -7,7 +7,7 @@
 # (partition, qos, account, user, requested walltime/nodes/cores/GPUs, weekday and hour of
 # submission). Each distinct description is encoded once: about 60k here, minutes on a laptop.
 #
-#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/job-runtime/nlr_kestrel.yml
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/nlr_kestrel.yml
 #   hpc-oda datasets slice data/datasets/nlr_kestrel/data.parquet \
 #     --start 2025-08-01 --end 2026-01-01 --out data/windows/nlr_kestrel_power/data.parquet
 #   hpc-oda embed data/windows/nlr_kestrel_power/data.parquet \

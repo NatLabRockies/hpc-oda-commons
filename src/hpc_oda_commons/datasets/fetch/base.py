@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from hpc_oda_commons.datasets.descriptor import Descriptor
+from hpc_oda_commons.datasets.ids import legacy_dataset_ids
 
 DEFAULT_MAX_BYTES = 5 * 10**9  # 5 GB refuse-by-default guardrail
 _CHUNK = 1 << 20  # 1 MiB
@@ -209,6 +210,21 @@ def _write_lockfile(
     return lockfile_path
 
 
+def _dataset_cache(cache_dir: Path, dataset_id: str) -> Path:
+    """``cache_dir/<dataset_id>``, adopting a folder cached under the id from before #249,
+    so a renamed dataset keeps its downloads. Its lockfile is rewritten after the fetch."""
+    path = cache_dir / dataset_id
+    if path.exists():
+        return path
+    for old_id in legacy_dataset_ids(dataset_id):
+        old = cache_dir / old_id
+        if old.is_dir():
+            old.rename(path)
+            (path / f"{old_id}.lock.json").unlink(missing_ok=True)
+            break
+    return path
+
+
 def fetch_descriptor(
     descriptor: Descriptor,
     *,
@@ -243,7 +259,7 @@ def fetch_descriptor(
     if not unknown and not allow_large and total >= max_bytes:
         raise SizeLimitExceeded(total, max_bytes)
 
-    dataset_cache = Path(cache_dir) / descriptor.dataset_id
+    dataset_cache = _dataset_cache(Path(cache_dir), descriptor.dataset_id)
     raw_dir = dataset_cache / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
 

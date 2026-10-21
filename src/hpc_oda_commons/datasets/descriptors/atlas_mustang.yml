@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.atlas_mustang
+dataset_id: dataset.atlas_mustang
 schema_version: oda.dataset.v0.1.0
 name: Atlas Mustang (LANL)
 version: 1.0.0
@@ -8,7 +8,6 @@ description: >
   = wallclock_limit (a pandas timedelta string). Mustang has no job identifier column,
   so job_id is a synthesized row-index surrogate. Timestamps carry -06:00/-07:00 offsets
   and are normalized to UTC. Citation required (USENIX ATC'18).
-problem_domains: [job-runtime-prediction]
 systems: [Mustang]
 providers: [LANL]
 citation: { url: "https://ftp.pdl.cmu.edu/pub/datasets/ATLAS/" }
@@ -32,9 +31,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { synthesize: row_index }
       submit_time: { from: submit_time, type: timestamp, format: iso8601 }

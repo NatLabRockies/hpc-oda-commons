@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.alcf_djc_polaris`
+# Dataset card — `dataset.alcf_djc_polaris`
 
 *Generated 2026-08-27T12:58:39.888658+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Polaris  ·  **Descriptor:** `dataset.job_runtime.alcf_djc_polaris`
+**System:** Polaris  ·  **Descriptor:** `dataset.alcf_djc_polaris`
 
 ## Characterization
 

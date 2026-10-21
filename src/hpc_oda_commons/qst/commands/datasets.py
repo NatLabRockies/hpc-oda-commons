@@ -302,7 +302,7 @@ def datasets_characterize(
     ``<stem>.md`` (human-readable) under ``--out``. See docs/benchmarking/runtime/methodology.md.
     """
     stem = dataset_id.split(".")[-1] if dataset_id else table_path.parent.name
-    did = dataset_id or f"dataset.job_runtime.{stem}"
+    did = dataset_id or f"dataset.{stem}"
     table = pq.read_table(table_path)
     try:
         char = characterize_table(table, gap_min_days=gap_min_days, gap_floor_frac=gap_floor)

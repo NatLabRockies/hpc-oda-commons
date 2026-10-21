@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.atlas_opentrinity",
+  "dataset_id": "dataset.atlas_opentrinity",
   "generated_at": "2026-08-27T12:58:44.631702+00:00",
   "source": {
     "table_path": "data/datasets/atlas_opentrinity/data.parquet",
     "system": "Trinity",
-    "descriptor": "dataset.job_runtime.atlas_opentrinity"
+    "descriptor": "dataset.atlas_opentrinity"
   },
   "characterization": {
     "n_rows": 21531,

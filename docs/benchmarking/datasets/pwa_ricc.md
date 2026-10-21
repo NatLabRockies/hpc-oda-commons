@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.pwa_ricc`
+# Dataset card — `dataset.pwa_ricc`
 
 *Generated 2026-08-27T12:59:13.284601+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** RICC  ·  **Descriptor:** `dataset.job_runtime.pwa_ricc`
+**System:** RICC  ·  **Descriptor:** `dataset.pwa_ricc`
 
 ## Characterization
 

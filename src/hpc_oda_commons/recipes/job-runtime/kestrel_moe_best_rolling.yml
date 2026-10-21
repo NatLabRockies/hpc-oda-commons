@@ -3,7 +3,7 @@
 # Reproduce it from a fresh clone:
 #
 #   1. hpc-oda datasets prepare \
-#        src/hpc_oda_commons/datasets/descriptors/job-runtime/nlr_kestrel.yml
+#        src/hpc_oda_commons/datasets/descriptors/nlr_kestrel.yml
 #      -> data/datasets/nlr_kestrel/data.parquet
 #
 #   2. hpc-oda bench-matrix slice --dataset nlr_kestrel \

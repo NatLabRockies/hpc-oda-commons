@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.nrel_eagle
+dataset_id: dataset.nrel_eagle
 schema_version: oda.dataset.v0.1.0
 name: NREL Eagle Jobs (OEDI 5860)
 version: 1.0.0
@@ -7,7 +7,6 @@ description: >
   ~11.03M jobs from 2018 through Feb 2023, as a single parquet. The runtime-prediction
   target is run_time (seconds); requested walltime = wallclock_req (seconds). Includes
   requested nodes/processors/GPUs, partition, QOS, and final job state. Home-lab corpus.
-problem_domains: [job-runtime-prediction]
 systems: [Eagle]
 providers: [NREL]
 citation: { url: "https://data.openei.org/submissions/5860" }
@@ -31,9 +30,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       # Eagle timestamps are naive timestamp[us]; iso8601 treats them as UTC.
       job_id: { from: job_id }

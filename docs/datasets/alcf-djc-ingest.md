@@ -15,7 +15,7 @@ This page is the repeatable recipe for **Polaris + Aurora, all years**.
 Every file is `https://reports.alcf.anl.gov/data/data/<name>.csv.gz`. Grouped into one registered
 dataset per system.
 
-### Polaris → `dataset.job_runtime.alcf_djc_polaris`
+### Polaris → `dataset.alcf_djc_polaris`
 
 | Coverage | File | Status |
 |---|---|---|
@@ -25,7 +25,7 @@ dataset per system.
 | 2025 | `ANL-ALCF-DJC-POLARIS_20250101_20251231.csv.gz` | **registered** |
 | 2026 (Jan 1 – Jun 16) | `ANL-ALCF-DJC-POLARIS_20260101_20260616.csv.gz` | **registered** |
 
-### Aurora → `dataset.job_runtime.alcf_djc_aurora`
+### Aurora → `dataset.alcf_djc_aurora`
 
 | Coverage | File | Status |
 |---|---|---|
@@ -62,8 +62,8 @@ share the directory; each descriptor picks its own files by name.
 **Self-serve** (any already-registered ALCF dataset):
 
 ```
-hpc-oda datasets prepare dataset.job_runtime.alcf_djc_polaris --from ~/alcf-djc/
-hpc-oda datasets prepare dataset.job_runtime.alcf_djc_aurora  --from ~/alcf-djc/
+hpc-oda datasets prepare dataset.alcf_djc_polaris --from ~/alcf-djc/
+hpc-oda datasets prepare dataset.alcf_djc_aurora  --from ~/alcf-djc/
 ```
 
 `prepare` copies the placed files, checksum-verifies each, decodes the `.csv.gz`, normalizes to
@@ -73,7 +73,7 @@ hpc-oda datasets prepare dataset.job_runtime.alcf_djc_aurora  --from ~/alcf-djc/
 add a resource (`filename` + `sha256` + `bytes`) to the system's descriptor and verify the mapping
 against the real file. The mapping is **identical across systems and years** (same
 `DIM_JOB_COMPOSITE` schema) — only the pinned `sha256`/`filename` change. Template:
-[`descriptors/job-runtime/alcf_djc_polaris.yml`](../../src/hpc_oda_commons/datasets/descriptors/job-runtime/alcf_djc_polaris.yml).
+[`descriptors/alcf_djc_polaris.yml`](../../src/hpc_oda_commons/datasets/descriptors/alcf_djc_polaris.yml).
 
 ## Notes
 

@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.ccin2p3_2024
+dataset_id: dataset.ccin2p3_2024
 schema_version: oda.dataset.v0.1.0
 name: CC-IN2P3 2024 Workload (Sep–Dec)
 version: 1.1.0
@@ -8,7 +8,6 @@ description: >
   curates the last four months (September–December 2024) as the premium runtime slice —
   enough for a 3-month rolling-benchmark window. Runtime-prediction target = elapsed
   (seconds); requested walltime = timelimit (seconds). CPU/HTC-centric (single-node jobs dominate).
-problem_domains: [job-runtime-prediction]
 systems: [CC-IN2P3]
 providers: [CNRS, "CC-IN2P3"]
 citation: { doi: "10.5281/zenodo.18668107", url: "https://zenodo.org/records/18668107" }
@@ -47,9 +46,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: jobid }
       submit_time: { from: submit, type: timestamp, format: epoch_s }

@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.lassen
+dataset_id: dataset.lassen
 schema_version: oda.dataset.v0.1.0
 name: Lassen LAST (LLNL)
 version: 1.0.0
@@ -10,7 +10,6 @@ description: >
   user/group already hashed. Timestamps are naive (microsecond) and treated as UTC.
   The file is git-LFS-tracked in GitHub but fetched over plain HTTPS via the LFS media URL
   (media.githubusercontent.com) -- no git-lfs tooling required.
-problem_domains: [job-runtime-prediction]
 systems: [Lassen]
 providers: [LLNL]
 citation: { url: "https://github.com/LLNL/LAST" }
@@ -34,9 +33,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: primary_job_id, type: integer }
       submit_time: { from: job_submit_time, type: timestamp, format: iso8601 }

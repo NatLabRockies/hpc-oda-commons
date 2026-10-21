@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.atlas_mustang",
+  "dataset_id": "dataset.atlas_mustang",
   "generated_at": "2026-08-27T12:58:43.110291+00:00",
   "source": {
     "table_path": "data/datasets/atlas_mustang/data.parquet",
     "system": "Mustang",
-    "descriptor": "dataset.job_runtime.atlas_mustang"
+    "descriptor": "dataset.atlas_mustang"
   },
   "characterization": {
     "n_rows": 2019005,

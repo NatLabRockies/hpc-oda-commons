@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.pwa_sdsc_blue`
+# Dataset card — `dataset.pwa_sdsc_blue`
 
 *Generated 2026-08-27T12:59:14.814489+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Blue Horizon  ·  **Descriptor:** `dataset.job_runtime.pwa_sdsc_blue`
+**System:** Blue Horizon  ·  **Descriptor:** `dataset.pwa_sdsc_blue`
 
 ## Characterization
 

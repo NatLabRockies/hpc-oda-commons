@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.ic2
+dataset_id: dataset.ic2
 schema_version: oda.dataset.v0.1.0
 name: IC2 Integrated Cloud + HPC Jobs
 version: 1.0.0
@@ -9,7 +9,6 @@ description: >
   workloads (per-node metric arrays dropped) by the json decoder. The runtime-prediction
   target is derived (finish_time - start_time); timestamps are Unix epoch floats; there is
   no requested walltime. `platform` distinguishes the three systems.
-problem_domains: [job-runtime-prediction]
 systems: [IC2, Polaris, AWS]
 citation: { doi: "10.5281/zenodo.15545096", url: "https://zenodo.org/records/15545096" }
 license: { spdx: CC-BY-4.0, gated: false }
@@ -43,9 +42,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: task_id }
       submit_time: { from: submit_time, type: timestamp, format: epoch_s }

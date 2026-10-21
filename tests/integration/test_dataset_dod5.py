@@ -50,7 +50,6 @@ def test_dod_5_dataset_prepare_then_benchmark(tmp_project: Path) -> None:
         "name": "DoD5 Fixture Dataset",
         "version": "1.0.0",
         "description": "Tiny fixture proving datasets prepare -> benchmark end to end.",
-        "problem_domains": ["job-runtime-prediction"],
         "source": {
             "kind": "http",
             "resources": [
@@ -66,9 +65,6 @@ def test_dod_5_dataset_prepare_then_benchmark(tmp_project: Path) -> None:
         "targets": [
             {
                 "schema": "oda.job.v0.2.0",
-                "capabilities": [
-                    {"problem_domain": "job-runtime-prediction", "target_column": "runtime_seconds"}
-                ],
                 "mapping": {
                     "job_id": {"from": "jobid"},
                     "start_time": {"from": "sdt", "type": "timestamp", "format": "epoch_s"},

@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.fdata_fugaku",
+  "dataset_id": "dataset.fdata_fugaku",
   "generated_at": "2026-08-27T12:58:50.439335+00:00",
   "source": {
     "table_path": "data/datasets/fdata_fugaku/data.parquet",
     "system": "Fugaku",
-    "descriptor": "dataset.job_runtime.fdata_fugaku"
+    "descriptor": "dataset.fdata_fugaku"
   },
   "characterization": {
     "n_rows": 5793789,

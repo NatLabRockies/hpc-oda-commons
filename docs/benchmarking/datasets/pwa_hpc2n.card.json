@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.pwa_hpc2n",
+  "dataset_id": "dataset.pwa_hpc2n",
   "generated_at": "2026-08-27T12:59:08.336352+00:00",
   "source": {
     "table_path": "data/datasets/pwa_hpc2n/data.parquet",
     "system": "Seth",
-    "descriptor": "dataset.job_runtime.pwa_hpc2n"
+    "descriptor": "dataset.pwa_hpc2n"
   },
   "characterization": {
     "n_rows": 527370,

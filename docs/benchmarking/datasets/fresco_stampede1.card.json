@@ -1,11 +1,11 @@
 {
   "schema_version": "oda.dataset_card.v0.1.0",
-  "dataset_id": "dataset.job_runtime.fresco_stampede1",
+  "dataset_id": "dataset.fresco_stampede1",
   "generated_at": "2026-08-27T12:58:55.963063+00:00",
   "source": {
     "table_path": "data/datasets/fresco_stampede1/data.parquet",
     "system": "Stampede1",
-    "descriptor": "dataset.job_runtime.fresco_stampede1"
+    "descriptor": "dataset.fresco_stampede1"
   },
   "characterization": {
     "n_rows": 8710048,

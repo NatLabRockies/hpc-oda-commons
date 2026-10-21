@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.fresco_conte
+dataset_id: dataset.fresco_conte
 schema_version: oda.dataset.v0.1.0
 name: FRESCO Conte Job Accounting
 version: 1.0.0
@@ -9,7 +9,6 @@ description: >
   events have no runtime). Runtime target = resources_used.walltime (seconds); requested
   walltime = Resource_List.walltime (seconds); timestamps are MM/DD/YYYY (parsed via a
   strptime pattern). user/group already anonymized. Fetched from the datadepot over direct HTTPS.
-problem_domains: [job-runtime-prediction]
 systems: [Conte]
 providers: [Purdue]
 citation: { url: "https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/" }
@@ -61,9 +60,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: jobID }
       submit_time: { from: qtime, type: timestamp, format: "%m/%d/%Y %H:%M:%S" }

@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.mit_supercloud`
+# Dataset card — `dataset.mit_supercloud`
 
 *Generated 2026-08-27T12:58:59.176642+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Supercloud  ·  **Descriptor:** `dataset.job_runtime.mit_supercloud`
+**System:** Supercloud  ·  **Descriptor:** `dataset.mit_supercloud`
 
 ## Characterization
 

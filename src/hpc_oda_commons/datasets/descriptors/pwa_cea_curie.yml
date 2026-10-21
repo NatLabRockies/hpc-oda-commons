@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.pwa_cea_curie
+dataset_id: dataset.pwa_cea_curie
 schema_version: oda.dataset.v0.1.0
 name: PWA CEA-Curie (cleaned)
 version: 1.0.0
@@ -9,7 +9,6 @@ description: >
   carry the SWF "no limit" sentinel (2147483647) in Requested Time, which normalizes to
   null. Absolute UTC
   submit/start/end reconstructed from the SWF UnixStartTime header.
-problem_domains: [job-runtime-prediction]
 systems: [Curie]
 providers: [CEA, GENCI]
 citation: { url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_cea_curie/" }
@@ -33,9 +32,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: swf_job }
       submit_time: { from: submit_time, type: timestamp, format: epoch_s }

@@ -1,4 +1,4 @@
-dataset_id: dataset.job_runtime.pwa_kit_fh2
+dataset_id: dataset.pwa_kit_fh2
 schema_version: oda.dataset.v0.1.0
 name: PWA KIT-FH2 (ForHLR II)
 version: 1.0.0
@@ -7,7 +7,6 @@ description: >
   Workloads Archive (114,355 jobs, 2016-2018). Runtime-prediction target = Run Time
   (seconds); requested walltime = Requested Time (seconds). Absolute UTC submit/start/end
   are reconstructed from the SWF UnixStartTime header by the swf decoder.
-problem_domains: [job-runtime-prediction]
 systems: [ForHLR-II]
 providers: [KIT]
 citation: { url: "https://www.cs.huji.ac.il/labs/parallel/workload/l_kit_fh2/" }
@@ -31,9 +30,6 @@ decode:
 
 targets:
   - schema: oda.job.v0.2.0
-    capabilities:
-      - { problem_domain: job-runtime-prediction, target_column: runtime_seconds }
-    suitable_models: [model.baseline, model.xgboost]
     mapping:
       job_id: { from: swf_job }
       submit_time: { from: submit_time, type: timestamp, format: epoch_s }

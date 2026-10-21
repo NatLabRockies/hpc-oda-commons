@@ -1,8 +1,8 @@
-# Dataset card — `dataset.job_runtime.fdata_fugaku`
+# Dataset card — `dataset.fdata_fugaku`
 
 *Generated 2026-08-27T12:58:50.439335+00:00 · schema `oda.dataset_card.v0.1.0`.*
 
-**System:** Fugaku  ·  **Descriptor:** `dataset.job_runtime.fdata_fugaku`
+**System:** Fugaku  ·  **Descriptor:** `dataset.fdata_fugaku`
 
 ## Characterization
 
