@@ -1,10 +1,10 @@
-# hpc-oda-commons (v0.1) White Paper: A Local-First, Artifact-Centric Commons for HPC Operational Data Analytics
+# hpc-oda-commons White Paper: A Local-First, Artifact-Centric Commons for HPC Operational Data Analytics
 
 ## Abstract
 
 High Performance Computing (HPC) operational data analytics (ODA) is fragmented: each site and research group often develops bespoke log parsers, schemas, and evaluation pipelines that are difficult to reproduce or compare. **hpc-oda-commons** addresses this by establishing a small, testable set of contracts (schemas and artifacts) and a pragmatic end-to-end toolchain that makes ODA workflows **discoverable (Find)**, **reproducible/comparable (Compare)**, and **easy to adopt locally (Run)**.
 
-This document describes the system as it exists today: a **v0.1 vertical slice** focused primarily on **SLURM job runtime prediction** (with a second **job power prediction** slice), delivered as a Python package with a CLI, packaged schemas/recipes/datasets, deterministic benchmark execution, provenance capture, validation and data quality reports, and a static leaderboard generator. Runtime prediction ships several models (a deterministic baseline plus XGBoost, Random Forest, MLP, TF-IDF + kNN, and an embedding + kNN model that consumes precomputed dense embeddings), and power prediction ships a per-user UoPC-style kNN model.
+This document describes the system as it exists today (package version 0.1): a benchmark for **SLURM job runtime prediction** and **job power prediction**, delivered as a Python package with a CLI, packaged schemas, recipes and dataset descriptors, deterministic benchmark execution, provenance capture, validation and data quality reports, and a static leaderboard generator. The same models predict both targets; the [model cards](docs/models/README.md) list them.
 
 ## 1) The Problem This Solves
 
@@ -31,17 +31,17 @@ The net effect is that promising ODA ideas remain siloed, and the community lack
 
 1. **Versioned schemas** (JSON Schema) that define canonical artifacts.
 2. **Canonical artifacts** (Parquet tables, manifests, result bundles) treated as the primary interface.
-3. **A CLI-first user experience** (v0.1) that supports the 10-minute workflow: init → ingest → validate → analyze → benchmark → leaderboard.
-4. **An offline registry snapshot** that makes official adapters/models/recipes discoverable without a server.
+3. **A CLI-first user experience** that supports the 10-minute workflow: init → ingest → validate → analyze → benchmark → leaderboard.
+4. **A registry built from the package's own files** that makes the models, datasets, recipes and adapters discoverable without a server.
 
-In v0.1, the scope is intentionally narrow:
+The scope is intentionally narrow:
 
-- **Domains:** SLURM job runtime prediction (primary) and job power prediction (second slice). Every model predicts the column its recipe's metrics target, so the runtime models also predict per-node power on the same rolling protocol (`docs/how-to/predict-power.md`)
-- **Source:** `slurmctld` logs (minimal patterns)
-- **Data:** tiny packaged synthetic dataset (offline) + manifest
-- **Models:** a deterministic baseline (mean predictor) plus XGBoost, Random Forest, and MLP (sharing a rolling-tabular base), TF-IDF + kNN, and an embedding + kNN model (kNN over a precomputed dense embedding column) for runtime, all with rolling evaluation, and a per-user UoPC-style kNN model for power (fixed evaluation, the paper's date-cutoff protocol, or the shared rolling windows)
-- **Benchmark:** recipe-driven execution with regression metrics (MAE, RMSE)
-- **Outputs:** schema-valid artifacts and static leaderboard generation
+- **Domains:** SLURM job runtime prediction and job power prediction. Every model predicts the column its recipe's metrics target, so one set of models covers both on the same rolling protocol (`docs/how-to/predict-power.md`)
+- **Sources:** `slurmctld` logs (minimal patterns), Parquet exports (`hpc-oda ingest jobs-parquet`), and public datasets described by checksum-pinned descriptors (`hpc-oda datasets prepare`)
+- **Data:** the public datasets' descriptors, plus a tiny packaged synthetic dataset for offline runs
+- **Models:** a deterministic baseline, XGBoost, mixture-of-experts XGBoost, Random Forest, MLP, a signature memorizer, TF-IDF + kNN, embedding + kNN, and UoPC, a per-user kNN power model ([model cards](docs/models/README.md))
+- **Benchmark:** recipe-driven execution with regression metrics (MAE and RMSE required; MAPE, R² and underprediction ratio optional)
+- **Outputs:** schema-valid artifacts, generated model and dataset cards, and static leaderboard generation
 
 ## 3) What It Does
 
@@ -49,7 +49,7 @@ At a high level, the system provides three user-visible capabilities.
 
 ### Find (offline discoverability)
 
-- `hpc-oda browse` lists official components from a bundled registry snapshot.
+- `hpc-oda browse` lists the models, datasets, recipes and adapters, from a registry built from the package's own files.
 - `hpc-oda info <entry_id>` prints metadata and compatibility.
 
 ### Run (local-first ingestion, validation, and analysis)
@@ -59,6 +59,7 @@ At a high level, the system provides three user-visible capabilities.
   (offline), runs the baseline model, computes regression metrics (MAE/RMSE), and produces a result bundle
   under `runs/`. This is the fastest “sanity check” that the end-to-end toolchain is installed and working.
 - `hpc-oda ingest slurmctld --path <log>` parses logs into schema-aligned rows, writes Parquet + `manifest.json`.
+- `hpc-oda datasets fetch` and `hpc-oda datasets prepare <descriptor>` download a public dataset, check its checksums, and map it onto the job schema. The same path prepares a site's own export.
 - `hpc-oda validate <path>` validates:
   - result bundles (`result.json` schema)
   - manifests (`manifest.json` schema)
@@ -72,7 +73,8 @@ At a high level, the system provides three user-visible capabilities.
 - `hpc-oda benchmark <recipe.yml>` executes a recipe-driven benchmark and writes a **result bundle** under `runs/`.
 - `hpc-oda leaderboard --runs runs --out leaderboard` aggregates bundles into:
   - `leaderboard.json`
-  - `index.html`
+  - `index.html`, a table per prediction target
+  - `runs.html`, every run, with the reason any was not counted
 
 ## 4) How It Does It (Technical Architecture)
 
@@ -85,11 +87,15 @@ Schemas are packaged JSON Schemas, loaded by ID at runtime:
 - `oda.job.v0.2.0` (job table rows; current canonical job schema — `oda.job.v0.1.0` is retained only for legacy reads)
 - `oda.manifest.v0.1.0` (manifests for ingested artifacts)
 - `oda.result.v0.1.0` (result bundles)
-- `oda.registry.v0.2.0` (registry snapshot; adds the `dataset` entry_type)
+- `oda.registry.v0.2.0` (the registry, built from the package's files; adds the `dataset` entry_type)
 - `oda.recipe.v0.1.0` (benchmark recipes)
 - `oda.dataset.v0.1.0` (public-dataset ingestion descriptors)
 - `oda.mdl.v0.1.0` (metric definitions; “MDL v0”)
 - `oda.mapping.v0.1.0` (field mapping specifications for data ingestion)
+- `oda.dataset_card.v0.1.0` (runtime cards: a table's health and benchmark window)
+- `oda.ceiling.v0.1.0` (error ceilings: the lowest error a submit-time predictor could reach)
+
+`docs/reference/schema-versions.md` lists them all.
 
 Implementation:
 
@@ -101,7 +107,7 @@ Implementation:
 **ODA Table (Parquet)**
 
 - Stored as Parquet and validated row-wise against `oda.job.v0.2.0`.
-- Job timestamps (`start_time`, `end_time`, `submit_time`) are native Arrow `timestamp(us, tz=UTC)`, not ISO-8601 strings. Their column type is validated **structurally** (`collect_job_table_type_issues`), not as JSON strings; legacy v0.1 string tables are rejected with a clear re-ingest error.
+- Job timestamps (`start_time`, `end_time`, `submit_time`) are native Arrow `timestamp(us, tz=UTC)`, not ISO-8601 strings. Their column type is validated **structurally** (`collect_job_table_type_issues`), not as JSON strings; legacy v0.1.0 string tables are rejected with a clear re-ingest error.
 - Written/read via `hpc_oda_commons.kernel.artifacts.oda_table`.
 
 **Manifest (JSON)**
@@ -157,7 +163,7 @@ Adapters follow a minimal protocol:
 - `SourceAdapter` with `metadata: AdapterMetadata`
 - `parse(path) -> list[dict]` returning schema-aligned rows
 
-v0.1 official adapter:
+The official adapter:
 
 - `hpc_oda_commons.adapters.slurmctld.adapter.SlurmctldAdapter`
 - It parses minimal slurmctld patterns:
@@ -182,10 +188,10 @@ Validation rules enforced by `hpc_oda_commons.benchmark.recipes.validate_recipe(
 
 - required recipe fields are present
 - metrics are MDL-valid
-- required metrics for v0.1 runtime prediction are included:
+- the required metrics are included:
   - `mae`
   - `rmse`
-- all metrics share the same target field (v0.1 expects `runtime_seconds`)
+- all metrics share the same target field, which is the column the model predicts (`runtime_seconds`, or a power column such as `avgpcon_per_node`)
 
 Execution (`hpc_oda_commons.benchmark.runner`):
 
@@ -193,8 +199,8 @@ Execution (`hpc_oda_commons.benchmark.runner`):
 - resolves the model and split strategy:
   - **fixed split** (deterministic train/test partition), used by the baseline and by the job-power UoPC model
   - **cutoff split** (every job submitted from a date is scored), used by the UoPC paper reproduction
-  - **rolling split** (sliding window evaluation simulating production retraining), used by the rolling baseline, XGBoost, Random Forest, MLP, TF-IDF + kNN, and embedding + kNN runtime models
-- computes metrics and writes a result bundle under `runs/`
+  - **rolling split** (sliding window evaluation simulating production retraining), used by every model, UoPC included
+- computes metrics and writes a result bundle under the recipe's `run.output_dir` (default `runs/`)
 
 ### 4.7 Leaderboard Generation
 
@@ -205,8 +211,9 @@ Leaderboards are generated from result bundles:
   - validates bundles
   - aggregates into `leaderboard.json`
   - robustly skips invalid bundles
+- only runs on the benchmark's protocol are counted (`hpc_oda_commons.benchmark.tracks`); the others are listed on `runs.html` with the reason
 
-HTML is generated via `hpc_oda_commons.tools.report.html.render_leaderboard_html(...)`.
+HTML is generated via `hpc_oda_commons.tools.report.html.render_leaderboard_html(...)` and `render_runs_html(...)`.
 
 ### 4.8 Minimal Intelligence Layer (Assistive, Deterministic)
 
@@ -216,16 +223,16 @@ The “intelligence layer” in today’s codebase is intentionally modest and t
   - `hpc_oda_commons.intelligence.mapping.suggest_job_runtime_mappings(...)`
 - **Synthetic scoring:** lightweight coverage/realism proxies (missingness, runtime stats, diversity)
   - `hpc_oda_commons.intelligence.synthetic_scoring.score_job_runtime_rows(...)`
-- **Metadata graph:** static graph derived from the registry snapshot (entries, tags, domains, schemas)
+- **Metadata graph:** static graph derived from the registry (entries, tags, domains, schemas)
   - `hpc_oda_commons.intelligence.metadata_graph.build_metadata_graph(...)`
 
 These are library-level APIs available for programmatic use but not currently integrated into the CLI.
 
 ### 4.9 Packaging, Offline Support, and CI
 
-Key packaging decisions (v0.1):
+Key packaging decisions:
 
-- Schemas, registry snapshot, recipes, and tiny runtime dataset are packaged as data files.
+- Schemas, recipes, dataset descriptors, each model's `model.yml` and the tiny runtime dataset are packaged as data files; the registry is built from them when it loads.
 - Recipe and schema validation scripts exist in-repo:
   - `python scripts/validate_recipes.py`
   - `python scripts/validate_schemas.py`
@@ -241,13 +248,13 @@ Note: only `validate_recipes.py` is wired into CI; `scripts/validate_schemas.py`
 
 ## 5) How This Moves Toward Solving the Problem
 
-This v0.1 slice is deliberately narrow, but it establishes the foundation needed for community-scale progress:
+This slice is deliberately narrow, but it establishes the foundation needed for community-scale progress:
 
 1. **Standardization** via versioned schemas and schema-backed validation
 2. **Comparability** via recipe-driven benchmarking and canonical result bundles
 3. **Reproducibility** via provenance capture and deterministic tiny dataset runs
 4. **Adoption** via a CLI-first, local-first workflow that works offline
-5. **Community alignment** via a discoverable registry snapshot and an SER template for schema evolution
+5. **Community alignment** via a discoverable registry and an SER template for schema evolution
 
 The practical impact is that sites and researchers can now share comparable *artifacts* rather than ad hoc scripts and screenshots.
 
@@ -264,11 +271,11 @@ The current system is a stable vertical slice, not yet a fully general platform.
    - expand quality rules in a versioned way
    - additional privacy-preserving transformations (timestamp binning, value redaction)
 4. **More data**
-   - add external dataset references with immutable identifiers/checksums
+   - more public datasets, each with a checksum-pinned descriptor like those bundled today
 5. **New problem domains**
-   - extend beyond runtime prediction to job failure prediction, resource utilization, queue wait-time estimation
+   - extend beyond runtime and power prediction to job failure prediction, resource utilization, queue wait-time estimation
 6. **Publishing and automation**
-   - automate leaderboard publication (e.g., GitHub Pages) from validated result bundles
+   - the leaderboard is published on GitHub Pages from a committed snapshot; build it from validated result bundles in CI
 
 ## 7) Future Vision for the HPC ODA Community
 
@@ -291,7 +298,7 @@ In a mature state, hpc-oda-commons can function as a shared substrate for HPC OD
 
 The long-term payoff is a community where ODA progress is cumulative: models, datasets, adapters, and evaluation practices can be shared and improved without re-litigating the basics each time.
 
-## Appendix A: CLI Commands (v0.1)
+## Appendix A: CLI Commands
 
 ```bash
 hpc-oda --help
@@ -307,6 +314,8 @@ hpc-oda analyze --data data/ingested/slurmctld/<run>
 HPC_ODA_OFFLINE=1 hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
+
+`docs/reference/cli.md` lists every command, including `datasets`, `recipes`, `models`, `embed` and `bench-matrix`.
 
 ## Appendix B: Primary Artifact Outputs
 
@@ -324,3 +333,4 @@ hpc-oda leaderboard --runs runs --out leaderboard
 - Leaderboard:
   - `leaderboard/leaderboard.json`
   - `leaderboard/index.html`
+  - `leaderboard/runs.html`

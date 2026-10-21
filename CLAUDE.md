@@ -4,7 +4,7 @@ Instructions for AI agents working with hpc-oda-commons. (`AGENTS.md` is a
 symlink to this file, so AGENTS-aware tools read the same guidance.)
 
 **hpc-oda-commons** is a local-first CLI + standards toolkit for HPC Operational
-Data Analytics (ODA), focused on SLURM job runtime prediction.
+Data Analytics (ODA). Its benchmark predicts SLURM job runtime and job power.
 
 ## First: establish intent
 
@@ -51,8 +51,12 @@ Key guardrails:
 - **Never push to `main`.** Develop on a branch named `fix/…-<issue>` /
   `feat/…-<issue>` / `chore/…-<issue>` and land via PR (`Closes #<issue>`).
 - **Run the full gate before pushing** — `ruff format . --check`, `ruff check .`,
-  `make test`, and `HPC_ODA_OFFLINE=1 make test-integration` (CI runs all four).
-  `make lint` alone is not sufficient.
+  `python scripts/validate_recipes.py`, `make test`, and
+  `HPC_ODA_OFFLINE=1 make test-integration`, as CI does. `make lint` alone is not
+  sufficient.
+- **Never hand-edit generated pages** (`docs/reference/cli.md`, `docs/models/`,
+  `docs/datasets/cards/`, `site/leaderboard/`): change their source and regenerate them
+  ([CONTRIBUTING.md](CONTRIBUTING.md#generated-pages)).
 - **Known limitations** live in [`docs/known-issues.md`](docs/known-issues.md).
 
 Personal, per-developer agent preferences may live in a gitignored
