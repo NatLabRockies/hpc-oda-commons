@@ -557,14 +557,42 @@ def datasets_cards(
             help="The leaderboard JSON the cards' results come from.",
         ),
     ] = Path("site/leaderboard/leaderboard.json"),
+    descriptors: Annotated[
+        Path | None,
+        typer.Option(
+            "--descriptors",
+            exists=True,
+            file_okay=False,
+            help="Card the descriptors in this folder, your own among them (#255), instead "
+            "of the bundled ones.",
+        ),
+    ] = None,
+    benchmark_dir: Annotated[
+        Path,
+        typer.Option(
+            "--benchmark-dir",
+            help="Folder of runtime cards (*.card.json) and error ceilings (*.ceiling.json).",
+        ),
+    ] = Path("docs/benchmarking/datasets"),
+    recipes: Annotated[
+        list[Path] | None,
+        typer.Option("--recipes", help="A folder of the datasets' recipes (repeatable)."),
+    ] = None,
 ) -> None:
-    """Write a card for every bundled dataset, generated from the repo (#249).
+    """Write a card for every dataset, generated from its files (#249).
 
     Each card comes from the dataset's descriptor, its runtime card, the error ceilings, the
-    bundled recipes and the leaderboard, so regenerate the cards whenever one of those
-    changes; a unit test fails when the committed cards differ from what this writes.
+    recipes and the leaderboard, so regenerate the cards whenever one of those changes; for
+    the bundled datasets a unit test fails when the committed cards differ from what this
+    writes. With --descriptors, it cards a dataset of your own the same way.
     """
     from hpc_oda_commons.benchmark.dataset_cards import write_dataset_cards
 
-    for path in write_dataset_cards(out, leaderboard.resolve()):
+    for path in write_dataset_cards(
+        out.resolve(),
+        leaderboard.resolve(),
+        benchmark_dir.resolve(),
+        descriptors_dir=descriptors,
+        recipe_dirs=[r.resolve() for r in recipes or ()],
+    ):
         console.print(f"[green]wrote[/green] {path}")
