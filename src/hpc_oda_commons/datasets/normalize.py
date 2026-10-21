@@ -25,6 +25,8 @@ from hpc_oda_commons.datasets.descriptor import Target
 from hpc_oda_commons.ingest.jobs_parquet.apply import REQUIRED_FIELDS, apply_mapping_spec
 from hpc_oda_commons.kernel.artifacts.mapping_spec import new_mapping_spec, write_mapping_spec
 
+HASH_SALT_ENV = "HPC_ODA_HASH_SALT"
+
 _TRANSFORM_TYPES = frozenset(
     {
         "timestamp",
@@ -78,6 +80,9 @@ def target_to_mapping_spec(target: Target) -> dict[str, Any]:
                 transform["format"] = rule["format"]
             if "unit" in rule:
                 transform["unit"] = rule["unit"]
+            if ttype == "hash_identifier":
+                # The same salt the ingest wizard names, so a descriptor hashes like it.
+                transform["salt_env"] = HASH_SALT_ENV
             spec["transform"] = transform
         fields[canonical] = spec
     return new_mapping_spec(
