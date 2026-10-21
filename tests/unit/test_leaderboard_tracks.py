@@ -15,6 +15,8 @@ from hpc_oda_commons.models.job_power_uopc.model import UOPC_DEFAULT_PREDICTOR
 from hpc_oda_commons.tools.report import render_leaderboard_html, render_runs_html
 
 POWER_SPLIT = {"n_windows": 89, "test_window_hours": 24, "training_lookback_days": 60}
+# The jobs every fixture cell and ceiling covers, so headroom applies unless a test says not.
+ROWS = 1000
 _counter = iter(range(10_000))
 
 
@@ -36,7 +38,7 @@ def _bundle(
     metrics = {
         "mae": mae,
         "definitions": [{"name": "mae", "target": target}],
-        "summary": dict(POWER_SPLIT) if summary is None else summary,
+        "summary": {**POWER_SPLIT, "rows_scored": ROWS} if summary is None else summary,
     }
     if run_config is not None:
         metrics["run_config"] = run_config
@@ -65,12 +67,18 @@ def _bundle(
     return bundle_dir
 
 
-def _ceiling(ceilings: Path, dataset_id: str, target: str, floor: float) -> None:
+def _ceiling(
+    ceilings: Path, dataset_id: str, target: str, floor: float, scored_rows: int = ROWS
+) -> None:
     ceilings.mkdir(parents=True, exist_ok=True)
     stem = dataset_id.split(".")[-1]
-    (ceilings / f"{stem}.{target}.ceiling.json").write_text(
-        json.dumps({"dataset_id": dataset_id, "target_field": target, "floor": {"mae": floor}})
-    )
+    payload = {
+        "dataset_id": dataset_id,
+        "target_field": target,
+        "scored_rows": scored_rows,
+        "floor": {"mae": floor},
+    }
+    (ceilings / f"{stem}.{target}.ceiling.json").write_text(json.dumps(payload))
 
 
 @pytest.fixture
@@ -253,9 +261,8 @@ def _windows(maes: list[float]) -> list[dict]:
     ]
 
 
-def test_runtime_cells_use_the_walk_forward_choice_and_show_no_headroom(tmp_path: Path) -> None:
-    """Two lookback arms: the cell is the policy's score, not the better arm's (#190)."""
-    card = Card(
+def _lassen_card(tmp_path: Path) -> Card:
+    return Card(
         dataset="lassen",
         window_rows=1000,
         window_start="2026-01-01",
@@ -268,34 +275,86 @@ def test_runtime_cells_use_the_walk_forward_choice_and_show_no_headroom(tmp_path
         history_days=120,
         test_days=1,
     )
-    summary = {"n_windows": 4, "test_window_hours": 6}
-    arm_a = [5.0, 5.0, 1.0, 9.0]  # good early, bad late
-    arm_b = [6.0, 6.0, 6.0, 2.0]
+
+
+def _runtime_pairs(model: str, arms: dict[int, list[float]]) -> list[tuple[dict, dict]]:
+    """One bundle per lookback arm of ``model`` on lassen, four windows of 10 jobs each."""
     pairs = []
-    for lookback, maes in ((10, arm_a), (30, arm_b)):
+    for lookback, maes in arms.items():
         entry = {
-            "bundle_dir": f"b{lookback}",
+            "bundle_dir": f"{model}-{lookback}",
             "prediction_target": "runtime_seconds",
-            "recipe_id": f"recipe.job_runtime.lassen_xgb_lb{lookback}d",
+            "recipe_id": f"recipe.job_runtime.lassen_{model}_lb{lookback}d",
             "dataset": {"id": "lassen"},
-            "model": {"id": "model.job_runtime_xgboost"},
+            "model": {"id": model},
         }
         metrics = {
-            "mae": sum(maes) / 4,
-            "summary": {**summary, "training_lookback_days": lookback},
+            "mae": sum(maes) / len(maes),
+            "summary": {"n_windows": 4, "test_window_hours": 6, "training_lookback_days": lookback},
             "run_config": {"training_lookback_days": lookback},
             "windows": _windows(maes),
         }
         pairs.append((entry, metrics))
+    return pairs
 
-    tables, excluded = build_tables(pairs, ceilings_dir=tmp_path, cards=[card], burn_in=2)
+
+def test_runtime_cells_use_the_walk_forward_choice(tmp_path: Path) -> None:
+    """Two lookback arms: the cell is the policy's score, not the better arm's (#190)."""
+    arms = {10: [5.0, 5.0, 1.0, 9.0], 30: [6.0, 6.0, 6.0, 2.0]}  # a: good early, bad late
+    pairs = _runtime_pairs("model.job_runtime_xgboost", arms)
+
+    tables, excluded = build_tables(
+        pairs, ceilings_dir=tmp_path, cards=[_lassen_card(tmp_path)], burn_in=2
+    )
     runtime = next(t for t in tables if t["key"] == "runtime")
     cell = runtime["rows"][0]["cells"]["lassen"]
     # After two burn-in windows: window 2 picks arm a (5 < 6) and scores 1.0; window 3 still
     # picks a (11/3 < 6) and scores 9.0. The better arm in hindsight (b) would claim 4.0.
     assert cell["mae"] == pytest.approx(5.0)
-    assert cell["headroom"] is None and runtime["rows"][0]["average"] is None
+    assert cell["scored_rows"] == 20  # the two windows past the burn-in
     assert not excluded
+
+
+def _runtime_tables(tmp_path: Path, ceiling_rows: int) -> dict:
+    _ceiling(tmp_path, "dataset.job_runtime.lassen", "runtime_seconds", 1.0, ceiling_rows)
+    pairs = _runtime_pairs("model.job_runtime_baseline", {10: [9.0] * 4, 30: [9.5] * 4})
+    pairs += _runtime_pairs("model.job_runtime_xgboost", {10: [5.0] * 4, 30: [6.0] * 4})
+    tables, _ = build_tables(
+        pairs, ceilings_dir=tmp_path, cards=[_lassen_card(tmp_path)], burn_in=2
+    )
+    return next(t for t in tables if t["key"] == "runtime")
+
+
+def test_runtime_headroom_when_the_ceiling_covers_the_same_jobs(tmp_path: Path) -> None:
+    """The floor, the baseline and the cell all cover the 20 jobs past the burn-in (#238)."""
+    runtime = _runtime_tables(tmp_path, ceiling_rows=20)
+    xgb = _row(runtime, "model.job_runtime_xgboost")
+
+    # Baseline 9 (its walk-forward pick, the 10-day arm), floor 1, model 5: halfway.
+    assert xgb["cells"]["lassen"]["headroom"] == pytest.approx(0.5)
+    assert xgb["average"] == pytest.approx(0.5)
+    assert runtime["note"] == ""
+
+
+def test_runtime_shows_mae_alone_when_the_ceiling_covers_other_jobs(tmp_path: Path) -> None:
+    """A ceiling from other windows, like those from before the burn-in, bounds other rows."""
+    runtime = _runtime_tables(tmp_path, ceiling_rows=40)
+    cell = _row(runtime, "model.job_runtime_xgboost")["cells"]["lassen"]
+
+    assert cell["headroom"] is None and cell["mae"] == pytest.approx(5.0)
+    assert cell["headroom_missing"].startswith("covers other jobs: the ceiling 40")
+    assert "covers other jobs" in runtime["note"]
+    assert all(row["average"] is None for row in runtime["rows"])
+
+
+def test_a_power_cell_on_other_jobs_gets_no_headroom(power_runs) -> None:
+    runs, ceilings = power_runs
+    _ceiling(ceilings, "dataset.job_runtime.pm100", "avgpcon_per_node", 100.0, ROWS + 1)
+    leaderboard = build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
+
+    cell = _row(_table(leaderboard, "avgpcon_per_node"), "model.job_runtime_xgboost")["cells"]
+    assert cell["pm100"]["headroom"] is None
+    assert cell["nlr_eagle"]["headroom"] is not None
 
 
 def test_pages_render_tables_and_list_what_was_left_out(power_runs) -> None:

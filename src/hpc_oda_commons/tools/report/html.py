@@ -255,7 +255,12 @@ def _table_cell(
     headroom = cell.get("headroom")
     value = headroom if table["headroom"] else -cell["mae"]
     css = "metric best" if best is not None and value is not None and value == best else "metric"
-    title = escape(", ".join(str(b) for b in cell.get("bundles", [])))
+    title = escape(
+        "; ".join(
+            [", ".join(str(b) for b in cell.get("bundles", []))]
+            + ([f"no headroom: {cell['headroom_missing']}"] if cell.get("headroom_missing") else [])
+        )
+    )
     if headroom is None:
         return (
             f'<td class="{css}" title="{title}"><span class="cell-main">{escape(mae)}</span></td>'
