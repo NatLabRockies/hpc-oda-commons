@@ -2,12 +2,12 @@
 
 **Status:** dev note, 2026-10-19. The [proposed work](#proposed-work) is tracked in
 [#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222). Done:
-- item 2, the corrections;
-- item 3, the reproduction reruns ([results](uopc.md#variants-padded-jobs-and-node-count));
-- item 4, scoped down to feature modes ([results](uopc.md#feature-modes)). It does not
+- item 1, the corrections;
+- item 2, the reproduction reruns ([results](uopc.md#variants-padded-jobs-and-node-count));
+- item 3, scoped down to feature modes ([results](#feature-modes-measured)). It does not
   include the paper-style embedding.
 
-`balanced` became UoPC's default (#227). Item 5, the F-DATA job-name ablation, was dropped
+`balanced` became UoPC's default (#227). Item 4, the F-DATA job-name ablation, was dropped
 as unnecessary for now.
 
 **Follow-up ([#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228)):** our
@@ -90,7 +90,8 @@ over 100% MAPE. A-RF is essentially our rolling protocol; our rolling Random For
 11.10% / 0.776. Our reproduction uses per-user and global means as baselines instead.
 
 **On PM100 the paper reports** UoPC at 18% / 0.11 on average power and 22% / 0.13 on peak,
-against A-RF at 20% / 0.07 and 24% / 0.13. We have not run UoPC on PM100.
+against A-RF at 20% / 0.07 and 24% / 0.13. When this was written we had not run UoPC on
+PM100; it has since run on the rolling protocol ([PM100](results.md#pm100)).
 
 ## Deviation 1 — node count
 
@@ -343,7 +344,185 @@ is the likely cause.
 All figures come from the five Zenodo F-DATA monthly files (`23_12` … `24_04`, 2,930,414
 rows) or the prepared `fdata_fugaku_uopc` table (since #249, the Dec 2023–Apr 2024 window of `fdata_fugaku`):
 
-- **Test period** is `adt >= 2024-02-01`, 1,598,494 jobs.
+- **Test period** is `adt >= 2024-02-01`, 1,598,494 jobs in the raw files, 1,591,115 of
+  them usable (with both targets, an embedding and a node count).
 - **The paper's figures** were rendered at 300 dpi from the PDF and read by eye.
 - **The authors' repositories** were read, not run. The three failures were reproduced with
   toy files written for the purpose.
+
+## Appendix: the #222 measurements
+
+Moved here from [uopc.md](uopc.md), which keeps a summary of each. They ran with k = 5 and the
+vote, the defaults until #228 and #241.
+
+### Z-scored features: the numbers
+
+On F-DATA, one embedding is at most 1.5 from another, with a median of 0.84 between two job
+names of one user. Against that:
+
+- Frequency has two values, so its z-scores are at least 2 apart (2.03 here) whatever
+  the data. A frequency mismatch therefore outweighs any difference in job name.
+- A few enormous jobs inflate the spread of cores (std. dev. 29,869) and nodes (622).
+  So ordinary differences barely count: 48 → 96 cores adds 0.002, and 1 → 16 nodes
+  0.024.
+- In practice the neighbours are the user's jobs at the same frequency with the most
+  similar job names.
+
+### The θ × k sweep on the authors' setup
+
+The first sweep ran per allocated node with `zscore` features, at 76f4f0f, and is kept for
+the comparison with the paper. Like the paper's, it put θ = 500, k = 5 close to the best. The
+full grid took 2 h 15 min (7 to 51 minutes per θ, the most at θ = 5000) and peaked at ~17 GB
+resident. Each cell shows MAPE / R² on average power per allocated node; coverage is as in
+[uopc.md's sweep](uopc.md#sensitivity-sweep-θ--k).
+
+**Classifier** (the paper's predictor, a majority vote over rounded watts):
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 19.49% / 0.769 | 15.92% / 0.771 | 14.74% / 0.769 | 15.09% / 0.751 |
+| 100 | 15.39% / 0.800 | 19.32% / 0.790 | 14.03% / 0.780 | 14.07% / 0.771 |
+| 200 | 11.12% / 0.824 | 13.76% / 0.817 | 19.14% / 0.803 | 13.60% / 0.783 |
+| 500 | 9.65% / 0.840 | 9.56% / 0.848 | 10.74% / 0.841 | 18.92% / 0.812 |
+| 1000 | 9.56% / 0.841 | 9.40% / 0.850 | 9.71% / 0.849 | 13.30% / 0.823 |
+| 2000 | 9.60% / 0.837 | 9.32% / 0.848 | 9.49% / 0.847 | 10.17% / 0.842 |
+| 5000 | 10.01% / 0.816 | 9.68% / 0.829 | 9.81% / 0.826 | 10.27% / 0.824 |
+
+**Regressor** (the mean of the same neighbours, an ablation):
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 27.65% / 0.806 | 33.24% / 0.805 | 39.34% / 0.800 | 54.75% / 0.788 |
+| 100 | 17.36% / 0.832 | 26.06% / 0.826 | 30.93% / 0.819 | 37.57% / 0.810 |
+| 200 | 11.21% / 0.851 | 14.62% / 0.849 | 25.02% / 0.840 | 32.57% / 0.828 |
+| 500 | 9.15% / 0.870 | 9.70% / 0.872 | 12.24% / 0.868 | 24.43% / 0.852 |
+| 1000 | 9.04% / 0.871 | 9.13% / 0.875 | 9.79% / 0.876 | 13.70% / 0.867 |
+| 2000 | 9.06% / 0.873 | 9.02% / 0.878 | 9.22% / 0.881 | 10.62% / 0.880 |
+| 5000 | 9.50% / 0.859 | 9.40% / 0.865 | 9.57% / 0.867 | 10.21% / 0.865 |
+
+<details>
+<summary>Peak power (maxpcon per allocated node)</summary>
+
+Classifier:
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 19.21% / 0.769 | 15.97% / 0.765 | 14.79% / 0.767 | 15.50% / 0.741 |
+| 100 | 15.52% / 0.790 | 18.48% / 0.782 | 14.14% / 0.778 | 14.25% / 0.768 |
+| 200 | 11.30% / 0.816 | 13.52% / 0.808 | 18.50% / 0.795 | 13.82% / 0.776 |
+| 500 | 9.85% / 0.831 | 9.86% / 0.835 | 10.89% / 0.830 | 18.60% / 0.804 |
+| 1000 | 9.89% / 0.830 | 9.80% / 0.835 | 9.89% / 0.836 | 12.89% / 0.816 |
+| 2000 | 9.78% / 0.829 | 9.72% / 0.834 | 9.75% / 0.833 | 10.30% / 0.832 |
+| 5000 | 10.21% / 0.805 | 9.79% / 0.816 | 9.83% / 0.814 | 10.32% / 0.810 |
+
+Regressor:
+
+| θ \ k | 5 | 10 | 20 | 50 |
+|---|---:|---:|---:|---:|
+| 50 | 28.18% / 0.799 | 34.04% / 0.797 | 40.46% / 0.793 | 55.94% / 0.783 |
+| 100 | 17.74% / 0.823 | 26.57% / 0.817 | 31.64% / 0.813 | 38.62% / 0.805 |
+| 200 | 11.57% / 0.840 | 15.02% / 0.838 | 25.57% / 0.831 | 33.42% / 0.820 |
+| 500 | 9.50% / 0.858 | 10.07% / 0.860 | 12.61% / 0.857 | 24.97% / 0.844 |
+| 1000 | 9.45% / 0.860 | 9.54% / 0.863 | 10.20% / 0.865 | 14.09% / 0.858 |
+| 2000 | 9.43% / 0.862 | 9.40% / 0.867 | 9.59% / 0.871 | 10.98% / 0.871 |
+| 5000 | 9.71% / 0.849 | 9.59% / 0.856 | 9.76% / 0.857 | 10.40% / 0.855 |
+
+</details>
+
+What that grid showed:
+
+- **θ matters more than k.** MAPE falls from 15–19% at θ = 50 to 9.3–10.7% for
+  θ = 500–2000 with k ≤ 20. θ = 5000 is slightly worse on every metric: the oldest history hurts more
+  than it helps.
+- **The paper's θ = 500, k = 5 is close to the best.** The best classifier cell is θ = 2000,
+  k = 10 (9.32%, R² 0.848), 0.3 points better.
+- **Voting on rounded watts costs R².** The mean of the same neighbours has the higher R²
+  in every cell (0.79–0.88 against 0.75–0.85). Its MAPE is lower only with a large θ and
+  small k; the best cell overall is the regressor at θ = 2000, k = 10 (9.02%, R² 0.878).
+  Elsewhere the regressor's MAPE rises quickly with k, because averaging in one normal job
+  ruins a 1.9 W target ([padded allocations](uopc.md#nodes-requested-not-allocated)).
+- **The classifier spikes at k = θ/10**: 19.5% at (50, 5), 19.3% at (100, 10), 19.1% at
+  (200, 20) and 18.9% at (500, 50), with R² smooth across those cells. Re-running the sweep's
+  own neighbour search and vote on samples of 20,000 test jobs at θ = 100 puts the whole
+  spike on the padded users. Their MAPE is 41% at k = 5, 75% at k = 10 and 26% at k = 20.
+  A sample of 120 other users stays at 12.8–13.4% for every k. Why those sizes in
+  particular is not established; it comes from the vote over these users' mix of ~2 W and
+  normal targets, and does not affect the other users.
+- **The headline cell differs from the reproduction run** (9.65% against 9.93% MAPE at
+  θ = 500, k = 5) because of exact ties. Many jobs have identical features: in the
+  samples above, 30% of queries had all 50 nearest neighbours at distance 0. The sweep takes
+  the first k of its 50 nearest neighbours, while the reproduction asks scikit-learn for k
+  directly, and the two pick different jobs among equally near ones. Both are valid
+  readings of the protocol; the spread between them, ~0.3 points, is the tolerance to
+  compare within.
+
+### Feature modes, measured
+
+Each run below is a bundled recipe plus one `uopc_features` key. The variant recipes are not
+bundled. They ran on 2026-10-19 at 935e58a, and the `zscore` rows are the earlier results.
+Every run in this section uses k = 5, the default until #228, and the vote, the default until
+#241; our results at k = 20 with the median are in
+[Our reproduction](uopc.md#our-reproduction-θ--500-k--20) and the [power results](results.md).
+
+**Unpadded reproduction** (`uopc_paper_reproduction_unpadded.yml`, the paper's apparent data):
+
+| Target | Features | MAE | RMSE | MAPE | R² |
+|---|---|---:|---:|---:|---:|
+| Average | Paper (Table I) | | | 10% | 0.80 |
+| | `zscore` | 7.07 | 17.01 | 10.34% | 0.751 |
+| | `embedding` | 7.83 | 18.31 | 11.62% | 0.711 |
+| | **`balanced`** | **6.78** | **16.48** | **9.75%** | **0.766** |
+| Peak | Paper (Table I) | | | 10% | 0.79 |
+| | `zscore` | 7.41 | 18.62 | 10.54% | 0.737 |
+| | `embedding` | 8.26 | 19.97 | 11.93% | 0.697 |
+| | **`balanced`** | **7.09** | **18.02** | **9.93%** | **0.753** |
+
+**Per requested node, all jobs** (`uopc_paper_reproduction.yml` at k = 5; the `balanced`
+rows ran at 8d914e7):
+
+| Target | Features | MAE | RMSE | MAPE | R² |
+|---|---|---:|---:|---:|---:|
+| Average | `zscore` | 6.30 | 15.97 | 8.65% | 0.738 |
+| | **`balanced`** | **6.11** | **15.50** | **8.29%** | **0.753** |
+| Peak | `zscore` | 6.67 | 17.56 | 8.91% | 0.718 |
+| | **`balanced`** | **6.39** | **16.94** | **8.47%** | **0.737** |
+
+**Rolling benchmark UoPC** (`uopc_rolling_*.yml`, [power results](results.md)):
+
+| Data | Features | MAE | RMSE | MAPE | R² |
+|---|---|---:|---:|---:|---:|
+| F-DATA, average | `zscore` | 8.01 | 18.13 | 11.36% | 0.660 |
+| | `embedding` | 8.41 | 18.78 | 11.86% | 0.635 |
+| | **`balanced`** | **7.71** | **17.55** | **10.80%** | **0.682** |
+| F-DATA, peak | `zscore` | 8.60 | 20.04 | 11.73% | 0.629 |
+| | `embedding` | 9.05 | 20.81 | 12.29% | 0.600 |
+| | **`balanced`** | **8.27** | **19.44** | **11.15%** | **0.651** |
+| Eagle, average | `zscore` | 80.94 | 116.87 | 24.15% | −0.141 |
+| | `embedding` | 79.02 | 113.94 | 23.66% | −0.084 |
+| | **`balanced`** | **78.59** | **113.43** | **23.54%** | **−0.075** |
+| Kestrel, average | `zscore` | 125.34 | 190.91 | 26.27% | −0.157 |
+| | `embedding` | 114.56 | 179.12 | 24.74% | −0.018 |
+| | **`balanced`** | **114.37** | **178.84** | **24.69%** | **−0.015** |
+
+What they show:
+
+- **`balanced` is best everywhere tried.**
+  - On F-DATA it gains 0.4–0.6 MAPE points and about 0.02 R² over `zscore`, in both
+    protocols, on both targets and with either node count.
+  - The unpadded reproduction drops below the paper's 10% MAPE.
+  - The rolling UoPC reaches 10.80%, between XGBoost (11.05%) and MoE XGBoost (10.07%) on
+    average power. Its R² of 0.682 is still well below theirs (0.81 and 0.78).
+- **On F-DATA the numbers carry real information.** `embedding` alone is worst there,
+  because F-DATA's embedding holds only user, job name and environment. So `zscore` was using the numbers
+  badly, not using numbers it shouldn't.
+- **On Eagle and Kestrel, `zscore` actively hurts.**
+  - `embedding` alone beats it by 0.5 and 1.5 points.
+  - Our embedding there already includes the requested nodes in its text, so the z-scored
+    columns add distortion rather than information.
+  - `balanced` is level with `embedding`.
+  - UoPC stays far behind the tree models on both systems either way (R² below zero, ~24%
+    against ~20%).
+- **The balanced weights were set for F-DATA's embedding.** On Eagle and Kestrel our harrier
+  embedding sits much closer: the median within-user distance is ~0.2, against 0.84. One
+  doubling of nodes there weighs about as much as a typical job-name difference, roughly
+  four times its relative weight on F-DATA.
