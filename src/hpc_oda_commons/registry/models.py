@@ -41,7 +41,7 @@ class RegistryEntry:
     id: str
     entry_type: Literal["adapter", "model", "recipe", "dataset"]
     name: str
-    version: str
+    version: str | None
     description: str
     problem_domain: tuple[str, ...]
     supported_sources: tuple[str, ...] = ()
@@ -68,7 +68,7 @@ class RegistryEntry:
             id=str(payload.get("id")),
             entry_type=entry_type,
             name=str(payload.get("name")),
-            version=str(payload.get("version")),
+            version=str(payload["version"]) if payload.get("version") else None,
             description=str(payload.get("description")),
             problem_domain=problem_domain,
             supported_sources=supported_sources,

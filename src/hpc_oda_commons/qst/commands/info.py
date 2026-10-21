@@ -22,7 +22,10 @@ def info(
     snapshot: Annotated[
         Path | None,
         typer.Option(
-            "--snapshot", exists=True, readable=True, help="Path to registry snapshot JSON."
+            "--snapshot",
+            exists=True,
+            readable=True,
+            help="Read this registry snapshot JSON instead of the package's registry.",
         ),
     ] = None,
 ) -> None:
@@ -38,7 +41,7 @@ def info(
 
     table.add_row("Name", entry.name)
     table.add_row("Type", entry.entry_type)
-    table.add_row("Version", entry.version)
+    table.add_row("Version", entry.version or "-")
     table.add_row("Description", entry.description)
     table.add_row("Problem Domain", ", ".join(entry.problem_domain))
     table.add_row("Supported Sources", ", ".join(entry.supported_sources) or "-")

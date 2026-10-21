@@ -49,6 +49,7 @@ Optional fields and enum values have been added to v0.1.0 schemas in place, as b
 - `oda.result.v0.1.0`: `provenance.code.code_changed_during_run`, written by `hpc-oda benchmark` (#215). `provenance.code` already allowed extra fields, so the schema file is unchanged.
 - `oda.ceiling.v0.1.0`: `target_field`, the column the floor bounds; absent means `runtime_seconds` (#230). `split.skip_windows`, `split.windows_with_jobs` and `split.scored_windows`; `split.training_lookback_days` is no longer required or written, since nothing in a ceiling used it (#238).
 - `oda.dataset.v0.1.0`: `problem_domains` is no longer required. It, `targets[].capabilities` and `targets[].suitable_models` are accepted but ignored: the tasks a dataset serves come from the target columns its mapping produces, and which models ran on it from its results (#249). Dataset ids name the data, not a task (`dataset.pm100`, formerly `dataset.job_runtime.pm100`).
+- `oda.registry.v0.2.0`: `version` is required for adapters, models and datasets but not recipes, which have none; `supported_sources` only for adapters; a model no longer needs `output_schema_version` (#249). The registry is now built from the package's files.
 - Semantics, not shape: a recipe's shared metric `target` is now the column the model predicts, and a model that cannot predict it fails the run (#204). Every bundled recipe already named its model's target.
 
 Schema IDs follow the pattern `oda.<type>.v<MAJOR>.<MINOR>.<PATCH>`. Schema files are stored as JSON Schema (Draft 2020-12) under `src/hpc_oda_commons/schemas/oda/`.

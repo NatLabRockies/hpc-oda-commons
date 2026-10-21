@@ -69,7 +69,7 @@ Raw Input (slurmctld.log / jobs.parquet)
   (`quality_rules.py`).
 - **`intelligence/`** -- Library-level APIs (not CLI-integrated): mapping suggestions,
   metadata graph, synthetic scoring.
-- **`registry/`** -- Offline registry snapshot with filtering and lookup.
+- **`registry/`** -- The registry, built from the package's model, adapter, recipe and dataset files, with filtering and lookup.
 - **`integrity/`** -- Known-good code-hash ledger (`known_hashes.json`) recorded by
   `hpc-oda record-hash` and checked into result-bundle `integrity` blocks.
 - **`utils/`** -- Small shared low-level helpers.

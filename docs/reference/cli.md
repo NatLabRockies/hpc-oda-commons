@@ -11,7 +11,7 @@ This reference covers the v0.1 `hpc-oda` commands.
 
 ## Find
 1. `hpc-oda browse [--tag <tag>] [--type <adapter|model|recipe>] [--source <source>] [--input-schema <id>] [--output-schema <id>]`
-   Lists registry entries from the bundled snapshot. All flags are optional filters.
+   Lists registry entries: the package's adapters, models, recipes and datasets. All flags are optional filters.
 1. `hpc-oda info <entry_id>`
    Shows metadata and compatibility for a registry entry.
 

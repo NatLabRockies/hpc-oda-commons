@@ -1,10 +1,10 @@
 """
-Load bundled registry snapshot + optional update mechanism.
+Load the registry: built from the package's own files, or read from a snapshot file.
 """
 
 from __future__ import annotations
 
-import importlib.resources as ir
+import functools
 from pathlib import Path
 from typing import Any
 
@@ -15,24 +15,22 @@ from hpc_oda_commons.registry.models import RegistrySnapshot
 REGISTRY_SCHEMA_ID = "oda.registry.v0.2.0"
 
 
-class RegistrySnapshotNotFound(FileNotFoundError):
-    def __init__(self, resolved_path: str) -> None:
-        super().__init__(f"Registry snapshot not found at {resolved_path}")
-        self.resolved_path = resolved_path
-
-
-def snapshot_resource_path() -> Path:
-    base = ir.files("hpc_oda_commons")
-    candidate = base / "registry" / "snapshot.json"
-    if not candidate.is_file():
-        raise RegistrySnapshotNotFound(str(candidate))
-    return Path(str(candidate))
-
-
 def load_registry_snapshot(path: Path | None = None) -> RegistrySnapshot:
-    path = Path(path) if path else snapshot_resource_path()
+    """The registry: built from the package's files (#249), or a snapshot JSON at ``path``."""
+    if path is None:
+        return _built_snapshot()
+    path = Path(path)
     payload = _load_json(path)
     validate_json(payload, REGISTRY_SCHEMA_ID, path=path)
+    return RegistrySnapshot.from_dict(payload)
+
+
+@functools.cache
+def _built_snapshot() -> RegistrySnapshot:
+    from hpc_oda_commons.registry.build import build_registry_payload
+
+    payload = build_registry_payload()
+    validate_json(payload, REGISTRY_SCHEMA_ID)
     return RegistrySnapshot.from_dict(payload)
 
 

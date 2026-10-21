@@ -64,7 +64,8 @@ include-package-data = true
 [tool.setuptools.package-data]
 hpc_oda_commons = [
   "schemas/**/*.json",
-  "registry/*.json",
+  "models/*/model.yml",
+  "adapters/*/adapter.yml",
   "recipes/**/*.yml",
   "recipes/**/*.yaml",
   "recipes/**/*.toml",

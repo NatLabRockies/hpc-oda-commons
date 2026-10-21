@@ -1,0 +1,9 @@
+# What this model is: fixed facts kept next to its code (#249). Its id comes from the folder,
+# the tasks it serves from the recipes that run it, and its dependencies from its imports.
+name: UoPC
+version: 0.1.0
+object: UopcModel
+description: >
+  User-based online power prediction (UoPC; Antici et al., ISC 2025): a per-user
+  k-nearest-neighbour model over each user's newest finished jobs, predicting from the
+  targets of the k nearest.
