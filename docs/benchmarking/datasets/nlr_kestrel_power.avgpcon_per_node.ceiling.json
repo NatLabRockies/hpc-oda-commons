@@ -2,8 +2,7 @@
   "schema_version": "oda.ceiling.v0.1.0",
   "split": {
     "n_windows": 89,
-    "test_window_hours": 24,
-    "training_lookback_days": 60
+    "test_window_hours": 24
   },
   "scored_rows": 638081,
   "target_field": "avgpcon_per_node",

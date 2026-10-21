@@ -32,6 +32,7 @@ it, so it is not causal). It answers neither question. See #169.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -221,7 +222,6 @@ class SplitGrid:
 
     split_epochs: np.ndarray  # window start, seconds
     test_window_seconds: int
-    lookback_seconds: int
     _submit_order: np.ndarray
     _submit_sorted: np.ndarray
     _end_order: np.ndarray
@@ -256,7 +256,6 @@ def build_split_grid(
     *,
     n_windows: int,
     test_window_hours: int,
-    training_lookback_days: int,
     submit_field: str = "submit_time",
     end_field: str = "end_time",
 ) -> SplitGrid:
@@ -286,7 +285,6 @@ def build_split_grid(
     return SplitGrid(
         split_epochs=split_epochs,
         test_window_seconds=int(step),
-        lookback_seconds=int(training_lookback_days * _DAY_SECONDS),
         _submit_order=s_order,
         _submit_sorted=submit[s_order],
         _end_order=e_order,
@@ -304,13 +302,15 @@ def causal_memorization(
     *,
     lookback_days: int | None,
     max_backoff: int = 0,
+    windows: Sequence[int] | None = None,
 ) -> dict[str, float]:
     """Predict from same-signature jobs that finished strictly earlier. A real strategy.
 
     ``codes_by_level[0]`` is the full signature; each later level drops one more feature,
     cheapest-first by measured information cost, and is consulted only for rows the previous
     level could not match. ``max_backoff=0`` disables backoff, leaving a global-median
-    fallback whose share is reported as ``coverage``.
+    fallback whose share is reported as ``coverage``. ``windows`` limits scoring to those
+    window positions (all of them by default), so it covers the same rows as the floor.
     """
     back = None if lookback_days is None else int(lookback_days * _DAY_SECONDS)
     n_codes = [int(c.max()) + 1 if c.size else 1 for c in codes_by_level]
@@ -320,7 +320,7 @@ def causal_memorization(
     total_abs = 0.0
     n = 0
     matched = 0
-    for i in range(grid.split_epochs.size):
+    for i in range(grid.split_epochs.size) if windows is None else windows:
         test = grid.test_indices(i)
         test = test[np.isfinite(y[test])]
         if test.size == 0:
@@ -360,14 +360,21 @@ def compute_ceiling(
     table: pa.Table,
     *,
     feature_fields: list[str],
-    n_windows: int = 120,
+    n_windows: int,
     test_window_hours: int = 6,
-    training_lookback_days: int = 120,
+    skip_windows: int = 0,
     target_field: str = "runtime_seconds",
     lookbacks: tuple[tuple[str, int | None], ...] = DEFAULT_LOOKBACKS,
     with_backoff: bool = True,
 ) -> dict[str, Any]:
-    """Floor, per-feature information cost, and the causal lookback sweep for one table."""
+    """Floor, per-feature information cost, and the causal lookback sweep for one table.
+
+    Scores the rolling windows past the first ``skip_windows`` that hold any job with the
+    target. That is the rows a walk-forward leaderboard score covers: its burn-in skips the
+    first windows every arm scored, and a window with no test jobs is never scored (#238).
+    No training lookback is involved: the floor and the feature costs use only the scored
+    rows, and causal memorization sweeps its own lookbacks.
+    """
     if target_field not in table.column_names:
         raise CeilingError(f"table has no {target_field!r} column")
     present = [f for f in feature_fields if f in table.column_names]
@@ -375,17 +382,22 @@ def compute_ceiling(
         raise CeilingError("none of the requested feature fields are present in the table")
 
     y = table.column(target_field).combine_chunks().to_numpy(zero_copy_only=False).astype(float)
-    grid = build_split_grid(
-        table,
-        n_windows=n_windows,
-        test_window_hours=test_window_hours,
-        training_lookback_days=training_lookback_days,
-    )
+    if skip_windows < 0:
+        raise CeilingError("skip_windows must not be negative")
+    grid = build_split_grid(table, n_windows=n_windows, test_window_hours=test_window_hours)
 
-    scored = np.unique(np.concatenate([grid.test_indices(i) for i in range(n_windows)]))
-    scored = scored[np.isfinite(y[scored])]
-    if scored.size == 0:
+    tests = [grid.test_indices(i) for i in range(n_windows)]
+    with_jobs = [i for i, test in enumerate(tests) if np.isfinite(y[test]).any()]
+    if not with_jobs:
         raise CeilingError("no scored rows: every rolling test window is empty")
+    windows = with_jobs[skip_windows:]
+    if not windows:
+        raise CeilingError(
+            f"only {len(with_jobs)} window(s) hold jobs, no more than the {skip_windows} "
+            "skipped: nothing would be left to score"
+        )
+    scored = np.unique(np.concatenate([tests[i] for i in windows]))
+    scored = scored[np.isfinite(y[scored])]
 
     # Each field is coded once over the whole table and every signature is combined from
     # those codes. Recoding a taken subset instead is slower and, for a list column such as
@@ -418,7 +430,9 @@ def compute_ceiling(
 
     sweep = {}
     for label, days in lookbacks:
-        sweep[label] = causal_memorization(y, codes_by_level, grid, lookback_days=days)
+        sweep[label] = causal_memorization(
+            y, codes_by_level, grid, lookback_days=days, windows=windows
+        )
     best = min(sweep, key=lambda k: sweep[k]["mae"])
 
     result: dict[str, Any] = {
@@ -426,7 +440,9 @@ def compute_ceiling(
         "split": {
             "n_windows": n_windows,
             "test_window_hours": test_window_hours,
-            "training_lookback_days": training_lookback_days,
+            "skip_windows": skip_windows,
+            "windows_with_jobs": len(with_jobs),
+            "scored_windows": len(windows),
         },
         "scored_rows": int(scored.size),
         "target_field": target_field,
@@ -447,6 +463,6 @@ def compute_ceiling(
     if with_backoff:
         bd = dict(lookbacks)[best]
         result["causal_memorization"]["backoff_at_best"] = causal_memorization(
-            y, codes_by_level, grid, lookback_days=bd, max_backoff=3
+            y, codes_by_level, grid, lookback_days=bd, max_backoff=3, windows=windows
         )
     return result

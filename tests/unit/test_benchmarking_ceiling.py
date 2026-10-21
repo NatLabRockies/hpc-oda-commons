@@ -135,16 +135,16 @@ def test_split_grid_matches_build_rolling_splits() -> None:
     """
     rows = _jobs(400)
     table = _table(rows)
-    kw = dict(n_windows=12, test_window_hours=6, training_lookback_days=30)
+    kw = dict(n_windows=12, test_window_hours=6)
 
-    reference = build_rolling_splits(rows, **kw)
+    reference = build_rolling_splits(rows, **kw, training_lookback_days=30)
     grid = build_split_grid(table, **kw)
 
     assert grid.split_epochs.size == len(reference)
     for i, ref in enumerate(reference):
         assert int(grid.split_epochs[i]) == ref.split_epoch
         assert sorted(grid.test_indices(i).tolist()) == sorted(ref.test_row_indices)
-        got = grid.train_indices(i, kw["training_lookback_days"] * 86400)
+        got = grid.train_indices(i, 30 * 86400)
         assert sorted(got.tolist()) == sorted(ref.train_row_indices)
 
 
@@ -159,7 +159,7 @@ def test_training_rows_are_strictly_in_the_past() -> None:
     """
     rows = _jobs(400)
     table = _table(rows)
-    grid = build_split_grid(table, n_windows=12, test_window_hours=6, training_lookback_days=30)
+    grid = build_split_grid(table, n_windows=12, test_window_hours=6)
     ends = np.array([r["end_time"].replace(tzinfo=UTC).timestamp() for r in rows], dtype=float)
     lookback = 30 * 86400
 
@@ -178,7 +178,7 @@ def test_memorization_ignores_rows_it_can_never_see() -> None:
     """Changing rows outside every train and test window must not move the score."""
     rows = _jobs(300)
     table_a = _table(rows)
-    kw = dict(n_windows=6, test_window_hours=6, training_lookback_days=1)
+    kw = dict(n_windows=6, test_window_hours=6)
     grid = build_split_grid(table_a, **kw)
 
     reachable = set()
@@ -206,7 +206,7 @@ def test_unlimited_lookback_is_not_the_configured_lookback() -> None:
     """Regression: None once meant both 'unlimited' and 'the configured value' (#169)."""
     rows = _jobs(600, step_min=240)  # spans ~100 days
     table = _table(rows)
-    grid = build_split_grid(table, n_windows=6, test_window_hours=6, training_lookback_days=5)
+    grid = build_split_grid(table, n_windows=6, test_window_hours=6)
 
     unlimited = grid.train_indices(3, None)
     limited = grid.train_indices(3, 5 * 86400)
@@ -235,7 +235,7 @@ def test_a_table_without_the_target_is_rejected() -> None:
     table = pa.table({"submit_time": [dt.datetime(2026, 1, 1, tzinfo=UTC)]})
 
     with pytest.raises(CeilingError, match="runtime_seconds"):
-        compute_ceiling(table, feature_fields=["submit_time"])
+        compute_ceiling(table, feature_fields=["submit_time"], n_windows=1)
 
 
 # --- power targets and list-valued features (#230) -----------------------------------
@@ -276,7 +276,6 @@ def test_ceiling_bounds_the_named_target_and_records_it() -> None:
         feature_fields=["partition", "user"],
         n_windows=4,
         test_window_hours=6,
-        training_lookback_days=1,
         target_field="avgpcon_per_node",
         with_backoff=False,
     )
@@ -314,7 +313,7 @@ def test_cli_ceiling_on_a_power_target_with_extra_features(tmp_path) -> None:
     out = tmp_path / "power.ceiling.json"
     args = ["datasets", "ceiling", _power_parquet(tmp_path), "--out", str(out)]
     args += ["--target", "avgpcon_per_node", "--n-windows", "4", "--test-window-hours", "6"]
-    args += ["--training-lookback-days", "1", "--extra-feature", "embedding"]
+    args += ["--skip-windows", "0", "--extra-feature", "embedding"]
     result = CliRunner().invoke(app, [*args, "--extra-feature", "freq_req"])
 
     assert result.exit_code == 0, result.output
@@ -331,7 +330,7 @@ def test_cli_ceiling_refuses_the_target_as_a_feature(tmp_path) -> None:
     args = ["datasets", "ceiling", _power_parquet(tmp_path), "--target", "avgpcon_per_node"]
     result = CliRunner().invoke(app, [*args, "--extra-feature", "avgpcon_per_node"])
     assert result.exit_code == 1
-    assert "cannot also be a feature" in result.output
+    assert "cannot also be a feature" in " ".join(result.output.split())
 
 
 def test_equal_embeddings_match_across_chunks_with_and_without_null_elements() -> None:
@@ -371,8 +370,133 @@ def test_feature_costs_are_never_negative() -> None:
         feature_fields=["embedding", "partition", "user"],
         n_windows=4,
         test_window_hours=6,
-        training_lookback_days=1,
         target_field="avgpcon_per_node",
         with_backoff=False,
     )
     assert all(c["cost"] >= 0 for c in result["feature_cost"])
+
+
+# --- the walk-forward burn-in (#238) ---------------------------------------------------
+
+
+def _gapped_jobs() -> list[dict]:
+    """Two days of jobs every 30 minutes, with none submitted in one 6 h window near the end.
+
+    The 6 h windows run back from the last submit, so with 8 windows the gap is window 2.
+    """
+    rows = _jobs(96)
+    last = rows[-1]["submit_time"].replace(minute=0)
+    gap_start = last - dt.timedelta(hours=6 * 5)
+    return [
+        r for r in rows if not gap_start <= r["submit_time"] < gap_start + dt.timedelta(hours=6)
+    ]
+
+
+def _windows_with_jobs(table: pa.Table, n_windows: int) -> list[np.ndarray]:
+    grid = build_split_grid(table, n_windows=n_windows, test_window_hours=6)
+    tests = [grid.test_indices(i) for i in range(n_windows)]
+    return [t for t in tests if t.size]
+
+
+def test_skipping_counts_only_windows_that_hold_jobs() -> None:
+    """Walk-forward's burn-in skips the first windows every arm scored, and a window with no
+    test jobs is never scored, so an empty window must not use up the burn-in."""
+    table = _table(_gapped_jobs())
+    kw = dict(feature_fields=["partition", "user"], n_windows=8, test_window_hours=6)
+    with_jobs = _windows_with_jobs(table, 8)
+    assert len(with_jobs) == 7  # guard: the gap left one window empty
+
+    result = compute_ceiling(table, **kw, skip_windows=3, with_backoff=False)
+
+    assert result["split"] == {
+        "n_windows": 8,
+        "test_window_hours": 6,
+        "skip_windows": 3,
+        "windows_with_jobs": 7,
+        "scored_windows": 4,
+    }
+    assert result["scored_rows"] == sum(t.size for t in with_jobs[3:])
+
+
+def test_causal_memorization_scores_the_same_rows_as_the_floor() -> None:
+    table = _table(_gapped_jobs())
+    result = compute_ceiling(
+        table, feature_fields=["partition", "user"], n_windows=8, skip_windows=2
+    )
+    rows = {s["rows"] for s in result["causal_memorization"]["sweep"].values()}
+    assert rows == {result["scored_rows"]}
+    assert result["causal_memorization"]["backoff_at_best"]["rows"] == result["scored_rows"]
+
+
+def test_skipping_every_window_with_jobs_is_an_error() -> None:
+    table = _table(_gapped_jobs())
+    with pytest.raises(CeilingError, match="nothing would be left to score"):
+        compute_ceiling(table, feature_fields=["user"], n_windows=8, skip_windows=7)
+
+
+def test_the_ceiling_records_no_training_lookback() -> None:
+    """Nothing in it trains on a lookback: the floor and feature costs use the scored rows,
+    and causal memorization sweeps its own (#238)."""
+    result = compute_ceiling(_table(_jobs(96)), feature_fields=["user"], n_windows=4)
+    assert "training_lookback_days" not in result["split"]
+
+
+def test_the_schema_accepts_ceilings_with_and_without_the_old_lookback() -> None:
+    from hpc_oda_commons.kernel.validate import validate_json
+
+    result = compute_ceiling(_table(_jobs(96)), feature_fields=["user"], n_windows=4)
+    validate_json(result, "oda.ceiling.v0.1.0")
+    old = {
+        **result,
+        "split": {"n_windows": 4, "test_window_hours": 6, "training_lookback_days": 120},
+    }
+    validate_json(old, "oda.ceiling.v0.1.0")
+
+
+def _card(tmp_path, test_days: int):
+    import json
+
+    path = tmp_path / "x.card.json"
+    rule = {"train_days": 1, "test_days": test_days, "history_days": 1}
+    path.write_text(json.dumps({"benchmark_window": {"rule": rule}}))
+    return str(path)
+
+
+def test_cli_ceiling_takes_its_windows_from_the_card(tmp_path) -> None:
+    import json
+
+    from typer.testing import CliRunner
+
+    from hpc_oda_commons.qst.cli import app
+
+    out = tmp_path / "runtime.ceiling.json"
+    args = ["datasets", "ceiling", _power_parquet(tmp_path), "--out", str(out)]
+    result = CliRunner().invoke(app, [*args, "--card", _card(tmp_path, 1), "--skip-windows", "1"])
+
+    assert result.exit_code == 0, result.output
+    split = json.loads(out.read_text())["split"]
+    # One test day is four 6 h windows; the first is skipped.
+    assert (split["n_windows"], split["skip_windows"], split["scored_windows"]) == (4, 1, 3)
+
+
+def test_cli_ceiling_needs_a_card_or_a_window_count(tmp_path) -> None:
+    from typer.testing import CliRunner
+
+    from hpc_oda_commons.qst.cli import app
+
+    result = CliRunner().invoke(app, ["datasets", "ceiling", _power_parquet(tmp_path)])
+    assert result.exit_code == 1
+    assert "--card" in " ".join(result.output.split())
+
+
+def test_cli_ceiling_skips_the_burn_in_by_default(tmp_path) -> None:
+    """20 windows, the walk-forward burn-in: four windows leave nothing to score."""
+    from typer.testing import CliRunner
+
+    from hpc_oda_commons.qst.cli import app
+
+    args = ["datasets", "ceiling", _power_parquet(tmp_path), "--n-windows", "4"]
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 1
+    # Rich wraps long lines at the terminal's width, so compare with whitespace collapsed.
+    assert "nothing would be left to score" in " ".join(result.output.split())

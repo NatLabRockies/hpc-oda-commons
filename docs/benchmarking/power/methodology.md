@@ -144,7 +144,7 @@ Regenerate with:
 ```
 hpc-oda datasets ceiling data/datasets/fdata_fugaku_uopc/data.parquet \
   --target avgpcon_per_node --dataset-id dataset.job_power.fdata_fugaku_uopc \
-  --n-windows 89 --test-window-hours 24 --training-lookback-days 60 \
+  --n-windows 89 --test-window-hours 24 --skip-windows 0 \
   --extra-feature embedding --extra-feature freq_req \
   --out docs/benchmarking/datasets/fdata_fugaku_uopc.avgpcon_per_node.ceiling.json
 ```

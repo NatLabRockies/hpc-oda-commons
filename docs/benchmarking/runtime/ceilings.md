@@ -11,8 +11,15 @@ Machine-readable form: `docs/benchmarking/datasets/<dataset>.ceiling.json`, rege
 
 ```
 hpc-oda datasets ceiling <windowed-parquet> --dataset-id <ds> \
+  --card docs/benchmarking/datasets/<ds>.card.json \
   --out docs/benchmarking/datasets/<ds>.ceiling.json
 ```
+
+`--card` takes the window count from the card's `test_days`, as the benchmark does, and
+`--skip-windows` (default 20) leaves the walk-forward burn-in unscored. Only windows that hold
+jobs count towards it, as in walk-forward, so the floor covers exactly the jobs a leaderboard
+cell is scored on ([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)). No training lookback is involved: the floor
+and the feature costs use only the scored jobs, and causal memorization sweeps its own.
 
 These involve no fitting and no BLAS, so unlike the fitted-model metrics they are byte-stable
 across machines: a diff means a real change.
@@ -110,9 +117,10 @@ earlier. Coverage is the share of scored rows whose signature had been seen at a
 | `pwa_ricc` | 7,808 | 5,563 | **5,455** | 5,540 | 5,698 | 5,698 | 30d | 80% |
 | `pwa_sdsc_blue` | 2,387 | 1,799 | 1,738 | 1,701 | **1,671** | 1,683 | 120d | 88% |
 
-Optimal lookback: 1d ×1, 10d ×4, 30d ×4, 60d ×3, 120d ×6, all ×2. The benchmark fixes
-`training_lookback_days: 120` for every dataset, which is optimal for 6 of
-20 — see [#170](https://github.com/NatLabRockies/hpc-oda-commons/issues/170). How this
+Optimal lookback: 1d ×1, 10d ×4, 30d ×4, 60d ×3, 120d ×6, all ×2. At the time the benchmark
+fixed `training_lookback_days: 120` for every dataset, which is optimal for 6 of 20. Since
+[#170](https://github.com/NatLabRockies/hpc-oda-commons/issues/170) it runs every model at
+10, 30 and 120 days and chooses among them walk-forward. How this
 strategy compares against the fitted models is tracked in
 [#171](https://github.com/NatLabRockies/hpc-oda-commons/issues/171).
 

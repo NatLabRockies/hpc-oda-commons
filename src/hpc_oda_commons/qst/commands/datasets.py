@@ -12,6 +12,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from hpc_oda_commons.benchmark.arm_selection import DEFAULT_BURN_IN
 from hpc_oda_commons.benchmarking import (
     CeilingError,
     CharacterizeError,
@@ -376,9 +377,30 @@ def datasets_ceiling(
         Path | None,
         typer.Option("--out", help="Write the analysis JSON here (default: beside the table)."),
     ] = None,
-    n_windows: Annotated[int, typer.Option("--n-windows")] = 120,
+    card: Annotated[
+        Path | None,
+        typer.Option(
+            "--card",
+            exists=True,
+            readable=True,
+            help="The dataset's *.card.json: derives --n-windows from its test_days, as the "
+            "runtime benchmark does.",
+        ),
+    ] = None,
+    n_windows: Annotated[
+        int | None,
+        typer.Option("--n-windows", help="Rolling windows (power: 89). Overrides --card."),
+    ] = None,
     test_window_hours: Annotated[int, typer.Option("--test-window-hours")] = 6,
-    training_lookback_days: Annotated[int, typer.Option("--training-lookback-days")] = 120,
+    skip_windows: Annotated[
+        int,
+        typer.Option(
+            "--skip-windows",
+            help="Leading windows with jobs to leave unscored: the walk-forward burn-in, so "
+            "the floor covers the rows a runtime leaderboard score does (#238). Power has one "
+            "arm and no burn-in: pass 0.",
+        ),
+    ] = DEFAULT_BURN_IN,
     dataset_id: Annotated[
         str | None, typer.Option("--dataset-id", help="Label recorded on the analysis.")
     ] = None,
@@ -405,6 +427,7 @@ def datasets_ceiling(
     """
     from datetime import datetime, timezone
 
+    from hpc_oda_commons.benchmarking.hpc.matrix import load_card, n_windows_for
     from hpc_oda_commons.kernel.validate import validate_json
     from hpc_oda_commons.models.feature_policy import feature_allowlist
 
@@ -415,13 +438,18 @@ def datasets_ceiling(
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
+    if n_windows is None:
+        if card is None:
+            console.print("[red]Pass --card (runtime) or --n-windows (power).[/red]")
+            raise typer.Exit(1)
+        n_windows = n_windows_for(load_card(card), test_window_hours)
     try:
         result = compute_ceiling(
             table,
             feature_fields=fields,
             n_windows=n_windows,
             test_window_hours=test_window_hours,
-            training_lookback_days=training_lookback_days,
+            skip_windows=skip_windows,
             target_field=target,
         )
     except CeilingError as exc:
@@ -439,7 +467,12 @@ def datasets_ceiling(
     fl, sizes = result["floor"], result["floor"]["group_sizes"]
     # Runtime floors are thousands of seconds; power floors are a few watts per node.
     places = 0 if fl["mae"] >= 100 else 2
-    console.print(f"[bold]{result['dataset_id']}[/bold]: {result['scored_rows']:,} scored rows")
+    split = result["split"]
+    console.print(
+        f"[bold]{result['dataset_id']}[/bold]: {result['scored_rows']:,} scored rows in "
+        f"{split['scored_windows']} windows (skipped the first {split['skip_windows']} of "
+        f"{split['windows_with_jobs']} with jobs)"
+    )
     console.print(
         f"  floor  MAE [green]{fl['mae']:,.{places}f}[/green]  "
         f"RMSE [green]{fl['rmse']:,.{places}f}[/green]  "

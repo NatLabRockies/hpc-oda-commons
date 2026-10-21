@@ -192,8 +192,13 @@ fundamentally unsuitable. Under this:
 - **Excluded — too short / unsuitable:** `adastra_mi250` (a deliberately-published ~15-day
   sample; measured ~24 days — shorter than the 30-day test period, and unhealthy) and `ic2`
   (3,599 rows total; cloud tasks, not a machine time-series).
-- **Re-curate to 3 months** (data is available; a small curation task): `ccin2p3_2024`
-  (currently Dec-2024 only → pull ~3 months from its 12 monthly files).
+- **Excluded — too large for one node:** `ccin2p3_2024`. It now covers Sep–Dec 2024, but its
+  card window holds 9,969,424 rows, over the planner's `MAX_NODE_ROWS` of 8M. One window
+  worker peaked at ~110 GB on a 250 GB node, and a cell ran over 24 h, so the planner skips it
+  and lists it in each plan's `skipped`
+  ([#150](https://github.com/NatLabRockies/hpc-oda-commons/issues/150)). The card is kept,
+  so the dataset is ready if a run has the memory for it
+  ([#152](https://github.com/NatLabRockies/hpc-oda-commons/pull/152)).
 - **Re-curated (#153):** `fdata_fugaku` went from 3 monthly files (2023-07..09) to 7
   (2023-03..09). Its window had started on the first day of the ingested span, so the
   slice's 60-day lookback extension returned nothing and every rolling window trained on
@@ -204,7 +209,8 @@ fundamentally unsuitable. Under this:
   target, included with an 80-day window and reduced early-window lookback); all flagged on
   their cards.
 
-Net benchmark roster: ~20 datasets (18 as-is + 2 after re-curation). Each dataset's final
+Net benchmark roster: 20 datasets, `fdata_fugaku` among them after re-curation; `ccin2p3_2024`
+keeps its card but is never planned. Each dataset's final
 window, health, and any caveats are recorded on its card; measuring real timestamps reclassified
 several — **re-included `mit_supercloud`** (its "~1 month" hint was wrong — measured ~9 months,
 Jan–Oct 2021, healthy) and **kept `atlas_opentrinity`** on an 80-day window (the 90-day target
@@ -245,11 +251,12 @@ Per-dataset results are tracked as `docs/benchmarking/datasets/<dataset>.ceiling
 summary in [`ceilings.md`](ceilings.md).
 
 **The leaderboard** (#237) has one runtime table: a row per model, a column per dataset,
-each cell the walk-forward policy's MAE. It will show headroom captured and an average
-across datasets, as the power tables do, once the runtime ceilings are regenerated on the
-current protocol (#238). They were computed on 120 × 6 h windows, while the cells now run
-the cards' windows past a 20-window burn-in, so the two are measured on different rows
-([reading the leaderboard](../../how-to/interpret-results.md#reading-the-leaderboard)).
+each cell the walk-forward policy's MAE. A cell shows headroom captured, and a model an
+average across datasets, only when the floor, the baseline and the cell cover the same jobs
+([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)): the card's windows past the 20-window burn-in. Ceilings computed
+with `--card` and the default `--skip-windows` do. The ceilings from 2026-08-26 were computed
+on 120 × 6 h windows without a burn-in, so until they are regenerated the runtime cells show
+MAE alone ([reading the leaderboard](../../how-to/interpret-results.md#reading-the-leaderboard)).
 
 **Deliberately not included:** leave-one-out. It is neither the floor (the optimal function has
 no "leave out" in its definition) nor achievable (a row's peers include jobs that ran *after*
@@ -283,7 +290,6 @@ Knobs (defaults are the agreed methodology): `--anchor 0.80`, `--train-days 60`,
 
 ## Open items / next phases
 
-- Prepare + characterize the remaining datasets (surfaces per-dataset health); re-curate
-  `ccin2p3`.
+- Prepare + characterize the remaining datasets (surfaces per-dataset health).
 - Benchmark-matrix runner that consumes the cards' windows.
 - HPC runner (scheduler + GPU for the `embed` step and the heavy datasets).

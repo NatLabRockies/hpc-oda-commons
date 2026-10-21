@@ -11,8 +11,10 @@ Only bundles from a track's own benchmark protocol count. Everything else -- the
 reproduction, smoke runs, ad hoc variants, a bundle whose recipe has since changed -- is
 listed with the reason it was left out, never silently dropped.
 
-Runtime shows MAE without headroom for now: its ceilings were computed on an older protocol
-than the one its cells run, so the two would be measured on different rows (#238).
+A cell shows headroom only when its floor, its baseline and the cell itself cover the same
+jobs, checked as equal scored-row counts (#238). A ceiling computed on other windows -- such
+as a runtime ceiling from before the walk-forward burn-in -- leaves that cell at MAE alone
+rather than dividing numbers measured on different rows.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from hpc_oda_commons.benchmark.arm_selection import (
     DEFAULT_BURN_IN,
     Arm,
     ArmSelectionError,
+    _window_rows,
     common_scored_indices,
     derive_arm_keys,
     pooled_metric,
@@ -56,19 +59,12 @@ class Track:
     key: str
     title: str
     target: str
-    # Runtime has no headroom until its ceilings match its protocol (#238).
     headroom: bool
     note: str = ""
 
 
 TRACKS: tuple[Track, ...] = (
-    Track(
-        "runtime",
-        "Job runtime",
-        "runtime_seconds",
-        headroom=False,
-        note="MAE only: the runtime ceilings predate the current protocol (#238).",
-    ),
+    Track("runtime", "Job runtime", "runtime_seconds", headroom=True),
     Track("avgpcon_per_node", "Average power per node", "avgpcon_per_node", headroom=True),
     Track(
         "maxpcon_per_node",
@@ -88,14 +84,22 @@ def _short(dataset_id: str) -> str:
     return dataset_id.split(".")[-1]
 
 
-def load_floors(ceilings_dir: Path) -> dict[tuple[str, str], float]:
-    """Floor MAE per (target, dataset), from every ceiling file in ``ceilings_dir``.
+@dataclass(frozen=True)
+class Floor:
+    """A dataset's floor MAE, and how many jobs it was measured on."""
+
+    mae: float
+    scored_rows: int
+
+
+def load_floors(ceilings_dir: Path) -> dict[tuple[str, str], Floor]:
+    """The floor per (target, dataset), from every ceiling file in ``ceilings_dir``.
 
     Matched on the file's own ``dataset_id`` and ``target_field`` rather than its name, so a
     power file named ``nlr_eagle_power.*`` still matches bundles whose dataset is
     ``nlr_eagle``. A file without ``target_field`` predates #230 and bounds runtime.
     """
-    floors: dict[tuple[str, str], float] = {}
+    floors: dict[tuple[str, str], Floor] = {}
     if not ceilings_dir.is_dir():
         return floors
     for path in sorted(ceilings_dir.glob("*.ceiling.json")):
@@ -103,14 +107,14 @@ def load_floors(ceilings_dir: Path) -> dict[tuple[str, str], float]:
             data = json.loads(path.read_text(encoding="utf-8"))
             dataset = _short(str(data.get("dataset_id") or path.name.split(".")[0]))
             target = str(data.get("target_field") or "runtime_seconds")
-            floors[(target, dataset)] = float(data["floor"]["mae"])
+            floors[(target, dataset)] = Floor(float(data["floor"]["mae"]), int(data["scored_rows"]))
         except (OSError, ValueError, KeyError, TypeError):
             continue
     return floors
 
 
 def _roster(
-    track: Track, floors: Mapping[tuple[str, str], float], cards: Sequence[Any]
+    track: Track, floors: Mapping[tuple[str, str], Floor], cards: Sequence[Any]
 ) -> list[str]:
     """The datasets a track's table has a column for, whether or not anything ran on them."""
     if track.target == "runtime_seconds":
@@ -214,22 +218,27 @@ def exclusion_reason(
 # --- cells ----------------------------------------------------------------------------
 
 
-def _cell_mae(bundles: Sequence[tuple[dict[str, Any], dict[str, Any]]], burn_in: int) -> float:
-    """A cell's MAE: the bundle's own, or the walk-forward policy over lookback arms (#190)."""
+def _cell_score(
+    bundles: Sequence[tuple[dict[str, Any], dict[str, Any]]], burn_in: int
+) -> tuple[float, int | None]:
+    """A cell's MAE and the jobs it covers: the bundle's own, or the walk-forward policy over
+    lookback arms (#190). The job count is None when a bundle does not record it."""
     if len(bundles) == 1:
         entry, metrics = bundles[0]
         if entry.get("prediction_target") != "runtime_seconds":
-            return float(metrics["mae"])
+            rows = (metrics.get("summary") or {}).get("rows_scored")
+            return float(metrics["mae"]), None if rows is None else int(rows)
         # One runtime arm: score it on the same post-burn-in windows a policy would use.
         arm = Arm.from_metrics("only", metrics)
-        scored = common_scored_indices([arm])[burn_in:]
-        return pooled_metric([arm.windows[i] for i in scored], "mae")
+        windows = [arm.windows[i] for i in common_scored_indices([arm])[burn_in:]]
+        return pooled_metric(windows, "mae"), int(sum(_window_rows(w) for w in windows))
     configs = [metrics.get("run_config") or {} for _entry, metrics in bundles]
     keys = derive_arm_keys(configs)
     arms = [
         Arm.from_metrics(key, metrics) for key, (_e, metrics) in zip(keys, bundles, strict=True)
     ]
-    return walk_forward(arms, metric="mae", burn_in=burn_in).score
+    result = walk_forward(arms, metric="mae", burn_in=burn_in)
+    return result.score, result.scored_rows
 
 
 def build_tables(
@@ -283,33 +292,68 @@ def build_tables(
             if target != track.target:
                 continue
             try:
-                mae = _cell_mae(pairs, burn_in)
+                mae, rows = _cell_score(pairs, burn_in)
             except (ArmSelectionError, KeyError, TypeError, ValueError) as exc:
                 for entry, _metrics in pairs:
                     excluded.append({"bundle_dir": entry.get("bundle_dir"), "reason": str(exc)})
                 continue
             cells.setdefault(model, {})[dataset] = {
                 "mae": mae,
+                "scored_rows": rows,
                 "bundles": [entry.get("bundle_dir") for entry, _m in pairs],
             }
         tables.append(_table(track, roster, cells, floors))
     return tables, excluded
 
 
+_ROWS_DIFFER = "covers other jobs"
+
+
+def _headroom_blocker(
+    cell: Mapping[str, Any], floor: Floor | None, base: Mapping[str, Any] | None
+) -> str | None:
+    """Why a cell gets no headroom, or None when floor, baseline and cell are comparable.
+
+    All three must cover the same jobs. A floor from other windows bounds other rows, and
+    dividing by it would give a percentage of nothing in particular (#238).
+    """
+    if floor is None:
+        return "no ceiling for this dataset"
+    if base is None:
+        return "no baseline cell"
+    rows = cell.get("scored_rows")
+    if rows is None or base.get("scored_rows") is None:
+        return "a bundle does not record the jobs it scored"
+    if not rows == base["scored_rows"] == floor.scored_rows:
+        return (
+            f"{_ROWS_DIFFER}: the ceiling {floor.scored_rows:,}, the baseline "
+            f"{base['scored_rows']:,} and this cell {rows:,}"
+        )
+    if base["mae"] <= floor.mae:
+        return "the baseline is already at the floor"
+    return None
+
+
 def _table(
     track: Track,
     roster: list[str],
     cells: dict[str, dict[str, dict[str, Any]]],
-    floors: Mapping[tuple[str, str], float],
+    floors: Mapping[tuple[str, str], Floor],
 ) -> dict[str, Any]:
     datasets = sorted(set(roster) | {d for row in cells.values() for d in row})
-    baselines = {d: cell["mae"] for d, cell in cells.get(BASELINE_MODEL, {}).items()}
+    baselines = cells.get(BASELINE_MODEL, {})
+    mismatched = False
     for row in cells.values():
         for dataset, cell in row.items():
             floor = floors.get((track.target, dataset))
             base = baselines.get(dataset)
-            usable = track.headroom and floor is not None and base is not None and base > floor
-            cell["headroom"] = (base - cell["mae"]) / (base - floor) if usable else None
+            reason = _headroom_blocker(cell, floor, base) if track.headroom else "no headroom"
+            if reason is None:
+                cell["headroom"] = (base["mae"] - cell["mae"]) / (base["mae"] - floor.mae)
+            else:
+                cell["headroom"] = None
+                cell["headroom_missing"] = reason
+                mismatched = mismatched or reason.startswith(_ROWS_DIFFER)
 
     rows = []
     for model, row in cells.items():
@@ -332,7 +376,16 @@ def _table(
         "title": track.title,
         "target": track.target,
         "headroom": track.headroom,
-        "note": track.note,
+        "note": " ".join(
+            n
+            for n in (
+                track.note,
+                "Cells in MAE alone: their dataset's ceiling covers other jobs (#238)."
+                if mismatched
+                else "",
+            )
+            if n
+        ),
         "datasets": datasets,
         "roster": roster,
         "rows": rows,

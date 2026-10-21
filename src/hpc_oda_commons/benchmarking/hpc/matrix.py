@@ -348,6 +348,11 @@ def load_cards(cards_dir: Path, windows_dir: Path | None = None) -> list[Card]:
     return cards
 
 
+def load_card(path: Path) -> Card:
+    """One ``*.card.json``, as the planner reads it."""
+    return _parse_card(path)
+
+
 def _sliced_rows(windows_dir: Path, dataset: str) -> int | None:
     sidecar = windows_dir / dataset / "slice.json"
     if not sidecar.exists():
