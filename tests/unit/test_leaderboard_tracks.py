@@ -11,7 +11,7 @@ from hpc_oda_commons.benchmark.results import build_leaderboard
 from hpc_oda_commons.benchmark.tracks import RUNTIME_PROTOCOL, build_tables
 from hpc_oda_commons.benchmarking.hpc.matrix import Card
 from hpc_oda_commons.kernel.artifacts.result_bundle import write_result_bundle
-from hpc_oda_commons.models.job_power_uopc.model import UOPC_DEFAULT_PREDICTOR
+from hpc_oda_commons.models.uopc.model import UOPC_DEFAULT_PREDICTOR
 from hpc_oda_commons.tools.report import render_leaderboard_html, render_runs_html
 
 POWER_SPLIT = {"n_windows": 89, "test_window_hours": 24, "training_lookback_days": 60}
@@ -96,21 +96,21 @@ def power_runs(tmp_path: Path) -> tuple[Path, Path]:
         _bundle(
             runs,
             recipe_id=f"recipe.job_power.baseline_rolling_avg_{system}",
-            model="model.job_runtime_baseline",
+            model="model.baseline",
             mae=base,
             dataset=f"x_{system}",
         )
         _bundle(
             runs,
             recipe_id=f"recipe.job_power.xgboost_rolling_avg_{system}",
-            model="model.job_runtime_xgboost",
+            model="model.xgboost",
             mae=xgb,
             dataset=f"x_{system}",
         )
     _bundle(
         runs,
         recipe_id="recipe.job_power.moe_xgboost_rolling_avg_pm100",
-        model="model.job_runtime_moe_xgboost",
+        model="model.moe_xgboost",
         mae=140.0,
     )
     return runs, ceilings
@@ -130,11 +130,11 @@ def test_headroom_is_measured_from_the_baseline_to_the_floor(power_runs) -> None
         build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings), "avgpcon_per_node"
     )
 
-    xgb = _row(table, "model.job_runtime_xgboost")
+    xgb = _row(table, "model.xgboost")
     assert xgb["cells"]["pm100"]["headroom"] == pytest.approx((150 - 125) / (150 - 100))
     assert xgb["cells"]["nlr_eagle"]["headroom"] == pytest.approx((90 - 62) / (90 - 20))
     assert xgb["average"] == pytest.approx((0.5 + 0.4) / 2)
-    assert _row(table, "model.job_runtime_baseline")["average"] == 0.0
+    assert _row(table, "model.baseline")["average"] == 0.0
 
 
 def test_a_model_missing_a_dataset_has_no_average(power_runs) -> None:
@@ -143,14 +143,14 @@ def test_a_model_missing_a_dataset_has_no_average(power_runs) -> None:
         build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings), "avgpcon_per_node"
     )
 
-    moe = _row(table, "model.job_runtime_moe_xgboost")
+    moe = _row(table, "model.moe_xgboost")
     assert moe["average"] is None
     assert moe["datasets_run"] == 1
     # Ranked rows come first, best average first; incomplete rows after.
     assert [r["model"] for r in table["rows"]] == [
-        "model.job_runtime_xgboost",
-        "model.job_runtime_baseline",
-        "model.job_runtime_moe_xgboost",
+        "model.xgboost",
+        "model.baseline",
+        "model.moe_xgboost",
     ]
 
 
@@ -193,7 +193,7 @@ def test_only_the_benchmark_protocol_counts(power_runs, kwargs: dict, reason: st
     runs, ceilings = power_runs
     args = {
         "recipe_id": "recipe.job_power.uopc_rolling_avg_pm100",
-        "model": "model.job_power_uopc",
+        "model": "model.uopc",
         "mae": 1.0,
     }
     bundle = _bundle(runs, **{**args, **kwargs})
@@ -202,7 +202,7 @@ def test_only_the_benchmark_protocol_counts(power_runs, kwargs: dict, reason: st
     reasons = {e["bundle_dir"]: e["reason"] for e in leaderboard["excluded"]}
     assert reason in reasons[_label(runs, bundle)]
     table = _table(leaderboard, "avgpcon_per_node")
-    assert "model.job_power_uopc" not in {r["model"] for r in table["rows"]}
+    assert "model.uopc" not in {r["model"] for r in table["rows"]}
 
 
 def test_a_bundle_on_the_recipes_predictor_counts(power_runs) -> None:
@@ -211,14 +211,14 @@ def test_a_bundle_on_the_recipes_predictor_counts(power_runs) -> None:
     _bundle(
         runs,
         recipe_id="recipe.job_power.uopc_rolling_avg_pm100",
-        model="model.job_power_uopc",
+        model="model.uopc",
         mae=130.0,
         run_config=config,
     )
     leaderboard = build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
 
     table = _table(leaderboard, "avgpcon_per_node")
-    assert "model.job_power_uopc" in {r["model"] for r in table["rows"]}
+    assert "model.uopc" in {r["model"] for r in table["rows"]}
 
 
 def test_a_rerun_replaces_its_cell_and_is_named(power_runs) -> None:
@@ -226,15 +226,13 @@ def test_a_rerun_replaces_its_cell_and_is_named(power_runs) -> None:
     newer = _bundle(
         runs,
         recipe_id="recipe.job_power.xgboost_rolling_avg_pm100",
-        model="model.job_runtime_xgboost",
+        model="model.xgboost",
         mae=110.0,
         created_at="2026-10-21T00:00:00Z",
     )
     leaderboard = build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
 
-    cell = _row(_table(leaderboard, "avgpcon_per_node"), "model.job_runtime_xgboost")["cells"][
-        "pm100"
-    ]
+    cell = _row(_table(leaderboard, "avgpcon_per_node"), "model.xgboost")["cells"]["pm100"]
     assert cell["mae"] == 110.0
     assert cell["bundles"] == [_label(runs, newer)]
     assert any(e["reason"].startswith("superseded by") for e in leaderboard["excluded"])
@@ -246,14 +244,14 @@ def test_each_target_has_its_own_table(power_runs) -> None:
     _bundle(
         runs,
         recipe_id="recipe.job_power.xgboost_rolling_peak_pm100",
-        model="model.job_runtime_xgboost",
+        model="model.xgboost",
         target="maxpcon_per_node",
         mae=180.0,
     )
     leaderboard = build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
 
     peak = _table(leaderboard, "maxpcon_per_node")
-    assert [r["model"] for r in peak["rows"]] == ["model.job_runtime_xgboost"]
+    assert [r["model"] for r in peak["rows"]] == ["model.xgboost"]
     assert peak["datasets"] == ["pm100"]
     avg_models = [r["model"] for r in _table(leaderboard, "avgpcon_per_node")["rows"]]
     assert len(avg_models) == len(set(avg_models))  # one row per model
@@ -317,7 +315,7 @@ def _runtime_pairs(
 def test_runtime_cells_use_the_walk_forward_choice(tmp_path: Path) -> None:
     """Two lookback arms: the cell is the policy's score, not the better arm's (#190)."""
     arms = {10: [5.0, 5.0, 1.0, 9.0], 30: [6.0, 6.0, 6.0, 2.0]}  # a: good early, bad late
-    pairs = _runtime_pairs("model.job_runtime_xgboost", arms)
+    pairs = _runtime_pairs("model.xgboost", arms)
 
     tables, excluded = build_tables(
         pairs, ceilings_dir=tmp_path, cards=[_lassen_card(tmp_path)], burn_in=2
@@ -333,8 +331,8 @@ def test_runtime_cells_use_the_walk_forward_choice(tmp_path: Path) -> None:
 
 def _runtime_tables(tmp_path: Path, ceiling_rows: int) -> dict:
     _ceiling(tmp_path, "dataset.job_runtime.lassen", "runtime_seconds", 1.0, ceiling_rows)
-    pairs = _runtime_pairs("model.job_runtime_baseline", {10: [9.0] * 4, 30: [9.5] * 4})
-    pairs += _runtime_pairs("model.job_runtime_xgboost", {10: [5.0] * 4, 30: [6.0] * 4})
+    pairs = _runtime_pairs("model.baseline", {10: [9.0] * 4, 30: [9.5] * 4})
+    pairs += _runtime_pairs("model.xgboost", {10: [5.0] * 4, 30: [6.0] * 4})
     tables, _ = build_tables(
         pairs, ceilings_dir=tmp_path, cards=[_lassen_card(tmp_path)], burn_in=2
     )
@@ -344,7 +342,7 @@ def _runtime_tables(tmp_path: Path, ceiling_rows: int) -> dict:
 def test_runtime_headroom_when_the_ceiling_covers_the_same_jobs(tmp_path: Path) -> None:
     """The floor, the baseline and the cell all cover the 20 jobs past the burn-in (#238)."""
     runtime = _runtime_tables(tmp_path, ceiling_rows=20)
-    xgb = _row(runtime, "model.job_runtime_xgboost")
+    xgb = _row(runtime, "model.xgboost")
 
     # Baseline 9 (its walk-forward pick, the 10-day arm), floor 1, model 5: halfway.
     assert xgb["cells"]["lassen"]["headroom"] == pytest.approx(0.5)
@@ -355,7 +353,7 @@ def test_runtime_headroom_when_the_ceiling_covers_the_same_jobs(tmp_path: Path) 
 def test_runtime_shows_mae_alone_when_the_ceiling_covers_other_jobs(tmp_path: Path) -> None:
     """A ceiling from other windows, like those from before the burn-in, bounds other rows."""
     runtime = _runtime_tables(tmp_path, ceiling_rows=40)
-    cell = _row(runtime, "model.job_runtime_xgboost")["cells"]["lassen"]
+    cell = _row(runtime, "model.xgboost")["cells"]["lassen"]
 
     assert cell["headroom"] is None and cell["mae"] == pytest.approx(5.0)
     assert cell["headroom_missing"].startswith("covers other jobs: the ceiling 40")
@@ -383,7 +381,7 @@ def test_runtime_counts_the_fleets_protocol_only(
 ) -> None:
     """The runtime benchmark is the fleet that has run: 30 days in 6 h windows at 10, 30 and
     120 days of lookback. The cards' 90 days count once #191's fleet runs them."""
-    pairs = _runtime_pairs("model.job_runtime_xgboost", arms, n_windows=n_windows)
+    pairs = _runtime_pairs("model.xgboost", arms, n_windows=n_windows)
     runtime, excluded = _runtime_table(tmp_path, pairs)
 
     assert not runtime["rows"]
@@ -393,7 +391,7 @@ def test_runtime_counts_the_fleets_protocol_only(
 def test_bundles_from_before_run_config_are_told_apart_by_their_lookback(tmp_path: Path) -> None:
     """The fleet's bundles predate run_config (#197); their summary holds the lookback."""
     arms = {10: [5.0, 5.0, 1.0, 9.0], 30: [6.0, 6.0, 6.0, 2.0]}
-    pairs = _runtime_pairs("model.job_runtime_xgboost", arms, run_config=False)
+    pairs = _runtime_pairs("model.xgboost", arms, run_config=False)
     runtime, excluded = _runtime_table(tmp_path, pairs)
 
     assert runtime["rows"][0]["cells"]["lassen"]["mae"] == pytest.approx(5.0)
@@ -418,7 +416,7 @@ def test_a_power_cell_on_other_jobs_gets_no_headroom(power_runs) -> None:
     _ceiling(ceilings, "dataset.job_runtime.pm100", "avgpcon_per_node", 100.0, ROWS + 1)
     leaderboard = build_leaderboard(runs, ceilings_dir=ceilings, cards_dir=ceilings)
 
-    cell = _row(_table(leaderboard, "avgpcon_per_node"), "model.job_runtime_xgboost")["cells"]
+    cell = _row(_table(leaderboard, "avgpcon_per_node"), "model.xgboost")["cells"]
     assert cell["pm100"]["headroom"] is None
     assert cell["nlr_eagle"]["headroom"] is not None
 
@@ -428,7 +426,7 @@ def test_pages_render_tables_and_list_what_was_left_out(power_runs) -> None:
     smoke = _bundle(
         runs,
         recipe_id="recipe.job_power.xgboost_rolling_avg_pm100",
-        model="model.job_runtime_xgboost",
+        model="model.xgboost",
         mae=1.0,
         summary={**POWER_SPLIT, "n_windows": 3},
     )
@@ -470,9 +468,9 @@ def test_pages_show_model_titles_and_keep_the_id_on_hover(power_runs) -> None:
     )
 
     assert ">XGBoost (MoE)</a>" in page and ">XGBoost</a>" in page
-    assert "/docs/models/job_runtime_moe_xgboost.md" in page  # the row links to its card
-    assert 'title="model.job_runtime_moe_xgboost"' in page
-    assert ">job_runtime_xgboost<" not in page
+    assert "/docs/models/moe_xgboost.md" in page  # the row links to its card
+    assert 'title="model.moe_xgboost"' in page
+    assert ">xgboost<" not in page
     assert model_title("model.someone_elses_model") == "someone_elses_model"
     titles = model_titles()
     assert len(titles) == 9 and all(t and not t.startswith("Job ") for t in titles.values())

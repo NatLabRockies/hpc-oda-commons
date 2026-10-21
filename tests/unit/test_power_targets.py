@@ -15,9 +15,9 @@ import pytest
 
 from hpc_oda_commons.benchmark import runner
 from hpc_oda_commons.models.feature_policy import feature_allowlist
-from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostConfig,
-    JobRuntimeXGBoostModel,
+from hpc_oda_commons.models.xgboost.model import (
+    XGBoostConfig,
+    XGBoostModel,
 )
 
 TARGET = "avgpcon_per_node"
@@ -94,7 +94,7 @@ def test_runtime_is_still_the_default_target() -> None:
 
 def test_neither_runtime_nor_power_is_ever_a_feature() -> None:
     """Predicting power, runtime is a post-hoc column like any other, and vice versa."""
-    model = JobRuntimeXGBoostModel(JobRuntimeXGBoostConfig(target_field=TARGET))
+    model = XGBoostModel(XGBoostConfig(target_field=TARGET))
     usable, ignored = model.feature_field_report(_rows())
     assert TARGET in ignored and "runtime_seconds" in ignored
     assert TARGET not in usable and "runtime_seconds" not in usable
@@ -104,23 +104,21 @@ def test_the_target_cannot_be_admitted_as_an_extra_feature() -> None:
     with pytest.raises(ValueError, match="prediction target"):
         feature_allowlist({TARGET}, target=TARGET)
 
-    model = JobRuntimeXGBoostModel(
-        JobRuntimeXGBoostConfig(target_field=TARGET, extra_feature_fields=frozenset({TARGET}))
+    model = XGBoostModel(
+        XGBoostConfig(target_field=TARGET, extra_feature_fields=frozenset({TARGET}))
     )
     with pytest.raises(ValueError, match="prediction target"):
         model.allowed_feature_fields()
 
 
 def test_the_embedding_cannot_be_the_target() -> None:
-    from hpc_oda_commons.models.job_runtime_embedding_knn.model import (
-        JobRuntimeEmbeddingKnnConfig,
-        JobRuntimeEmbeddingKnnModel,
+    from hpc_oda_commons.models.embedding_knn.model import (
+        EmbeddingKnnConfig,
+        EmbeddingKnnModel,
     )
 
     with pytest.raises(ValueError, match="prediction target"):
-        JobRuntimeEmbeddingKnnModel(
-            JobRuntimeEmbeddingKnnConfig(target_field="embedding", embedding_field="embedding")
-        )
+        EmbeddingKnnModel(EmbeddingKnnConfig(target_field="embedding", embedding_field="embedding"))
 
 
 def test_rolling_recipes_can_report_mape_and_r2() -> None:
@@ -176,7 +174,7 @@ def test_nlr_embedding_recipes_read_the_embedded_slice() -> None:
     from hpc_oda_commons.benchmark.recipes import load_recipe
 
     root = Path(str(ir.files("hpc_oda_commons") / "recipes" / "job-power"))
-    needs_embedding = {"model.job_power_uopc", "model.job_runtime_embedding_knn"}
+    needs_embedding = {"model.uopc", "model.embedding_knn"}
     for system in ("eagle", "kestrel", "pm100"):
         for path in sorted(root.glob(f"*_rolling_*_{system}.yml")):
             recipe = load_recipe(path)

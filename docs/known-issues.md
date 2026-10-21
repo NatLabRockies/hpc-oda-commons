@@ -183,7 +183,7 @@ short jobs (median 2 s).
 
 **Status:** informational · **Tracking:** [#125](https://github.com/NatLabRockies/hpc-oda-commons/issues/125)
 
-With `zscore` features, the UoPC paper protocol (`model.job_power_uopc` with
+With `zscore` features, the UoPC paper protocol (`model.uopc` with
 `split.method: cutoff`) z-scores its numeric features (cores, nodes and CPU frequency
 requested) over the whole usable dataset, test months included. Since #228 only the
 paper-comparison recipes use `zscore`; the default, `balanced`, fits on history only. The scaling is the Commons' adaptation; the paper scales nothing.

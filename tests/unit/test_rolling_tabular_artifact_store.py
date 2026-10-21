@@ -15,10 +15,10 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pytest
 
-from hpc_oda_commons.models.job_runtime_mlp.model import JobRuntimeMlpConfig, JobRuntimeMlpModel
-from hpc_oda_commons.models.job_runtime_random_forest.model import (
-    JobRuntimeRandomForestConfig,
-    JobRuntimeRandomForestModel,
+from hpc_oda_commons.models.mlp.model import MlpConfig, MlpModel
+from hpc_oda_commons.models.random_forest.model import (
+    RandomForestConfig,
+    RandomForestModel,
 )
 from hpc_oda_commons.models.rolling_tabular.artifact_store import (
     CACHE_ENV,
@@ -68,14 +68,14 @@ def _rows(n_hours: int = 96) -> list[dict]:
     return rows
 
 
-def _mlp(**overrides) -> JobRuntimeMlpModel:
+def _mlp(**overrides) -> MlpModel:
     config = {**_SHARED, "hidden_layer_sizes": (8,), "max_iter": 40, **overrides}
-    return JobRuntimeMlpModel(JobRuntimeMlpConfig(**config))
+    return MlpModel(MlpConfig(**config))
 
 
-def _rf(**overrides) -> JobRuntimeRandomForestModel:
+def _rf(**overrides) -> RandomForestModel:
     config = {**_SHARED, "n_estimators": 5, "n_jobs": 1, **overrides}
-    return JobRuntimeRandomForestModel(JobRuntimeRandomForestConfig(**config))
+    return RandomForestModel(RandomForestConfig(**config))
 
 
 def _without_store_counts(payload: dict) -> dict:
@@ -163,7 +163,7 @@ def test_the_target_joins_the_key_only_when_target_encoding_reads_it():
 
 
 def test_a_subclass_that_changes_the_build_gets_entries_of_its_own():
-    class Different(JobRuntimeMlpModel):
+    class Different(MlpModel):
         def _detect_numeric_columns(self, rows, *, exclude):
             return []
 
@@ -237,7 +237,7 @@ def test_the_store_is_not_part_of_the_run_config(tmp_path):
 
 def test_the_moe_builds_its_routing_on_shared_entries(tmp_path):
     pytest.importorskip("xgboost")
-    from hpc_oda_commons.models.job_runtime_moe_xgboost.model import (
+    from hpc_oda_commons.models.moe_xgboost.model import (
         MoEXGBoostConfig,
         MoEXGBoostModel,
     )

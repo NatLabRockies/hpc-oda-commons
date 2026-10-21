@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pytest
 
-from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostConfig,
-    JobRuntimeXGBoostModel,
+from hpc_oda_commons.models.xgboost.model import (
+    XGBoostConfig,
+    XGBoostModel,
 )
 
 
@@ -70,7 +70,7 @@ class _FakeRegressor:
 def test_evaluate_returns_metrics_and_window_details(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = JobRuntimeXGBoostConfig(
+    config = XGBoostConfig(
         n_windows=10,
         test_window_hours=1,
         n_estimators=16,
@@ -82,7 +82,7 @@ def test_evaluate_returns_metrics_and_window_details(
         target_max_one_hot_width=64,
         random_state=7,
     )
-    model = JobRuntimeXGBoostModel(config)
+    model = XGBoostModel(config)
     monkeypatch.setattr(model, "_new_regressor", lambda n_train: _FakeRegressor())
     payload = model.evaluate(_sample_rows())
 
@@ -125,8 +125,8 @@ def test_evaluate_raises_when_no_scored_predictions(
             "runtime_seconds": None,
         },
     ]
-    config = JobRuntimeXGBoostConfig(n_windows=2, test_window_hours=1, n_estimators=8, max_depth=3)
-    model = JobRuntimeXGBoostModel(config)
+    config = XGBoostConfig(n_windows=2, test_window_hours=1, n_estimators=8, max_depth=3)
+    model = XGBoostModel(config)
     monkeypatch.setattr(model, "_new_regressor", lambda n_train: _FakeRegressor())
 
     with pytest.raises(ValueError, match="No rolling splits produced scored predictions"):
@@ -136,10 +136,10 @@ def test_evaluate_raises_when_no_scored_predictions(
 def test_evaluate_verbose_uses_tqdm(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = JobRuntimeXGBoostConfig(
+    config = XGBoostConfig(
         n_windows=4, test_window_hours=1, max_svd_components=8, target_max_one_hot_width=64
     )
-    model = JobRuntimeXGBoostModel(config)
+    model = XGBoostModel(config)
     monkeypatch.setattr(model, "_new_regressor", lambda n_train: _FakeRegressor())
 
     seen: dict[str, object] = {}
@@ -163,8 +163,8 @@ def test_evaluate_verbose_uses_tqdm(
 def test_evaluate_passes_verbose_to_split_builder(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = JobRuntimeXGBoostConfig(n_windows=2, test_window_hours=1)
-    model = JobRuntimeXGBoostModel(config)
+    config = XGBoostConfig(n_windows=2, test_window_hours=1)
+    model = XGBoostModel(config)
     monkeypatch.setattr(model, "_check_dependencies", lambda: None)
 
     seen_verbose: dict[str, bool | None] = {"value": None}
@@ -205,13 +205,13 @@ def test_evaluate_verbose_prints_summary(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    config = JobRuntimeXGBoostConfig(
+    config = XGBoostConfig(
         n_windows=4,
         test_window_hours=1,
         max_svd_components=8,
         target_max_one_hot_width=64,
     )
-    model = JobRuntimeXGBoostModel(config)
+    model = XGBoostModel(config)
     monkeypatch.setattr(model, "_new_regressor", lambda n_train: _FakeRegressor())
 
     _ = model.evaluate(_sample_rows(), verbose=True)

@@ -4,9 +4,9 @@ import math
 
 import pytest
 
-from hpc_oda_commons.models.job_runtime_mlp.model import (
-    JobRuntimeMlpConfig,
-    JobRuntimeMlpModel,
+from hpc_oda_commons.models.mlp.model import (
+    MlpConfig,
+    MlpModel,
 )
 
 pytest.importorskip("sklearn")
@@ -51,8 +51,8 @@ def test_mlp_evaluate_returns_requested_metrics() -> None:
         {"name": "rmse", "target": "runtime_seconds"},
         {"name": "underprediction_ratio", "target": "runtime_seconds"},
     ]
-    model = JobRuntimeMlpModel(
-        config=JobRuntimeMlpConfig(
+    model = MlpModel(
+        config=MlpConfig(
             n_windows=2,
             test_window_hours=1,
             training_lookback_days=1,

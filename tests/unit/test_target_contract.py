@@ -76,7 +76,7 @@ def test_the_cutoff_headline_follows_the_recipe_target(monkeypatch: pytest.Monke
                 "summary": {},
             }
 
-    monkeypatch.setattr(runner, "JobPowerUopcModel", FakeUopcModel)
+    monkeypatch.setattr(runner, "UopcModel", FakeUopcModel)
 
     metrics, payload, _ = runner.run_cutoff_uopc(
         [{"dummy": 1}],

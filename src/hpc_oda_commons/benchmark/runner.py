@@ -17,7 +17,39 @@ from hpc_oda_commons.kernel.metrics import (
     compute_regression_metrics_from_defs,
 )
 from hpc_oda_commons.kernel.serialization import to_jsonable
-from hpc_oda_commons.models.job_power_uopc.model import (
+from hpc_oda_commons.models.baseline.model import BaselineModel
+from hpc_oda_commons.models.embedding_knn.backends import DEFAULT_SIMS_BLOCK_BYTES
+from hpc_oda_commons.models.embedding_knn.model import (
+    EmbeddingKnnConfig,
+    EmbeddingKnnModel,
+)
+from hpc_oda_commons.models.mlp.model import (
+    MlpConfig,
+    MlpModel,
+)
+from hpc_oda_commons.models.moe_xgboost.model import (
+    MoEXGBoostConfig,
+    MoEXGBoostModel,
+)
+from hpc_oda_commons.models.random_forest.model import (
+    RandomForestConfig,
+    RandomForestModel,
+)
+from hpc_oda_commons.models.rolling_tabular.artifact_store import default_artifact_store
+from hpc_oda_commons.models.rolling_tabular.base import RollingTabularModel
+from hpc_oda_commons.models.rolling_tabular.split import (
+    build_rolling_splits,
+    materialize_split_rows,
+)
+from hpc_oda_commons.models.signature_memorizer import (
+    SignatureMemorizerConfig,
+    SignatureMemorizerModel,
+)
+from hpc_oda_commons.models.tfidf_knn.model import (
+    TfidfKnnConfig,
+    TfidfKnnModel,
+)
+from hpc_oda_commons.models.uopc.model import (
     PAPER_K_VALUES,
     PAPER_TARGETS,
     PAPER_THETA,
@@ -27,49 +59,17 @@ from hpc_oda_commons.models.job_power_uopc.model import (
     UOPC_DEFAULT_K,
     UOPC_DEFAULT_NODE_COUNT,
     UOPC_DEFAULT_PREDICTOR,
-    JobPowerUopcConfig,
-    JobPowerUopcModel,
+    UopcConfig,
+    UopcModel,
     check_uopc_predictor,
 )
-from hpc_oda_commons.models.job_power_uopc.rolling import (
-    JobPowerUopcRollingConfig,
-    JobPowerUopcRollingModel,
+from hpc_oda_commons.models.uopc.rolling import (
+    UopcRollingConfig,
+    UopcRollingModel,
 )
-from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
-from hpc_oda_commons.models.job_runtime_embedding_knn.backends import DEFAULT_SIMS_BLOCK_BYTES
-from hpc_oda_commons.models.job_runtime_embedding_knn.model import (
-    JobRuntimeEmbeddingKnnConfig,
-    JobRuntimeEmbeddingKnnModel,
-)
-from hpc_oda_commons.models.job_runtime_mlp.model import (
-    JobRuntimeMlpConfig,
-    JobRuntimeMlpModel,
-)
-from hpc_oda_commons.models.job_runtime_moe_xgboost.model import (
-    MoEXGBoostConfig,
-    MoEXGBoostModel,
-)
-from hpc_oda_commons.models.job_runtime_random_forest.model import (
-    JobRuntimeRandomForestConfig,
-    JobRuntimeRandomForestModel,
-)
-from hpc_oda_commons.models.job_runtime_signature_memorizer import (
-    JobRuntimeSignatureMemorizerModel,
-    SignatureMemorizerConfig,
-)
-from hpc_oda_commons.models.job_runtime_tfidf_knn.model import (
-    JobRuntimeTfidfKnnConfig,
-    JobRuntimeTfidfKnnModel,
-)
-from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostConfig,
-    JobRuntimeXGBoostModel,
-)
-from hpc_oda_commons.models.rolling_tabular.artifact_store import default_artifact_store
-from hpc_oda_commons.models.rolling_tabular.base import RollingTabularModel
-from hpc_oda_commons.models.rolling_tabular.split import (
-    build_rolling_splits,
-    materialize_split_rows,
+from hpc_oda_commons.models.xgboost.model import (
+    XGBoostConfig,
+    XGBoostModel,
 )
 
 
@@ -152,7 +152,7 @@ def run_fixed_baseline(
     test_rows = rows[n_train:] if n_train < len(rows) else rows[:]
     y_true = [float(r[target]) for r in test_rows]
 
-    model = JobRuntimeBaselineModel(target_field=target)
+    model = BaselineModel(target_field=target)
     model.fit(train_rows)
     y_pred = model.predict(test_rows)
 
@@ -163,7 +163,7 @@ def run_fixed_baseline(
         artifacts = BenchmarkArtifacts(
             y_true=y_true,
             y_pred=y_pred,
-            last_model={"kind": "job_runtime_baseline", "model": model},
+            last_model={"kind": "baseline", "model": model},
         )
     return metrics, metrics_payload, artifacts
 
@@ -177,11 +177,9 @@ def run_fixed_uopc(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a fixed chronological split benchmark with the UoPC kNN model."""
-    model = JobPowerUopcModel()
+    model = UopcModel()
     # The runner always builds the default config, so its target is the class default.
-    _require_target(
-        JobPowerUopcConfig.target_field, metric_defs, model="model.job_power_uopc (fixed)"
-    )
+    _require_target(UopcConfig.target_field, metric_defs, model="model.uopc (fixed)")
     eval_payload = model.evaluate_fixed(
         rows,
         split=split,
@@ -217,10 +215,10 @@ def run_cutoff_uopc(
     whole grid in metrics.json. A headline outside the grid is an error rather than a
     silent pick, since it is what the leaderboard shows.
     """
-    model = JobPowerUopcModel()
+    model = UopcModel()
     # The paper protocol predicts both per-node targets; the recipe's metric target picks
     # which one is the headline (average by default in the bundled recipes).
-    target = _require_target(set(PAPER_TARGETS), metric_defs, model="model.job_power_uopc (cutoff)")
+    target = _require_target(set(PAPER_TARGETS), metric_defs, model="model.uopc (cutoff)")
     test_start = str(split["test_start"])
     theta = int(split.get("theta", PAPER_THETA))
     k = int(split.get("k", UOPC_DEFAULT_K))
@@ -376,7 +374,7 @@ def run_rolling_baseline(
     window_entries: list[dict[str, Any]] = []
     all_y_true: list[float] = []
     all_y_pred: list[float] = []
-    last_model: JobRuntimeBaselineModel | None = None
+    last_model: BaselineModel | None = None
 
     if verbose:
         print(
@@ -434,7 +432,7 @@ def run_rolling_baseline(
                 )
             continue
 
-        model = JobRuntimeBaselineModel(target_field=target)
+        model = BaselineModel(target_field=target)
         model.fit(train_supervised)
         y_pred = model.predict(test_supervised)
         y_true = [float(r[target]) for r in test_supervised]
@@ -505,9 +503,7 @@ def run_rolling_baseline(
             y_true=all_y_true,
             y_pred=all_y_pred,
             last_model=(
-                {"kind": "job_runtime_baseline", "model": last_model}
-                if last_model is not None
-                else None
+                {"kind": "baseline", "model": last_model} if last_model is not None else None
             ),
         )
     return metrics, eval_payload, artifacts
@@ -555,11 +551,11 @@ def run_rolling_xgboost(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the XGBoost model."""
-    model = JobRuntimeXGBoostModel(
-        config=JobRuntimeXGBoostConfig(
+    model = XGBoostModel(
+        config=XGBoostConfig(
             target_field=_target_for(metric_defs),
-            **_rolling_tabular_split_kwargs(split, JobRuntimeXGBoostConfig()),
-            objective=str(split.get("objective", JobRuntimeXGBoostConfig.objective)),
+            **_rolling_tabular_split_kwargs(split, XGBoostConfig()),
+            objective=str(split.get("objective", XGBoostConfig.objective)),
         )
     )
     return _run_rolling_model_evaluate(
@@ -607,10 +603,10 @@ def run_rolling_random_forest(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the Random Forest model."""
-    model = JobRuntimeRandomForestModel(
-        config=JobRuntimeRandomForestConfig(
+    model = RandomForestModel(
+        config=RandomForestConfig(
             target_field=_target_for(metric_defs),
-            **_rolling_tabular_split_kwargs(split, JobRuntimeRandomForestConfig()),
+            **_rolling_tabular_split_kwargs(split, RandomForestConfig()),
         )
     )
     return _run_rolling_model_evaluate(
@@ -633,7 +629,7 @@ def run_rolling_signature_memorizer(
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the signature-memorization baseline."""
     defaults = SignatureMemorizerConfig()
-    model = JobRuntimeSignatureMemorizerModel(
+    model = SignatureMemorizerModel(
         config=SignatureMemorizerConfig(
             target_field=_target_for(metric_defs),
             n_windows=int(split.get("n_windows", 1000)),
@@ -666,8 +662,8 @@ def run_rolling_mlp(
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
     training_lookback_days = int(split.get("training_lookback_days", 100))
-    model = JobRuntimeMlpModel(
-        config=JobRuntimeMlpConfig(
+    model = MlpModel(
+        config=MlpConfig(
             target_field=_target_for(metric_defs),
             n_windows=n_windows,
             test_window_hours=test_window_hours,
@@ -695,8 +691,8 @@ def run_rolling_embedding_knn(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run a rolling benchmark with the embedding-based kNN model."""
-    model = JobRuntimeEmbeddingKnnModel(
-        config=JobRuntimeEmbeddingKnnConfig(
+    model = EmbeddingKnnModel(
+        config=EmbeddingKnnConfig(
             target_field=_target_for(metric_defs),
             n_windows=int(split.get("n_windows", 1000)),
             test_window_hours=int(split.get("test_window_hours", 6)),
@@ -732,8 +728,8 @@ def run_rolling_tfidf_knn(
     n_windows = int(split.get("n_windows", 1000))
     test_window_hours = int(split.get("test_window_hours", 6))
     training_lookback_days = int(split.get("training_lookback_days", 100))
-    model = JobRuntimeTfidfKnnModel(
-        config=JobRuntimeTfidfKnnConfig(
+    model = TfidfKnnModel(
+        config=TfidfKnnConfig(
             target_field=_target_for(metric_defs),
             n_windows=n_windows,
             test_window_hours=test_window_hours,
@@ -761,9 +757,9 @@ def run_rolling_uopc(
     capture_artifacts: bool = False,
 ) -> tuple[dict[str, float], dict[str, Any], BenchmarkArtifacts]:
     """Run UoPC on the shared rolling windows, scored like every other model (#204)."""
-    defaults = JobPowerUopcRollingConfig()
-    model = JobPowerUopcRollingModel(
-        config=JobPowerUopcRollingConfig(
+    defaults = UopcRollingConfig()
+    model = UopcRollingModel(
+        config=UopcRollingConfig(
             target_field=recipe_target(metric_defs) or defaults.target_field,
             n_windows=int(split.get("n_windows", 1000)),
             test_window_hours=int(split.get("test_window_hours", 6)),
@@ -843,28 +839,18 @@ class RunnerSpec:
 
 
 RUNNERS: dict[tuple[str, str], RunnerSpec] = {
-    ("model.job_runtime_baseline", "fixed"): RunnerSpec(run_fixed_baseline, None),
-    ("model.job_runtime_baseline", "rolling"): RunnerSpec(run_rolling_baseline, None),
-    ("model.job_power_uopc", "fixed"): RunnerSpec(run_fixed_uopc, JobPowerUopcConfig),
-    ("model.job_power_uopc", "rolling"): RunnerSpec(run_rolling_uopc, JobPowerUopcRollingConfig),
-    ("model.job_power_uopc", "cutoff"): RunnerSpec(run_cutoff_uopc, None),
-    ("model.job_runtime_tfidf_knn", "rolling"): RunnerSpec(
-        run_rolling_tfidf_knn, JobRuntimeTfidfKnnConfig
-    ),
-    ("model.job_runtime_embedding_knn", "rolling"): RunnerSpec(
-        run_rolling_embedding_knn, JobRuntimeEmbeddingKnnConfig
-    ),
-    ("model.job_runtime_xgboost", "rolling"): RunnerSpec(
-        run_rolling_xgboost, JobRuntimeXGBoostConfig
-    ),
-    ("model.job_runtime_random_forest", "rolling"): RunnerSpec(
-        run_rolling_random_forest, JobRuntimeRandomForestConfig
-    ),
-    ("model.job_runtime_signature_memorizer", "rolling"): RunnerSpec(
+    ("model.baseline", "fixed"): RunnerSpec(run_fixed_baseline, None),
+    ("model.baseline", "rolling"): RunnerSpec(run_rolling_baseline, None),
+    ("model.uopc", "fixed"): RunnerSpec(run_fixed_uopc, UopcConfig),
+    ("model.uopc", "rolling"): RunnerSpec(run_rolling_uopc, UopcRollingConfig),
+    ("model.uopc", "cutoff"): RunnerSpec(run_cutoff_uopc, None),
+    ("model.tfidf_knn", "rolling"): RunnerSpec(run_rolling_tfidf_knn, TfidfKnnConfig),
+    ("model.embedding_knn", "rolling"): RunnerSpec(run_rolling_embedding_knn, EmbeddingKnnConfig),
+    ("model.xgboost", "rolling"): RunnerSpec(run_rolling_xgboost, XGBoostConfig),
+    ("model.random_forest", "rolling"): RunnerSpec(run_rolling_random_forest, RandomForestConfig),
+    ("model.signature_memorizer", "rolling"): RunnerSpec(
         run_rolling_signature_memorizer, SignatureMemorizerConfig
     ),
-    ("model.job_runtime_mlp", "rolling"): RunnerSpec(run_rolling_mlp, JobRuntimeMlpConfig),
-    ("model.job_runtime_moe_xgboost", "rolling"): RunnerSpec(
-        run_rolling_moe_xgboost, MoEXGBoostConfig
-    ),
+    ("model.mlp", "rolling"): RunnerSpec(run_rolling_mlp, MlpConfig),
+    ("model.moe_xgboost", "rolling"): RunnerSpec(run_rolling_moe_xgboost, MoEXGBoostConfig),
 }

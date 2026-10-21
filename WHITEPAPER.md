@@ -297,7 +297,7 @@ The long-term payoff is a community where ODA progress is cumulative: models, da
 hpc-oda --help
 hpc-oda init
 hpc-oda browse
-hpc-oda info model.job_runtime_baseline
+hpc-oda info model.baseline
 
 HPC_ODA_OFFLINE=1 hpc-oda run-baseline
 hpc-oda ingest slurmctld --path /path/to/slurmctld.log

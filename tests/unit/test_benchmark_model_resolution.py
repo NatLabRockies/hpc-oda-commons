@@ -9,7 +9,7 @@ import pytest
 import typer
 
 from hpc_oda_commons.benchmark import runner
-from hpc_oda_commons.models.job_power_uopc.model import UOPC_DEFAULT_PREDICTOR
+from hpc_oda_commons.models.uopc.model import UOPC_DEFAULT_PREDICTOR
 from hpc_oda_commons.qst import cli
 
 
@@ -137,7 +137,7 @@ def test_benchmark_rolling_uses_xgboost_path(
                 },
             }
 
-    monkeypatch.setattr(runner, "JobRuntimeXGBoostModel", FakeXGBModel)
+    monkeypatch.setattr(runner, "XGBoostModel", FakeXGBModel)
     monkeypatch.chdir(tmp_path)
 
     table_path = tmp_path / "jobs.parquet"
@@ -145,7 +145,7 @@ def test_benchmark_rolling_uses_xgboost_path(
     _write_dataset(table_path)
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_xgboost",
+        model_id="model.xgboost",
         split_block="\n".join(
             [
                 "  method: rolling",
@@ -166,7 +166,7 @@ def test_benchmark_rolling_uses_xgboost_path(
     assert FakeXGBModel.seen_n_windows == 4
     assert FakeXGBModel.seen_training_lookback_days == 7
     assert FakeXGBModel.seen_objective == "reg:absoluteerror"
-    assert result["model"]["id"] == "model.job_runtime_xgboost"
+    assert result["model"]["id"] == "model.xgboost"
     assert result["metrics"]["mae"] == 1.25
     assert result["metrics"]["rmse"] == 2.5
     assert result["timing"]["total_train_eval_seconds"] >= 0.0
@@ -183,7 +183,7 @@ def test_benchmark_baseline_rolling_path(tmp_path: Path, monkeypatch: pytest.Mon
     _write_dataset(table_path)
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_baseline",
+        model_id="model.baseline",
         split_block="\n".join(
             [
                 "  method: rolling",
@@ -200,7 +200,7 @@ def test_benchmark_baseline_rolling_path(tmp_path: Path, monkeypatch: pytest.Mon
     result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
     metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
 
-    assert result["model"]["id"] == "model.job_runtime_baseline"
+    assert result["model"]["id"] == "model.baseline"
     assert result["metrics"]["mae"] >= 0.0
     assert result["metrics"]["rmse"] >= 0.0
     assert "windows" in metrics_payload
@@ -241,7 +241,7 @@ def test_benchmark_tfidf_knn_rolling_path(tmp_path: Path, monkeypatch: pytest.Mo
                 },
             }
 
-    monkeypatch.setattr(runner, "JobRuntimeTfidfKnnModel", FakeTfidfKnnModel)
+    monkeypatch.setattr(runner, "TfidfKnnModel", FakeTfidfKnnModel)
     monkeypatch.chdir(tmp_path)
 
     table_path = tmp_path / "jobs.parquet"
@@ -249,7 +249,7 @@ def test_benchmark_tfidf_knn_rolling_path(tmp_path: Path, monkeypatch: pytest.Mo
     _write_dataset(table_path)
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_tfidf_knn",
+        model_id="model.tfidf_knn",
         split_block="\n".join(
             [
                 "  method: rolling",
@@ -266,7 +266,7 @@ def test_benchmark_tfidf_knn_rolling_path(tmp_path: Path, monkeypatch: pytest.Mo
     result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
     metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
 
-    assert result["model"]["id"] == "model.job_runtime_tfidf_knn"
+    assert result["model"]["id"] == "model.tfidf_knn"
     assert result["metrics"]["mae"] == 2.0
     assert result["metrics"]["rmse"] == 3.0
     assert "windows" in metrics_payload
@@ -320,7 +320,7 @@ def test_benchmark_moe_xgboost_rolling_path(
     _write_dataset(table_path)
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_moe_xgboost",
+        model_id="model.moe_xgboost",
         split_block="\n".join(
             [
                 "  method: rolling",
@@ -341,7 +341,7 @@ def test_benchmark_moe_xgboost_rolling_path(
     bundle = _first_result_bundle(tmp_path / "runs")
     result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
 
-    assert result["model"]["id"] == "model.job_runtime_moe_xgboost"
+    assert result["model"]["id"] == "model.moe_xgboost"
     assert result["metrics"]["mae"] == 5.0
     config = captured["config"]
     assert config.time_decay_rate == 0.02
@@ -385,7 +385,7 @@ def test_benchmark_mlp_rolling_path(tmp_path: Path, monkeypatch: pytest.MonkeyPa
                 },
             }
 
-    monkeypatch.setattr(runner, "JobRuntimeMlpModel", FakeMlpModel)
+    monkeypatch.setattr(runner, "MlpModel", FakeMlpModel)
     monkeypatch.chdir(tmp_path)
 
     table_path = tmp_path / "jobs.parquet"
@@ -393,7 +393,7 @@ def test_benchmark_mlp_rolling_path(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     _write_dataset(table_path)
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_mlp",
+        model_id="model.mlp",
         split_block="\n".join(
             [
                 "  method: rolling",
@@ -410,7 +410,7 @@ def test_benchmark_mlp_rolling_path(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
     metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
 
-    assert result["model"]["id"] == "model.job_runtime_mlp"
+    assert result["model"]["id"] == "model.mlp"
     assert result["metrics"]["mae"] == 3.0
     assert result["metrics"]["rmse"] == 4.0
     assert "windows" in metrics_payload
@@ -439,7 +439,7 @@ def test_benchmark_uopc_fixed_path(tmp_path: Path, monkeypatch: pytest.MonkeyPat
                 "summary": {"rows_scored": 10, "rows_skipped": 2},
             }
 
-    monkeypatch.setattr(runner, "JobPowerUopcModel", FakeUopcModel)
+    monkeypatch.setattr(runner, "UopcModel", FakeUopcModel)
     monkeypatch.chdir(tmp_path)
 
     rows = [
@@ -474,7 +474,7 @@ def test_benchmark_uopc_fixed_path(tmp_path: Path, monkeypatch: pytest.MonkeyPat
             "  id: test_power",
             f"  table_path: {table_path.as_posix()}",
             "model:",
-            "  id: model.job_power_uopc",
+            "  id: model.uopc",
             '  version: "0.1.0"',
             "metrics:",
             "  - name: mae",
@@ -498,7 +498,7 @@ def test_benchmark_uopc_fixed_path(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     result = json.loads((bundle / "result.json").read_text(encoding="utf-8"))
     metrics_payload = json.loads((bundle / "metrics.json").read_text(encoding="utf-8"))
 
-    assert result["model"]["id"] == "model.job_power_uopc"
+    assert result["model"]["id"] == "model.uopc"
     assert result["problem_domain"] == ["job-power-prediction"]
     assert result["metrics"]["mae"] == 12.5
     assert result["metrics"]["rmse"] == 20.0
@@ -515,7 +515,7 @@ def test_benchmark_rejects_unsupported_model_split_combo(
     _write_dataset(table_path)
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_xgboost",
+        model_id="model.xgboost",
         split_block="\n".join(
             [
                 "  method: fixed",
@@ -567,7 +567,7 @@ def test_benchmark_rolling_uses_default_training_lookback_days(
                 },
             }
 
-    monkeypatch.setattr(runner, "JobRuntimeXGBoostModel", FakeXGBModel)
+    monkeypatch.setattr(runner, "XGBoostModel", FakeXGBModel)
     monkeypatch.chdir(tmp_path)
 
     table_path = tmp_path / "jobs.parquet"
@@ -575,7 +575,7 @@ def test_benchmark_rolling_uses_default_training_lookback_days(
     _write_dataset(table_path)
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_xgboost",
+        model_id="model.xgboost",
         split_block="\n".join(["  method: rolling", "  n_windows: 3"]),
         table_path=table_path,
     )
@@ -623,7 +623,7 @@ def test_benchmark_verbose_prints_progress(
                 },
             }
 
-    monkeypatch.setattr(runner, "JobRuntimeXGBoostModel", FakeXGBModel)
+    monkeypatch.setattr(runner, "XGBoostModel", FakeXGBModel)
     monkeypatch.chdir(tmp_path)
 
     table_path = tmp_path / "jobs.parquet"
@@ -631,7 +631,7 @@ def test_benchmark_verbose_prints_progress(
     _write_dataset(table_path)
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_xgboost",
+        model_id="model.xgboost",
         split_block="\n".join(
             [
                 "  method: rolling",
@@ -660,7 +660,7 @@ def test_benchmark_honors_output_dir(tmp_path: Path, monkeypatch: pytest.MonkeyP
     _write_dataset(table_path)
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_baseline",
+        model_id="model.baseline",
         split_block=_FIXED_SPLIT,
         table_path=table_path,
         output_dir="custom_runs",
@@ -693,7 +693,7 @@ def test_benchmark_overwrite_guard(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     _write_dataset(table_path)
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_baseline",
+        model_id="model.baseline",
         split_block=_FIXED_SPLIT,
         table_path=table_path,
         overwrite=False,
@@ -706,7 +706,7 @@ def test_benchmark_overwrite_guard(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_baseline",
+        model_id="model.baseline",
         split_block=_FIXED_SPLIT,
         table_path=table_path,
         overwrite=True,
@@ -733,7 +733,7 @@ def test_benchmark_missing_dataset_no_synthetic_fallback_for_non_runtime(
                 "  id: test_dataset",
                 "  table_path: data/does_not_exist.parquet",
                 "model:",
-                "  id: model.job_power_uopc",
+                "  id: model.uopc",
                 '  version: "0.1.0"',
                 "metrics:",
                 "  - name: mae",
@@ -781,7 +781,7 @@ def test_benchmark_rejects_v0_1_string_timestamp_table(
     recipe_path = tmp_path / "rolling.yml"
     _write_recipe(
         recipe_path,
-        model_id="model.job_runtime_baseline",
+        model_id="model.baseline",
         split_block="\n".join(["  method: rolling", "  n_windows: 2", "  test_window_hours: 6"]),
         table_path=table_path,
     )
@@ -861,7 +861,7 @@ def test_benchmark_uopc_paper_reproduction_routing(
                 },
             }
 
-    monkeypatch.setattr(runner, "JobPowerUopcModel", FakeUopcModel)
+    monkeypatch.setattr(runner, "UopcModel", FakeUopcModel)
 
     rows = [{"dummy": idx} for idx in range(12)]
 
@@ -955,7 +955,7 @@ def test_run_cutoff_uopc_sensitivity_exposes_summary_metrics(
                 },
             }
 
-    monkeypatch.setattr(runner, "JobPowerUopcModel", FakeUopcModel)
+    monkeypatch.setattr(runner, "UopcModel", FakeUopcModel)
 
     metrics, payload, _ = runner.run_cutoff_uopc(
         [{"dummy": 1}],
@@ -1021,7 +1021,7 @@ def test_run_cutoff_uopc_sweep_headline_is_the_declared_cell(
 ) -> None:
     """The headline is the theta/k and predictor the recipe names (the median by default,
     #241), not whichever cell sorts first."""
-    monkeypatch.setattr(runner, "JobPowerUopcModel", _FakeSweepModel)
+    monkeypatch.setattr(runner, "UopcModel", _FakeSweepModel)
     choice = {} if predictor is None else {"predictor": predictor}
 
     metrics, payload, _ = runner.run_cutoff_uopc(
@@ -1061,7 +1061,7 @@ def test_run_cutoff_uopc_sweep_rejects_a_headline_outside_the_grid(
 ) -> None:
     """With no theta/k given the headline defaults to the reproduction's 500/5 -- not in
     this grid, so it must fail loudly rather than report some other cell."""
-    monkeypatch.setattr(runner, "JobPowerUopcModel", _FakeSweepModel)
+    monkeypatch.setattr(runner, "UopcModel", _FakeSweepModel)
 
     with pytest.raises(ValueError, match="must be in the grid"):
         runner.run_cutoff_uopc(
@@ -1081,7 +1081,7 @@ def test_run_cutoff_uopc_never_writes_underscore_keys_to_metrics(
 ) -> None:
     """Underscore keys are per-job arrays; in metrics.json they would hold one value per
     test job (#168). Whatever the model returns, none survive into the payload."""
-    monkeypatch.setattr(runner, "JobPowerUopcModel", _FakeSweepModel)
+    monkeypatch.setattr(runner, "UopcModel", _FakeSweepModel)
 
     _, payload, _ = runner.run_cutoff_uopc(
         [{"dummy": 1}],
@@ -1112,7 +1112,7 @@ def test_benchmark_routes_a_uopc_cutoff_recipe_to_the_paper_protocol(
         metrics = {"mae": 3.0, "rmse": 4.0}
         return metrics, {**metrics, "definitions": metric_defs}, runner.BenchmarkArtifacts()
 
-    key = ("model.job_power_uopc", "cutoff")
+    key = ("model.uopc", "cutoff")
     monkeypatch.setitem(
         runner.RUNNERS, key, runner.RunnerSpec(fake_run_cutoff_uopc, runner.RUNNERS[key].config)
     )
@@ -1131,7 +1131,7 @@ def test_benchmark_routes_a_uopc_cutoff_recipe_to_the_paper_protocol(
                 "  id: power",
                 f"  table_path: {table_path}",
                 "model:",
-                "  id: model.job_power_uopc",
+                "  id: model.uopc",
                 '  version: "0.1.0"',
                 "metrics:",
                 "  - {name: mae, target: avgpcon_per_node}",

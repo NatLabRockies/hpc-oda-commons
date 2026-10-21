@@ -36,7 +36,7 @@ This reference covers the v0.1 `hpc-oda` commands.
 1. `hpc-oda embed <ingested.parquet> --out <embedded.parquet> [--model <id>] [--format prose|kv] [--config <local.yml>] [--cache-dir <dir>] [--device auto|cpu|cuda|mps] [--dtype fp16|fp32] [--batch-size <N>] [--chunk-size <N>] [--instruction <text>]`
    Serializes each job row to text (submission-time fields only) and encodes it, writing an
    embedded Parquet (original columns + a dense `embedding` column) plus a provenance
-   manifest — the input for `model.job_runtime_embedding_knn`.
+   manifest — the input for `model.embedding_knn`.
    `--model stub` uses a deterministic, dependency-free encoder (offline/CI); a real model
    (e.g. `microsoft/harrier-oss-v1-0.6b`, the recommended default) needs the `embed` extra
    (`pip install -e ".[embed]"`). Extra text columns (e.g. local job scripts) are named only
@@ -49,17 +49,17 @@ This reference covers the v0.1 `hpc-oda` commands.
    Runs a benchmark recipe and emits a result bundle under `runs/`.
    `--verbose` enables progress bar output for long-running benchmarks.
    Supported v0.1 model/split pairs:
-   - `model.job_runtime_baseline` + `split.method: fixed`
-   - `model.job_runtime_baseline` + `split.method: rolling`
-   - `model.job_runtime_xgboost` + `split.method: rolling`
-   - `model.job_runtime_random_forest` + `split.method: rolling`
-   - `model.job_runtime_mlp` + `split.method: rolling`
-   - `model.job_runtime_tfidf_knn` + `split.method: rolling`
-   - `model.job_runtime_embedding_knn` + `split.method: rolling` (needs an `embedding` column; see `hpc-oda embed`)
-   - `model.job_runtime_moe_xgboost` + `split.method: rolling`
-   - `model.job_power_uopc` + `split.method: fixed`
-   - `model.job_power_uopc` + `split.method: cutoff` (the UoPC paper protocol; see `docs/benchmarking/power/uopc.md`)
-   - `model.job_power_uopc` + `split.method: rolling` (UoPC on the shared rolling windows; see `docs/how-to/predict-power.md`)
+   - `model.baseline` + `split.method: fixed`
+   - `model.baseline` + `split.method: rolling`
+   - `model.xgboost` + `split.method: rolling`
+   - `model.random_forest` + `split.method: rolling`
+   - `model.mlp` + `split.method: rolling`
+   - `model.tfidf_knn` + `split.method: rolling`
+   - `model.embedding_knn` + `split.method: rolling` (needs an `embedding` column; see `hpc-oda embed`)
+   - `model.moe_xgboost` + `split.method: rolling`
+   - `model.uopc` + `split.method: fixed`
+   - `model.uopc` + `split.method: cutoff` (the UoPC paper protocol; see `docs/benchmarking/power/uopc.md`)
+   - `model.uopc` + `split.method: rolling` (UoPC on the shared rolling windows; see `docs/how-to/predict-power.md`)
    The model predicts the column the recipe's metrics target (`runtime_seconds` by default); a model that cannot predict it fails the run.
    Result bundles include an `integrity` block with code hash and validation status.
    For rolling recipes, `split.n_windows` is required.

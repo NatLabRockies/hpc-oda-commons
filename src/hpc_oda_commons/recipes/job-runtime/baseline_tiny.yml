@@ -14,7 +14,7 @@ dataset:
   manifest_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/manifest.json
 
 model:
-  id: model.job_runtime_baseline
+  id: model.baseline
   version: "0.1.0"
 
 # Runtime prediction is regression: provide at least MAE and RMSE in v0.1.

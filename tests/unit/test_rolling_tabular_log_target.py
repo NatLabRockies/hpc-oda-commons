@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 
 from hpc_oda_commons.benchmark.runner import run_rolling_random_forest
-from hpc_oda_commons.models.job_runtime_random_forest.model import (
-    JobRuntimeRandomForestConfig,
-    JobRuntimeRandomForestModel,
+from hpc_oda_commons.models.random_forest.model import (
+    RandomForestConfig,
+    RandomForestModel,
 )
 
 pytest.importorskip("sklearn")
@@ -54,9 +54,9 @@ def _heavy_tailed_rows() -> list[dict[str, object]]:
     return rows
 
 
-def _model(*, log_target: bool) -> JobRuntimeRandomForestModel:
-    return JobRuntimeRandomForestModel(
-        config=JobRuntimeRandomForestConfig(
+def _model(*, log_target: bool) -> RandomForestModel:
+    return RandomForestModel(
+        config=RandomForestConfig(
             n_windows=20,
             test_window_hours=6,
             training_lookback_days=10,
@@ -103,7 +103,7 @@ def test_log_target_improves_the_typical_job() -> None:
 
 
 def test_log_target_defaults_to_off() -> None:
-    assert JobRuntimeRandomForestConfig().log_target is False
+    assert RandomForestConfig().log_target is False
 
 
 def test_recipe_split_enables_log_target() -> None:

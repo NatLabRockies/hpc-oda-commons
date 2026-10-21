@@ -17,7 +17,7 @@ dataset:
   manifest_path: data/ingested/jobs_parquet/fugaku_24_04/manifest.json
 
 model:
-  id: model.job_runtime_mlp
+  id: model.mlp
   version: "0.1.0"
 
 metrics:

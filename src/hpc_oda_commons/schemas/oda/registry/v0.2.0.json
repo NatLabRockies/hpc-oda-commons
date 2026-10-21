@@ -86,7 +86,7 @@
         "id": {
           "type": "string",
           "pattern": "^[a-z0-9][a-z0-9_.-]{1,80}[a-z0-9]$",
-          "description": "Stable ID for entry, e.g., model.job_runtime_baseline."
+          "description": "Stable ID for entry, e.g., model.baseline."
         },
         "entry_type": { "$ref": "#/$defs/entry_type" },
         "name": {

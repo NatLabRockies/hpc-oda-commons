@@ -12,7 +12,7 @@ pip install -e ".[dev]"
 
 ```bash
 hpc-oda browse
-hpc-oda info model.job_runtime_baseline
+hpc-oda info model.baseline
 ```
 
 ## 3) Ingest your data
@@ -60,14 +60,14 @@ hpc-oda benchmark my_recipe.yml
 
 | Model | Split method | Description |
 |-------|-------------|-------------|
-| `model.job_runtime_baseline` | `fixed` or `rolling` | Mean-prediction baseline |
-| `model.job_runtime_xgboost` | `rolling` | XGBoost with automatic OHE+SVD categorical preprocessing |
-| `model.job_runtime_random_forest` | `rolling` | Random forest with automatic OHE+SVD categorical preprocessing |
-| `model.job_runtime_mlp` | `rolling` | Feed-forward MLP with automatic OHE+SVD categorical preprocessing |
-| `model.job_runtime_tfidf_knn` | `rolling` | TF-IDF text vectorization + k-nearest-neighbor regression |
-| `model.job_runtime_embedding_knn` | `rolling` | kNN over a precomputed dense embedding column (see `hpc-oda embed`) |
-| `model.job_runtime_moe_xgboost` | `rolling` | Per-(user, wallclock-bin) XGBoost experts, routed inside the shared window |
-| `model.job_power_uopc` | `fixed`, `cutoff` or `rolling` | Job power prediction via per-user kNN (UoPC); `cutoff` runs the paper protocol, `rolling` scores it on the shared windows |
+| `model.baseline` | `fixed` or `rolling` | Mean-prediction baseline |
+| `model.xgboost` | `rolling` | XGBoost with automatic OHE+SVD categorical preprocessing |
+| `model.random_forest` | `rolling` | Random forest with automatic OHE+SVD categorical preprocessing |
+| `model.mlp` | `rolling` | Feed-forward MLP with automatic OHE+SVD categorical preprocessing |
+| `model.tfidf_knn` | `rolling` | TF-IDF text vectorization + k-nearest-neighbor regression |
+| `model.embedding_knn` | `rolling` | kNN over a precomputed dense embedding column (see `hpc-oda embed`) |
+| `model.moe_xgboost` | `rolling` | Per-(user, wallclock-bin) XGBoost experts, routed inside the shared window |
+| `model.uopc` | `fixed`, `cutoff` or `rolling` | Job power prediction via per-user kNN (UoPC); `cutoff` runs the paper protocol, `rolling` scores it on the shared windows |
 
 Every runtime model can predict power instead by naming a power column as its metric target — see [Predict job power](predict-power.md).
 

@@ -38,7 +38,7 @@ from hpc_oda_commons.benchmark.arm_selection import (
     walk_forward,
 )
 
-BASELINE_MODEL = "model.job_runtime_baseline"
+BASELINE_MODEL = "model.baseline"
 DEFAULT_CEILINGS_DIR = Path("docs/benchmarking/datasets")
 
 # The power benchmark's protocol (docs/benchmarking/power/methodology.md).

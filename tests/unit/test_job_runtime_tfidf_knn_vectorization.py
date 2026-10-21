@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from hpc_oda_commons.models.job_runtime_tfidf_knn.vectorization import (
+from hpc_oda_commons.models.tfidf_knn.vectorization import (
     build_text_column,
     detect_text_columns,
 )

@@ -73,7 +73,7 @@ pip install -e ".[dev]"
 
 # Browse the offline registry
 hpc-oda browse
-hpc-oda info model.job_runtime_baseline
+hpc-oda info model.baseline
 
 # Run a deterministic baseline on a bundled synthetic dataset (no network)
 HPC_ODA_OFFLINE=1 hpc-oda run-baseline
@@ -119,21 +119,21 @@ hpc-oda benchmark -v my_recipe.yml
 
 ### v0.1 Models
 
-**Baseline** (`model.job_runtime_baseline`) — Deterministic mean-prediction model. Computes `mean(runtime_seconds)` on the training set and predicts that constant for all test rows. Supports both fixed and rolling evaluation. Fast, explainable, and useful as a floor for comparison.
+**Baseline** (`model.baseline`) — Deterministic mean-prediction model. Computes `mean(runtime_seconds)` on the training set and predicts that constant for all test rows. Supports both fixed and rolling evaluation. Fast, explainable, and useful as a floor for comparison.
 
-**XGBoost** (`model.job_runtime_xgboost`) — Gradient-boosted tree model with automatic categorical preprocessing (one-hot encoding + SVD dimensionality reduction). Uses a daily preprocessing cache so OHE/SVD are only refit on day boundaries during rolling evaluation.
+**XGBoost** (`model.xgboost`) — Gradient-boosted tree model with automatic categorical preprocessing (one-hot encoding + SVD dimensionality reduction). Uses a daily preprocessing cache so OHE/SVD are only refit on day boundaries during rolling evaluation.
 
-**Random Forest** (`model.job_runtime_random_forest`) — Random Forest regression with the same automatic categorical preprocessing (one-hot encoding + SVD) and rolling evaluation. Shares the `rolling_tabular` base with XGBoost and MLP.
+**Random Forest** (`model.random_forest`) — Random Forest regression with the same automatic categorical preprocessing (one-hot encoding + SVD) and rolling evaluation. Shares the `rolling_tabular` base with XGBoost and MLP.
 
-**MLP** (`model.job_runtime_mlp`) — Feed-forward neural network (sklearn `MLPRegressor`) with automatic categorical preprocessing (one-hot encoding + SVD) and rolling evaluation. Shares the `rolling_tabular` base with XGBoost and Random Forest.
+**MLP** (`model.mlp`) — Feed-forward neural network (sklearn `MLPRegressor`) with automatic categorical preprocessing (one-hot encoding + SVD) and rolling evaluation. Shares the `rolling_tabular` base with XGBoost and Random Forest.
 
-**TF-IDF + kNN** (`model.job_runtime_tfidf_knn`) — Text-similarity model that concatenates job metadata fields (user, account, partition, job name, submit line, working directory, script) into text, vectorizes with TF-IDF, and predicts runtime as the similarity-weighted average of the k nearest neighbors. The stateless HashingVectorizer runs once over all rows and each rolling window scores an index slice, so the independent windows can run in parallel across cores (`window_n_jobs`).
+**TF-IDF + kNN** (`model.tfidf_knn`) — Text-similarity model that concatenates job metadata fields (user, account, partition, job name, submit line, working directory, script) into text, vectorizes with TF-IDF, and predicts runtime as the similarity-weighted average of the k nearest neighbors. The stateless HashingVectorizer runs once over all rows and each rolling window scores an index slice, so the independent windows can run in parallel across cores (`window_n_jobs`).
 
-**Embedding + kNN** (`model.job_runtime_embedding_knn`) — Embedding-space counterpart to TF-IDF + kNN: predicts runtime as the similarity-weighted average of the k nearest neighbors in a **precomputed dense embedding space**, using an exact dense top-k search. Model-agnostic — produce the `embedding` column with `hpc-oda embed` (any HuggingFace sentence-transformers model, or a dependency-free stub). See [Embedding-based kNN](docs/how-to/embedding-knn.md).
+**Embedding + kNN** (`model.embedding_knn`) — Embedding-space counterpart to TF-IDF + kNN: predicts runtime as the similarity-weighted average of the k nearest neighbors in a **precomputed dense embedding space**, using an exact dense top-k search. Model-agnostic — produce the `embedding` column with `hpc-oda embed` (any HuggingFace sentence-transformers model, or a dependency-free stub). See [Embedding-based kNN](docs/how-to/embedding-knn.md).
 
-**MoE XGBoost** (`model.job_runtime_moe_xgboost`) — Mixture of experts: one XGBoost per (user, requested-wallclock bin), with the bin edges derived from each training window's own request distribution (they land on the system's partition limits), a window-wide fallback expert for sparse bins, and exponential recency weighting of training rows. Routing happens inside the shared rolling window, so it scores exactly the rows the other models score.
+**MoE XGBoost** (`model.moe_xgboost`) — Mixture of experts: one XGBoost per (user, requested-wallclock bin), with the bin edges derived from each training window's own request distribution (they land on the system's partition limits), a window-wide fallback expert for sparse bins, and exponential recency weighting of training rows. Routing happens inside the shared rolling window, so it scores exactly the rows the other models score.
 
-**Job Power UoPC** (`model.job_power_uopc`) — Power-prediction model (domain `job-power-prediction`) using per-user online kNN regression on label-encoded job features (UoPC-style), with fixed evaluation. With `split.method: cutoff` it instead reproduces the UoPC paper on Fugaku (per-node average and peak power, embedding features, kNN-classifier voting, per-user and global mean baselines, and a θ × k sensitivity sweep) — see [UoPC reproduction](docs/benchmarking/power/uopc.md).
+**Job Power UoPC** (`model.uopc`) — Power-prediction model (domain `job-power-prediction`) using per-user online kNN regression on label-encoded job features (UoPC-style), with fixed evaluation. With `split.method: cutoff` it instead reproduces the UoPC paper on Fugaku (per-node average and peak power, embedding features, kNN-classifier voting, per-user and global mean baselines, and a θ × k sensitivity sweep) — see [UoPC reproduction](docs/benchmarking/power/uopc.md).
 
 **Any model, any target.** Every model above predicts the column its recipe's metrics name, `runtime_seconds` by default. Point one at `avgpcon_per_node` or `maxpcon_per_node` (watts per node; per requested node on F-DATA, whose allocated count can be padded) to predict job power on the same rolling protocol — see [Predict job power](docs/how-to/predict-power.md).
 
@@ -183,7 +183,7 @@ dataset:
   table_path: <path-to-parquet>
 
 model:
-  id: model.job_runtime_baseline
+  id: model.baseline
   version: "0.1.0"
 
 metrics:
@@ -246,7 +246,7 @@ src/hpc_oda_commons/     Package implementation
   qst/                   CLI (Typer-based, entry point: hpc-oda)
   kernel/                Core: artifacts, provenance, validation, schemas
   models/                Eight models: baseline, xgboost, random_forest, mlp, moe_xgboost,
-                         tfidf_knn, embedding_knn (runtime) + job_power_uopc (power),
+                         tfidf_knn, embedding_knn (runtime) + uopc (power),
                          plus a shared rolling_tabular base for the tabular rolling models
   embeddings/            Text serialization + encoders for `hpc-oda embed`
   adapters/              Source parsers (slurmctld)

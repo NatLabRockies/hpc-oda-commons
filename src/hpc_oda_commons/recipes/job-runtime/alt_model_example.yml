@@ -8,7 +8,7 @@ dataset:
   table_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/data.parquet
   manifest_path: hpc_oda_commons/datasets/synthetic/job-runtime/tiny/manifest.json
 model:
-  id: model.job_runtime_xgboost
+  id: model.xgboost
   version: "0.1.0"
 metrics:
   - name: mae

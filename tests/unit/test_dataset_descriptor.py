@@ -60,7 +60,7 @@ def _valid_descriptor() -> dict:
                     },
                     {"problem_domain": "job-power-prediction", "target_column": "maxpcon"},
                 ],
-                "suitable_models": ["model.job_runtime_xgboost", "model.job_power_uopc"],
+                "suitable_models": ["model.xgboost", "model.uopc"],
                 "mapping": {
                     "job_id": {"from": "jobid", "type": "hash_identifier"},
                     "start_time": {"from": "sdt", "type": "timestamp", "format": "epoch_s"},
@@ -95,7 +95,7 @@ def test_from_dict_exposes_identity_and_capabilities() -> None:
     assert desc.dataset_id == "dataset.job_power.fdata_fugaku"
     assert desc.supports_domain("job-power-prediction")
     assert not desc.supports_domain("failure-analysis")
-    assert desc.supports_model("model.job_power_uopc")
+    assert desc.supports_model("model.uopc")
     assert not desc.supports_model("model.does_not_exist")
     caps = {(c.problem_domain, c.target_column) for c in desc.capabilities()}
     assert ("job-power-prediction", "maxpcon") in caps

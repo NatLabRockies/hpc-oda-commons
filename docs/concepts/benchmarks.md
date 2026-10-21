@@ -62,7 +62,7 @@ This enforces strict temporal separation -- the model never sees future data dur
 
 ### Cutoff Split
 
-Every job submitted on or after a date (`test_start`) is a test job; everything earlier is history only. Used with `model.job_power_uopc` to reproduce the UoPC paper, which scores each test job against the jobs its user had finished before it was submitted -- an online protocol rather than a retraining schedule. See [UoPC reproduction](../benchmarking/power/uopc.md).
+Every job submitted on or after a date (`test_start`) is a test job; everything earlier is history only. Used with `model.uopc` to reproduce the UoPC paper, which scores each test job against the jobs its user had finished before it was submitted -- an online protocol rather than a retraining schedule. See [UoPC reproduction](../benchmarking/power/uopc.md).
 
 **Parameters:**
 - `test_start` (required): ISO date, quoted in YAML

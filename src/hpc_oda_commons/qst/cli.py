@@ -51,7 +51,7 @@ from hpc_oda_commons.kernel.metrics import (
 from hpc_oda_commons.kernel.provenance import build_provenance
 from hpc_oda_commons.kernel.serialization import to_jsonable
 from hpc_oda_commons.kernel.validate import validate_json
-from hpc_oda_commons.models.job_runtime_baseline.model import JobRuntimeBaselineModel
+from hpc_oda_commons.models.baseline.model import BaselineModel
 from hpc_oda_commons.qst.commands.bench_matrix import (
     bench_matrix_aggregate,
     bench_matrix_collect,
@@ -472,7 +472,7 @@ def run_baseline() -> None:
     rows = table.to_pylist()
     y_true = [float(r["runtime_seconds"]) for r in rows]
 
-    model = JobRuntimeBaselineModel()
+    model = BaselineModel()
     train_eval_started = time.perf_counter()
     model.fit(rows)
     y_pred = model.predict(rows)
@@ -509,7 +509,7 @@ def run_baseline() -> None:
         "metrics": metrics,
         "integrity": integrity,
         "provenance": prov,
-        "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+        "model": {"id": "model.baseline", "version": "0.1.0"},
         "dataset": {
             "id": "synthetic_job_runtime_tiny",
             "schema_version": "oda.job.v0.2.0",
@@ -769,7 +769,7 @@ def benchmark(
     split = _normalize_split(recipe_payload)
 
     model_ref = recipe_payload.get("model", {}) or {}
-    model_id = str(model_ref.get("id", "model.job_runtime_baseline"))
+    model_id = str(model_ref.get("id", "model.baseline"))
     model_version = str(model_ref.get("version", "0.1.0"))
     split_method = split.get("method", "fixed")
     metric_defs = recipe_payload.get("metrics", []) or []
@@ -917,7 +917,7 @@ def analyze_my_data(
         raise typer.BadParameter("Dataset is empty; cannot analyze.")
 
     y_true = [float(r["runtime_seconds"]) for r in rows if r.get("runtime_seconds") is not None]
-    model = JobRuntimeBaselineModel()
+    model = BaselineModel()
     model.fit(rows)
     y_pred = model.predict(rows)
 
@@ -942,7 +942,7 @@ def analyze_my_data(
 
     report_payload = {
         "summary": {"report_id": report_id, "created_at": _now_utc_iso()},
-        "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+        "model": {"id": "model.baseline", "version": "0.1.0"},
         "dataset": {
             "id": str(manifest_path) if manifest_path.exists() else str(data_path),
             "schema_version": "oda.job.v0.2.0",

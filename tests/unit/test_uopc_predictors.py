@@ -13,16 +13,16 @@ import hpc_oda_commons
 from hpc_oda_commons.benchmark.recipes import load_recipe, validate_recipe
 from hpc_oda_commons.benchmark.runner import resolved_run_config
 from hpc_oda_commons.kernel.validate import SchemaValidationError
-from hpc_oda_commons.models.job_power_uopc.model import (
+from hpc_oda_commons.models.uopc.model import (
     UOPC_DEFAULT_PREDICTOR,
     UOPC_PREDICTORS,
-    JobPowerUopcModel,
+    UopcModel,
     check_uopc_predictor,
     uopc_predict,
 )
-from hpc_oda_commons.models.job_power_uopc.rolling import (
-    JobPowerUopcRollingConfig,
-    JobPowerUopcRollingModel,
+from hpc_oda_commons.models.uopc.rolling import (
+    UopcRollingConfig,
+    UopcRollingModel,
 )
 
 TARGET = "avgpcon_per_node"
@@ -64,8 +64,8 @@ def test_every_target_shares_one_neighbour_set() -> None:
 def test_the_default_is_the_median() -> None:
     """Chosen on the F-DATA reproduction protocol only, as k was (#241)."""
     assert UOPC_DEFAULT_PREDICTOR == "median"
-    assert JobPowerUopcRollingConfig().predictor == UOPC_DEFAULT_PREDICTOR
-    signature = inspect.signature(JobPowerUopcModel.evaluate_paper_reproduction)
+    assert UopcRollingConfig().predictor == UOPC_DEFAULT_PREDICTOR
+    signature = inspect.signature(UopcModel.evaluate_paper_reproduction)
     assert signature.parameters["predictor"].default == UOPC_DEFAULT_PREDICTOR
 
 
@@ -73,7 +73,7 @@ def test_an_unknown_predictor_is_an_error() -> None:
     with pytest.raises(ValueError, match="predictor must be one of"):
         check_uopc_predictor("mode")
     with pytest.raises(ValueError, match="predictor must be one of"):
-        JobPowerUopcRollingModel(JobPowerUopcRollingConfig(predictor="mode"))
+        UopcRollingModel(UopcRollingConfig(predictor="mode"))
 
 
 def _job(i: int, hour: float, power: float) -> dict:
@@ -101,8 +101,8 @@ def _rows() -> list[dict]:
     ("predictor", "expected"), [("vote", 100.0), ("mean", 188.0), ("median", 120.0)]
 )
 def test_the_rolling_protocol_uses_the_predictor(predictor: str, expected: float) -> None:
-    model = JobPowerUopcRollingModel(
-        JobPowerUopcRollingConfig(
+    model = UopcRollingModel(
+        UopcRollingConfig(
             n_windows=1,
             test_window_hours=1,
             training_lookback_days=2,
@@ -139,19 +139,19 @@ def _recipe(model: str, split: dict) -> dict:
     ],
 )
 def test_recipe_accepts_a_predictor_for_uopc(split: dict) -> None:
-    validate_recipe(_recipe("model.job_power_uopc", split))
+    validate_recipe(_recipe("model.uopc", split))
 
 
 def test_recipe_rejects_a_predictor_elsewhere() -> None:
     split = {"method": "rolling", "n_windows": 3, "predictor": "mean"}
     with pytest.raises(SchemaValidationError, match="predictor only applies"):
-        validate_recipe(_recipe("model.job_runtime_xgboost", split))
+        validate_recipe(_recipe("model.xgboost", split))
 
 
 def test_recipe_rejects_an_unknown_predictor() -> None:
     split = {"method": "rolling", "n_windows": 3, "predictor": "mode"}
     with pytest.raises(SchemaValidationError):
-        validate_recipe(_recipe("model.job_power_uopc", split))
+        validate_recipe(_recipe("model.uopc", split))
 
 
 def test_only_the_paper_comparison_recipes_vote() -> None:

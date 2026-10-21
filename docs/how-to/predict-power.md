@@ -10,7 +10,7 @@ A model predicts the column its recipe's metrics name:
 
 ```yaml
 model:
-  id: model.job_runtime_xgboost
+  id: model.xgboost
   version: "0.1.0"
 
 metrics:
@@ -32,7 +32,7 @@ metrics:
   the target. Naming the target in `extra_feature_fields`, or as the embedding column, is
   an error.
 
-Supported by `model.job_runtime_baseline`, `_xgboost`, `_random_forest`, `_mlp`,
+Supported by `model.baseline`, `_xgboost`, `_random_forest`, `_mlp`,
 `_moe_xgboost`, `_signature_memorizer`, `_tfidf_knn` and `_embedding_knn`. The model ids
 still say `job_runtime`; they are target-agnostic.
 
@@ -122,7 +122,7 @@ dataset's error ceiling, with the MAE in W/node beneath
 
 ## UoPC on the same windows
 
-`model.job_power_uopc` with `split.method: rolling` scores UoPC on exactly the windows and
+`model.uopc` with `split.method: rolling` scores UoPC on exactly the windows and
 rows the other models are scored on. A test job's context is its user's newest `theta`
 training-window jobs; features are scaled on training rows only. A user with fewer than `k`
 training jobs gets the window's mean target (the rolling baseline's prediction), counted in

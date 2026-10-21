@@ -2,7 +2,7 @@
 
 Given the tracked dataset cards and a local :class:`SiteConfig`, this builds one Slurm
 recipe + sbatch script per (dataset, model) cell, plus one GPU embedding job per dataset
-(the embedded parquet is reused by ``job_runtime_embedding_knn``). Everything is written
+(the embedded parquet is reused by ``embedding_knn``). Everything is written
 under a local staging dir (``.hpc_oda/bench-matrix/<plan_id>/``, gitignored); the
 orchestration step rsyncs it to the cluster and submits.
 
@@ -23,24 +23,24 @@ from hpc_oda_commons.benchmarking.hpc.config import SiteConfig
 
 # --- Benchmark configuration (the agreed methodology; see docs/benchmarking/runtime/methodology.md) ---
 
-# Six runtime-prediction models. ``job_power_uopc`` is power prediction — out of scope.
+# The runtime-prediction models. UoPC is left out: it needs a job embedding.
 RUNTIME_MODELS: tuple[str, ...] = (
-    "job_runtime_baseline",
+    "baseline",
     # Trivial but strong: memorises the median runtime of same-signature past jobs. It beat
     # all six fitted models on 9 of 20 datasets in the 2026-08-25 fleet run (#171), which the
     # global-mean baseline alone could never have revealed. Measured cost: ~51s on lassen
     # (302k rows), scaling roughly linearly -- a fraction of a fitted cell on the heavy
     # datasets, comparable on the light ones where every cell is cheap anyway.
-    "job_runtime_signature_memorizer",
-    "job_runtime_tfidf_knn",
-    "job_runtime_random_forest",
-    "job_runtime_xgboost",
-    "job_runtime_moe_xgboost",
-    "job_runtime_mlp",
-    "job_runtime_embedding_knn",
+    "signature_memorizer",
+    "tfidf_knn",
+    "random_forest",
+    "xgboost",
+    "moe_xgboost",
+    "mlp",
+    "embedding_knn",
 )
 # The model whose recipe reads the *embedded* parquet (requires a prior GPU embed pass).
-EMBEDDING_MODEL: str = "job_runtime_embedding_knn"
+EMBEDDING_MODEL: str = "embedding_knn"
 
 # Models that run their independent per-window fits concurrently (via ``window_n_jobs``).
 # MLP and TF-IDF kNN both do serial single-threaded per-window work that dominates on large
@@ -103,8 +103,8 @@ MODEL_SPLIT_OVERRIDES: dict[str, dict[str, object]] = {
     # Applied to BOTH XGBoost variants deliberately: if only the MoE fitted absolute error,
     # its margin over plain XGBoost would bundle a -2.6% effect that has nothing to do with
     # the mixture.
-    "job_runtime_xgboost": {"objective": "reg:absoluteerror"},
-    "job_runtime_moe_xgboost": {
+    "xgboost": {"objective": "reg:absoluteerror"},
+    "moe_xgboost": {
         "objective": "reg:absoluteerror",
         # Route by requested wallclock alone. Per-user experts measured net harmful: on the
         # rows they claimed, pooling was 3.0% better (#134). Expressible since #141.
@@ -260,11 +260,6 @@ def n_windows_for(card: Card, test_window_hours: int | None = None) -> int:
     return max(1, (card.test_days * 24) // hours)
 
 
-def _model_tag(model_key: str) -> str:
-    """Short, filename-safe tag for a model (``job_runtime_xgboost`` → ``xgboost``)."""
-    return model_key.removeprefix("job_runtime_")
-
-
 class ModelSelectionError(ValueError):
     """Raised when a requested exclusion names no model in the matrix."""
 
@@ -272,8 +267,8 @@ class ModelSelectionError(ValueError):
 def select_models(exclude: Sequence[str] = ()) -> tuple[str, ...]:
     """``RUNTIME_MODELS`` minus ``exclude``, preserving the roster's order.
 
-    Names may be full model keys (``job_runtime_mlp``) or the short tags that appear in
-    plan output and ``submit --only-model`` (``mlp``). Whether a model belongs to the
+    Names are the model keys that appear in plan output and ``submit --only-model``
+    (``mlp``). Whether a model belongs to the
     benchmark and whether it earns its wall-clock in a *given run* are different
     questions; this answers the second without editing ``RUNTIME_MODELS``, which answers
     the first.
@@ -282,7 +277,6 @@ def select_models(exclude: Sequence[str] = ()) -> tuple[str, ...]:
     planned the full matrix is exactly the surprise this exists to prevent (#156).
     """
     by_name = {m: m for m in RUNTIME_MODELS}
-    by_name.update({_model_tag(m): m for m in RUNTIME_MODELS})
 
     unknown = sorted({name for name in exclude if name not in by_name})
     if unknown:
@@ -393,7 +387,7 @@ class Cell:
 
     dataset: str
     model: str  # short tag, e.g. "xgboost"
-    model_id: str  # "model.job_runtime_xgboost"
+    model_id: str  # "model.xgboost"
     tier: str
     partition: str
     window_workers: int  # window_n_jobs for window-parallel models (memory-bounded)
@@ -474,8 +468,7 @@ def build_recipe(
         # The arm is part of the identity: three lookbacks of one model are three cells, and
         # anything keyed on the recipe id downstream would otherwise merge them (#170).
         "recipe_id": (
-            f"recipe.job_runtime.{dataset}_{_model_tag(model_key)}"
-            f"_lb{int(split['training_lookback_days'])}d"
+            f"recipe.job_runtime.{dataset}_{model_key}_lb{int(split['training_lookback_days'])}d"
         ),
         "problem_domain": ["job-runtime-prediction"],
         "schema_version": INPUT_SCHEMA,
@@ -528,9 +521,8 @@ def build_plan(
         partition = site.partition(tier.partition_kind)
         window_pq = _window_parquet(card.dataset)
 
-        for model_key in models:
-            tag = _model_tag(model_key)
-            needs_embed = model_key == EMBEDDING_MODEL
+        for tag in models:
+            needs_embed = tag == EMBEDDING_MODEL
             table_path = _embedded_parquet(card.dataset) if needs_embed else window_pq
             for lookback in lookback_arms_for(card, lookbacks):
                 stem = f"{card.dataset}__{tag}__lb{lookback}d"
@@ -538,7 +530,7 @@ def build_plan(
                     Cell(
                         dataset=card.dataset,
                         model=tag,
-                        model_id=f"model.{model_key}",
+                        model_id=f"model.{tag}",
                         tier=tier.name,
                         partition=partition,
                         window_workers=tier.window_workers,
@@ -667,7 +659,7 @@ def write_plan(plan: Plan, staging_dir: Path, site: SiteConfig) -> Path:
     for cell in plan.cells:
         recipe = build_recipe(
             cell.dataset,
-            f"job_runtime_{cell.model}",
+            cell.model,
             cell.table_path,
             output_dir=f"runs/{cell.dataset}/{cell.model}/lb{cell.training_lookback_days}d",
             window_n_jobs=(

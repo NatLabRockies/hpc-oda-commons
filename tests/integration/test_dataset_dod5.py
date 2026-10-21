@@ -110,7 +110,7 @@ def test_dod_5_dataset_prepare_then_benchmark(tmp_project: Path) -> None:
         "problem_domain": ["job-runtime-prediction"],
         "schema_version": "oda.job.v0.2.0",
         "dataset": {"id": "dod5", "table_path": "data/datasets/dod5/data.parquet"},
-        "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+        "model": {"id": "model.baseline", "version": "0.1.0"},
         "metrics": [
             {"name": "mae", "target": "runtime_seconds"},
             {"name": "rmse", "target": "runtime_seconds"},
@@ -131,5 +131,5 @@ def test_dod_5_dataset_prepare_then_benchmark(tmp_project: Path) -> None:
     for fname in REQUIRED_RESULT_FILES:
         assert (bundle / fname).exists(), f"missing {fname}"
     result = load_json(bundle / "result.json")
-    assert result["model"]["id"] == "model.job_runtime_baseline"
+    assert result["model"]["id"] == "model.baseline"
     assert result.get("dataset", {}).get("hash")

@@ -22,7 +22,7 @@ dataset:
   table_path: data/windows/nlr_eagle_power/data.parquet
 
 model:
-  id: model.job_runtime_moe_xgboost
+  id: model.moe_xgboost
   version: "0.1.0"
 
 metrics:

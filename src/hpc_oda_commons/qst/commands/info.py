@@ -18,9 +18,7 @@ console = Console()
 
 
 def info(
-    entry_id: str = typer.Argument(
-        ..., help="Registry entry ID (e.g., model.job_runtime_baseline)."
-    ),
+    entry_id: str = typer.Argument(..., help="Registry entry ID (e.g., model.baseline)."),
     snapshot: Annotated[
         Path | None,
         typer.Option(

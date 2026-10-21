@@ -10,7 +10,7 @@ import pytest
 
 from hpc_oda_commons.benchmark.recipes import load_recipe, validate_recipe
 from hpc_oda_commons.kernel.validate import SchemaValidationError
-from hpc_oda_commons.models.job_power_uopc.model import JobPowerUopcModel
+from hpc_oda_commons.models.uopc.model import UopcModel
 
 _START = "2024-02-01"
 
@@ -45,9 +45,7 @@ def _rows(n: int = 120, users: int = 3) -> list[dict]:
 def test_requested_node_count_divides_by_requested_nodes() -> None:
     rows = _rows()
     by_id = {r["job_id"]: r for r in rows}
-    prepared = JobPowerUopcModel()._prepare_paper_data(
-        rows, test_start=_START, node_count="requested"
-    )
+    prepared = UopcModel()._prepare_paper_data(rows, test_start=_START, node_count="requested")
 
     expected = [by_id[j]["avgpcon"] / by_id[j]["num_nodes_req"] for j in prepared.job_id_arr]
     assert prepared.avg_target_arr.tolist() == pytest.approx(expected)
@@ -58,7 +56,7 @@ def test_requested_node_count_is_the_default() -> None:
     """Allocated counts can be padded, so the default is what we can defend (#228)."""
     rows = _rows()
     by_id = {r["job_id"]: r for r in rows}
-    prepared = JobPowerUopcModel()._prepare_paper_data(rows, test_start=_START)
+    prepared = UopcModel()._prepare_paper_data(rows, test_start=_START)
     assert prepared.node_count == "requested"
     expected = [by_id[j]["maxpcon"] / by_id[j]["num_nodes_req"] for j in prepared.job_id_arr]
     assert prepared.max_target_arr.tolist() == pytest.approx(expected)
@@ -67,9 +65,7 @@ def test_requested_node_count_is_the_default() -> None:
 def test_allocated_node_count_divides_by_allocated_nodes() -> None:
     rows = _rows()
     by_id = {r["job_id"]: r for r in rows}
-    prepared = JobPowerUopcModel()._prepare_paper_data(
-        rows, test_start=_START, node_count="allocated"
-    )
+    prepared = UopcModel()._prepare_paper_data(rows, test_start=_START, node_count="allocated")
 
     expected = [by_id[j]["maxpcon"] / by_id[j]["num_nodes_alloc"] for j in prepared.job_id_arr]
     assert prepared.max_target_arr.tolist() == pytest.approx(expected)
@@ -78,7 +74,7 @@ def test_allocated_node_count_divides_by_allocated_nodes() -> None:
 def test_max_alloc_ratio_drops_padded_jobs_from_history_and_test() -> None:
     rows = _rows()
     padded_ids = {r["job_id"] for r in rows if r["num_nodes_alloc"] / r["num_nodes_req"] > 12}
-    prepared = JobPowerUopcModel()._prepare_paper_data(rows, test_start=_START, max_alloc_ratio=12)
+    prepared = UopcModel()._prepare_paper_data(rows, test_start=_START, max_alloc_ratio=12)
 
     kept = set(prepared.job_id_arr.tolist())
     assert padded_ids and not kept & padded_ids
@@ -90,7 +86,7 @@ def test_max_alloc_ratio_drops_padded_jobs_from_history_and_test() -> None:
 
 
 def test_variants_reach_both_paper_modes_summaries() -> None:
-    model = JobPowerUopcModel()
+    model = UopcModel()
     rows = _rows()
     variant = {"node_count": "requested", "max_alloc_ratio": 12.0}
     reproduction = model.evaluate_paper_reproduction(
@@ -112,7 +108,7 @@ def test_variants_reach_both_paper_modes_summaries() -> None:
 )
 def test_bad_variant_values_are_errors(node_count: str, max_alloc_ratio: float | None) -> None:
     with pytest.raises(ValueError):
-        JobPowerUopcModel()._prepare_paper_data(
+        UopcModel()._prepare_paper_data(
             _rows(), test_start=_START, node_count=node_count, max_alloc_ratio=max_alloc_ratio
         )
 
@@ -123,7 +119,7 @@ def _cutoff_recipe(**split: object) -> dict:
         "problem_domain": ["job-power-prediction"],
         "schema_version": "oda.job.v0.2.0",
         "dataset": {"id": "fdata_fugaku_uopc", "table_path": "data.parquet"},
-        "model": {"id": "model.job_power_uopc", "version": "0.1.0"},
+        "model": {"id": "model.uopc", "version": "0.1.0"},
         "metrics": [
             {"name": "mae", "target": "avgpcon_per_node"},
             {"name": "rmse", "target": "avgpcon_per_node"},

@@ -44,7 +44,7 @@ def test_prepare_leaderboard_rows_marks_best_metric() -> None:
         {
             "created_at": "2026-01-01T00:00:00Z",
             "recipe_id": "recipe.job_runtime.baseline_tiny",
-            "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+            "model": {"id": "model.baseline", "version": "0.1.0"},
             "dataset": {"id": "synthetic_job_runtime_tiny"},
             "prediction_target": "runtime_seconds",
             "metrics": {"mae": 10.0, "rmse": 20.0},
@@ -52,7 +52,7 @@ def test_prepare_leaderboard_rows_marks_best_metric() -> None:
         {
             "created_at": "2026-02-01T00:00:00Z",
             "recipe_id": "recipe.job_runtime.xgb_hourly_recent",
-            "model": {"id": "model.job_runtime_xgboost", "version": "0.1.0"},
+            "model": {"id": "model.xgboost", "version": "0.1.0"},
             "dataset": {"id": "synthetic_job_runtime_tiny"},
             "prediction_target": "runtime_seconds",
             "metrics": {"mae": 5.0, "rmse": 12.0},
@@ -76,7 +76,7 @@ def test_render_runs_html_uses_target_and_hides_hash_columns() -> None:
             {
                 "created_at": "2026-06-01T00:00:00Z",
                 "recipe_id": "recipe.job_runtime.baseline_tiny",
-                "model": {"id": "model.job_runtime_baseline", "version": "0.1.0"},
+                "model": {"id": "model.baseline", "version": "0.1.0"},
                 "dataset": {"id": "jobs-parquet-20260601"},
                 "prediction_target": "runtime_seconds",
                 "metrics": {"mae": 120.0, "rmse": 240.0},

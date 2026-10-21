@@ -139,7 +139,7 @@ Defines the output format for model evaluation results. A result ties together a
   },
   "provenance": { "..." },
   "model": {
-    "id": "model.job_runtime_baseline",
+    "id": "model.baseline",
     "version": "0.1.0"
   },
   "dataset": {
@@ -227,7 +227,7 @@ The CLI is built on Typer and exposed as the `hpc-oda` command. It provides a co
 | `hpc-oda benchmark <recipe>` | Run a benchmark defined by a YAML recipe file. Resolves the model, loads the dataset, executes the evaluation strategy, computes metrics, and writes a validated result bundle. |
 | `hpc-oda analyze --data <path>` | Analyze a local dataset with the baseline model and emit a report bundle (JSON + HTML). |
 | `hpc-oda validate <path>` | Validate artifacts against their schemas. Accepts result bundles, manifests, or Parquet files. |
-| `hpc-oda embed <parquet> --out <path>` | Serialize job rows to text and encode them into a dense `embedding` column (for `model.job_runtime_embedding_knn`). Writes an embedded Parquet + provenance manifest. `--model stub` needs no download; real models need the `embed` extra. |
+| `hpc-oda embed <parquet> --out <path>` | Serialize job rows to text and encode them into a dense `embedding` column (for `model.embedding_knn`). Writes an embedded Parquet + provenance manifest. `--model stub` needs no download; real models need the `embed` extra. |
 | `hpc-oda leaderboard --runs <dir> --out <dir>` | One leaderboard per prediction target (a row per model, headroom per dataset, an average), plus `runs.html` listing every bundle and why any was not counted. |
 | `hpc-oda models cards [--out docs/models]` | A card for every registered model, generated from the registry, the benchmark runners, the bundled recipes and the leaderboard. |
 | `hpc-oda record-hash` | Record the current source code hash and git commit in `integrity/known_hashes.json`. Run after tests pass on a clean commit. |
@@ -326,7 +326,7 @@ Each ingestion run produces a directory under `data/ingested/<adapter>/<run_id>/
 
 HPC ODA Commons ships nine models. **Each has a card, generated from the code: [docs/models](models/README.md)**: what it is, how it runs, what it reads, its settings with their defaults, the recipes that run it, and its leaderboard results. The cards are the reference for those facts; the sections below add background. Eight models (baseline, signature memorizer, XGBoost, XGBoost (MoE), Random Forest, MLP, TF-IDF + kNN, Embedding + kNN) predict whichever target the recipe names, runtime or power; UoPC predicts power only. The runtime models operate on `rows`, a list of dictionaries conforming to the job schema, with `runtime_seconds` as the target field. The XGBoost, Random Forest, and MLP models are rolling-tabular models that share a common base class (`RollingTabularModel`); the shared rolling split (`split.py`) and categorical preprocessing now live in `models/rolling_tabular/`, so they are no longer XGBoost-only.
 
-### 7.1 Baseline Model (`model.job_runtime_baseline`)
+### 7.1 Baseline Model (`model.baseline`)
 
 A deterministic mean predictor that serves as the lower bound for model comparison:
 
@@ -336,13 +336,13 @@ A deterministic mean predictor that serves as the lower bound for model comparis
 
 The baseline model has no dependencies beyond the Python standard library and serves as a fast, reliable reference point.
 
-### 7.2 XGBoost Model (`model.job_runtime_xgboost`)
+### 7.2 XGBoost Model (`model.xgboost`)
 
 A gradient-boosted tree model with automatic categorical preprocessing and a rolling evaluation strategy that simulates production retraining. This is the primary model for demonstrating the HPC ODA Commons benchmarking workflow.
 
 #### 7.2.1 Configuration
 
-The model is controlled by `JobRuntimeXGBoostConfig`, a frozen dataclass with the following key parameters:
+The model is controlled by `XGBoostConfig`, a frozen dataclass with the following key parameters:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -429,13 +429,13 @@ The rolling evaluation strategy (`evaluate()`) simulates how a model would perfo
 - Per-window entries with status, metrics, feature info, preprocessing details
 - Summary statistics (windows scored/skipped, preprocessing refits, total rows scored)
 
-### 7.3 TF-IDF + kNN Model (`model.job_runtime_tfidf_knn`)
+### 7.3 TF-IDF + kNN Model (`model.tfidf_knn`)
 
 A text-similarity model that predicts runtime by finding the most similar historical jobs based on their metadata text. This model is most effective when data includes rich text fields like job names, submit commands, working directories, and job scripts.
 
 #### 7.3.1 Configuration
 
-Controlled by `JobRuntimeTfidfKnnConfig`:
+Controlled by `TfidfKnnConfig`:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -460,19 +460,19 @@ Controlled by `JobRuntimeTfidfKnnConfig`:
 
 `HashingVectorizer` is stateless, so the model hashes every row once up front into a single sparse matrix and each rolling window scores an index slice of it — there is no cross-window cache and each window's fit is independent. That makes the windows safe to run concurrently: set `window_n_jobs > 1` to spread the independent per-window fits across the cell's cores (BLAS pinned to one thread per worker so cores aren't oversubscribed). Results are assembled in split order and are identical for any `window_n_jobs` (see the tie-break caveat in `docs/known-issues.md`).
 
-### 7.4 Random Forest Model (`model.job_runtime_random_forest`)
+### 7.4 Random Forest Model (`model.random_forest`)
 
 An alternate runtime prediction model using scikit-learn's Random Forest regression. It subclasses the neutral `RollingTabularModel` base and reuses the shared rolling split and automatic categorical one-hot/SVD preprocessing (from `models/rolling_tabular/`), differing from the XGBoost model only in the underlying regressor. Like XGBoost, it uses the rolling evaluation strategy with a daily preprocessing cache.
 
-### 7.5 MLP Model (`model.job_runtime_mlp`)
+### 7.5 MLP Model (`model.mlp`)
 
 An alternate runtime prediction model using a feed-forward neural network (scikit-learn's `MLPRegressor`). It also subclasses `RollingTabularModel` and reuses the shared rolling split and categorical one-hot/SVD preprocessing, swapping in the MLP regressor. It is driven by the bundled `mlp_rolling.yml` recipe.
 
-### 7.6 Embedding + kNN Model (`model.job_runtime_embedding_knn`)
+### 7.6 Embedding + kNN Model (`model.embedding_knn`)
 
 The embedding-space counterpart to the TF-IDF + kNN model. Instead of vectorizing text internally, it consumes a **precomputed dense `embedding` column** (produced by `hpc-oda embed`) and predicts runtime as the similarity-weighted average of the *k* nearest neighbors in embedding space, under the same rolling-window evaluation. Search is an exact dense top-k with a selectable backend (`numpy` default, optional `torch`/`faiss`). Because it reuses the shared rolling split (`models/rolling_tabular/split.py`) and `kernel.metrics`, it is directly comparable to the other runtime models. Driven by the bundled `embedding_knn_rolling.yml` recipe. See [Embedding-based kNN](how-to/embedding-knn.md).
 
-### 7.7 MoE XGBoost Model (`model.job_runtime_moe_xgboost`)
+### 7.7 MoE XGBoost Model (`model.moe_xgboost`)
 
 A mixture of experts over the same rolling framework. Users request wallclock at the limit of the partition they submit to, so `requested_seconds` clusters on a handful of values that mark genuinely different job populations; this model fits one XGBoost per (user, wallclock-bin) rather than one across all of them.
 
@@ -485,9 +485,9 @@ Per rolling window:
 
 It subclasses `RollingTabularModel` and overrides only the fit/predict seam (`_fit_predict`), so the split grid, preprocessing, feature policy, metrics and payload are the shared ones — which is what makes its numbers comparable with the other models rather than merely adjacent to them. `summary.moe_routing` reports experts per window, the fraction of rows routed to an expert versus the fallback, the derived bin edges, and the power-user count. Cost scales with the number of experts fitted per window (roughly 3x a single XGBoost on a 28k-row slice). Driven by the bundled `moe_xgboost_rolling.yml` recipe.
 
-### 7.8 Job Power Model (`model.job_power_uopc`)
+### 7.8 Job Power Model (`model.uopc`)
 
-A per-user kNN power-prediction model (UoPC-style) that predicts `maxpcon` (maximum job power) rather than runtime. Unlike the rolling runtime models, it uses a fixed train/test split. For each user, job history is ordered by end time and the most recent `theta` jobs form the training context; categorical job features (e.g., job name) are label-encoded per fit, and a `KNeighborsRegressor` predicts from the nearest neighbors. It operates on raw Fugaku-style columns (`usr`, `jnam`, `cnumr`, `nnumr`, `edt`, `maxpcon`) via field aliases, and is driven by the bundled `uopc_maxpcon.yml` recipe. With `split.method: cutoff` the same model runs the UoPC paper protocol instead (date cutoff, `avgpcon`/`maxpcon` per requested node by default, embedding features, mean baselines, θ × k sweep) via the `job-power/uopc_paper_*.yml` recipes; see `docs/benchmarking/power/uopc.md`. With `split.method: rolling` it is scored on the shared rolling windows next to every other model (`models/job_power_uopc/rolling.py`): context is the user's newest `theta` training-window jobs, features are scaled on training rows only, and users with fewer than `k` training jobs get the window mean (counted in `rows_fallback`). In both protocols `split.uopc_features` picks the features: `balanced` (default since #222), `zscore` (pinned by the paper-comparison recipes) or `embedding` (see `docs/benchmarking/power/uopc.md#feature-modes`). Both protocols default to θ = 500 and k = 20 (#228); the paper-comparison recipes pin the paper's k = 5. `split.predictor` sets how the k neighbours become a prediction: `median` (default since #241), `mean`, or `vote`, the authors' `KNeighborsClassifier` over whole watts, pinned by the paper-comparison recipes.
+A per-user kNN power-prediction model (UoPC-style) that predicts `maxpcon` (maximum job power) rather than runtime. Unlike the rolling runtime models, it uses a fixed train/test split. For each user, job history is ordered by end time and the most recent `theta` jobs form the training context; categorical job features (e.g., job name) are label-encoded per fit, and a `KNeighborsRegressor` predicts from the nearest neighbors. It operates on raw Fugaku-style columns (`usr`, `jnam`, `cnumr`, `nnumr`, `edt`, `maxpcon`) via field aliases, and is driven by the bundled `uopc_maxpcon.yml` recipe. With `split.method: cutoff` the same model runs the UoPC paper protocol instead (date cutoff, `avgpcon`/`maxpcon` per requested node by default, embedding features, mean baselines, θ × k sweep) via the `job-power/uopc_paper_*.yml` recipes; see `docs/benchmarking/power/uopc.md`. With `split.method: rolling` it is scored on the shared rolling windows next to every other model (`models/uopc/rolling.py`): context is the user's newest `theta` training-window jobs, features are scaled on training rows only, and users with fewer than `k` training jobs get the window mean (counted in `rows_fallback`). In both protocols `split.uopc_features` picks the features: `balanced` (default since #222), `zscore` (pinned by the paper-comparison recipes) or `embedding` (see `docs/benchmarking/power/uopc.md#feature-modes`). Both protocols default to θ = 500 and k = 20 (#228); the paper-comparison recipes pin the paper's k = 5. `split.predictor` sets how the k neighbours become a prediction: `median` (default since #241), `mean`, or `vote`, the authors' `KNeighborsClassifier` over whole watts, pinned by the paper-comparison recipes.
 
 ### 7.9 Prediction targets
 
@@ -511,7 +511,7 @@ dataset:
   id: site-jobs-2026
   table_path: data/ingested/jobs_parquet/run-001/data.parquet
 model:
-  id: model.job_runtime_xgboost
+  id: model.xgboost
   version: "0.1.0"
 metrics:
   - name: mae
@@ -628,7 +628,7 @@ The registry provides a discoverable catalogue of known adapters, models, and re
 ### 10.1 Registry Entries
 
 Each registry entry is a `RegistryEntry` dataclass with:
-- **id**: unique identifier (e.g., `adapter.slurmctld`, `model.job_runtime_xgboost`)
+- **id**: unique identifier (e.g., `adapter.slurmctld`, `model.xgboost`)
 - **entry_type**: `adapter`, `model`, or `recipe`
 - **name, version, description**: human-readable metadata
 - **problem_domain**: tuple of supported domains (e.g., `("job-runtime-prediction",)`)
@@ -644,12 +644,12 @@ The bundled registry snapshot contains 36 entries: one adapter, eight models, fo
 | ID | Type | Description |
 |----|------|-------------|
 | `adapter.slurmctld` | adapter | Parses slurmctld log files into canonical job records |
-| `model.job_runtime_baseline` | model | Deterministic mean-prediction baseline |
-| `model.job_runtime_xgboost` | model | XGBoost with rolling evaluation |
-| `model.job_runtime_tfidf_knn` | model | TF-IDF + kNN with rolling evaluation |
-| `model.job_runtime_random_forest` | model | Random Forest with rolling evaluation |
-| `model.job_runtime_mlp` | model | Feed-forward MLP with rolling evaluation |
-| `model.job_power_uopc` | model | Per-user kNN power prediction (UoPC-style, fixed split or paper protocol) |
+| `model.baseline` | model | Deterministic mean-prediction baseline |
+| `model.xgboost` | model | XGBoost with rolling evaluation |
+| `model.tfidf_knn` | model | TF-IDF + kNN with rolling evaluation |
+| `model.random_forest` | model | Random Forest with rolling evaluation |
+| `model.mlp` | model | Feed-forward MLP with rolling evaluation |
+| `model.uopc` | model | Per-user kNN power prediction (UoPC-style, fixed split or paper protocol) |
 | `recipe.job_runtime.baseline_tiny` | recipe | Tiny synthetic dataset benchmark |
 | `recipe.job_runtime.xgb_hourly_recent` | recipe | XGBoost rolling benchmark |
 

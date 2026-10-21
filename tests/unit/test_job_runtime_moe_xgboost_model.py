@@ -7,16 +7,16 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from hpc_oda_commons.models.job_runtime_moe_xgboost.model import (
+from hpc_oda_commons.models.moe_xgboost.model import (
     POOLED_USER,
     UNKNOWN_BIN,
     MoEXGBoostConfig,
     MoEXGBoostModel,
     _Routing,
 )
-from hpc_oda_commons.models.job_runtime_xgboost.model import (
-    JobRuntimeXGBoostConfig,
-    JobRuntimeXGBoostModel,
+from hpc_oda_commons.models.xgboost.model import (
+    XGBoostConfig,
+    XGBoostModel,
 )
 
 pytest.importorskip("xgboost")
@@ -92,9 +92,7 @@ def test_scores_exactly_the_rows_a_single_model_scores() -> None:
     window grid of its own.
     """
     rows = _rows()
-    flat = JobRuntimeXGBoostModel(JobRuntimeXGBoostConfig(**SPLIT_KWARGS)).evaluate(
-        rows, capture_artifacts=True
-    )
+    flat = XGBoostModel(XGBoostConfig(**SPLIT_KWARGS)).evaluate(rows, capture_artifacts=True)
     moe = _model().evaluate(rows, capture_artifacts=True)
 
     assert moe["summary"]["rows_scored"] == flat["summary"]["rows_scored"]
@@ -106,7 +104,7 @@ def test_scores_exactly_the_rows_a_single_model_scores() -> None:
 def test_payload_matches_the_shared_rolling_shape() -> None:
     """A leaderboard consumer should not have to special-case this model."""
     rows = _rows()
-    flat = JobRuntimeXGBoostModel(JobRuntimeXGBoostConfig(**SPLIT_KWARGS)).evaluate(rows)
+    flat = XGBoostModel(XGBoostConfig(**SPLIT_KWARGS)).evaluate(rows)
     moe = _model().evaluate(rows)
 
     assert set(flat["summary"]) <= set(moe["summary"])

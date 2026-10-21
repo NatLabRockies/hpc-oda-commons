@@ -53,7 +53,7 @@ def test_benchmark_embedding_knn_end_to_end(
 
     result_payload = load_json(bundle_dir / "result.json")
     metrics_payload = load_json(bundle_dir / "metrics.json")
-    assert result_payload["model"]["id"] == "model.job_runtime_embedding_knn"
+    assert result_payload["model"]["id"] == "model.embedding_knn"
     assert "mae" in result_payload["metrics"] and "rmse" in result_payload["metrics"]
     assert metrics_payload["summary"]["rows_scored"] > 0
     assert metrics_payload["summary"]["embedding_dim"] == 16

@@ -25,7 +25,7 @@ The same for every dataset
   Forest and MoE XGBoost, each with its default configuration
   (`recipes/job-power/<model>_rolling_*.yml`). MLP is left out, as it is from the runtime fleet run ([methodology](../runtime/methodology.md)): it
   measured weaker than the other rolling-tabular models across the board on runtime, and on
-  F-DATA it cost ~130 s per window (over 3 h per target). `model.job_runtime_mlp` still
+  F-DATA it cost ~130 s per window (over 3 h per target). `model.mlp` still
   predicts power when a recipe names it.
 - **Metrics:** MAE and RMSE (W/node), MAPE, R², over all scored rows.
 - **Same rows for everyone.** UoPC predicts the window mean for users with fewer than k

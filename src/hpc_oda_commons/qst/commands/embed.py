@@ -1,7 +1,7 @@
 """CLI: ``hpc-oda embed`` — serialize an ingested job table and embed each row.
 
 Produces an embedded parquet (original columns + a dense ``embedding`` column) plus a
-provenance manifest, for use by ``model.job_runtime_embedding_knn``. The embedding
+provenance manifest, for use by ``model.embedding_knn``. The embedding
 model is swappable; ``--model stub`` uses a deterministic dependency-free encoder for
 offline/CI. Extra text columns (e.g. local job scripts) are configured only via a local
 ``--config`` file so sensitive content never lands on the command line or in the repo.

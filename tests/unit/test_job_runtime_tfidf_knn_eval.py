@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from hpc_oda_commons.models.job_runtime_tfidf_knn.model import (
-    JobRuntimeTfidfKnnConfig,
-    JobRuntimeTfidfKnnModel,
+from hpc_oda_commons.models.tfidf_knn.model import (
+    TfidfKnnConfig,
+    TfidfKnnModel,
 )
 
 
@@ -52,13 +52,13 @@ def _sample_rows() -> list[dict[str, object]]:
 
 
 def test_evaluate_returns_metrics_and_window_details() -> None:
-    config = JobRuntimeTfidfKnnConfig(
+    config = TfidfKnnConfig(
         n_windows=10,
         test_window_hours=1,
         k=3,
         n_hash_features=256,
     )
-    model = JobRuntimeTfidfKnnModel(config)
+    model = TfidfKnnModel(config)
     payload = model.evaluate(_sample_rows())
 
     assert payload["mae"] >= 0.0
@@ -94,8 +94,8 @@ def test_evaluate_raises_when_no_scored_predictions() -> None:
             "runtime_seconds": None,
         },
     ]
-    config = JobRuntimeTfidfKnnConfig(n_windows=2, test_window_hours=1, n_hash_features=64)
-    model = JobRuntimeTfidfKnnModel(config)
+    config = TfidfKnnConfig(n_windows=2, test_window_hours=1, n_hash_features=64)
+    model = TfidfKnnModel(config)
 
     with pytest.raises(ValueError, match="No rolling splits produced scored predictions"):
         model.evaluate(rows)
@@ -104,8 +104,8 @@ def test_evaluate_raises_when_no_scored_predictions() -> None:
 def test_evaluate_verbose_uses_tqdm(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config = JobRuntimeTfidfKnnConfig(n_windows=4, test_window_hours=1, n_hash_features=256)
-    model = JobRuntimeTfidfKnnModel(config)
+    config = TfidfKnnConfig(n_windows=4, test_window_hours=1, n_hash_features=256)
+    model = TfidfKnnModel(config)
 
     seen: dict[str, object] = {}
 
@@ -114,7 +114,7 @@ def test_evaluate_verbose_uses_tqdm(
         return iterable
 
     monkeypatch.setattr(
-        "hpc_oda_commons.models.job_runtime_tfidf_knn.model.tqdm",
+        "hpc_oda_commons.models.tfidf_knn.model.tqdm",
         fake_tqdm,
     )
     payload = model.evaluate(_sample_rows(), verbose=True)
@@ -131,8 +131,8 @@ def test_window_n_jobs_is_order_invariant() -> None:
     so parallelism is a pure speedup and never changes results."""
     rows = _sample_rows()
     base = {"n_windows": 10, "test_window_hours": 1, "k": 3, "n_hash_features": 256}
-    seq = JobRuntimeTfidfKnnModel(JobRuntimeTfidfKnnConfig(**base, window_n_jobs=1)).evaluate(rows)
-    par = JobRuntimeTfidfKnnModel(JobRuntimeTfidfKnnConfig(**base, window_n_jobs=4)).evaluate(rows)
+    seq = TfidfKnnModel(TfidfKnnConfig(**base, window_n_jobs=1)).evaluate(rows)
+    par = TfidfKnnModel(TfidfKnnConfig(**base, window_n_jobs=4)).evaluate(rows)
 
     assert seq["mae"] == par["mae"]
     assert seq["rmse"] == par["rmse"]
@@ -146,8 +146,8 @@ def test_precompute_slice_structure_matches_reference() -> None:
     The exact mae/rmse *values* are not reproducible across CPU/BLAS environments (a neighbor
     tie can flip — see docs/known-issues.md), so they are pinned by the xfail
     ``test_tfidf_knn_rolling_regression`` rather than asserted with a hardcoded float here."""
-    payload = JobRuntimeTfidfKnnModel(
-        JobRuntimeTfidfKnnConfig(n_windows=10, test_window_hours=1, k=3, n_hash_features=256)
+    payload = TfidfKnnModel(
+        TfidfKnnConfig(n_windows=10, test_window_hours=1, k=3, n_hash_features=256)
     ).evaluate(_sample_rows())
 
     assert [entry["status"] for entry in payload["windows"]] == ["skipped"] + ["ok"] * 9
@@ -169,8 +169,8 @@ def test_no_joblib_parallel_warning_emitted() -> None:
     """The per-window kNN query runs single-threaded (the window pool supplies parallelism),
     so no sklearn joblib ``delayed``/``Parallel`` warning is emitted — the spam that previously
     ballooned large-cell logs to multiple GB."""
-    model = JobRuntimeTfidfKnnModel(
-        JobRuntimeTfidfKnnConfig(n_windows=6, test_window_hours=1, k=3, n_hash_features=256)
+    model = TfidfKnnModel(
+        TfidfKnnConfig(n_windows=6, test_window_hours=1, k=3, n_hash_features=256)
     )
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
