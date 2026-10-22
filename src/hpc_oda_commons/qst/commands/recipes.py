@@ -8,6 +8,8 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
+from hpc_oda_commons.qst.commands.datasets import descriptor_argument
+
 console = Console()
 recipes_app = typer.Typer(
     help="Write the benchmark's recipes for a dataset of your own.", no_args_is_help=True
@@ -18,7 +20,10 @@ recipes_app = typer.Typer(
 def recipes_write(
     descriptor: Annotated[
         Path,
-        typer.Argument(exists=True, readable=True, help="The dataset's descriptor (.yml)."),
+        typer.Argument(
+            callback=descriptor_argument,
+            help="The dataset's descriptor (.yml), or a bundled dataset's name.",
+        ),
     ],
     out: Annotated[Path, typer.Option("--out", help="Folder to write the recipes into.")],
     card: Annotated[
@@ -54,6 +59,14 @@ def recipes_write(
     runs_dir: Annotated[
         str, typer.Option("--runs-dir", help="Where the runs write their result bundles.")
     ] = "runs",
+    benchmark_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--benchmark-dir",
+            help="Where the error ceilings go, for the leaderboard's --ceilings. Default: the "
+            "runtime card's folder, else benchmark/datasets.",
+        ),
+    ] = None,
     model: Annotated[
         list[str] | None,
         typer.Option("--model", help="Write only this model's recipes (repeatable)."),
@@ -77,6 +90,11 @@ def recipes_write(
         window = {"start": start, "end": str(end)}
         if by != "overlap":
             window["by"] = by
+    ceilings_dir = (
+        benchmark_dir.as_posix()
+        if benchmark_dir is not None
+        else (card.parent.as_posix() if card else "benchmark/datasets")
+    )
     written = write_recipes(
         load_descriptor(descriptor),
         out,
@@ -85,7 +103,7 @@ def recipes_write(
         require_nonnull=require_nonnull or (),
         runs_dir=runs_dir,
         models=model or (),
-        benchmark_dir=(card.parent.as_posix() if card else "benchmark/datasets"),
+        benchmark_dir=ceilings_dir,
     )
     console.print(f"[green]wrote[/green] {len(written.recipes)} recipes under {out}")
     for note in written.skipped:
@@ -98,3 +116,16 @@ def recipes_write(
         console.print("The error ceilings headroom is measured against:")
         for step in written.ceilings:
             console.print(f"  {step}", soft_wrap=True)
+    if written.recipes:
+        # The leaderboard reads the ceilings from --ceilings, so name the folder they went to.
+        console.print("Then run the recipes and build the leaderboard:")
+        console.print(
+            f'  for r in {out.as_posix()}/*/*.yml; do hpc-oda benchmark "$r"; done',
+            soft_wrap=True,
+            markup=False,
+        )
+        console.print(
+            f"  hpc-oda leaderboard --runs {runs_dir} --out leaderboard "
+            f"--ceilings {ceilings_dir} --recipes {out.as_posix()}",
+            soft_wrap=True,
+        )

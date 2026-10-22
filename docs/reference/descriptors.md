@@ -2,7 +2,8 @@
 
 A descriptor is a YAML file that says where a dataset's files are, how to read them, and how
 their columns map onto the canonical job schema. `hpc-oda datasets fetch` and
-`hpc-oda datasets prepare` take a descriptor's path. Every bundled dataset has one in
+`hpc-oda datasets prepare` take a descriptor's path, or a bundled dataset's name (`pm100`
+or `dataset.pm100`), as does `hpc-oda recipes write`. Every bundled dataset has one in
 [`src/hpc_oda_commons/datasets/descriptors/`](../../src/hpc_oda_commons/datasets/descriptors/),
 and [Benchmark your own data](../how-to/benchmark-your-data.md) walks through writing one for
 your own export.

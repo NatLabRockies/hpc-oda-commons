@@ -98,10 +98,26 @@ def _fetch_error_exit(exc: FetchError) -> typer.Exit:
     return typer.Exit(1)
 
 
+def descriptor_argument(value: Path) -> Path:
+    """Resolve a descriptor argument: a file, or a bundled dataset's name or id."""
+    from hpc_oda_commons.datasets.descriptor import find_descriptor
+
+    found = find_descriptor(value)
+    if found is None:
+        raise typer.BadParameter(
+            f"{value} is neither a descriptor file nor a bundled dataset "
+            "(`hpc-oda browse --type dataset` lists them)."
+        )
+    return found
+
+
 def datasets_fetch(
     descriptor: Annotated[
         Path,
-        typer.Argument(exists=True, readable=True, help="Path to a dataset descriptor YAML."),
+        typer.Argument(
+            callback=descriptor_argument,
+            help="A dataset descriptor YAML, or a bundled dataset's name (pm100, dataset.pm100).",
+        ),
     ],
     slice_: Annotated[
         str | None,
@@ -171,7 +187,10 @@ def datasets_fetch(
 def datasets_prepare(
     descriptor: Annotated[
         Path,
-        typer.Argument(exists=True, readable=True, help="Path to a dataset descriptor YAML."),
+        typer.Argument(
+            callback=descriptor_argument,
+            help="A dataset descriptor YAML, or a bundled dataset's name (pm100, dataset.pm100).",
+        ),
     ],
     slice_: Annotated[
         str | None,

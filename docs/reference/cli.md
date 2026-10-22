@@ -263,7 +263,7 @@ hpc-oda datasets fetch [OPTIONS] DESCRIPTOR
 
 **Arguments:**
 
-- `DESCRIPTOR`: Path to a dataset descriptor YAML. Required.
+- `DESCRIPTOR`: A dataset descriptor YAML, or a bundled dataset's name (pm100, dataset.pm100). Required.
 
 **Options:**
 
@@ -285,7 +285,7 @@ hpc-oda datasets prepare [OPTIONS] DESCRIPTOR
 
 **Arguments:**
 
-- `DESCRIPTOR`: Path to a dataset descriptor YAML. Required.
+- `DESCRIPTOR`: A dataset descriptor YAML, or a bundled dataset's name (pm100, dataset.pm100). Required.
 
 **Options:**
 
@@ -632,7 +632,7 @@ hpc-oda recipes write [OPTIONS] DESCRIPTOR
 
 **Arguments:**
 
-- `DESCRIPTOR`: The dataset's descriptor (.yml). Required.
+- `DESCRIPTOR`: The dataset's descriptor (.yml), or a bundled dataset's name. Required.
 
 **Options:**
 
@@ -643,4 +643,5 @@ hpc-oda recipes write [OPTIONS] DESCRIPTOR
 - `--by TEXT`: Power window. overlap: keep jobs that overlap it; submit: keep jobs submitted in it. Default: `overlap`.
 - `--require-nonnull TEXT`: Power: read only rows with this column (repeatable). Repeatable.
 - `--runs-dir TEXT`: Where the runs write their result bundles. Default: `runs`.
+- `--benchmark-dir PATH`: Where the error ceilings go, for the leaderboard's --ceilings. Default: the runtime card's folder, else benchmark/datasets.
 - `--model TEXT`: Write only this model's recipes (repeatable). Repeatable.

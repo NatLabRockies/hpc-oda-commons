@@ -130,6 +130,20 @@ def bundled_descriptor_paths() -> dict[str, Path]:
     return {path.stem: path for path in sorted(root.glob("*.yml"))}
 
 
+def find_descriptor(value: str | Path) -> Path | None:
+    """A descriptor's file from a path, or from a bundled dataset's name or id.
+
+    ``value`` is a path to a descriptor, or names a bundled dataset: ``pm100``,
+    ``dataset.pm100`` or an id from before #249. None when it is neither.
+    """
+    from hpc_oda_commons.datasets.ids import dataset_name
+
+    path = Path(value)
+    if path.is_file():
+        return path
+    return bundled_descriptor_paths().get(dataset_name(str(value)))
+
+
 @functools.cache
 def bundled_descriptors() -> dict[str, Descriptor]:
     """Each bundled descriptor, by its dataset's short name (``pm100``)."""
