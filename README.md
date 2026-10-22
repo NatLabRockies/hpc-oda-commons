@@ -6,233 +6,64 @@ HPC sites generate enormous volumes of operational data — scheduler logs, acco
 
 hpc-oda-commons fixes this by establishing **community-governed contracts** — versioned schemas, canonical artifacts, and benchmark recipes — that make ODA workflows **discoverable**, **reproducible**, and **comparable**. It pairs these standards with a practical, CLI-first toolkit that lets operators and researchers go from raw logs to standardized results without sending data off-cluster.
 
-**Leaderboard:** <https://natlabrockies.github.io/hpc-oda-commons/leaderboard/>: every model on every dataset, for job runtime and job power.
+**Leaderboard:** <https://natlabrockies.github.io/hpc-oda-commons/leaderboard/>: the benchmarked models on public datasets, for job runtime and job power.
 
 ## Design Principles
 
 - **Artifacts are the interface.** Every stage of the pipeline reads and writes stable, versioned artifacts (Parquet tables, JSON manifests, result bundles). Standards live in the artifact contracts, not in any particular tool's internals.
 - **Local-first.** Ingestion and analysis run entirely on your machine. No data is uploaded or transmitted. Identifier hashing lets you sanitize artifacts before sharing.
 - **Recipe-driven evaluation.** Benchmarks are defined by YAML recipes that fully specify dataset, model, metrics, and split strategy — so "running the same benchmark" actually means the same thing across sites.
-- **Domain-extensible.** The platform is designed to support multiple ODA problem domains over time. v0.1 delivers job runtime prediction as the first complete vertical slice; future domains include energy/power prediction, queue wait time estimation, and more.
-
-## Agent-Friendly
-
-hpc-oda-commons is designed to work well with AI coding agents. The CLI is structured for scripting, recipes are declarative YAML, and all outputs are machine-readable JSON — so an agent can drive the full ingest-validate-benchmark-leaderboard workflow without special adapters.
-
-### Why it works with agents
-
-- **Deterministic CLI.** Every command produces the same output structure in the same location. Agents can rely on `data/ingested/`, `runs/`, and `leaderboard/` paths without guessing.
-- **Declarative recipes.** Benchmarks are specified as YAML — agents can read, modify, and create recipes without understanding model internals.
-- **Machine-readable results.** All outputs (`result.json`, `metrics.json`, `provenance.json`, `leaderboard.json`) are structured JSON that agents can parse and reason about directly.
-- **Non-interactive mode.** After running the ingestion wizard once to produce a `mapping.yml`, subsequent ingests can be fully automated with `--mapping <path> --non-interactive`.
-- **Self-documenting registry.** `hpc-oda browse` and `hpc-oda info <id>` let agents discover available models, adapters, and recipes at runtime.
-
-### Getting an agent started
-
-Point your agent at `CLAUDE.md` (or `AGENTS.md`, which links to the same file). It establishes whether the agent is *using* or *developing* the tool and routes to the right docs: [`docs/agent-usage.md`](docs/agent-usage.md) for the CLI workflow, model list, recipe format, and reading results; [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/architecture.md`](docs/architecture.md) for development. The typical agent usage workflow is:
-
-```bash
-pip install -e ".[dev]"
-
-# Ingest data
-hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
-
-# Run a benchmark
-hpc-oda benchmark src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml
-
-# Compare results
-hpc-oda leaderboard --runs runs --out leaderboard
-```
-
-Agents that need to create custom benchmarks can copy a bundled recipe, adjust the dataset path or model selection, and run it — no code changes required.
+- **Domain-extensible.** The platform is designed to support multiple ODA problem domains. Job runtime and job power prediction are benchmarked today; queue wait time and others can follow.
 
 ## The Three Pillars
 
-| Pillar | Purpose | v0.1 commands |
-|--------|---------|---------------|
-| **Find** | Discover available models, adapters, recipes, and datasets from a community registry | `hpc-oda browse`, `hpc-oda info <id>` |
-| **Run** | Ingest data, validate against schemas, and run local analysis | `hpc-oda init`, `hpc-oda ingest ...`, `hpc-oda validate ...`, `hpc-oda analyze ...` |
-| **Compare** | Execute recipe-driven benchmarks and aggregate results into leaderboards | `hpc-oda benchmark <recipe>`, `hpc-oda leaderboard ...` |
+| Pillar | Purpose |
+|--------|---------|
+| **Find** | Discover the models, datasets, recipes and adapters in the registry (`hpc-oda browse`, `hpc-oda info <id>`) |
+| **Run** | Fetch and prepare datasets, ingest your own, and validate them against the schemas |
+| **Compare** | Run recipe-driven benchmarks and gather the results into leaderboards |
 
 Together, these let a site operator go from local logs to comparable, provenance-tracked results — and let a researcher publish results that others can actually reproduce.
 
----
-
 ## Getting started
 
-**Python 3.10+**
-
-### Try it
+Python 3.10 or later.
 
 ```bash
-# Install from a repo clone
-git clone <repo-url> && cd hpc-oda-commons
+git clone https://github.com/NatLabRockies/hpc-oda-commons && cd hpc-oda-commons
 pip install -e ".[dev]"
 
-# Browse the registry: the models, recipes and datasets
-hpc-oda browse
-
-# Run a baseline on a bundled synthetic dataset (no network)
-HPC_ODA_OFFLINE=1 hpc-oda run-baseline
+hpc-oda browse                         # the models, datasets and recipes
+HPC_ODA_OFFLINE=1 hpc-oda run-baseline # a baseline on a bundled synthetic dataset
 ```
 
-The [Quickstart](docs/how-to/quickstart.md) walks through this in five minutes.
+The [quickstart](docs/how-to/quickstart.md) walks through this in five minutes, and
+[install](docs/how-to/install.md) covers the optional extras.
 
-### Benchmark your own data
+**Benchmark your own data.** [Benchmark your own data](docs/how-to/benchmark-your-data.md)
+runs every model on your jobs the way the published leaderboard runs them, and builds a private
+leaderboard and dataset card. Nothing leaves your machine, and a test runs the guide's commands,
+so they work as written.
 
-[Benchmark your own data](docs/how-to/benchmark-your-data.md) runs every model on your own
-job data, the way the [published leaderboard](https://natlabrockies.github.io/hpc-oda-commons/leaderboard/)
-runs them, and builds a private leaderboard and dataset card. The steps:
+**Results.** Every [model](docs/models/README.md) and every [dataset](docs/datasets/cards/README.md)
+has a card, generated from the code and the results. [Benchmarking](docs/benchmarking/README.md)
+explains how the runtime and power tracks are run.
 
-1. Describe the export.
-2. Prepare it.
-3. Characterize it.
-4. Write the recipes (`hpc-oda recipes write`).
-5. Embed.
-6. Compute the error ceilings.
-7. Run the models.
-8. Read the results.
+## Working with AI agents
 
-Nothing leaves your machine. A test runs the guide's commands, so they work as written.
-
-### Models
-
-Each model has a card, generated from its code, its recipes and the leaderboard:
-[models](docs/models/README.md). Every model predicts the column its recipe's metrics name:
-`runtime_seconds` for runtime, or `avgpcon_per_node` / `maxpcon_per_node` for power. See
-[Predict job power](docs/how-to/predict-power.md).
-
----
-
-## Core Concepts
-
-### Schemas
-
-All artifacts are validated against versioned JSON Schemas following the pattern `oda.<type>.v<MAJOR>.<MINOR>.<PATCH>`:
-
-| Schema | Purpose |
-|--------|---------|
-| `oda.job.v0.2.0` | Canonical job record (the rows in an ODA table); `oda.job.v0.1.0` is retained only for legacy reads |
-| `oda.result.v0.1.0` | Benchmark result bundle |
-| `oda.recipe.v0.1.0` | Benchmark recipe definition |
-| `oda.manifest.v0.1.0` | Ingest provenance manifest |
-| `oda.mapping.v0.1.0` | Field mapping specification |
-| `oda.registry.v0.1.0` | Registry snapshot |
-| `oda.mdl.v0.1.0` | Metric definition |
-
-During v0.1 the core job schema is frozen except for non-breaking fixes.
-
-### Artifacts
-
-The pipeline produces four types of artifacts:
-
-**ODA Table** — A Parquet file of job records conforming to the domain's schema (e.g., `oda.job.v0.2.0`). This is the primary input for validation, analysis, and benchmarks. In v0.2 the job timestamps (`start_time`, `end_time`, `submit_time`) are stored as native Arrow `timestamp(us, tz=UTC)` rather than ISO-8601 strings, and the column type is validated structurally; legacy v0.1 string tables are rejected with a clear re-ingest error.
-
-**Manifest** — JSON written alongside each ingested Parquet file. Captures the adapter used, inputs, transformations applied, and provenance (including content hashes).
-
-**Result Bundle** — A directory produced by benchmarks and baseline runs containing `result.json`, `metrics.json`, and `provenance.json`. Result bundles are the input to leaderboard generation.
-
-**Quality Report** — JSON written by `hpc-oda validate`, recording schema violations, semantic checks (e.g., negative runtimes, inverted timestamps), and missingness statistics.
-
-### Benchmark Recipes
-
-Recipes are YAML files that fully specify a reproducible evaluation:
-
-```yaml
-recipe_id: recipe.job_runtime.baseline_tiny
-problem_domain: [job-runtime-prediction]
-schema_version: oda.job.v0.2.0
-
-dataset:
-  id: hpc_oda_commons/datasets/synthetic/job-runtime/tiny
-  table_path: <path-to-parquet>
-
-model:
-  id: model.baseline
-  version: "0.1.0"
-
-metrics:
-  - name: mae
-    target: runtime_seconds
-  - name: rmse
-    target: runtime_seconds
-
-split:
-  method: fixed          # or rolling
-  train_fraction: 0.8
-  seed: 42
-
-run:
-  output_dir: runs
-  overwrite: false
-```
-
-v0.1 supports three split methods:
-- **`fixed`** — deterministic train/test split (used with the baseline model and the UoPC adaptation)
-- **`cutoff`** — every job submitted on or after `test_start` is scored (used by the UoPC paper protocol). Parameters: `test_start`, `theta`, `k`, and optionally `theta_values`/`k_values` for a sweep
-- **`rolling`** — sliding-window evaluation that simulates production retraining (used by the rolling baseline, XGBoost, Random Forest, TF-IDF + kNN, and MLP models). Parameters: `n_windows`, `test_window_hours`, `training_lookback_days`
-
-### Provenance
-
-Every result bundle includes `provenance.json` capturing:
-- Schema versions used
-- Python version and installed packages (`pip freeze`)
-- Package version, git commit, and source code hash
-- SHA-256 hashes and sizes of input files
-
-Result bundles also include an `integrity` block that verifies the source code matches a known-good commit. Run `hpc-oda record-hash` after tests pass to register a commit; future benchmarks on that code will show `validated: true`.
-
-This enables full traceability: a leaderboard entry can trace back to exactly what ran, on what data, with what code, and in what environment.
-
-### Data Privacy
-
-For sharing derived artifacts, the toolkit provides deterministic transformation helpers:
-- `hash_identifier(value, salt=...)` — pseudonymize user/account identifiers (salt via `HPC_ODA_HASH_SALT`)
-
-All transformations are recorded in the manifest's transformation ledger.
-
-## Artifact Output Paths
-
-| Command | Output |
-|---------|--------|
-| `hpc-oda ingest slurmctld ...` | `data/ingested/slurmctld/<run>/{data.parquet, manifest.json}` |
-| `hpc-oda ingest jobs-parquet ...` | `data/ingested/jobs_parquet/<run>/{data.parquet, manifest.json, mapping.yml}` |
-| `hpc-oda validate <parquet>` | `<parquet>.quality.json` |
-| `hpc-oda embed <parquet> --out <out>` | `<out>` (embedded Parquet) + `<out>.manifest.json` |
-| `hpc-oda run-baseline` | `runs/run-baseline-*/{result.json, metrics.json, provenance.json}` |
-| `hpc-oda benchmark <recipe>` | `runs/benchmark-*/{result.json, metrics.json, provenance.json}` |
-| `hpc-oda analyze --data ...` | `reports/analysis-*/{analysis.json, index.html}` |
-| `hpc-oda leaderboard ...` | `leaderboard/{leaderboard.json, index.html, runs.html}` |
-
-## Repo Layout
-
-```
-src/hpc_oda_commons/     Package implementation
-  qst/                   CLI (Typer-based, entry point: hpc-oda)
-  kernel/                Core: artifacts, provenance, validation, schemas
-  models/                Eight models: baseline, xgboost, random_forest, mlp, moe_xgboost,
-                         tfidf_knn, embedding_knn (runtime) + uopc (power),
-                         plus a shared rolling_tabular base for the tabular rolling models
-  embeddings/            Text serialization + encoders for `hpc-oda embed`
-  adapters/              Source parsers (slurmctld)
-  ingest/                Data ingestion pipeline (profile, suggest, wizard, apply)
-  benchmark/             Recipe loading and results aggregation
-  intelligence/          Mapping suggestions, metadata graph, synthetic scoring
-  schema/                JSON Schema validation and quality rules
-  schemas/               Bundled JSON Schema files
-  datasets/              Bundled synthetic datasets
-  registry/              Registry, built from the package's model, recipe and dataset files
-  recipes/               Bundled benchmark recipes (YAML)
-  tools/                 HTML report generation
-tests/                   Unit + integration tests
-docs/                    User and contributor documentation
-scripts/                 Validation and release helpers
-```
+The CLI is scriptable, recipes are declarative YAML, and every output is JSON, so an agent can
+drive the whole workflow. Point it at [`CLAUDE.md`](CLAUDE.md) (also `AGENTS.md`). It asks
+whether the agent is using or developing the tool, and routes to
+[`docs/agent-usage.md`](docs/agent-usage.md) or to [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Documentation
 
-- **How-to guides:** `docs/how-to/` — quickstart, ingest-slurmctld, ingest-jobs-parquet, interpret-results, install, contribute, add-model
-- **Reference:** `docs/reference/` — cli, recipes, schema-versions
-- **Concepts:** `docs/concepts/benchmarks.md` — rolling evaluation, split methods, preprocessing
-- **Deep dive:** `WHITEPAPER.md`
+[The documentation index](docs/index.md) is the map. The main references:
 
+- [CLI reference](docs/reference/cli.md): every command and option, generated from the CLI.
+- [Recipes](docs/reference/recipes.md) and [schema versions](docs/reference/schema-versions.md).
+- [Architecture](docs/architecture.md): the data flow and the package layout.
+- [Benchmarks](docs/concepts/benchmarks.md): split methods and how rolling evaluation works.
+- [Interpreting results](docs/how-to/interpret-results.md): result bundles, provenance and the
+  leaderboard.
+- [`WHITEPAPER.md`](WHITEPAPER.md): the design and its rationale.

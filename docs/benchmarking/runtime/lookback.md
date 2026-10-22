@@ -1,6 +1,8 @@
 # Training lookback — is one value right for every dataset?
 
-No. This records what the lookback axis measured and what the fixed value cost.
+No. This records what the lookback axis measured and what the fixed value cost. It was measured
+on the runtime fleet of 2026-08-26 (plan `20260826-231908`, all 420 cells); its bundles are
+kept locally, not in the repo, so `bench-matrix rank` needs them collected first.
 
 The benchmark used to train every model on a fixed 120-day lookback. Since
 [#187](https://github.com/NatLabRockies/hpc-oda-commons/issues/187) each model runs at
@@ -116,16 +118,12 @@ with hindsight was doing most of the work.
 
 - **The evaluation is 30 days.** Too short to contain an allocation cycle or a semester
   boundary, and not fixable by re-ranking ([#191](https://github.com/NatLabRockies/hpc-oda-commons/issues/191)).
-- **`atlas_opentrinity`'s 120d arm is not 120 days.** That source holds only 80 days, so its
-  longest arm is really "all available history". The arms still separate by training-set size,
-  so the comparison is real, but the label is not.
-- **`fdata_fugaku` was provisional and no longer is.** When this was first written its
-  `xgboost`, `moe_xgboost` and `random_forest` cells had ranked on two arms rather than three,
-  the 120d arm still running. All 420 cells have since completed with no failures, and the
-  re-ranked fleet reproduces every number above: the same six flips, the same regret
-  distribution, and no dataset whose winner moved. Fugaku itself does not flip — `xgboost`
-  wins it under both rules at 6,711, and its walk-forward score *equals* its oracle, so the
-  policy chose the best arm at every scored window there.
+- **`atlas_opentrinity`'s 120d arm is not 120 days.** That source holds only ~50 days of
+  history before its test period, so its longest arm is really "all available history". The
+  arms still separate by training-set size, so the comparison is real, but the label is not.
+  Runs planned since #191 cap the arm and name it `lb50d`.
+- On `fdata_fugaku`, `xgboost` wins under both rules, and its walk-forward score *equals* its
+  oracle: the policy chose the best arm at every scored window there.
 - Fitted-model metrics are not byte-stable across machines (`docs/known-issues.md`), so small
   differences between reruns of the same cell are expected. The findings above rest on
   differences much larger than that.

@@ -1,65 +1,44 @@
 # Power prediction — results
 
 Every model predicting **power per node** on one shared rolling protocol, on every power
-dataset. Job-power prediction is becoming a tracked benchmark
-([#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)); this page is where its
-results live, and [Methodology](methodology.md) records what was decided and why. How to run any model on power: [Predict job power](../../how-to/predict-power.md).
-UoPC's own paper protocol is a separate, one-model study: [UoPC reproduction](uopc.md).
+dataset: the dated runs behind the power tables on the
+[leaderboard](https://natlabrockies.github.io/hpc-oda-commons/leaderboard/), which is the live
+source. [Methodology](methodology.md) records what was decided and why. How to run any model on
+power: [Predict job power](../../how-to/predict-power.md). UoPC's own paper protocol is a
+separate, one-model study: [UoPC reproduction](uopc.md).
 
 ## Protocol
 
-The same for every dataset
-([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204),
-[#217](https://github.com/NatLabRockies/hpc-oda-commons/issues/217),
-[#219](https://github.com/NatLabRockies/hpc-oda-commons/issues/219),
-[#230](https://github.com/NatLabRockies/hpc-oda-commons/issues/230)):
-
-- **Split:** 89 daily windows ending at the last submit, with 60 days of training lookback.
-- **Targets:** `avgpcon_per_node` on every dataset, and `maxpcon_per_node` where the source
-  records peak power (F-DATA and PM100). Watts per node the job ran on: requested nodes on
-  F-DATA, whose allocated count can be padded, not allocated nodes as in the UoPC paper
-  ([why](../../how-to/predict-power.md#per-node-power), [per dataset](methodology.md#targets)).
-  Only jobs with a power reading are trained on and scored.
-- **Models:** baseline (window mean), signature memorizer, TF-IDF + kNN, embedding + kNN,
-  UoPC (θ = 500, k = 20, `balanced` features, the median of its neighbours), XGBoost, Random
-  Forest and MoE XGBoost, each with its default configuration
-  (`recipes/job-power/<model>_rolling_*.yml`). MLP is left out, as it is from the runtime fleet run ([methodology](../runtime/methodology.md)): it
-  measured weaker than the other rolling-tabular models across the board on runtime, and on
-  F-DATA it cost ~130 s per window (over 3 h per target). `model.mlp` still
-  predicts power when a recipe names it.
-- **Metrics:** MAE and RMSE (W/node), MAPE, R², over all scored rows.
-- **Same rows for everyone.** UoPC predicts the window mean for users with fewer than k
-  training jobs, as the rolling baseline would, and reports how many in `rows_fallback`.
+The [power methodology](methodology.md) holds it: the split, the targets (watts per node the
+job ran on), the models and their settings, and why MLP is left out. In short, every model
+retrains once a day on the previous 60 days, and every model scores the same jobs: UoPC
+predicts the window mean for users with fewer than k training jobs, as the rolling baseline
+would, and reports how many in `rows_fallback`.
 
 This differs from the [UoPC paper reproduction](uopc.md) on purpose: the paper scores each
-job against everything its user finished before submission (an online protocol), while here
-every model, UoPC included, retrains once per day on the previous 60 days. The paper divides
-by allocated nodes, which F-DATA pads ([why we don't](uopc.md#nodes-requested-not-allocated)).
+job against everything its user finished before submission (an online protocol). The paper
+also divides by allocated nodes, which F-DATA pads
+([why we don't](uopc.md#nodes-requested-not-allocated)).
 
 ## Datasets
 
 | Dataset | Data | Targets | Test period (UTC) | Jobs scored | Users | Top user's share |
 |---|---|---|---|---:|---:|---:|
-| [F-DATA](#f-data) (Fugaku) | `dataset.fdata_fugaku`, window 2023-11-30 – 2024-04-30: the five months the UoPC paper uses | average, peak | 2024-02-02 14:00 – 2024-05-01 14:00 (the paper's starts on 2024-02-01) | 1,510,726 | | |
+| [F-DATA](#f-data) (Fugaku) | `dataset.fdata_fugaku`, window 2023-11-30 – 2024-04-30: the five months the UoPC paper uses | average, peak | 2024-02-02 14:00 – 2024-05-01 14:00 (the paper's starts on 2024-02-01) | 1,510,726 | — | — |
 | [Eagle](#eagle-and-kestrel) (NLR) | `dataset.nlr_eagle`, window 2023-05-01 – 2023-09-30 | average | 2023-07-03 16:00 – 2023-09-30 16:00 | 490,260 | 428 | 9.0% |
 | [Kestrel](#eagle-and-kestrel) (NLR) | `dataset.nlr_kestrel`, window 2025-08-01 – 2026-01-01 | average | 2025-10-05 06:00 – 2026-01-02 06:00 | 638,081 | 475 | 11.8% |
 | [PM100](#pm100) (Marconi100) | `dataset.pm100`, all of it: May – Oct 2020 | average, peak | 2020-07-17 04:00 – 2020-10-14 04:00 | 142,206 | 380 | 20.8% |
 
-The counts are over the jobs the runs scored.
+The counts are over the jobs the runs scored. F-DATA's user counts weren't measured.
 
 **How the windows were chosen.**
 - **F-DATA** tests on the UoPC paper's test period, so the two protocols can be compared.
-- **Eagle and Kestrel** each test on the last 89 days before the system started winding
-  down. Each is prepared from its descriptor and cut with `hpc-oda datasets slice`
-  ([coverage](../../datasets/power-sources.md)).
-  - Eagle's own last 89 days (late March to June 2024) fall in its wind-down. Monthly jobs
-    fell from 240k in January 2024 to 32k in June, leaving 122k jobs with power from 159
-    users. One user had 41.8% of them.
-  - Kestrel never wound down, so it runs its last 89 days. The runtime benchmark's Kestrel
-    window (2025-03-29 to 06-26) was rejected: one user submitted 59.5% of its 1.36M jobs
-    with power.
+- **Eagle** tests on the last full quarter before it wound down, and **Kestrel**, which
+  never wound down, on its last 89 days. Their recipes declare these windows, so they read
+  the prepared tables directly. [Window selection](methodology.md#window-selection) gives
+  the reasons, including the windows rejected.
 - **PM100** tests on its last 89 days. It is a May–Oct 2020 extract with no wind-down, and
-  needs no slice. Its window touches a missing block at its first day, kept as a recorded
+  its recipes read the whole table. Its window touches a missing block at its first day, kept as a recorded
   exception ([methodology](methodology.md#health-gate)). Three test days have no submissions,
   so 86 of its 89 windows score.
 
@@ -74,8 +53,6 @@ The counts are over the jobs the runs scored.
   frequency. Only F-DATA has frequency, so that column is 0 elsewhere.
 
 ## Results
-
-<!-- results:power-rolling -->
 
 ### How much accuracy is available
 
@@ -108,10 +85,9 @@ embedding and requested frequency.
   where the floor can't constrain them. A floor is a bound, though, not a score some model
   is known to reach.
 
-**Headroom captured** in the tables below is
-(baseline MAE − model MAE) / (baseline MAE − floor MAE): the share of the error between
-predicting the window mean and the floor that a model removes. Unlike MAE, it compares across
-datasets. The files are `docs/benchmarking/datasets/<dataset>.<target>.ceiling.json`.
+**Headroom captured** in the tables below is the share of the error between predicting the
+window mean and the floor that a model removes ([how it's computed](../../how-to/interpret-results.md#reading-the-leaderboard)).
+Unlike MAE, it compares across datasets. The files are `docs/benchmarking/datasets/<dataset>.<target>.ceiling.json`.
 
 ### F-DATA
 
@@ -158,9 +134,10 @@ with the vote it scored 10.80% / 0.682 and 11.15% / 0.651 with `balanced` featur
 
 † Read every day's preprocessing from the store (#213); see the wall-time note below.
 
-**The tree models predict power best overall.** MoE XGBoost has the lowest MAPE on both
-targets. Plain XGBoost has the lowest RMSE and the highest R², so it makes fewer large
-misses. The three tree models are within about a point of MAPE of each other.
+**UoPC ranks first and the tree models are close behind.** The leaderboard ranks by MAE,
+where UoPC is lowest on both targets (below). MoE XGBoost has the lowest MAPE on both
+targets, and plain XGBoost the lowest RMSE and highest R², so it makes fewer large misses.
+The three tree models are within about a point of MAPE of each other.
 
 **UoPC is level on typical jobs and further behind on large errors.**
 - **Typical jobs:** it has the lowest MAE on both targets, ahead of MoE XGBoost (7.10 against
@@ -200,10 +177,7 @@ system every model scored the same jobs, in all 89 windows. UoPC predicted the w
 for users with fewer than k = 20 training jobs: 21,261 Eagle jobs (4.3%) and 10,485 Kestrel
 jobs (1.6%). Best value in each column in bold.
 
-UoPC's rows use its `balanced` features, the default since
-[#222](https://github.com/NatLabRockies/hpc-oda-commons/issues/222), and k = 20, the default
-since [#228](https://github.com/NatLabRockies/hpc-oda-commons/issues/228), and predict the
-median of the k neighbours, the default since [#241](https://github.com/NatLabRockies/hpc-oda-commons/issues/241). They were rerun on 2026-10-20 at 4ee97bb.
+UoPC's rows use the same settings as on [F-DATA](#f-data), rerun on 2026-10-20 at 4ee97bb.
 k = 20 and the median were chosen on F-DATA ([uopc.md](uopc.md#our-choices-and-why)) and not
 tuned on these systems. With the authors' vote at k = 20 UoPC scored MAE 81.10 / 25.21% /
 −0.218 on Eagle and 101.83 / 23.08% / 0.116 on Kestrel: the median lowers MAE on both, but
@@ -347,7 +321,7 @@ two peak tables are not comparable ([methodology](methodology.md#targets)).
 
 ## How the runs were done
 
-### F-DATA
+### F-DATA runs
 
 - **One run at a time.** Two F-DATA rolling runs at once don't fit in 38 GB: a run peaks at
   22–36 GB. `window_n_jobs` (windows trained in parallel, execution-only and not part of
@@ -367,11 +341,11 @@ two peak tables are not comparable ([methodology](methodology.md#targets)).
   was written, not when the run started. Since [#215](https://github.com/NatLabRockies/hpc-oda-commons/issues/215),
   a bundle records the code at start and flags a checkout that moved.
 - **MLP was dropped** after 3 of 89 windows of its average-power run, at ~130 s per window.
-  See Protocol.
+  See the [methodology](methodology.md#models-in-scope).
 
 Reproduce any row with `hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/<model>_rolling_{avg,peak}.yml`.
 
-### Eagle and Kestrel
+### Eagle and Kestrel runs
 
 - **Prepare and slice.** Eagle's full prepare took 36 minutes (23 GB peak), Kestrel's 25
   minutes (16 GB). Slicing kept 1,091,733 Eagle jobs and 1,809,064 Kestrel jobs, with
@@ -399,23 +373,13 @@ Reproduce any row with `hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/
 - **The store held 3 Eagle days before the campaign.** The smoke run had built Eagle's last
   3 days, so the Eagle XGBoost run read 3 days from the store and built 86.
 
-Reproduce any row with:
+The runs read a slice cut with `hpc-oda datasets slice`; since #249 the recipes declare
+their window instead and read the prepared table, which selects the same jobs. To reproduce
+a row, prepare the dataset and run its recipe; for UoPC and embedding + kNN, first run the
+slice and embed steps in the recipe's header
+([Predict job power](../../how-to/predict-power.md#run-it)).
 
-```
-hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/nlr_<system>.yml
-hpc-oda datasets slice data/datasets/nlr_<system>/data.parquet --start ... --end ... \
-  --out data/windows/nlr_<system>_power/data.parquet
-# UoPC and embedding + kNN only, in an environment with the `embed` extra:
-hpc-oda embed data/windows/nlr_<system>_power/data.parquet \
-  --out data/windows/nlr_<system>_power_embedded/data.parquet \
-  --model microsoft/harrier-oss-v1-0.6b --format prose
-hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/<model>_rolling_avg_<system>.yml
-```
-
-Each recipe's header gives its system's `--start` and `--end`, and its embed step if it
-has one.
-
-### PM100
+### PM100 runs
 
 - **Prepare and embed.** `datasets prepare` took 33 s. `hpc-oda embed` encoded PM100's
   35,470 distinct descriptions in 12 minutes (6.2 GB peak, on the Apple GPU), in a separate
@@ -431,7 +395,7 @@ has one.
 
 Reproduce any row with:
 
-```
+```bash
 hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/pm100.yml
 # UoPC and embedding + kNN only, in an environment with the `embed` extra:
 hpc-oda embed data/datasets/pm100/data.parquet \

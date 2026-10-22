@@ -1,105 +1,109 @@
 # Runtime-prediction benchmark — methodology & decisions
 
-This is the tracked decision log for the full runtime-prediction benchmark (all runtime
-models × all usable datasets). It records **what we decided and why**, so the benchmark is
-reproducible and our choices are explainable. Per-dataset specifics live in the
-[dataset cards](../datasets/) (`<id>.card.json` + `<id>.md`), which are the single source of
-truth consumed by the benchmark runner.
+This is the tracked decision log for the runtime-prediction benchmark: every runtime model on
+every usable dataset. It records **what we decided and why**, so the benchmark is reproducible
+and our choices are explainable. Results are on the
+[leaderboard](https://natlabrockies.github.io/hpc-oda-commons/leaderboard/) and the generated
+[dataset cards](../../datasets/cards/README.md); each dataset's runtime card
+(`<id>.card.json`) and error ceiling are in [`../datasets/`](../datasets/).
 
-Status: **Phase 1** — characterization + decision records + the `characterize` tool. The
-benchmark-matrix runner and the HPC runner are later phases.
+## The rules today
+
+- **Models:** the eight in `RUNTIME_MODELS` (`benchmarking/hpc/matrix.py`): baseline, the
+  signature memorizer, TF-IDF + kNN, random forest, XGBoost, MoE XGBoost, MLP and
+  embedding + kNN. The fleet run left MLP out (below).
+- **Datasets:** the 24 registered datasets, less four ([roster](#dataset-roster)): 20.
+- **Each dataset's window** is set by its runtime card: 60 days of training and 90 of test,
+  with 120 days of history for the longest lookback, shortened where the source is short
+  ([configuration](#benchmark-configuration)).
+- **What the leaderboard counts** is `RUNTIME_PROTOCOL` (`benchmark/tracks.py`): 120 test
+  windows of 6 hours, the last 30 days of each card's test period, at lookbacks of 10, 30 and
+  120 days, with the lookback chosen walk-forward past a 20-window burn-in. That is the fleet
+  that has run (plan `20260826-231908`, 2026-08-26). The cards and `bench-matrix plan` are
+  sized for the whole 90 days (360 windows), which no fleet has run yet
+  ([#191](https://github.com/NatLabRockies/hpc-oda-commons/issues/191)); until it does, a run
+  planned today shows on `runs.html` only.
+- **Headroom** is measured against each dataset's [error ceiling](ceilings.md).
 
 ## Models in scope
 
-Six runtime-prediction models: `baseline`, `tfidf_knn`,
-`random_forest`, `xgboost`, `mlp`,
-`embedding_knn`. (`uopc` is power prediction, which is its own track: see [power results](../power/results.md).) The
-embedding model additionally requires a one-time `hpc-oda embed` pass per dataset (reused
-across runs).
+The roster is `RUNTIME_MODELS`. The embedding model additionally needs a one-time
+`hpc-oda embed` pass per dataset, reused across runs. UoPC is a power model, on the
+[power track](../power/methodology.md).
 
 **Feature eligibility.** Every model sees only submission-time columns — the allowlist in
 `models/feature_policy.py`. This matters for comparability: before it existed, the tabular
-models fed on whatever the normalized table carried, including `job_state` (mapped by 21 of
-the 22 prepared datasets, and near-perfectly correlated with the target for `TIMEOUT` jobs),
-`exit_code`, and the `*_alloc` counts, and the TF-IDF model put `job_state` straight into its
-document text. **Any leaderboard number produced before that fix overstates accuracy by an
-amount that varies per dataset, so it is not comparable with numbers produced after it** —
-re-run rather than mix the two.
+models fed on whatever the normalized table carried, including `job_state` (near-perfectly
+correlated with the target for `TIMEOUT` jobs), `exit_code`, and the `*_alloc` counts, and the
+TF-IDF model put `job_state` straight into its document text. **Any leaderboard number produced
+before that fix overstates accuracy by an amount that varies per dataset, so it is not
+comparable with numbers produced after it** — re-run rather than mix the two.
 
-**Signature memorization joins the roster** (`signature_memorizer`, #171). It
-predicts the median runtime of jobs whose submit-time features are identical, taken from the
-rolling training window — no fitting, no hyperparameters beyond the lookback the split already
-fixes. When nothing matches it drops features one at a time, cheapest first by information cost
-measured on the training window, and finally falls back to the window median.
-
-It earns a place because it *wins*: on the 2026-08-25 fleet run it beat all six fitted models on
-9 of 20 datasets, including both in-house machines. `baseline` — a rolling mean —
-is too weak to reveal that, so the benchmark had no honest "trivial but strong" comparator. Its
-**exact-match coverage is reported alongside its metrics**, because a memorization score means
-little without knowing how often it could match anything.
+**Signature memorization joined the roster** (`signature_memorizer`, #171). It predicts the
+median runtime of jobs whose submit-time features are identical, taken from the rolling
+training window — no fitting, no hyperparameters beyond the lookback the split already fixes.
+When nothing matches it drops features one at a time, cheapest first by information cost
+measured on the training window, and finally falls back to the window median. It earned its
+place by winning: on the 2026-08-25 fleet run it beat all six fitted models then in the roster
+on 9 of 20 datasets. `baseline`, a rolling mean, is too weak to reveal that, so the benchmark
+had no honest "trivial but strong" comparator. Its **exact-match coverage is reported alongside
+its metrics**, because a memorization score means little without knowing how often it could
+match anything.
 
 Adding a model to the roster is a methodology decision, not a side effect of writing one (the
-precedent from #134). This one is recorded here deliberately.
+precedent from #134).
 
-**MLP is excluded from the fleet run** (`--exclude-model mlp`). `mlp` remains a
-registered, in-scope model — it is simply not worth its wall-clock at this scale. It has
-measured clearly uncompetitive on every dataset we have run it on, and it owns the matrix's
-long tail: in the last full run its cells were the only ones killed at the walltime wall
-(three of them after 14+ hours) while every other model on the same dataset finished inside
-two. Excluding it is a *per-run* decision expressed on the command line, not a change to the
-roster in `RUNTIME_MODELS` (#156); a future run that wants it back passes no flag.
+**MLP was left out of the fleet run** (`--exclude-model mlp`). It remains in the roster; it was
+simply not worth its wall-clock at this scale. It measured clearly uncompetitive on every
+dataset it ran on, and it owned the matrix's long tail: in the full run before, its cells were
+the only ones killed at the walltime limit (three after 14+ hours) while every other model on
+the same dataset finished inside two. Leaving it out is a per-run decision on the command
+line, not a change to `RUNTIME_MODELS` (#156).
 
 ## Benchmark configuration
 
-Fixed rolling-window evaluation for every dataset:
-
-| parameter | value | meaning |
+| | Declared by the runtime card, planned by `bench-matrix` | Counted on the leaderboard today (`RUNTIME_PROTOCOL`) |
 |---|---|---|
-| `n_windows` | 360 | number of rolling test windows, derived per card |
-| `test_window_hours` | 6 | → 360 × 6h = **90 days of test coverage** |
-| `training_lookback_days` | {10, 30, 120} | swept as an axis, not fixed (#170) |
+| test windows | `test_days × 4`: 360 for a 90-day test period | 120 |
+| window length | 6 hours | 6 hours |
+| training lookback | 10, 30 and 120 days, each capped at the card's `history_days` | 10, 30 or 120 days |
 
-Each dataset card *defines* a **150-day window**: 60 days train + 90 days test, and the test
-region is what gets scored. Behind it the card declares a **history budget** (`history_days`,
-120 by default) — the history the earliest scored window must be able to see. The slice is
-extended `history_days − train_days` days earlier than `window_start`, so the longest lookback
-arm is backed by real data rather than by whatever happens to exist.
+Each runtime card *defines* a window of `train_days` + `test_days` (60 + 90 by default), and
+the test period is what gets scored. Behind it the card declares a **history budget**
+(`history_days`, 120 by default): the history the earliest scored window must be able to see.
+A slice is extended `history_days − train_days` days earlier than the window's start (60 for a
+standard card), so the longest lookback is backed by real data.
 
 > **Both numbers are the card's, not the module's** (#191). One value did not suit every
 > source. `atlas_opentrinity` holds 80 days in total, so its 120-day arm was training on ~80
 > and reporting itself as 120 — a wrong number rather than a weak one. A card now declares
-> what its source can afford, the planner caps that dataset's arms at the budget, and
-> `bench-matrix` derives `n_windows` from `test_days`.
+> what its source can afford, the planner caps that dataset's arms at the budget (so
+> `atlas_opentrinity`'s longest arm is `lb50d`), and `bench-matrix` derives `n_windows` from
+> `test_days`.
 
-Where a source cannot afford `history_days + test_days`, **the evaluation is shortened before
+Where a source cannot afford `history_days + test_days`, **the test period is shortened before
 the history is**, never below 30 days, and the card records `shortfall: true` alongside what
-was requested. Three datasets run short today: `atlas_opentrinity` (50d history + 30d
-evaluation), `pm100` (120 + 40) and `pwa_ricc` (120 + 30).
+was requested. Three benchmarked datasets run short: `atlas_opentrinity` (50 days of history
+and a 30-day test), `pm100` (120 + 40) and `pwa_ricc` (120 + 30).
 
-`bench-matrix slice` derives that extension per dataset rather than taking it as a flag, so
-the slice cannot silently disagree with the split (#143, #145). Each slice carries a
-`slice.json` recording the window it actually holds.
-
-> **Changed in #145**, from 60 days. The earlier value made the lookback exactly equal to the
-> card's `train_days`, which needed no slice extension but left the fleet inconsistent with
-> the ablation runs and the published reference recipe, both at 120. Numbers produced at 60
-> are not comparable with numbers produced at 120.
+`bench-matrix slice` derives the extension per dataset rather than taking it as a flag, so the
+slice cannot silently disagree with the split (#143, #145). Each slice carries a `slice.json`
+recording the window it actually holds.
 
 **No capping or subsampling of training data.** Each window trains on *all* jobs in its
-120-day lookback. Rationale: this is the first pass and must be rigorous and interpretable;
-capping/sampling would change results in ways we have not measured, so it is out of scope
-here. Consequence: high-rate machines produce large per-window training sets and are
-multi-hour per model — this benchmark is an **HPC
-job** (runner: later phase). Three months is the *minimum* we're confident in; future passes
-should use more.
+lookback. Capping or sampling would change results in ways we have not measured. Consequence:
+high-rate machines produce large per-window training sets and take hours per model, so the
+benchmark runs on a cluster ([HPC runner](../hpc-runner.md)).
 
 ### Training lookback: a benchmark axis, not a fixed parameter (#170)
 
-`training_lookback_days` was 120 for every dataset. Measured, that is the best value for only
-**6 of 20**: twelve want *less* history and two want more. The cost of getting it wrong is not
-marginal — on `lassen`, XGBoost scores **3,304 at a 10-day lookback against 4,434 at 120**, a
-25% swing, and at 10 days it would have beaten the random forest that won that dataset in the
-fleet. **The fixed parameter did not just cost accuracy; it decided which model won.**
+`training_lookback_days` was once 120 for every dataset. The memorization sweep of August 2026
+found that the best value for only 6 of 20 datasets: twelve wanted *less* history and two
+more. (On the current scored windows it is 5 of 20; see [ceilings](ceilings.md#causal-memorization).)
+The cost of getting it wrong was not marginal — on `lassen`, XGBoost scored **3,304 at a
+10-day lookback against 4,434 at 120**, a 25% swing, and at 10 days it would have beaten the
+random forest that won that dataset in that fleet. **The fixed parameter did not just cost
+accuracy; it decided which model won.**
 
 **Every model runs at every lookback** — `{10d, 30d, 120d}` — so the comparison is about the
 model rather than about a parameter we picked. Cost is ~1.6x, not 3x: a short lookback trains
@@ -121,15 +125,12 @@ operator could actually run, and a wrong pick costs what it costs instead of bei
 The best single arm on the same windows is reported beside it, so the size of the selection
 bias is visible rather than argued about.
 
-What the axis measured, and what the fixed value cost, is written up in
-[`lookback.md`](lookback.md).
-
 Pooling a bundle's per-window values weighted by row count reproduces its global metric
 bit-for-bit, so this is arithmetic over files already on disk and costs no compute. An earlier
 design split the windows in half — select on the first 60, score on the last 60. That is also
 unbiased, but it spends half of an already-short evaluation on selection; walk-forward keeps
-~100 of 120 windows instead of 60. That the evaluation is only 30 days long to begin with is a
-separate defect, and not one the ranking rule can fix (#191).
+~100 of 120 windows instead of 60. That the scored test is only 30 days long is a separate
+defect, and not one the ranking rule can fix (#191).
 
 **The sweep is a proxy and was validated as one.** It optimises *memorization*, not a fitted
 model, so using it to set a model's training window is an inference. Checked on two datasets
@@ -138,170 +139,120 @@ whose predictions point in opposite directions — `lassen` (short is better) an
 matched closely (25.5% measured against 20.2% predicted). Directions transfer; treat the
 magnitudes as indicative.
 
-**Slicing is now decoupled from the lookback.** The slice cuts a fixed span
-(`SLICE_HISTORY_DAYS`); a model's lookback selects within it. Previously the extension was
-`lookback − train_days`, which meant changing a dataset's lookback required re-slicing it.
-A shorter lookback now simply leaves history unused — disk, not correctness. Raising
-`SLICE_HISTORY_DAYS` is what enables lookbacks beyond 120 days; it needs a re-slice but does
-not invalidate existing results, since a 120-day lookback selects the same rows regardless of
-how much extra history the file holds.
+What the axis measured, and what the fixed value cost, is written up in
+[`lookback.md`](lookback.md).
+
+**Slicing is decoupled from the lookback.** A slice holds the card's whole history budget, and
+a model's lookback selects within it. Previously the extension was `lookback − train_days`,
+which meant changing a dataset's lookback required re-slicing it. A shorter lookback now
+simply leaves history unused — disk, not correctness.
 
 ## Window selection
 
-For each dataset we pick **one** 90-day window and justify it.
+For each dataset we pick **one** window, of the card's training and test days, and justify it.
 
 **Rule:** on the dataset's *healthy span* (submit timestamps, outer 0.1% trimmed to drop
-corrupt/epoch-era rows), place the 90-day window's **end at 80% of the span** — the mature
-era, after ramp-up and before wind-down. We deliberately **do not use the last 3 months**
-(systems wind down at end-of-life).
+corrupt/epoch-era rows), place the window's **end at 80% of the span** — the mature era, after
+ramp-up and before wind-down. We deliberately **do not use the last months** (systems wind down
+at end-of-life).
 
 **Health gate (missing-block detection):** a **run of ≥3 consecutive days with volume below
 5% of the median daily volume** counts as a *missing block* (sustained downtime or lost
 records — indistinguishable from the data, and disqualifying either way). If the anchored
 window **overlaps any missing block at all** — even clipping its leading/trailing edge — it is
-**shifted to the nearest 90-day window clear of every block**, and the shift is recorded on
-the card. (The ≥3-day rule defines what a block *is*; the window must not touch one, so it
-never ends inside the start of an outage.) If no clear window exists at this size, the window
-is flagged **unhealthy** and the dataset is escalated (seek other months / widen the window).
+**shifted to the nearest window of the same size clear of every block**, and the shift is
+recorded on the card. If no clear window exists at this size, the window is flagged
+**unhealthy** and the dataset is escalated (seek other months / widen the window).
+
+**Pinning.** Once a benchmark has run on a window, `characterize --pin-end <date>` keeps it
+there when the table is re-characterized, for example after more data is added. F-DATA's
+card is pinned this way (to 2023-09-26) since its power months joined the same dataset (#249).
 
 **Reproducibility:** the whole thing is deterministic — `hpc-oda datasets characterize
 <parquet>` regenerates the identical card from the prepared table + these parameters.
 
-Exemplar: [`fresco_stampede1`](../../datasets/cards/fresco_stampede1.md) — healthy span 2013-01-11 →
-2018-01-17; chosen window **2016-10-19 → 2017-01-16** (gap-free); the one missing block
-(2018-01-13→15) sits at the span edge, correctly outside the window.
+Exemplar: [`fresco_stampede1`](../../datasets/cards/fresco_stampede1.md) — healthy span
+2013-01-11 → 2018-01-17; window **2016-08-20 → 2017-01-16**, test period from 2016-10-19
+(gap-free); the one missing block (2018-01-13→15) sits at the span edge, correctly outside the
+window.
 
 ## Dataset roster
 
-Base: the 23 registered runtime datasets, filtered for this benchmark.
+Base: the 24 registered datasets, all of which carry a runtime target.
 
 **Deduplication — `nlr_eagle` only.** `nlr_eagle` and `nrel_eagle` are the **same physical
-machine** (NREL's Eagle), ingested from two sources (NLR home-lab export vs. NREL's OEDI
+machine** (NREL's Eagle), ingested from two sources (NLR's own export and NREL's OEDI
 submission) with heavily overlapping years. **Use `nlr_eagle`** (more recent, longer span);
 **exclude `nrel_eagle`** from all benchmarks and aggregates — including both would
-double-count one machine. `nrel_eagle` stays registered as valid data; it is only excluded
-from the benchmark roster.
+double-count one machine. `nrel_eagle` stays registered as valid data.
 
-**Targets a 90-day window** (60d train + 30d test) — a *soft* target, not a hard cutoff. A
-dataset is included if it has a healthy span that supports a meaningful rolling evaluation,
-using the largest window that fits; a span shorter than 90 days is used as-is and the reduced
-coverage is noted on the card (its earliest rolling windows get reduced lookback). A dataset is
-excluded only when its span is too short to even form the 30-day test period, or the data is
-fundamentally unsuitable. Under this:
+**The window is a target, not a hard cutoff.** A dataset is included if its healthy span
+supports a meaningful rolling evaluation, using the largest window that fits, shortened as
+[above](#benchmark-configuration) and noted on its card. A dataset is excluded only when its
+span is too short to form a 30-day test period, or the data is fundamentally unsuitable:
 
 - **Excluded — too short / unsuitable:** `adastra_mi250` (a deliberately-published ~15-day
   sample; measured ~24 days — shorter than the 30-day test period, and unhealthy) and `ic2`
   (3,599 rows total; cloud tasks, not a machine time-series).
-- **Excluded — too large for one node:** `ccin2p3_2024`. It now covers Sep–Dec 2024, but its
-  card window holds 9,969,424 rows, over the planner's `MAX_NODE_ROWS` of 8M. One window
-  worker peaked at ~110 GB on a 250 GB node, and a cell ran over 24 h, so the planner skips it
-  and lists it in each plan's `skipped`
+- **Excluded — too large for one node:** `ccin2p3_2024`. It covers Sep–Dec 2024, and its card
+  window holds 9,969,424 rows, over the planner's `MAX_NODE_ROWS` of 8M. Its earlier, larger
+  version (13.9M rows) peaked at ~110 GB per window worker on a 250 GB node, with a cell over
+  24 h, so the planner skips it and lists it in each plan's `skipped`
   ([#150](https://github.com/NatLabRockies/hpc-oda-commons/issues/150)). The card is kept,
   so the dataset is ready if a run has the memory for it
   ([#152](https://github.com/NatLabRockies/hpc-oda-commons/pull/152)).
-- **Re-curated (#153):** `fdata_fugaku` went from 3 monthly files (2023-07..09) to 7
-  (2023-03..09). Its window had started on the first day of the ingested span, so the
-  slice's 60-day lookback extension returned nothing and every rolling window trained on
-  less history than the split asks for. The longer span moves the anchored window to
-  2023-05-21..2023-08-18 with 81 days behind it, so the extension is now fully backed.
-- **Qualify as-is:** the remaining datasets. Some are *thin* (`atlas_mustang`, `pwa_kit_fh2` —
-  sparse rolling windows) or *short* (`atlas_opentrinity` — a healthy 80-day span < the 90-day
-  target, included with an 80-day window and reduced early-window lookback); all flagged on
+- **Qualify as-is:** the other 20. Some are *thin* (`atlas_mustang`, `pwa_kit_fh2` — sparse
+  rolling windows) or *short* (`atlas_opentrinity`, `pm100`, `pwa_ricc`); all flagged on
   their cards.
 
-Net benchmark roster: 20 datasets, `fdata_fugaku` among them after re-curation; `ccin2p3_2024`
-keeps its card but is never planned. Each dataset's final
-window, health, and any caveats are recorded on its card; measuring real timestamps reclassified
-several — **re-included `mit_supercloud`** (its "~1 month" hint was wrong — measured ~9 months,
-Jan–Oct 2021, healthy) and **kept `atlas_opentrinity`** on an 80-day window (the 90-day target
-is soft, and 80 healthy days are worth keeping).
+Dated notes:
+
+- **2026-08 (#153):** `fdata_fugaku` was re-curated from 3 monthly files (2023-07..09) to 7
+  (2023-03..09), because its window had started on the first day of the ingested span and the
+  lookback extension returned nothing. Since #249 it is one dataset with its power months
+  (Dec 2023–Apr 2024) too, and its runtime card is pinned to the window it ran on.
+- Measuring real timestamps reclassified two: `mit_supercloud` was re-included (its "~1 month"
+  hint was wrong — measured ~9 months, Jan–Oct 2021, healthy), and `atlas_opentrinity` was
+  kept on a shortened window (80 healthy days are worth keeping).
 
 ## Calibrating the numbers: the error ceiling
 
-A leaderboard MAE is uninterpretable alone. 11,731 on one machine and 4,006 on another says
-nothing about how much accuracy was *available* on either. `hpc-oda datasets ceiling` computes
-that bound.
+A leaderboard MAE means little without knowing how much accuracy was *available*. Each dataset's
+error ceiling — the lowest error a predictor restricted to submit-time features could reach —
+is defined, and tabulated per dataset, in [error ceilings](ceilings.md). The leaderboard's
+headroom is measured against it, and a cell shows headroom only when the floor, the baseline
+and the cell cover the same jobs
+([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)). Unlike every fitted-model
+metric in this repo, a ceiling is exactly reproducible across machines: no fitting, no BLAS,
+no thread-order summation.
 
-**The claim.** Two jobs whose submit-time features are identical cannot be told apart by any
-predictor restricted to those features. So for the feature signature `Z` and metric `M`, the
-minimum achievable error over the scored rows is `min_f (1/N) Σ M(y_i, f(z_i))`, which
-decomposes per group and has a closed form. **The minimising statistic depends on the metric** —
-the median for MAE, the mean for RMSE. Pairing them wrongly costs 17% and 12% respectively on
-`nlr_kestrel`, so they are computed as a pair.
+## The runtime card
 
-This is exact, not an estimate. A signature appearing once contributes zero error, correctly:
-a function mapping it to that value exists and is a legitimate predictor. That is what makes
-it a bound. It also means floors are **monotone in the fineness of `Z`** and reach zero when
-every row is its own group, so the analysis reports the group-size distribution alongside —
-without it a floor cannot be judged tight or vacuous.
-
-**Reproducibility.** Unlike every fitted-model metric in this repo, the ceiling is exactly
-reproducible across machines: no fitting, no BLAS, no thread-order summation. It is not
-subject to the caveat in [`known-issues.md`](../../known-issues.md).
-
-**What it revealed.** On the fleet of 2026-08-26, scored walk-forward ([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)), the
-best model captures a median **77%** of the available headroom across the 20 benchmark
-datasets. It ranges from 21% on `nlr_eagle` to 90% on `pwa_hpc2n`, which raw MAE cannot show: the two
-best MAEs, 6,956 s and 4,535 s, are within a factor of two, but one has captured a fifth of what
-was available and the other nine-tenths. MoE XGBoost is the best model on 11 datasets, the signature memorizer on 6 and
-XGBoost on 3. Alongside the bound, the tool measures *causal memorization* — predict from
-same-signature jobs that finished earlier — which is a deployable strategy rather than a bound;
-on the 2026-08-25 fleet run it beat all six fitted models on 9 of 20 datasets (#171). Sweeping
-its lookback also showed that a fixed `training_lookback_days: 120` was optimal for only 6 of 20
-datasets (#170).
-
-Per-dataset results are tracked as `docs/benchmarking/datasets/<dataset>.ceiling.json`, with a cross-dataset
-summary in [`ceilings.md`](ceilings.md).
-
-**The leaderboard** (#237) has one runtime table: a row per model, a column per dataset,
-each cell the walk-forward policy's MAE. A cell shows headroom captured, and a model an
-average across datasets, only when the floor, the baseline and the cell cover the same jobs
-([#238](https://github.com/NatLabRockies/hpc-oda-commons/issues/238)).
-- **What counts today** is the fleet that has run (plan `20260826-231908`): 30 days of test
-  in 120 × 6 h windows, at 10, 30 and 120 days of lookback, scored past the 20-window burn-in.
-  The cards ask for 90 days ([#191](https://github.com/NatLabRockies/hpc-oda-commons/issues/191)), but no fleet has run that yet; the leaderboard
-  moves to the cards' windows when one does, and the ceilings are regenerated with `--card`.
-- **The ceilings match it** (computed 2026-10-21 with `--n-windows 120 --skip-windows 20`):
-  every one of the 140 cells covers exactly its ceiling's jobs.
-- **Two caveats.** On `alcf_djc_polaris` the baseline's walk-forward pick scores 14% worse
-  than its best single lookback (7,295 s against 6,295 s), so headroom there reads high: MoE
-  XGBoost's 67% would be about 58% against the better baseline. On the other 19 datasets the
-  gap is at most 5% of the headroom. And on `atlas_opentrinity` the "120-day" lookback trained
-  on the ~50 days its slice holds ([#191](https://github.com/NatLabRockies/hpc-oda-commons/issues/191)).
-
-See [reading the leaderboard](../../how-to/interpret-results.md#reading-the-leaderboard).
-
-**Deliberately not included:** leave-one-out. It is neither the floor (the optimal function has
-no "leave out" in its definition) nor achievable (a row's peers include jobs that ran *after*
-it, so it is not causal), so it answers neither question.
-
-## The dataset card
-
-`hpc-oda datasets characterize <parquet>` emits, per dataset, `<stem>.card.json` into
-`docs/benchmarking/datasets/`: machine-readable, schema `oda.dataset_card.v0.1.0`. The
-benchmark runner reads the chosen window from it, and people read it in the dataset's
-generated card ([dataset cards](../../datasets/cards/README.md), `hpc-oda datasets cards`).
+`hpc-oda datasets characterize <parquet>` writes, per dataset, `<stem>.card.json` into
+`docs/benchmarking/datasets/`: machine-readable, schema `oda.dataset_card.v0.1.0`.
+`bench-matrix`, `recipes write`, `datasets ceiling --card` and the leaderboard read it, and
+people read it in the dataset's generated card
+([dataset cards](../../datasets/cards/README.md), `hpc-oda datasets cards`).
 
 A card records: identity + provenance (git commit, table sha256); characterization (healthy
 span, daily-volume profile, job rate, **missing-block analysis**, per-column cardinality +
 missingness, runtime distribution); and the **window decision** (dates, anchor, health
-verdict, rationale). It reuses the existing quality report's missingness definition and adds
-the temporal-health analysis that did not previously exist.
+verdict, rationale).
 
 ## Reproducing a card
 
-```
+```bash
 # from a prepared canonical parquet (data/datasets/<id>/data.parquet):
 hpc-oda datasets characterize data/datasets/<id>/data.parquet \
   --dataset-id dataset.<id> --system <System> \
   --descriptor dataset.<id> --out docs/benchmarking/datasets
 ```
 
-Knobs (defaults are the agreed methodology): `--anchor 0.80`, `--train-days 60`,
-`--test-days 30`, `--gap-min-days 3`, `--gap-floor 0.05`.
+The defaults are the agreed methodology; the [CLI reference](../../reference/cli.md) lists
+them (`--anchor`, `--train-days`, `--test-days`, `--history-days`, `--gap-min-days`,
+`--gap-floor`), and `--pin-end` keeps a window that has been run on.
 
-## Open items / next phases
+## Open items
 
-- Prepare + characterize the remaining datasets (surfaces per-dataset health).
-- Benchmark-matrix runner that consumes the cards' windows.
-- HPC runner (scheduler + GPU for the `embed` step and the heavy datasets).
+- Run the fleet on the cards' 90-day test periods, and move `RUNTIME_PROTOCOL` with it
+  ([#191](https://github.com/NatLabRockies/hpc-oda-commons/issues/191)).
