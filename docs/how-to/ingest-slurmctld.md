@@ -14,6 +14,11 @@ The adapter recognizes two slurmctld log patterns:
 - `runtime_seconds` is computed as `end_time - start_time`
 - Jobs missing either an Allocate or _job_complete event are skipped
 
+These lines carry no submit time, user or requested resources, so the table can be validated
+and inspected but not benchmarked: the rolling split orders jobs by submit time, and the models
+learn from what was requested. To benchmark, export accounting data (`sacct`) and follow
+[Benchmark your own data](benchmark-your-data.md).
+
 ## Command
 
 ```bash

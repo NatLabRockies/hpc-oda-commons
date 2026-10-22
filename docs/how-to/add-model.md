@@ -1,18 +1,36 @@
 # Add a Model
 
-In v0.1, models are implemented as in-repo Python classes and referenced by
-registry metadata and recipes.
+Models are in-repo Python classes, one folder each under `src/hpc_oda_commons/models/`. The
+registry, the model cards and the benchmark's recipes are all generated from that folder and
+the tables below, so a new model needs no hand-written registry entry.
 
 ## Minimal Steps
 
-1. Implement a model class under `src/hpc_oda_commons/models/<name>/`. Name it for its
-   method, not a task: its id is `model.<name>`, and recipes choose what it predicts.
-2. Add `model.yml` next to it: the model's title, version, class (`object`) and a
-   description of its method. The registry is built from it, the recipes that run the
-   model and its imports; describe only the method, since what the model is used for and
-   how it scores are generated.
-3. Add a recipe in `src/hpc_oda_commons/recipes/`.
-4. Add unit tests that exercise the model's public API (e.g., `fit()`/`predict()` for simple models, or `evaluate()` for rolling-window models).
+1. **The class.** Write it in `src/hpc_oda_commons/models/<name>/model.py`. Name the folder
+   for the model's method, not a task: its id is `model.<name>`, and recipes choose what it
+   predicts.
+2. **`model.yml`** beside it: `name` (the title), `version`, `object` (the class name) and a
+   `description` of the method. Describe only the method: what the model is used for, its
+   dependencies and its scores are derived from its recipes, its imports and its results.
+   [`models/baseline/model.yml`](../../src/hpc_oda_commons/models/baseline/model.yml) is an
+   example.
+3. **A runner.** Add an entry to `RUNNERS` in `src/hpc_oda_commons/benchmark/runner.py` for
+   each split method the model supports, naming the runner function and the config dataclass
+   it builds. The model card's "How it runs" section is generated from this table.
+4. **A bundled recipe.** Add at least one under `src/hpc_oda_commons/recipes/job-runtime/` or
+   `job-power/`. The registry takes the model's tasks from its recipes and refuses a model
+   with none.
+5. **The benchmark.** To run it on the published datasets and in `hpc-oda recipes write`:
+   - runtime: add its name to `RUNTIME_MODELS` in
+     `src/hpc_oda_commons/benchmarking/hpc/matrix.py`;
+   - power: add `recipes/job-power/<name>_rolling_{avg,peak}.yml` (copy another model's;
+     `recipes write` copies these for your dataset), and the Eagle, Kestrel and PM100
+     variants to run it there.
+6. **Tests** that exercise the model's public API (e.g. `fit()`/`predict()` for simple
+   models, or `evaluate()` for rolling-window models), and add a rolling model to
+   `tests/unit/test_power_targets.py` (below).
+7. **The card.** Run `hpc-oda models cards` and commit `docs/models/<name>.md`. A unit test
+   fails until you do.
 
 ## Feature eligibility
 
@@ -47,38 +65,21 @@ To support that:
 `tests/unit/test_power_targets.py` runs every rolling runner on a power target whose values
 cannot be confused with runtime; add a new rolling model to its `RUNNERS`.
 
-## Required Metadata
-
-The registry entry should include:
-1. `id`
-2. `name`
-3. `version`
-4. `problem_domain`
-5. `input_schema_version`
-6. `output_schema_version`
-7. `supported_sources`
-
 ## Reference Implementations
 
-The toolkit ships eight models, each illustrating a different complexity level:
+The [model cards](../models/README.md) list every model; each card links to its source. Good
+starting points:
 
-| Model | Package | Interface |
-|-------|---------|-----------|
-| `model.baseline` | `models/baseline/` | Simple `fit()`/`predict()` class, rolling loop in runner |
-| `model.xgboost` | `models/xgboost/` | Thin subclass of `RollingTabularModel` (`models/rolling_tabular/`) with OHE+SVD preprocessing and daily cache |
-| `model.random_forest` | `models/random_forest/` | Thin subclass of `RollingTabularModel` |
-| `model.mlp` | `models/mlp/` | Thin subclass of `RollingTabularModel` |
-| `model.tfidf_knn` | `models/tfidf_knn/` | `evaluate()` with TF-IDF vectorization; hashes once, scores window slices in parallel (`window_n_jobs`) |
-| `model.embedding_knn` | `models/embedding_knn/` | `evaluate()` over a precomputed embedding column; selectable dense top-k backend (`backends.py`) |
-| `model.moe_xgboost` | `models/moe_xgboost/` | Subclass of `RollingTabularModel` that overrides the fit/predict seam to route each job to a per-(user, wallclock-bin) expert |
-| `model.uopc` | `models/uopc/` | Per-user kNN job-power model: `evaluate_fixed()` on a fixed split, `evaluate_paper_reproduction()` / `evaluate_paper_sensitivity()` on a date cutoff |
-
-For a minimal starting point, see `models/baseline/`. For a new
-rolling tabular regressor, subclass `RollingTabularModel` in
-`models/rolling_tabular/base.py` -- the `xgboost`, `random_forest`, and `mlp`
-models share that base and differ only in the estimator they plug in. For a
-rolling-evaluation model with fully custom internal state, see
-`models/tfidf_knn/`.
+- **Simplest:** `models/baseline/`, a `fit()`/`predict()` class whose rolling loop lives in
+  the runner.
+- **A rolling tabular regressor:** subclass `RollingTabularModel` in
+  `models/rolling_tabular/base.py`. XGBoost, random forest and MLP share that base and differ
+  only in the estimator they plug in; MoE XGBoost and the signature memorizer override its
+  fit/predict seam.
+- **Fully custom rolling state:** `models/tfidf_knn/`, or `models/embedding_knn/` for a model
+  that reads a precomputed embedding.
+- **More than one protocol:** `models/uopc/` runs under a fixed split, the UoPC paper's date
+  cutoff, and the shared rolling windows.
 
 ## Running Alternate Models
 

@@ -7,13 +7,15 @@ Instructions for AI agents **using** hpc-oda-commons as a tool. If you are
 
 ## Project Overview
 
-**hpc-oda-commons** is a local-first CLI + standards toolkit for HPC Operational Data Analytics (ODA). Its benchmark predicts job runtime and job power: discovering, ingesting, analyzing and benchmarking prediction models across HPC sites.
+**hpc-oda-commons** is a local-first CLI + standards toolkit for HPC Operational Data Analytics (ODA). It discovers, prepares and benchmarks models that predict job runtime and job power, across HPC sites.
 
 ## Installation
 
 ```bash
 pip install -e ".[dev]"
 ```
+
+See [install](how-to/install.md) for the optional extras.
 
 ## Workflow
 
@@ -38,107 +40,60 @@ Data](#ingesting-parquet-data)), and `hpc-oda validate` checks the result.
 
 ## Key Commands
 
-| Command | What it does | Output location |
-|---------|-------------|-----------------|
-| `hpc-oda ingest jobs-parquet --path <parquet>` | Transform Parquet with interactive wizard | `data/ingested/jobs_parquet/<run>/` |
-| `hpc-oda ingest slurmctld --path <log>` | Parse slurmctld logs to canonical Parquet | `data/ingested/slurmctld/<run>/` |
-| `hpc-oda validate <path>` | Validate artifacts against schemas | `*.quality.json` next to input |
-| `hpc-oda embed <parquet> --out <path> --model <stub\|hf-id>` | Serialize + encode rows into a dense `embedding` column | `<out>` + `<out>.manifest.json` |
-| `hpc-oda analyze --data <path>` | Quick baseline analysis with HTML report | `reports/analysis-<id>/` |
-| `hpc-oda benchmark <recipe.yml>` | Run a benchmark recipe | `runs/benchmark-<timestamp>/` |
-| `hpc-oda benchmark -v <recipe.yml>` | Benchmark with verbose progress | Same, with console output |
-| `hpc-oda leaderboard --runs <dir> --out <dir>` | One leaderboard per target, plus every run | `leaderboard.json` + `index.html` + `runs.html` |
-| `hpc-oda models cards` | A card per registered model, generated from the code and the leaderboard | `docs/models/<model>.md` + `README.md` |
-| `hpc-oda datasets cards` | A card per bundled dataset: source and DOI, curation, characterization, windows, ceilings and results, generated | `docs/datasets/cards/<dataset>.md` + `README.md` |
-| `hpc-oda recipes write <descriptor> --card <card> --out <dir>` | Every model's recipes for a dataset of your own, on the benchmark's protocol, plus the embed and ceiling commands | `<dir>/runtime/*.yml`, `<dir>/power/*.yml` |
-| `hpc-oda record-hash` | Record source hash for current git commit | `integrity/known_hashes.json` |
-| `hpc-oda browse` | List registry entries (adapters, models, recipes) | Console output |
-| `hpc-oda info <entry_id>` | Show metadata for a registry entry | Console output |
+| Command | What it does |
+|---------|-------------|
+| `hpc-oda browse`, `hpc-oda info <id>` | List the registry's models, datasets, recipes and adapters; show one |
+| `hpc-oda datasets prepare <descriptor>` | Fetch (or, with `--from`, read) a dataset and write its canonical table |
+| `hpc-oda recipes write <descriptor> --card <card> --out <dir>` | Every model's recipes for a dataset, on the benchmark's protocol |
+| `hpc-oda benchmark <recipe.yml>` | Run one recipe; `-v` prints progress |
+| `hpc-oda leaderboard --runs <dir> --out <dir>` | One leaderboard per target, plus a page listing every run |
+| `hpc-oda validate <path>` | Check a bundle, manifest or table against its schema |
 
-## Recipes
+The [CLI reference](reference/cli.md) lists every command, its options and the environment
+variables. Most write under the current directory: `data/`, `runs/`, `leaderboard/`,
+`reports/`, all gitignored in a checkout.
 
-Bundled recipes are at `src/hpc_oda_commons/recipes/job-runtime/`:
-- `baseline_tiny.yml` -- baseline model, fixed 80/20 split (fast, good for smoke tests)
-- `xgb_hourly_recent.yml` -- XGBoost, rolling evaluation (slower, production-realistic)
-- `alt_model_example.yml` -- XGBoost with smaller window (faster iteration)
-- `mlp_rolling.yml` -- feed-forward neural network, rolling evaluation
-- `embedding_knn_rolling.yml` -- embedding-space kNN, rolling evaluation (needs an embedded dataset; see `hpc-oda embed`)
-- `uopc_maxpcon.yml` -- UoPC user-based power prediction, fixed chronological split
-- `../job-power/uopc_paper_reproduction.yml` / `uopc_paper_sensitivity.yml` -- the UoPC paper protocol on F-DATA (`split.method: cutoff`; prepare `datasets/descriptors/fdata_fugaku.yml` first); see `docs/benchmarking/power/uopc.md`
+## Models and recipes
 
-v0.1 models:
-- `model.baseline` -- mean predictor (supports fixed and rolling splits)
-- `model.xgboost` -- XGBoost with OHE+SVD preprocessing (rolling splits)
-- `model.tfidf_knn` -- TF-IDF text vectorization + kNN regression (rolling splits)
-- `model.embedding_knn` -- kNN over a precomputed dense embedding column (rolling splits; see `hpc-oda embed`)
-- `model.moe_xgboost` -- mixture of experts: one XGBoost per (user, wallclock bin), routed inside the shared rolling window (rolling splits)
-- `model.random_forest` -- Random Forest, uses the shared `rolling_tabular` OHE+SVD preprocessing (rolling splits)
-- `model.mlp` -- feed-forward neural network, uses the shared `rolling_tabular` preprocessing (rolling splits)
-- `model.uopc` -- user-based online power prediction (UoPC), per-user kNN (fixed chronological split, the paper protocol with a cutoff split, or the shared rolling windows)
+The [model cards](models/README.md) list every model: what it predicts, the splits it supports,
+its settings and its results. Every model predicts the column its recipe's metrics target:
+`runtime_seconds` for runtime, or a power column such as `avgpcon_per_node`
+([Predict job power](how-to/predict-power.md)).
 
-Every runtime model predicts the column its recipe's metrics target, `runtime_seconds` by default. Point it at `avgpcon_per_node` or `maxpcon_per_node` to predict power; `recipes/job-power/<model>_rolling_{avg,peak}.yml` do this for every model. See `docs/how-to/predict-power.md`.
+`hpc-oda browse --type recipe` lists the bundled recipes, and the
+[recipes reference](reference/recipes.md) explains every key. For a dataset of your own, let
+`hpc-oda recipes write` write the recipes rather than copying them by hand. For a one-off
+study, copy a bundled recipe and change it:
 
-To create a custom recipe, copy a bundled one and modify the dataset path, split parameters, or model selection:
 ```bash
 cp src/hpc_oda_commons/recipes/job-runtime/baseline_tiny.yml my_recipe.yml
-# Edit my_recipe.yml
+# Edit my_recipe.yml: the dataset's table_path (and window), the model, the split
 hpc-oda benchmark my_recipe.yml
 ```
 
 ## Ingesting Parquet Data
 
-The jobs-parquet ingest uses an interactive wizard that profiles columns, suggests mappings, and asks for timestamp/duration/memory formats. Agents should prompt the user to run it interactively:
+The jobs-parquet ingest uses an interactive wizard that profiles columns, suggests mappings, and asks for timestamp, duration and memory formats. Agents should ask the user to run it:
 
 ```bash
 hpc-oda ingest jobs-parquet --path /path/to/jobs.parquet
 ```
 
-The wizard will:
-1. Show a preview of the input Parquet (columns, types, sample values)
-2. For each canonical field, suggest a source column and ask for confirmation
-3. Ask for timestamp formats (iso8601, epoch_s, etc.) and duration units (seconds, minutes, etc.)
-4. For memory fields, accept a fixed unit (MB, GB, etc.) or `slurm` to parse SLURM-format strings like `160G`
-5. Offer to hash sensitive fields (user, account, or any mapped field)
-6. Optionally filter rows by job state (e.g., keep only COMPLETED and TIMEOUT)
-7. Write a reusable `mapping.yml` alongside the output
+It writes a reusable `mapping.yml`. Later ingests of the same layout can run unattended:
 
-Once a mapping exists, subsequent ingests can be fully automated:
 ```bash
 hpc-oda ingest jobs-parquet --path new_data.parquet --mapping data/ingested/jobs_parquet/<prior-run>/mapping.yml --non-interactive
 ```
 
-See `docs/how-to/ingest-jobs-parquet.md` for the full mapping spec format and supported transformations.
+See [Ingest jobs Parquet exports](how-to/ingest-jobs-parquet.md). To benchmark the data, a
+dataset descriptor is the better route ([Benchmark your own data](how-to/benchmark-your-data.md)).
 
 ## Reading Results
 
-A benchmark produces three files in `runs/<run-id>/`:
-- `result.json` -- headline metrics (MAE, RMSE), model/dataset metadata, integrity, provenance
-- `metrics.json` -- detailed per-window metrics (for rolling benchmarks)
-- `provenance.json` -- Python version, package versions, input file hashes, git commit, source hash
+A benchmark writes `result.json` (the scores, model, dataset and integrity), `metrics.json`
+(per-window detail) and `provenance.json` (the environment, code and input hashes).
+[Interpreting results](how-to/interpret-results.md) explains each.
 
-The key fields in `result.json`:
-```json
-{
-  "metrics": {"mae": 350.4, "rmse": 412.7},
-  "model": {"id": "model.baseline", "version": "0.1.0"},
-  "dataset": {"hash": "e3b0c44..."},
-  "integrity": {"code_hash": "abc123...", "validated": true, "git_commit": "def456..."}
-}
-```
-
-Two results with the same `dataset.hash` used the same input data. Two results with the same `integrity.code_hash` and `validated: true` used identical, test-validated code. Both conditions together mean the results are fully comparable.
-
-## Environment Variables
-
-| Variable | Purpose |
-|----------|---------|
-| `HPC_ODA_OFFLINE` | Set to `1` for offline mode (required for integration tests) |
-| `HPC_ODA_HASH_SALT` | Salt for identifier hashing during ingestion |
-
-## Output Paths
-
-All output directories are gitignored:
-- `data/ingested/<adapter>/<run_id>/` -- Parquet table, manifest, quality report
-- `runs/<run_id>/` -- Result bundle (result.json, metrics.json, provenance.json)
-- `reports/analysis-<id>/` -- Analysis report (JSON + HTML)
-- `leaderboard/` -- Leaderboard output (leaderboard.json, index.html, runs.html)
+Two results with the same `dataset.hash` used the same input data. Two with the same
+`integrity.code_hash` and `validated: true` used identical, test-validated code. Both together
+mean the results are fully comparable.

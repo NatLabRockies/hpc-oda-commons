@@ -1,6 +1,6 @@
 # Predict job power with any model
 
-Every runtime-prediction model can predict job power instead: same model, same rolling
+Every model can predict job power as well as runtime: same model, same rolling
 evaluation, different target ([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204)).
 This page shows how, and what is guaranteed along the way.
 
@@ -60,25 +60,21 @@ for sources with impossible readings such as Eagle's
 **Which node count.** Divide by the nodes the power was summed over. For PM100 that is the
 allocated nodes. For F-DATA it is the **requested** nodes (`num_nodes_req`): Fugaku's
 allocated count (`nnuma`) can be padded past the nodes a job runs on, while its power sums
-only those. In the UoPC test months, 137k jobs (8.6%) request 1 node and 48 cores but show
-`nnuma` = 48, and their ~91 W would read as 1.9 W per allocated node. The UoPC paper
-divides by `nnuma`. Our [paper reproduction](../benchmarking/power/uopc.md#nodes-requested-not-allocated)
+only those, so dividing by `nnuma` understates many jobs' power several-fold. The UoPC
+paper divides by `nnuma`. Our [paper reproduction](../benchmarking/power/uopc.md#nodes-requested-not-allocated)
 divides by requested nodes, and keeps the paper's divisor only for comparison.
 
 ## Datasets with power
 
-| Dataset | Window | Power columns |
-|---|---|---|
-| `dataset.fdata_fugaku` | Fugaku, Mar–Sep 2023 and Dec 2023–Apr 2024 | `avgpcon`, `maxpcon`, per node, plus F-DATA's job `embedding`; rows filtered on runtime only |
-| `dataset.pm100` | Marconi100, May–Oct 2020 | mean and peak of the job's node-power trace, per node; rows filtered on runtime only |
-| `dataset.nlr_eagle` | Eagle, 2018-11 to 2024-06 | average only: the job's node energy over its runtime, per node used; rows filtered on runtime only |
-| `dataset.nlr_kestrel` | Kestrel, 2023-08 to 2025-12 | average only, CPU nodes: Slurm job energy over runtime, per node used; null for jobs that shared their node and for GPU jobs (no energy); rows filtered on runtime only |
+Four bundled datasets carry a power target. Each one's
+[dataset card](../datasets/cards/README.md) gives its span, its power columns and how they were
+derived, and its results: F-DATA (Fugaku), PM100 (Marconi100), NLR Eagle and NLR Kestrel.
 
 Sources that record power as a trace of samples are reduced with `type: list_mean` or
 `type: list_max`. Sources that record energy instead convert it with `type: energy` and
-divide by runtime (Eagle). Adastra records per-node job energy that is not mapped yet (it
-needs near-zero readings treated as missing,
-[#207](https://github.com/NatLabRockies/hpc-oda-commons/issues/207)); see [curation status](../datasets/curation-status.md#power-columns) and the
+divide by runtime (Eagle, Kestrel). Adastra records per-node job energy that is not mapped yet
+(it needs near-zero readings treated as missing,
+[#207](https://github.com/NatLabRockies/hpc-oda-commons/issues/207)); see the
 [power sources audit](../datasets/power-sources.md).
 
 ## Run it
@@ -89,33 +85,22 @@ hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/xgboost_rolling_avg.yml
 hpc-oda leaderboard --runs runs --out leaderboard
 ```
 
-`recipes/job-power/<model>_rolling_{avg,peak}.yml` exist for eight models, UoPC
-included (all but MLP, which is left out of the benchmark as it is for runtime), on one
-shared protocol (89 daily windows from ~2024-02-01, 60 days of lookback,
-MAE/RMSE/MAPE/R²). Rolling recipes may report `mape` and `r2`; they are computed over all
-scored rows (arm ranking still refuses to pool them from windows).
+`recipes/job-power/` holds every model's power recipes except MLP's, which has none, on one
+shared protocol ([power methodology](../benchmarking/power/methodology.md#benchmark-configuration)):
 
-On Eagle and Kestrel, `recipes/job-power/<model>_rolling_avg_{eagle,kestrel}.yml` run the
-same eight models on the same split shape, average power only. The split tests the days before
-a table's last submit, so each table is cut to its benchmark period first, keeping every job
-that overlaps it:
+- `<model>_rolling_{avg,peak}.yml` on F-DATA;
+- `<model>_rolling_avg_{eagle,kestrel}.yml` on Eagle and Kestrel, average power only;
+- `<model>_rolling_{avg,peak}_pm100.yml` on PM100.
 
-```bash
-hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/nlr_eagle.yml
-hpc-oda datasets slice data/datasets/nlr_eagle/data.parquet \
-  --start 2023-05-01 --end 2023-09-30 --out data/windows/nlr_eagle_power/data.parquet
-hpc-oda benchmark src/hpc_oda_commons/recipes/job-power/xgboost_rolling_avg_eagle.yml
-```
+The recipes read the prepared tables directly. Those on F-DATA, Eagle and Kestrel declare
+the days they read (`dataset.window`); PM100's read the whole table. The two embedding models
+are the exception where a source has no job embedding (Eagle, Kestrel, PM100): they read a
+copy of the table with an embedding added by `hpc-oda embed`. Each such recipe's header gives the slice and embed commands. Run the embed
+step in a separate environment with the `embed` extra
+([why](../known-issues.md#note--on-macos-torch-and-xgboost-crash-in-one-process)).
 
-Neither source has a job embedding, so UoPC and embedding kNN read the slice with one
-computed by `hpc-oda embed`. Run that step in a separate environment with the `embed`
-extra ([why](../known-issues.md#note--on-macos-torch-and-xgboost-crash-in-one-process)).
-Each recipe's header gives its system's slice, and its embed step if it has one. Results are in
-[Power prediction on Eagle and Kestrel](../benchmarking/power/results.md#eagle-and-kestrel).
-
-On PM100, `recipes/job-power/<model>_rolling_{avg,peak}_pm100.yml` run them on both targets.
-PM100's prepared table needs no slice; UoPC and embedding kNN read it with an embedding added
-(`data/windows/pm100_power_embedded/`). Results: [PM100](../benchmarking/power/results.md#pm100).
+Rolling recipes may report `mape` and `r2` as well as MAE and RMSE; they are computed over all
+scored rows. Results are in [the power benchmark](../benchmarking/power/results.md).
 
 The leaderboard has one table per target, so runtime and power results in one runs folder
 are never ranked against each other. Each power cell is headroom captured against the

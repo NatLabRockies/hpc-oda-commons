@@ -21,8 +21,10 @@ order, so they work as written.
 ## Before you start
 
 - **Install the toolkit** from a checkout of this repository ([install](install.md)). The two
-  embedding-based models (Embedding + kNN and UoPC) also need the `embed` extra:
-  `pip install -e ".[dev,embed]"`.
+  embedding-based models (Embedding + kNN and UoPC) also need an embedding, which step 6
+  computes with the `embed` extra. Install that extra in a second environment, used for that
+  step only: on macOS, torch and XGBoost crash in one process
+  ([known issues](../known-issues.md#note--on-macos-torch-and-xgboost-crash-in-one-process)).
 - **Make a project folder** to work in, and set `REPO` to your checkout. Every command below
   runs from the project folder.
 
@@ -39,10 +41,11 @@ REPO=/path/to/hpc-oda-commons
     the requested time, nodes and cores.
 
   Power is optional: either the job's energy or its average power, plus its node count.
-- **How much data.** About seven months or more. The runtime window needs 120 days of history
-  behind a 90-day evaluation. The leaderboard scores the last 30 days of that evaluation.
-  The power benchmark tests the last 89 days with 60 days of history before them. With less
-  data, the window shrinks, and the card says so.
+- **How much data.** About seven months or more: the runtime window is a long test period
+  with months of history behind it, and the power benchmark tests about three months after
+  two of history. The [runtime](../benchmarking/runtime/methodology.md#benchmark-configuration)
+  and [power](../benchmarking/power/methodology.md#benchmark-configuration) methodology pages
+  give the exact windows. With less data, the window shrinks, and the card says so.
 
 The project folder ends up like this:
 
@@ -148,11 +151,12 @@ This writes `benchmark/datasets/example_cluster.card.json`, the dataset's runtim
 
 - **The characterization:** the healthy span, the daily job counts, any missing blocks
   (outages, gaps in the export) and the runtime distribution.
-- **The runtime window:** 60 days of training and a 90-day evaluation. The window ends at
-  80% of the healthy span and is moved clear of any missing block. It is marked unhealthy
-  if no clear window exists.
+- **The runtime window:** 60 days of training and a 90-day test period, with 120 days of
+  history for the longest lookback. The window ends at 80% of the healthy span and is moved
+  clear of any missing block. It is marked unhealthy if no clear window exists.
 
-The runtime benchmark uses this window. Once a benchmark has run on it, keep it: if you
+The runtime benchmark uses this window. Today's runtime leaderboard scores the last 30 days of
+the test period ([why](../benchmarking/runtime/methodology.md#benchmark-configuration)). Once a benchmark has run on it, keep it: if you
 re-characterize after adding data, pass `--pin-end` with its end date and the window stays
 put.
 
@@ -231,7 +235,7 @@ for recipe in recipes/runtime/*.yml recipes/power/*.yml; do
 done
 ```
 
-Each run writes one result bundle. The made-up export's 32 runs take about six minutes on a
+Each run writes one result bundle. On the made-up export, all of them take about six minutes on a
 laptop, MLP the longest. Time grows with the number of jobs. A dataset of a few million jobs
 is better run on a cluster node: copy the project folder there and run the same loop, or
 submit one job per recipe. Each run is independent. Add `-v` to `hpc-oda benchmark` to see
@@ -270,8 +274,9 @@ open leaderboard/index.html   # xdg-open on Linux
 
 `index.html` has one table per target, a row per model and a column for your dataset. It's
 the same form as the published leaderboard. `runs.html` lists every run, and gives the reason
-for any it didn't count: a run that isn't on the protocol, a lookback the card can't express,
-or a missing ceiling.
+for any it didn't count, such as a run on other windows or another lookback than the
+benchmark's, or a power recipe whose folder wasn't passed with `--recipes`. A run with no
+ceiling still counts; it shows its error without headroom.
 
 ## 11. Make your dataset's card
 
@@ -293,14 +298,10 @@ Regenerate it after new runs.
 
 ## 12. Read the results
 
-- **Headroom** is the share of the possible improvement a model captures: (window mean's
-  error − model's error) / (window mean's error − the ceiling).
-  - 0% is no better than predicting each window's mean.
-  - 100% reaches the ceiling.
-  - A negative value, shown in red, is worse than the mean.
-
-  Because it's measured against each dataset's own ceiling, headroom compares across
-  datasets, unlike raw error. So you can set your dataset beside the published columns:
+- **Headroom** is the share of the possible improvement a model captures, from the window
+  mean's error (0%) to the ceiling (100%); a negative value, in red, is worse than the mean
+  ([how it's computed](interpret-results.md#reading-the-leaderboard)). Because it's measured
+  against each dataset's own ceiling, headroom compares across datasets, unlike raw error. So you can set your dataset beside the published columns:
   if a model's headroom on your data is far below its published average, your jobs are
   harder for it.
 - **MAE** is the average error in the target's units: a duration for runtime, and watts

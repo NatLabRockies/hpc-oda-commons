@@ -9,6 +9,9 @@ substitutions keep it fast and offline, and nothing else changes:
   embedding models) instead of all of them; `tests/unit/test_recipe_writer.py` checks the
   full set;
 - there's no browser to `open`.
+
+The embed and ceiling commands the guide shows are the ones `recipes write` prints; the test
+checks that they still are.
 """
 
 from __future__ import annotations
@@ -53,6 +56,12 @@ def _as_tested(block: str) -> str:
     return block
 
 
+def _commands(block: str) -> list[str]:
+    """A block's commands, continuation lines joined and whitespace collapsed."""
+    joined = block.replace("\\\n", " ")
+    return [" ".join(line.split()) for line in joined.splitlines() if line.strip()]
+
+
 def test_the_guide_marks_what_it_skips() -> None:
     blocks = guide_blocks()
     assert len(blocks) >= 10
@@ -66,7 +75,13 @@ def test_the_guide_runs_as_written(tmp_path: Path) -> None:
         "REPO": str(ROOT),
         "PATH": f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}",
     }
+    printed: set[str] = set()
     for block in guide_blocks():
+        if printed and ("hpc-oda embed" in block or "hpc-oda datasets ceiling" in block):
+            missing = [c for c in _commands(block) if c not in printed]
+            assert not missing, (
+                f"the guide's commands differ from what recipes write prints: {missing}"
+            )
         done = subprocess.run(
             ["bash", "-euo", "pipefail", "-c", _as_tested(block)],
             cwd=tmp_path,
@@ -78,6 +93,8 @@ def test_the_guide_runs_as_written(tmp_path: Path) -> None:
         assert done.returncode == 0, (
             f"{block}\n--- stdout\n{done.stdout}\n--- stderr\n{done.stderr}"
         )
+        if "hpc-oda recipes write" in block:
+            printed = {" ".join(line.split()) for line in done.stdout.splitlines()}
 
     board = json.loads((tmp_path / "leaderboard" / "leaderboard.json").read_text())
     assert board["excluded"] == []
