@@ -1,10 +1,11 @@
 # UoPC user-based kNN recipe for Fugaku max job power (maxpcon) prediction.
 # Related work: https://ieeexplore.ieee.org/abstract/document/11017729
-# Uses raw Fugaku parquet columns (usr, jnam, cnumr, nnumr, edt, maxpcon).
+# The Commons adaptation on a fixed split; the paper's own protocol is
+# uopc_paper_reproduction.yml. Prepare the dataset first:
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/fdata_fugaku.yml
 #
-# Place raw Fugaku data at:
-#   data/fugaku/24_04.parquet
-# (relative to the repo root when running `hpc-oda benchmark`)
+# It reads April 2024 of the prepared F-DATA table, the month the example once read from a
+# hand-placed file.
 
 recipe_id: recipe.job_power.uopc_fugaku_maxpcon
 problem_domain:
@@ -13,8 +14,10 @@ problem_domain:
 schema_version: oda.job.v0.2.0
 
 dataset:
-  id: fugaku_24_04
-  table_path: data/fugaku/24_04.parquet
+  id: fdata_fugaku
+  table_path: data/datasets/fdata_fugaku/data.parquet
+  window: { start: "2024-04-01", end: "2024-04-30" }
+  require_nonnull: [maxpcon]
 
 model:
   id: model.uopc

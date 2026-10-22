@@ -130,6 +130,7 @@ Columns named in its settings:
 
 | Recipe | Target | Split | Dataset |
 |---|---|---|---|
+| [`recipe.job_power.uopc_fugaku_maxpcon`](../../src/hpc_oda_commons/recipes/job-power/uopc_maxpcon.yml) | `maxpcon` | `fixed` | `fdata_fugaku` |
 | [`recipe.job_power.uopc_paper_reproduction`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku` |
 | [`recipe.job_power.uopc_paper_reproduction_paper_setup`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction_paper_setup.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku` |
 | [`recipe.job_power.uopc_paper_reproduction_unpadded`](../../src/hpc_oda_commons/recipes/job-power/uopc_paper_reproduction_unpadded.yml) | `avgpcon_per_node` | `cutoff` | `fdata_fugaku` |
@@ -141,7 +142,6 @@ Columns named in its settings:
 | [`recipe.job_power.uopc_rolling_avg_pm100`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_avg_pm100.yml) | `avgpcon_per_node` | `rolling` | `pm100` |
 | [`recipe.job_power.uopc_rolling_peak`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_peak.yml) | `maxpcon_per_node` | `rolling` | `fdata_fugaku` |
 | [`recipe.job_power.uopc_rolling_peak_pm100`](../../src/hpc_oda_commons/recipes/job-power/uopc_rolling_peak_pm100.yml) | `maxpcon_per_node` | `rolling` | `pm100` |
-| [`recipe.job_power.uopc_fugaku_maxpcon`](../../src/hpc_oda_commons/recipes/job-runtime/uopc_maxpcon.yml) | `maxpcon` | `fixed` | `fugaku_24_04` |
 
 ## Source
 

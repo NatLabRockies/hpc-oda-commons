@@ -178,7 +178,7 @@ Columns named in its settings:
 | [`recipe.job_power.moe_xgboost_rolling_peak`](../../src/hpc_oda_commons/recipes/job-power/moe_xgboost_rolling_peak.yml) | `maxpcon_per_node` | `rolling` | `fdata_fugaku` |
 | [`recipe.job_power.moe_xgboost_rolling_peak_pm100`](../../src/hpc_oda_commons/recipes/job-power/moe_xgboost_rolling_peak_pm100.yml) | `maxpcon_per_node` | `rolling` | `pm100` |
 | [`recipe.job_runtime.kestrel_moe_best_rolling`](../../src/hpc_oda_commons/recipes/job-runtime/kestrel_moe_best_rolling.yml) | `runtime_seconds` | `rolling` | `nlr_kestrel` |
-| [`recipe.job_runtime.moe_xgboost_rolling`](../../src/hpc_oda_commons/recipes/job-runtime/moe_xgboost_rolling.yml) | `runtime_seconds` | `rolling` | `fugaku_24_04` |
+| [`recipe.job_runtime.moe_xgboost_rolling`](../../src/hpc_oda_commons/recipes/job-runtime/moe_xgboost_rolling.yml) | `runtime_seconds` | `rolling` | `fdata_fugaku` |
 
 ## Source
 

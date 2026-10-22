@@ -39,8 +39,8 @@ _FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "maxpcon": ("maxpcon",),
     "user": ("user", "usr"),
     "name": ("name", "jnam"),
-    "processors_requested": ("processors_requested", "cnumr"),
-    "nodes_requested": ("nodes_requested", "nnumr"),
+    "processors_requested": ("processors_requested", "num_cores_req", "cnumr"),
+    "nodes_requested": ("nodes_requested", "num_nodes_req", "nnumr"),
     "end_time": ("end_time", "edt"),
     # Canonical oda.job name first; raw F-DATA ``nnuma`` for hand-placed files.
     "num_nodes_alloc": ("num_nodes_alloc", "nnuma"),
@@ -278,6 +278,24 @@ def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def _newest_first(
+    rows: list[dict[str, Any]], keys: list[float], theta: int
+) -> list[dict[str, Any]]:
+    """The ``theta`` newest of ``rows``, newest first: what a stable descending sort of the
+    whole list by ``keys`` would put first.
+
+    ``rows`` is oldest first and ``keys`` (their end times) never decrease. Only the tail
+    needs sorting: the last ``theta`` rows, plus any earlier ones tied with the oldest of
+    them, which a stable sort keeps in their original order. That is the same rows in the
+    same order as sorting the whole history, at a cost that doesn't grow with it.
+    """
+    start = max(0, len(rows) - theta)
+    while start > 0 and keys[start - 1] == keys[start]:
+        start -= 1
+    tail = sorted(range(start, len(rows)), key=lambda i: keys[i], reverse=True)
+    return [rows[i] for i in tail[:theta]]
+
+
 def _end_time_sort_key(row: dict[str, Any], *, field: str) -> float:
     raw = row.get(field)
     if raw is None:
@@ -460,10 +478,20 @@ class UopcModel:
         train_rows = supervised[:n_train]
         test_rows = supervised[n_train:] if n_train < len(supervised) else []
 
+        # Each user's history, oldest first, with its end-time keys beside it. Rows arrive in
+        # end-time order (train, then test), so appending keeps every list sorted and a
+        # job's context never needs a sort of the whole history (#259).
         history_by_user: dict[str, list[dict[str, Any]]] = {}
-        for row in train_rows:
-            user = str(_feature_value(row, cfg.user_field) or "")
+        keys_by_user: dict[str, list[float]] = {}
+
+        def _remember(user: str, row: dict[str, Any]) -> None:
             history_by_user.setdefault(user, []).append(row)
+            keys_by_user.setdefault(user, []).append(
+                _end_time_sort_key(row, field=cfg.order_by_field)
+            )
+
+        for row in train_rows:
+            _remember(str(_feature_value(row, cfg.user_field) or ""), row)
 
         y_true: list[float] = []
         y_pred: list[float] = []
@@ -478,12 +506,9 @@ class UopcModel:
 
         for test_row in test_iter:
             user = str(_feature_value(test_row, cfg.user_field) or "")
-            history = list(history_by_user.get(user, []))
-            history.sort(
-                key=lambda row: _end_time_sort_key(row, field=cfg.order_by_field),
-                reverse=True,
+            context = _newest_first(
+                history_by_user.get(user, []), keys_by_user.get(user, []), cfg.theta
             )
-            context = history[: cfg.theta]
 
             # Online evaluation: every test job is appended to its user's history
             # after being seen, so it becomes context for that user's later jobs --
@@ -491,13 +516,13 @@ class UopcModel:
             # and is intentional, not train/test leakage.
             if len(context) < cfg.k:
                 rows_skipped += 1
-                history_by_user.setdefault(user, []).append(test_row)
+                _remember(user, test_row)
                 continue
 
             pred = self._predict_one(context, test_row)
             y_true.append(float(_finite_target(test_row, cfg.target_field)))
             y_pred.append(pred)
-            history_by_user.setdefault(user, []).append(test_row)
+            _remember(user, test_row)
 
         if not y_true:
             raise ValueError("No test rows produced scored predictions.")

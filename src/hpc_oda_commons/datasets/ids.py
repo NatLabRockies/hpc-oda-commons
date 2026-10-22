@@ -16,3 +16,19 @@ def legacy_dataset_ids(dataset_id: str) -> tuple[str, ...]:
     if prefix != "dataset" or not name or "." in name:
         return ()
     return tuple(f"dataset.{segment}.{name}" for segment in _RETIRED_TASK_SEGMENTS)
+
+
+def dataset_name(dataset_id: str) -> str:
+    """The short name a recipe, a bundle and a card use for a dataset (``lassen``).
+
+    Registry ids (``dataset.lassen``) and the ids from before #249
+    (``dataset.job_runtime.lassen``) give the same name, so a recipe may spell its dataset
+    either way. Any other id (a path, a free-form label) is returned unchanged.
+    """
+    prefix, _, rest = dataset_id.partition(".")
+    if prefix != "dataset" or not rest:
+        return dataset_id
+    segment, _, name = rest.partition(".")
+    if name and segment in _RETIRED_TASK_SEGMENTS and "." not in name:
+        return name
+    return rest if "." not in rest else dataset_id

@@ -6,6 +6,7 @@ from typing import Any
 
 import yaml
 
+from hpc_oda_commons.datasets.ids import dataset_name
 from hpc_oda_commons.kernel.validate import SchemaValidationError, validate_json
 from hpc_oda_commons.models.ids import canonical_model_id
 
@@ -25,6 +26,11 @@ def load_recipe(recipe_path: Path, *, validate: bool = True) -> dict[str, Any]:
     model = payload.get("model")
     if isinstance(model, dict) and isinstance(model.get("id"), str):
         model["id"] = canonical_model_id(model["id"])
+    # One form for a recipe's dataset: its short name, as bundles, cards and the leaderboard
+    # use it. ``dataset.<name>`` is accepted and read as ``<name>``.
+    dataset = payload.get("dataset")
+    if isinstance(dataset, dict) and isinstance(dataset.get("id"), str):
+        dataset["id"] = dataset_name(dataset["id"])
     if validate:
         validate_recipe(payload, path=recipe_path)
     return payload

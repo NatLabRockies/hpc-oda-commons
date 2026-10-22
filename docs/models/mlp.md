@@ -84,7 +84,7 @@ Columns named in its settings:
 
 | Recipe | Target | Split | Dataset |
 |---|---|---|---|
-| [`recipe.job_runtime.mlp_rolling`](../../src/hpc_oda_commons/recipes/job-runtime/mlp_rolling.yml) | `runtime_seconds` | `rolling` | `fugaku_24_04` |
+| [`recipe.job_runtime.mlp_rolling`](../../src/hpc_oda_commons/recipes/job-runtime/mlp_rolling.yml) | `runtime_seconds` | `rolling` | `fdata_fugaku` |
 
 ## Source
 

@@ -27,14 +27,14 @@ model, UoPC included, on one shared rolling protocol ([methodology](methodology.
 
 | | `fixed` — the Commons adaptation | `cutoff` — the paper protocol |
 |---|---|---|
-| Recipe | `job-runtime/uopc_maxpcon.yml` (a power recipe in the runtime folder, #259) | `job-power/uopc_paper_reproduction.yml`, `uopc_paper_sensitivity.yml` |
+| Recipe | `job-power/uopc_maxpcon.yml` | `job-power/uopc_paper_reproduction.yml`, `uopc_paper_sensitivity.yml` |
 | Target | `maxpcon` (W, whole job) | `avgpcon` **and** `maxpcon` per **requested** node (the paper: per allocated node) |
 | Features | job name (label-encoded), cores and nodes requested | F-DATA's job `embedding` + `balanced` log2 nodes and frequency (the paper: one embedded string) |
 | Predictor | kNN regressor (mean of the k neighbours) | the **median** of the k neighbours (the authors' tool: a kNN classifier's vote over whole watts) |
 | Test set | last 20% of jobs by end time | every job submitted on or after `test_start` |
 | History for a test job | every earlier job by that user, by end time | that user's jobs that **finished before it was submitted** |
 | Context | newest `theta` = 50 | newest `theta` = 500 |
-| Data | a hand-placed raw Fugaku file | `dataset.fdata_fugaku` via `datasets prepare`, its Dec 2023–Apr 2024 window |
+| Data | `dataset.fdata_fugaku` via `datasets prepare`, April 2024 | `dataset.fdata_fugaku` via `datasets prepare`, its Dec 2023–Apr 2024 window |
 
 The adaptation is unchanged by this work. A third mode, `split.method: rolling`, scores the
 same model on the shared rolling windows next to every other model

@@ -157,7 +157,11 @@ def test_recipe_rejects_an_unknown_predictor() -> None:
 def test_only_the_paper_comparison_recipes_vote() -> None:
     """Every bundled UoPC recipe says its predictor, so the leaderboard can tell a bundle
     that voted from one that did not (#241)."""
-    predictors = {r.name: load_recipe(r)["split"]["predictor"] for r in RECIPES.glob("uopc_*.yml")}
+    # The fixed adaptation (uopc_maxpcon.yml) has no predictor choice; it runs a regressor.
+    recipes = {r.name: load_recipe(r) for r in RECIPES.glob("uopc_*.yml")}
+    predictors = {
+        n: r["split"]["predictor"] for n, r in recipes.items() if r["split"]["method"] != "fixed"
+    }
 
     assert {n: p for n, p in predictors.items() if n in PAPER_COMPARISON} == dict.fromkeys(
         PAPER_COMPARISON, "vote"
