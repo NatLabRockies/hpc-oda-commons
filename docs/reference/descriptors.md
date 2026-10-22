@@ -104,9 +104,9 @@ The `type` values:
 | Type | Reads |
 |---|---|
 | `timestamp` | A time, in the rule's `format`, to UTC. |
-| `duration` | A length of time, in the rule's `unit`, to seconds. |
+| `duration` | A length of time, in the rule's `unit`, to seconds. Markers such as `UNLIMITED`, and Slurm's "no limit" sentinels, become null. |
 | `memory` | A size, in the rule's `unit`, to MB. |
-| `memory_slurm` | A Slurm memory string such as `160G`, to MB. |
+| `memory_slurm` | A Slurm memory string such as `160G`, `2366M` or `90000Mn` (per node), to MB. A per-CPU value such as `4Gc` becomes null, since it needs the job's CPU count. |
 | `energy` | Energy, in the rule's `unit`, to joules. |
 | `hash_identifier` | A user, account or other name, hashed as it is read. Set `HPC_ODA_HASH_SALT` to salt the hashes. |
 | `integer`, `number`, `string` | The value as that type. |

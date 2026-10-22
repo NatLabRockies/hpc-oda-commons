@@ -7,3 +7,26 @@ description: >
   Mixture of experts: routes each job to an XGBoost expert for its user and requested
   walltime bin, with the bin edges taken from each training window, a window-wide fallback
   expert for sparse bins, and exponential time-decay sample weights.
+method: |
+  Users ask for walltime at the limit of the partition they submit to, so the requested time
+  clusters on a few values that mark different populations of jobs. This model fits an
+  XGBoost per (user, walltime bin) rather than one across them. In each rolling window:
+
+  1. **Bin edges come from the training rows.** Each requested-walltime value that holds at
+     least `min_cluster_fraction` of the window becomes an edge, so each system contributes its
+     own partition limits; a window with no clear modes falls back to quantiles. Each cluster
+     tops its own bin, and one open bin holds anything longer, so `n_wallclock_bins` clusters
+     give up to one more bin. `wallclock_bin_edges_hours` pins the edges instead.
+  2. **Power users**, at or above `power_user_percentile` by job count in the training rows,
+     get an expert per (user, bin) when `enable_power_users` is on. Everyone else shares a
+     pooled expert per bin.
+  3. **A fallback expert** is always fitted on the whole window. It scores any test row whose
+     route has fewer than `min_expert_rows` training rows, so a sparse bin costs accuracy,
+     never coverage.
+  4. **Recency weighting** (`time_decay_rate`, off by default) weights each training row by
+     `exp(-rate × days old)`.
+
+  It subclasses the rolling tabular base and overrides only its fit and predict step, so its
+  windows, preprocessing, features and metrics are the shared ones. `summary.moe_routing` in
+  `metrics.json` reports the experts per window, the share of rows routed to an expert or the
+  fallback, the bin edges, and the number of power users.
