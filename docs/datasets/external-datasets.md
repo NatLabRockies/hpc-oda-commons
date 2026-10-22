@@ -1,94 +1,54 @@
 # External datasets (not auto-fetched)
 
-hpc-oda-commons prefers **lightweight, dependency-free fetching**: every *registered* dataset
-pins a direct-HTTPS URL + `sha256`, and `hpc-oda datasets fetch` / `prepare` downloads and
-normalizes it with the stdlib fetcher — no extra tooling. (Most sources that *look* like they
-need a special backend turn out to be direct HTTPS anyway — public **S3**, **HuggingFace**
-`resolve`, **git-LFS** media URLs, and presigned 302 redirects are all handled by the plain
-`http` backend; see [`curation-status.md`](curation-status.md).)
+hpc-oda-commons prefers **lightweight, dependency-free fetching**. Every *registered* dataset
+pins a `sha256` for each of its files, and most also pin a direct HTTPS URL, which
+`hpc-oda datasets fetch` and `prepare` download with the stdlib fetcher, with no extra
+tooling. Sources that *look* like they need a special backend usually turn out to be direct
+HTTPS anyway: public **S3**, **Hugging Face** `resolve` links, **git-LFS** media URLs and
+presigned redirects all work with the plain HTTPS fetcher. Always live-check the fetch path:
+"gated" labels are often wrong.
 
-A few valuable datasets aren't auto-fetched, for different reasons — documented here so you can
-retrieve them yourself and turn them into canonical `oda.job.v0.2.0` tables:
+Datasets that need a manual download are registered with `source.kind: manual`: you download
+the files yourself, and `datasets prepare <descriptor> --from <folder>` checks them against
+their pinned `sha256` and prepares them like any other. The three ALCF DJC datasets work this
+way ([how to download them](alcf-djc-ingest.md)), and so does a dataset of your own
+([Benchmark your own data](../how-to/benchmark-your-data.md)).
 
-- **Blue Waters** — Globus only (no direct HTTPS at all).
-
-**ALCF DJC** was on this list too, but a closer look showed it isn't a hard wall — its downloads
-sit behind a one-time name/email form on *public* data. It is now a **registered `manual`-kind
-dataset** (`dataset.alcf_djc_polaris` + `dataset.alcf_djc_aurora`): you clear
-the form once, download the files, and `datasets prepare --from <dir>` checksum-verifies + normalizes
-them. See the ALCF DJC entry below and
-"How to ingest" path 2 — it's the working example of the manual flow.
-
-## How to ingest one of these
-
-After you've downloaded the raw file(s) from the source below, there are two paths:
-
-1. **Ingestion wizard** — `hpc-oda ingest jobs-parquet <file>` walks you through mapping the
-   columns to `oda.job.v0.2.0` (timestamps, runtime, requested walltime, resources) and writes a
-   schema-valid job table you can validate and benchmark. Best for a one-off local analysis.
-2. **A `manual`-kind descriptor** — for a reproducible, registered dataset, author an
-   `oda.dataset.v0.1.0` descriptor with `source.kind: manual` plus the column mapping. Place the
-   downloaded file at the descriptor's cache path and `hpc-oda datasets prepare` checksum-verifies
-   it and normalizes it exactly like an auto-fetched dataset. The mapping has to be built and
-   verified against the real schema once, so this is a good contribution to open with a maintainer.
+This page lists datasets that aren't registered because they can't be fetched that way.
 
 ## When a download fails checksum verification
 
 A checksum mismatch means the bytes on disk are not the bytes the descriptor pins. Before
 concluding that the source file changed and re-pinning the `sha256`, check what actually
-arrived — the fetcher now names the common case outright:
+arrived:
 
-- **An HTML page came back instead of the file.** A landing/login page, or a network appliance
-  answering on the source's behalf, is served with HTTP 200, so the download "succeeds" and the
-  file only fails verification afterwards. `datasets fetch`/`prepare` now stops with an explicit
-  "the server returned an HTML page" error instead of a checksum mismatch. Fetch the URL by hand
+- **An HTML page came back instead of the file.** A landing or login page, or a network
+  appliance answering on the source's behalf, is served with HTTP 200, so the download
+  "succeeds" and the file only fails verification afterwards. `datasets fetch` and `prepare`
+  stop with an explicit "the server returned an HTML page" error. Fetch the URL by hand
   (`curl -sSL <url> | head -c 200`) and see what comes back.
 - **The source really was re-issued.** Confirm by downloading in a known-good environment and
-  hashing it yourself (`shasum -a 256 <file>`); only then update `sha256` + `bytes`, and re-check
-  row counts and date ranges before trusting the new file.
+  hashing it yourself (`shasum -a 256 <file>`); only then update `sha256` and `bytes`, and
+  re-check row counts and date ranges before trusting the new file.
 
-If you already hold a verified copy, drop it at `<cache>/<dataset_id>/raw/<filename>` and re-run
-`prepare` — a cached file whose hash matches is used as-is, with no network access.
+If you already hold a verified copy, put it at
+`.hpc_oda/cache/datasets/dataset.<name>/raw/<filename>` (or under `HPC_ODA_CACHE_DIR`) and
+re-run `prepare`: a cached file whose hash matches is used as-is, with no network access. A
+cache folder under a dataset's id from before #249 (`dataset.job_runtime.<name>`) is adopted.
 
 ## Datasets
 
 ### Blue Waters workload (NCSA)
 
 - **What:** Torque/Moab accounting for the Blue Waters supercomputer, Apr 2013 – Sep 2016,
-  ~4.5M jobs. Records include `Resource_List.walltime` (requested) and `resources_used.walltime`,
-  `ctime`/`qtime`/`etime`, start/end, `nodect`, `exec_host`, `Exit_status` — **primary-quality**
-  (it has requested walltime).
-- **Where:** **Globus only** (verified — the [NCSA data-sets page](https://bluewaters.ncsa.illinois.edu/data-sets)
-  provides *no* direct HTTPS, just a Globus file-manager link to collection
-  `854c1a5c-fa9f-4df4-a71c-407a33e44da0`). Grab only the **Torque accounting** subfolder (~4–5 GB);
-  skip the 95 TB LDMS telemetry.
-- **Format:** per-day `key=value` text files — needs a Torque-accounting parser (a `manual`
-  descriptor for this would also add that decoder).
+  ~4.5M jobs. Records include `Resource_List.walltime` (requested) and
+  `resources_used.walltime`, `ctime`/`qtime`/`etime`, start/end, `nodect`, `exec_host`,
+  `Exit_status` — **primary-quality** (it has requested walltime).
+- **Where:** **Globus only** (the [NCSA data-sets page](https://bluewaters.ncsa.illinois.edu/data-sets)
+  provides no direct HTTPS, just a Globus file-manager link to collection
+  `854c1a5c-fa9f-4df4-a71c-407a33e44da0`). Grab only the **Torque accounting** subfolder
+  (~4–5 GB); skip the 95 TB LDMS telemetry.
+- **Format:** per-day `key=value` text files. Registering it needs a Torque-accounting decoder
+  first; until then, convert it to CSV or Parquet yourself and write a `manual` descriptor for
+  the result.
 - **License:** none stated — cite the NSF Blue Waters project.
-
-### ALCF DJC (Argonne — Polaris / Aurora / Theta / Mira) — **registered (manual-kind)**
-
-Polaris (all published years 2022–2026, five files) and Aurora (2025–2026) are registered as
-`dataset.alcf_djc_polaris` and `dataset.alcf_djc_aurora`; these entries are
-the recipe for adding **further years / systems** (Theta, Mira) the same way.
-
-- **What:** `DIM_JOB_COMPOSITE` job accounting for ALCF systems (Polaris 2022–2026, Theta, ThetaGPU,
-  Mira, Aurora) — Cobalt/PBS scheduler data **with requested walltime** → primary-quality.
-- **Where:** per-year files under `https://reports.alcf.anl.gov/data/` (open the viewer, e.g.
-  `ANL-ALCF-DJC-POLARIS_20230101_20231231.html`, and click the CSV link). The download itself
-  (`…/data/data/ANL-ALCF-DJC-<SYS>_<start>_<end>.csv.gz`) 302-redirects to a **one-time name/email
-  form** on public data — not a login. Fill it once in a browser and the `.csv.gz` downloads.
-- **Ingest:** `hpc-oda datasets prepare dataset.alcf_djc_polaris --from <dir>` (the
-  `manual` backend checksum-verifies your placed file). For a new year/system, copy the descriptor,
-  swap the filename + pinned `sha256`, and adjust the date in the id/name.
-- **Format:** `.csv.gz`, 67 columns; the descriptor reads the ~17 mapped ones (`WALLTIME_SECONDS`,
-  `RUNTIME_SECONDS`, queued/start/end, cores/nodes used+requested, queue, exit status, machine,
-  science field, anonymized `USERNAME_GENID`/`PROJECT_NAME_GENID`).
-- **License:** unstated — cite ALCF.
-
----
-
-*Note:* FRESCO Anvil + Conte and Lassen (LLNL, git-LFS) were initially expected to need Globus /
-git-LFS, but all turned out to be reachable over plain HTTPS, so they are now normally-fetched
-registered datasets (`fresco_anvil`, `fresco_conte`, `lassen`). Always **live-check the fetch
-path** — "gated" labels are frequently wrong; only genuinely-blocked datasets belong on this page.

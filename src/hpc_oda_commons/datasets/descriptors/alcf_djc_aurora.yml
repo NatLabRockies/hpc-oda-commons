@@ -30,7 +30,7 @@ source:
     https://reports.alcf.anl.gov/data/aurora.html, click a DIM_JOB_COMPOSITE download link,
     complete the short form (first/last name + email) once, then download both Aurora
     ANL-ALCF-DJC-AURORA_*.csv.gz files into one directory. Run
-    `hpc-oda datasets prepare dataset.alcf_djc_aurora --from <dir>` pointing at that
+    `hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/alcf_djc_aurora.yml --from <dir>` pointing at that
     directory (each file's sha256 is checksum-verified before normalization). See
     docs/datasets/alcf-djc-ingest.md for the full recipe.
   resources:

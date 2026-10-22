@@ -69,6 +69,8 @@ Its runtime window, from its runtime card:
 - **Health:** ✅ healthy
 - **Rationale:** pinned to end 2023-09-26, the window the benchmark ran on, so the table can grow without moving it. No missing blocks.
 
+The leaderboard scores the last 30 days of this 90-day test period today: 120 windows of 6 hours.
+
 Error ceiling: an MAE floor of 45.7 min over 854,381 scored jobs.
 
 | Model | Headroom | MAE |

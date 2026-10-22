@@ -22,6 +22,7 @@ DIM_JOB_COMPOSITE job accounting from Argonne's Polaris supercomputer, 2022-08 t
     - `ANL-ALCF-DJC-POLARIS_20240101_20241231.csv.gz`, 15.3 MB
     - `ANL-ALCF-DJC-POLARIS_20250101_20251231.csv.gz`, 13.5 MB
     - `ANL-ALCF-DJC-POLARIS_20260101_20260716.csv.gz`, 10.0 MB
+- **How to get them:** ALCF DJC is public data behind a one-time name/email form. In a browser open https://reports.alcf.anl.gov/data/polaris.html, click a DIM_JOB_COMPOSITE download link, complete the short form (first/last name + email) once, then download all five Polaris ANL-ALCF-DJC-POLARIS_*.csv.gz files into one directory. Run `hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/alcf_djc_polaris.yml --from <dir>` pointing at that directory (each file's sha256 is checksum-verified before normalization). See docs/datasets/alcf-djc-ingest.md for the full recipe.
 - **Prepared table:** `data/datasets/alcf_djc_polaris/data.parquet` (`oda.job.v0.2.0`)
 - **Targets:** `runtime_seconds` (job runtime)
 - **Rows kept:** `require_nonnull`: ["runtime_seconds", "start_time", "end_time"]; `require_positive`: ["allocated_cpus"]; `require_end_after_start`: true
@@ -64,6 +65,8 @@ Its runtime window, from its runtime card:
 - **Anchor:** 0.8 of healthy span
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
+
+The leaderboard scores the last 30 days of this 90-day test period today: 120 windows of 6 hours.
 
 Error ceiling: an MAE floor of 42.6 min over 15,081 scored jobs.
 

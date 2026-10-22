@@ -47,7 +47,7 @@ without noting it.
   the allocated count: in April 2024, 49,877 jobs request 1 node and 48 cores, use 1 node,
   draw ~91 W, and show `nnuma` = 48; where `nnumu` < `nnuma`, power per used or requested
   node has a median of ~93 W against 43 W per allocated node. So per node is `÷ nnumr`. `econ` is energy in Wh (reported). F-DATA also ships a
-  per-job `embedding`. Mapped in both Fugaku descriptors.
+  per-job `embedding`. Mapped in the `fdata_fugaku` descriptor.
 - **PM100.** `node_power_consumption` is the job's total node power in W across its nodes,
   sampled every 20 s. It scales linearly with node count (about 690–770 W per node from 1 to
   14 nodes). The authors' extraction code sums `ps0`+`ps1` input power per timestamp
@@ -70,6 +70,20 @@ without noting it.
   percentiles (100–1,021 W) are nulled (#216). That leaves 10,134,936 jobs (73.2%), median
   356 W per node, with a 1st–99th percentile range of 215–665 W
   ([known issues](../known-issues.md)).
+- **NLR Kestrel Jobs** (data.nlr.gov 302, DOI 10.7799/3023270), verified in #209:
+  `consumed_energy_raw_joules` is the Slurm job energy summed over nodes. Average per node
+  = energy ÷ elapsed ÷ `nodes_used`. 81% (June 2024) and 73% (June 2025) of jobs have
+  non-zero energy; GPU jobs have none. On a shared node it is the node's energy (a 1-core
+  job reads ~650 W), so power is null for jobs that shared their node
+  (`shared_job_count` ≥ 1, or a `shared*` partition). That leaves 86.6% / 67.8% of the
+  rows kept for runtime, median 510 / 664 W per node. Over the full table (9,321,737 jobs
+  kept for runtime), 6,119,619 (65.6%) have a reading. There are no readings before December 2023, and
+  2024 and 2025 are each 71–72%. Of the 3.2M jobs without power, 1.57M shared their node,
+  1.01M have no reading (729k of them from Aug–Nov 2023), 616k ran in a GPU partition
+  (435k in April and May 2024) and 4,910 ran for 0 s. 138 readings are above 1.5 kW per
+  node, the highest 354 kW. Values outside the 0.1th–99.9th percentiles (85–813 W) are
+  nulled (#216). That leaves 6,107,400 jobs (65.5%), median 587 W per node, with a
+  1st–99th percentile range of 248–778 W ([known issues](../known-issues.md)). There is no public Kestrel node-power series.
 - **LLNL LAST (Lassen).** `final_csm_allocation_node_history.csv` has one row per node per
   allocation, with `energy` in J. The IBM CSM docs define it as "total energy used by the
   node during the allocation". Energy ÷ (end − begin) gives 342–1,430 W per node (median
@@ -87,20 +101,6 @@ without noting it.
 
 ## Reported
 
-- **NLR Kestrel Jobs** (data.nlr.gov 302, DOI 10.7799/3023270), verified since (#209):
-  `consumed_energy_raw_joules` is the Slurm job energy summed over nodes. Average per node
-  = energy ÷ elapsed ÷ `nodes_used`. 81% (June 2024) and 73% (June 2025) of jobs have
-  non-zero energy; GPU jobs have none. On a shared node it is the node's energy (a 1-core
-  job reads ~650 W), so power is null for jobs that shared their node
-  (`shared_job_count` ≥ 1, or a `shared*` partition). That leaves 86.6% / 67.8% of the
-  rows kept for runtime, median 510 / 664 W per node. Over the full table (9,321,737 jobs
-  kept for runtime), 6,119,619 (65.6%) have a reading. There are no readings before December 2023, and
-  2024 and 2025 are each 71–72%. Of the 3.2M jobs without power, 1.57M shared their node,
-  1.01M have no reading (729k of them from Aug–Nov 2023), 616k ran in a GPU partition
-  (435k in April and May 2024) and 4,910 ran for 0 s. 138 readings are above 1.5 kW per
-  node, the highest 354 kW. Values outside the 0.1th–99.9th percentiles (85–813 W) are
-  nulled (#216). That leaves 6,107,400 jobs (65.5%), median 587 W per node, with a
-  1st–99th percentile range of 248–778 W ([known issues](../known-issues.md)). There is no public Kestrel node-power series.
 - **NLR Eagle Node Power** (288, 10.7799/3015211): `dv` (node), `vl` (W) every minute,
   2019-04 to 2024-08, about 7.2 GB. Timestamps are local Mountain time with no zone, and 0 W
   means no reading. Joining to Eagle jobs on `nodelist` and time would give per-node peak.
@@ -135,30 +135,45 @@ without noting it.
   the Parallel Workloads Archive, SNL Skybridge, Alibaba, Azure, Helios and Philly traces.
 - **Not public:** NERSC Perlmutter/Cori job energy, and the European machines that record
   Slurm job energy without publishing it (LUMI, HLRS, JSC, BSC, LRZ, CSCS and others).
-- **Unverified:** FRESCO. Its server returned an HTML page instead of the files during the
-  audit, and the research found no power fields in its documentation.
+- **No power fields found:** FRESCO. The research found none in its documentation, and the
+  registered `fresco_*` descriptors map none; its node telemetry was not checked.
 
 ## What it would take
 
-In order of payoff for effort. Item 1 is
-[#206](https://github.com/NatLabRockies/hpc-oda-commons/issues/206); the rest are tracked in
-[#207](https://github.com/NatLabRockies/hpc-oda-commons/issues/207).
+In order of payoff for effort, tracked in
+[#207](https://github.com/NatLabRockies/hpc-oda-commons/issues/207). NLR Eagle and Kestrel,
+once at the top of this list, are mapped and benchmarked (#206, #209, #217).
 
-1. **NLR Eagle, average.** Done (#206): `type: energy`, `null_values` and chained ratio
-   derives, and `trim_quantiles` for the impossible readings (#216). 73.2% of the full
-   table has power. Benchmarked in #217
-   ([results](../benchmarking/power/results.md#eagle-and-kestrel)).
-2. **NLR Kestrel, average.** Done (#209): the same energy mapping, with `null_when` to
-   drop jobs that shared their node, and `trim_quantiles` (#216). 65.5% of the full table
-   has power, from December 2023 on. Benchmarked in #217
-   ([results](../benchmarking/power/results.md#eagle-and-kestrel)).
-3. **Adastra 15-day, average.** `list_mean` ÷ runtime is expressible today, and
+1. **Adastra 15-day, average.** `list_mean` ÷ runtime is expressible today, and
    `null_values: [0]` handles the zero readings. Near-zero readings (a few watts) need a
    threshold as well.
-4. **Lassen, average.** Join the per-node energy file to the allocation table, which needs
+2. **Lassen, average.** Join the per-node energy file to the allocation table, which needs
    multi-file joins in the dataset pipeline.
-5. **Peak beyond Fugaku and PM100.** Eagle Node Power joined on node and time (1 minute),
+3. **Peak beyond Fugaku and PM100.** Eagle Node Power joined on node and time (1 minute),
    M100 ExaData for 2020–2022, or the Adastra 90-day telemetry. Each is a bigger ingestion
    job with time-zone and missing-data handling.
-6. **Small or specialised:** C6EnPLS, SURF Lisa, Peregrine, HPC-JEEP, Kabré, and GPU-only
+4. **Small or specialised:** C6EnPLS, SURF Lisa, Peregrine, HPC-JEEP, Kabré, and GPU-only
    power from MIT Supercloud and GenAI.
+
+## Other sources considered (2026-07)
+
+Before the datasets were registered, a survey of public HPC job data (2026-07-02) weighed
+these for runtime prediction too. They are not registered, for the reason given:
+
+- **Cloud and GPU-cluster traces, without requested walltime:** Alibaba, Google Borg (2011,
+  gated), Azure, Philly, Helios and Acme. Without the requested time they could only
+  complement the scheduler traces.
+- **Too large, or covered by a registered extract:** M100 ExaData (PM100 is its curated job
+  extract).
+- **Partial job records:** Summit login-node `bjobs` polling (hourly, so runtime is only
+  accurate to about an hour), Titan RUR (no requested walltime), the Grid Workloads Archive.
+- **Not public:** SURFace (SURF Lisa)'s job table; only its node telemetry is released.
+- **Other phases:** failure, reliability, anomaly, network and I/O datasets (CFDR,
+  Backblaze, Loghub, FTA, the Summit GPU DBE, Monet, HMDR, HPC-ODA, Antarex, Prodigy, the
+  Oliner–Stearley logs, Titan GPU lifetimes, Darshan).
+- **Blue Waters** has usable Torque accounting but no scripted download; see
+  [external datasets](external-datasets.md).
+
+The survey's catalog was `docs/hpc_operational_datasets.xlsx`. Its corrections that still
+matter: F-DATA is ~28 GB, not TB (the Zenodo "11.1 TB" is cumulative traffic); NREL and NLR
+are the same institution (`data.nrel.gov` redirects to `data.nlr.gov`).

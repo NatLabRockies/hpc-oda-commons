@@ -218,6 +218,8 @@ def _curation(name: str, descriptor: Descriptor, ctx: _Context) -> Iterator[str]
     for resource in resources:
         size = f", {_bytes(resource['bytes'])}" if resource.get("bytes") else ""
         yield f"    - `{resource.get('filename')}`{size}"
+    if kind == "manual" and source.get("instructions"):
+        yield f"- **How to get them:** {' '.join(str(source['instructions']).split())}"
     for target in descriptor.targets:
         yield f"- **Prepared table:** `{target.output_path}` (`{target.schema}`)"
         targets = ", ".join(f"`{c}` ({format_target_label(c)})" for c in target.target_columns)
@@ -262,6 +264,21 @@ def _results(name: str, table: Mapping[str, Any], ctx: _Context) -> Iterator[str
         mae = format_metric_value("mae", float(cell["mae"]), target=table["target"])
         model = f"[{model_title(row['model'])}]({ctx.model_link(row['model'])})"
         yield f"| {model} | {headroom} | {mae} |"
+
+
+def _scored_days(card: Mapping[str, Any]) -> Iterator[str]:
+    """Say so when the leaderboard scores less of the test period than the card holds."""
+    from hpc_oda_commons.benchmark.tracks import RUNTIME_PROTOCOL
+
+    hours = RUNTIME_PROTOCOL["n_windows"] * RUNTIME_PROTOCOL["test_window_hours"]
+    test_days = int(card["benchmark_window"].get("rule", {}).get("test_days") or 0)
+    if test_days * 24 > hours:
+        yield ""
+        yield (
+            f"The leaderboard scores the last {hours // 24} days of this {test_days}-day test "
+            f"period today: {RUNTIME_PROTOCOL['n_windows']} windows of "
+            f"{RUNTIME_PROTOCOL['test_window_hours']} hours."
+        )
 
 
 def _benchmarks(
@@ -312,6 +329,7 @@ def _benchmarks(
             yield "Its runtime window, from its runtime card:"
             yield ""
             yield from window_lines(dict(card))
+            yield from _scored_days(card)
         reads = sorted(
             {r["window"] for r in recipes if target in r["targets"] and r["method"] == "rolling"}
         )
@@ -391,8 +409,14 @@ def render_dataset_card(
     return text.rstrip("\n") + "\n"
 
 
-def render_index(leaderboard: Mapping[str, Any], ctx: _Context) -> str:
-    """``README.md`` beside the cards: every dataset, linked to its card."""
+def render_index(
+    leaderboard: Mapping[str, Any],
+    ctx: _Context,
+    runtime_cards: Mapping[str, Mapping[str, Any] | None] | None = None,
+) -> str:
+    """``README.md`` beside the cards: every dataset, linked to its card, with the rows and
+    healthy span its runtime card measured."""
+    runtime_cards = runtime_cards or {}
     lines = [
         "# Datasets",
         "",
@@ -401,8 +425,8 @@ def render_index(leaderboard: Mapping[str, Any], ctx: _Context) -> str:
         "Each dataset's card. Where models stand on them: the "
         f"[leaderboard]({ctx.leaderboard_link}).",
         "",
-        "| Dataset | System | Serves | Source | On the leaderboard |",
-        "|---|---|---|---|---|",
+        "| Dataset | System | Serves | Rows | Healthy span | Source | On the leaderboard |",
+        "|---|---|---|---:|---|---|---|",
     ]
     for name, descriptor in sorted(ctx.descriptors.items(), key=lambda kv: kv[1].name):
         citation = descriptor.citation or {}
@@ -412,9 +436,14 @@ def render_index(leaderboard: Mapping[str, Any], ctx: _Context) -> str:
             else (f"[landing page]({citation['url']})" if citation.get("url") else "—")
         )
         tables = [t["title"] for t in leaderboard.get("tables", []) if name in t.get("roster", [])]
+        card = runtime_cards.get(name)
+        char = (card or {}).get("characterization") or {}
+        span = char.get("healthy_span") or {}
+        rows = f"{int(char['n_rows']):,}" if char.get("n_rows") else "—"
+        dates = f"{span['start'][:10]} → {span['end'][:10]}" if span.get("start") else "—"
         lines.append(
             f"| [{descriptor.name}]({name}.md) | {ctx.title(name)} | "
-            f"{_serves(descriptor)} | {source} | {', '.join(tables) or '—'} |"
+            f"{_serves(descriptor)} | {rows} | {dates} | {source} | {', '.join(tables) or '—'} |"
         )
     return "\n".join(lines) + "\n"
 
@@ -451,6 +480,7 @@ def dataset_cards(
     ceilings = _ceilings(benchmark_dir)
     recipes = _bundled_recipes(recipe_dirs)
     cards = {}
+    runtime_cards = {name: _runtime_card(name, benchmark_dir) for name in descriptors}
     for name, descriptor in descriptors.items():
         key = _source_key(descriptor)
         siblings = sorted(
@@ -461,13 +491,13 @@ def dataset_cards(
         cards[f"{name}.md"] = render_dataset_card(
             name,
             leaderboard=leaderboard,
-            card=_runtime_card(name, benchmark_dir),
+            card=runtime_cards[name],
             ceilings=ceilings,
             recipes=recipes.get(name, []),
             siblings=siblings,
             ctx=ctx,
         )
-    cards["README.md"] = render_index(leaderboard, ctx)
+    cards["README.md"] = render_index(leaderboard, ctx, runtime_cards)
     return cards
 
 

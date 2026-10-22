@@ -62,6 +62,8 @@ Its runtime window, from its runtime card:
 - **Health:** ✅ healthy
 - **Rationale:** window END at 80% of healthy span; clear of all missing blocks.
 
+The leaderboard scores the last 30 days of this 90-day test period today: 120 windows of 6 hours.
+
 Error ceiling: an MAE floor of 26.8 min over 65,193 scored jobs.
 
 | Model | Headroom | MAE |

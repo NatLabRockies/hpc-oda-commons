@@ -31,7 +31,7 @@ source:
     https://reports.alcf.anl.gov/data/polaris.html, click a DIM_JOB_COMPOSITE download link,
     complete the short form (first/last name + email) once, then download all five Polaris
     ANL-ALCF-DJC-POLARIS_*.csv.gz files into one directory. Run
-    `hpc-oda datasets prepare dataset.alcf_djc_polaris --from <dir>` pointing at that
+    `hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/alcf_djc_polaris.yml --from <dir>` pointing at that
     directory (each file's sha256 is checksum-verified before normalization). See
     docs/datasets/alcf-djc-ingest.md for the full recipe.
   resources:
