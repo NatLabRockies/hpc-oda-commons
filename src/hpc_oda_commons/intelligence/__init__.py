@@ -2,7 +2,8 @@
 Intelligence layer: library-level APIs for programmatic use.
 
 These functions are part of the public API for consumers who import hpc_oda_commons
-as a library. No CLI command uses them yet.
+as a library; no CLI command uses them. docs/reference/python-api.md documents them, and a
+test keeps that page listing every name in ``__all__``.
 """
 
 from hpc_oda_commons.intelligence.mapping import (
