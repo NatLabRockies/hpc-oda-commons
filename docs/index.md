@@ -20,7 +20,7 @@
 
 **I'm an AI agent** -- [Agent Guide](../CLAUDE.md) (routes to [usage](agent-usage.md) or development)
 
-**I need a reference** -- [CLI Reference](reference/cli.md) | [Recipes](reference/recipes.md) | [Dataset descriptors](reference/descriptors.md) | [Schema Versions](reference/schema-versions.md)
+**I need a reference** -- [CLI Reference](reference/cli.md) | [Recipes](reference/recipes.md) | [Dataset descriptors](reference/descriptors.md) | [Schema Versions](reference/schema-versions.md) | [Python API](reference/python-api.md)
 
 **I want to understand the design** -- [Architecture](architecture.md) | [Benchmarks](concepts/benchmarks.md)
 

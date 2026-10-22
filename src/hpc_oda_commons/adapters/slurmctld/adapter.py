@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from hpc_oda_commons.adapters.base import AdapterMetadata, SourceAdapter
+from hpc_oda_commons.adapters.base import SourceAdapter, adapter_metadata
 
 _TS_RE = re.compile(r"^\[(?P<ts>[0-9T:\-\.]+)\]\s+(?P<msg>.*)$")
 _ALLOC_RE = re.compile(
@@ -20,14 +20,8 @@ def _parse_ts(ts: str) -> datetime:
     return datetime.fromisoformat(ts).replace(tzinfo=timezone.utc)
 
 
-SLURMCTLD_METADATA = AdapterMetadata(
-    id="adapter.slurmctld",
-    name="slurmctld log parser",
-    version="0.1.0",
-    input_schema_version=None,
-    output_schema_version="oda.job.v0.2.0",
-    supported_sources=("slurmctld",),
-)
+# Read from adapter.yml, the file the registry is built from, so the two can't drift (#259).
+SLURMCTLD_METADATA = adapter_metadata(Path(__file__).resolve().parent)
 
 
 def parse_slurmctld_log(path: Path) -> list[dict[str, Any]]:

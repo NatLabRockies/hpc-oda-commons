@@ -85,7 +85,8 @@ Raw input: a public dataset's files, a site export, or a slurmctld log
 - **`schema/`** -- JSON Schema validation (`validator.py`) and semantic quality rules
   (`quality_rules.py`): negative runtimes, start after end, missing values.
 - **`intelligence/`** -- Library-level APIs, not used by any CLI command: mapping suggestions,
-  a metadata graph over the registry, synthetic-data scoring.
+  a metadata graph over the registry, synthetic-data scoring. Documented in
+  [the Python API](reference/python-api.md).
 - **`registry/`** -- The registry (`build.py`), built when it loads from the models'
   `model.yml`, the adapters' `adapter.yml`, the dataset descriptors and the recipes (plus the
   runtime recipes the HPC matrix generates); `index.py` filters and looks it up. A snapshot
