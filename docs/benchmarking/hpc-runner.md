@@ -1,13 +1,20 @@
 # HPC benchmark-matrix runner
 
 Runs the full runtime-prediction benchmark — **every model on every usable dataset** — on
-a Slurm cluster. It turns the tracked dataset cards
+a Slurm cluster. It turns the tracked runtime cards
 ([`runtime/methodology.md`](runtime/methodology.md), `datasets/*.card.json`) plus a **local, gitignored**
 site config into per-cell Slurm recipes and sbatch scripts, then slices each dataset to
-its 90-day window ready to stage to the cluster.
+its card window, ready to stage to the cluster.
 
-The matrix is **6 models × 21 datasets = 126 benchmark cells**, plus **21 GPU embedding
-jobs** (the embedded parquet is reused by `embedding_knn`).
+The matrix is every model in `RUNTIME_MODELS` × every healthy dataset the planner can fit ×
+each lookback arm, plus one GPU embedding job per dataset (the embedded parquet is read by
+`embedding_knn`). `plan` prints the counts, and the datasets it skipped and why.
+
+> **Runs planned today don't count on the leaderboard yet.** `plan` sizes each cell's test
+> from its card: 360 six-hour windows for a 90-day test period. The leaderboard counts
+> `RUNTIME_PROTOCOL`, 120 windows, the fleet that has run, until
+> [#191](https://github.com/NatLabRockies/hpc-oda-commons/issues/191) moves both together. A
+> fleet planned now shows on `runs.html` only ([methodology](runtime/methodology.md#the-rules-today)).
 
 ## The tracked / untracked split
 
@@ -55,15 +62,19 @@ model. Set `HPC_ODA_PREPROCESSING_CACHE` in the site environment to move it, or 
      <host>:<remote_base>/hf/hub/models--<org>--<model>/
    ```
 
-   (`stage` creates `remote_base/hf/hub` for you.) Skip this only if you benchmark with
-   `--model stub`, which needs no download.
+   (`stage` creates `remote_base/hf/hub` for you.) Skip this only if the site config sets
+   `embedding_model: stub`, which needs no download.
 
 ## Pipeline
 
 ```
-plan ─▶ slice ─▶ stage (rsync) ─▶ embed (GPU) ─▶ benchmark (CPU) ─▶ collect ─▶ aggregate ─▶ rank
-└──────── local, this repo ───────┘└──────────────── on the cluster ─────────────────┘
+slice ─▶ plan ─▶ stage (rsync) ─▶ embed (GPU) ─▶ benchmark (CPU) ─▶ collect ─▶ aggregate ─▶ rank
+└──── local, this repo ─────┘     └──────── on the cluster ────────┘ └──────── local ─────────┘
 ```
+
+Slice before planning: `plan` sizes each cell from the rows its slice holds (each
+`slice.json` under `--windows-dir`), and falls back to the card's narrower window without
+one.
 
 ### 1. Plan
 
@@ -73,15 +84,16 @@ hpc-oda bench-matrix plan            # reads cards + .hpc_oda/hpc-site.yml
 
 Writes `.hpc_oda/bench-matrix/<plan_id>/`:
 
-- `recipes/<dataset>__<model>.yml` — one benchmark recipe per cell (validated against
-  `oda.recipe.v0.1.0`).
-- `scripts/bench__<dataset>__<model>.sbatch` — one sbatch per cell.
+- `recipes/<dataset>__<model>__lb<N>d.yml` — one benchmark recipe per cell and lookback arm
+  (validated against `oda.recipe.v0.1.0`).
+- `scripts/bench__<dataset>__<model>__lb<N>d.sbatch` — one sbatch per cell.
 - `scripts/embed__<dataset>.sbatch` — one GPU embed job per dataset.
 - `plan.json` — the full manifest (cells, embeds, tiers, paths) that drives staging and
   submission.
 
 Datasets whose card window is flagged unhealthy are skipped (override with
-`--include-unhealthy`).
+`--include-unhealthy`). `--exclude-model mlp` leaves a model out of this plan, as the fleet
+run did, without changing the roster.
 
 ### 2. Slice
 
@@ -94,10 +106,10 @@ the source table, the card window, the effective window, and the row count — w
 parquets are path-identical whatever window they hold, so the sidecar is what tells a recipe
 which one it got.
 
-Each dataset is extended back by default by exactly the shortfall its card leaves against
-`matrix.SPLIT`'s `training_lookback_days` — `training_lookback_days - card.train_days`,
-which is 120 − 60 = 60 days for every current card. You do not pass anything for the fleet
-run; `--extra-lookback-days N` overrides the derived value when you want a different window.
+Each dataset is extended back by default by its card's history budget beyond the training
+days, `history_days − train_days`: 60 days for a standard card, less for a short one. You do
+not pass anything for the fleet run; `--extra-lookback-days N` overrides the derived value
+when you want a different window.
 The lower bound moves back by that many days and the test region is untouched, so the run
 still scores exactly the rows the card window defines.
 
@@ -171,9 +183,9 @@ hpc-oda bench-matrix aggregate       # leaderboard over the collected bundles
 hpc-oda bench-matrix rank            # walk-forward choice among each cell's arms
 ```
 
-Each cell writes a result bundle to `runs/<dataset>/<model>/` under `repo_dir`; `collect`
-pulls them back and `aggregate` builds the leaderboard (equivalently, `hpc-oda analyze
---runs <plan-dir>/collected-runs`).
+Each cell writes a result bundle to `runs/<dataset>/<model>/lb<N>d/` under `repo_dir`;
+`collect` pulls them back and `aggregate` builds the leaderboard (equivalently,
+`hpc-oda leaderboard --runs <plan-dir>/collected-runs`).
 
 `rank` answers the question `aggregate` cannot: with each model run at several settings,
 which arm does a cell get credited with? Taking the best one by test error would
@@ -195,30 +207,24 @@ reads back as the same sorted list (#211).
 
 Each dataset's cells get a tier from the row count of the **slice they load** — read from
 each `slice.json`, not from the card's own narrower window (`plan.json` records the choice).
-Every tier runs on the ordinary `cpu` partition; cells take the whole node, so the tier sets
-walltime and memory, not cores.
+Every tier runs on the ordinary `cpu` partition. A benchmark cell takes a whole node and all
+its memory, so the tier sets its walltime and its window workers; for the embedding jobs, it
+sets walltime and memory.
 
-The window-worker budget no longer drops with the tier. It used to fall to 4 on the extreme
-tier, a value extrapolated from a 13.9M-row slice that exceeds `MAX_NODE_ROWS` and is never
-planned. Measured across the fleet on a 240 GiB node, a window-parallel cell peaks at
+| Tier      | Rows loaded   | Window workers | Cell walltime | Embed walltime | Embed memory |
+| --------- | ------------- | -------------- | ------------- | -------------- | ------------ |
+| `light`   | < 300 k       | 32             | 8h            | 2h             | 64G          |
+| `heavy`   | 300 k – 2 M   | 16             | 1 day         | 4h             | 128G         |
+| `extreme` | 2 M – 8 M     | 16             | 2 days        | 8h             | 256G         |
+| —         | > 8 M         | *skipped*      | —             | —              | —            |
+
+The worker count is set by measurement (`TIERS` in `matrix.py`). Each concurrent fit holds
+its own preprocessed training set, so workers cost memory, not cores. It once fell to 4 on the
+extreme tier, a value extrapolated from a 13.9M-row slice that exceeds `MAX_NODE_ROWS` and is
+never planned. Measured across the fleet on a ~240 GiB node, a window-parallel cell peaks at
 **29.3 GiB with 16 workers**, and the real ceiling belongs to `embedding_knn` (**91.7 GiB**),
 which does not use window workers at all. Throttling therefore constrained the models that
 were never the problem, and cost roughly 4x wall-clock for it (#191).
-
-| Tier      | Rows loaded   | Partition | Window workers | Walltime |
-| --------- | ------------- | --------- | -------------- | -------- |
-| `light`   | < 300 k       | `cpu`     | 32             | 8h       |
-| `heavy`   | 300 k – 2 M   | `cpu`     | 16             | 1 day    |
-| `extreme` | 2 M – 8 M     | `cpu`     | 4              | 2 days   |
-| —         | > 8 M         | *skipped* | —              | —        |
-
-Worker counts fall as datasets grow because each concurrent fit holds its own preprocessed
-training set. Two measurements on a 250 GB / 104-core node bound the choice: a 532k-row
-slice peaked at 14.5 GB with 52 workers, while a 13.9M-row slice peaked at **110 GB with a
-single worker** — 20.6 GB of that just holding the rows as Python objects, leaving a
-per-window cost near 90 GB. Those points come from different datasets with different column
-cardinalities, so they bound the behaviour rather than fitting a curve; the table is
-conservative within them.
 
 **Slices above `MAX_NODE_ROWS` are skipped, not relocated.** At 13.9M rows a cell has no
 room for concurrency and needs more than a day of serial work. `plan` reports each skip with
@@ -235,10 +241,9 @@ core on its node regardless of `--cpus-per-task`. The scripts therefore request
 it just left them idle.
 
 `window_n_jobs` is sized separately, because concurrent per-window fits cost **memory**, not
-cores: each holds its own preprocessed training set. That is why the bigger tiers get
-*fewer* workers, not more. `mlp`, `tfidf_knn`, and `moe_xgboost` are window-parallel (BLAS
-pinned to one thread per worker); Random Forest already parallelizes inside each fit, and
-the rest run windows sequentially.
+cores (above). `mlp`, `tfidf_knn`, and `moe_xgboost` are window-parallel (BLAS pinned to one
+thread per worker); Random Forest already parallelizes inside each fit, and the rest run
+windows sequentially.
 
 MoE XGBoost was added to that set on measurement: window-parallel finished a 532k-row slice
 in 7:52 against 11:36 for estimator-parallel at equal cores, with the two arms' MAE agreeing
@@ -247,11 +252,11 @@ to 0.02% — float summation order under threading, per [`known-issues.md`](../k
 
 ## Benchmark configuration
 
-The generated recipes encode the agreed methodology (see [`methodology.md`](runtime/methodology.md)):
-rolling split, `n_windows=120`, `test_window_hours=6`, `training_lookback_days=120` — the
-card's 90-day window (60 days train + 30 days test) extended 60 days earlier so the earliest
-windows have their full lookback, with no capping or sampling. Metrics: `mae`, `rmse` on
-`runtime_seconds`.
+The generated recipes encode the methodology ([`methodology.md`](runtime/methodology.md#benchmark-configuration)):
+a rolling split of 6-hour windows covering each card's test period (`test_days × 4`), at
+lookbacks of 10, 30 and 120 days, each capped at the card's `history_days`, on a slice
+extended `history_days − train_days` earlier so the earliest windows have their full history,
+with no capping or sampling of training rows. Metrics: `mae`, `rmse` on `runtime_seconds`.
 
 Two models carry extra split keys, from `matrix.MODEL_SPLIT_OVERRIDES`:
 

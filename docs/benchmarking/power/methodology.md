@@ -12,14 +12,14 @@ Status: **decision log, error ceilings, four datasets, leaderboard** (#230, #237
 
 Eight models, each with its default configuration:
 
-- `baseline` (the window mean);
-- `signature_memorizer`;
-- `tfidf_knn`;
-- `embedding_knn`;
-- `uopc`;
-- `xgboost`;
-- `random_forest`;
-- `moe_xgboost`.
+- `model.baseline` (the window mean);
+- `model.signature_memorizer`;
+- `model.tfidf_knn`;
+- `model.embedding_knn`;
+- `model.uopc`;
+- `model.xgboost`;
+- `model.random_forest`;
+- `model.moe_xgboost`.
 
 The models predict whatever column their recipe's metrics name, so the same models serve
 both tracks ([Predict job power](../../how-to/predict-power.md)).
@@ -55,8 +55,8 @@ Every model retrains once per window on the same rows and is scored on the same 
 **Why these values.** They are the protocol every power result so far ran on
 ([#204](https://github.com/NatLabRockies/hpc-oda-commons/issues/204),
 [#217](https://github.com/NatLabRockies/hpc-oda-commons/issues/217)), so all existing results
-stay valid. On F-DATA they also put the test period within a day of the UoPC paper's, which
-starts on 2024-02-01.
+stay valid. On F-DATA they also put the test period close to the UoPC paper's: it starts
+2024-02-02 14:00 UTC, about a day and a half after the paper's 2024-02-01.
 
 **Not an axis yet.** The runtime benchmark runs every model at three lookbacks, because one
 fixed value decided which model won ([lookback](../runtime/lookback.md)). Power has not been
@@ -83,7 +83,7 @@ finished before submission. That protocol stays a one-model study,
 
   | Dataset | Divisor | Why |
   |---|---|---|
-  | F-DATA | requested nodes | F-DATA pads its allocated counts: 410,740 one-node jobs record 48. The nodes a job ran on match its request for ~96% of jobs and never match the padded count ([known issues](../../known-issues.md#note--f-datas-allocated-node-counts-can-be-padded), [why](uopc.md#nodes-requested-not-allocated)) |
+  | F-DATA | requested nodes | F-DATA pads its allocated counts (a one-node job can record 48), while the nodes a job ran on match its request ([the numbers](uopc.md#nodes-requested-not-allocated), [known issues](../../known-issues.md#note--f-datas-allocated-node-counts-can-be-padded)) |
   | PM100 | allocated nodes | the power trace sums exactly the allocated nodes; they equal the request for 99.92% of jobs |
   | Eagle, Kestrel | nodes used | the energy reading covers the nodes the job used |
 
@@ -152,10 +152,17 @@ hpc-oda datasets ceiling data/datasets/fdata_fugaku/data.parquet \
   --out docs/benchmarking/datasets/fdata_fugaku.avgpcon_per_node.ceiling.json
 ```
 
-The same with `--target maxpcon_per_node`, and for Eagle and Kestrel on
-`data/windows/nlr_{eagle,kestrel}_power_embedded/data.parquet` (the tables UoPC and
-embedding + kNN read) as `nlr_{eagle,kestrel}_power.avgpcon_per_node.ceiling.json`. A field
-a table lacks, such as frequency on Eagle, is left out of its signature.
+The same with `--target maxpcon_per_node`. The other datasets' ceilings run on the embedded
+tables UoPC and embedding + kNN read, since the embedding is in the signature, with the same
+split options and no `--start`/`--end`:
+
+| Dataset | Table | `--dataset-id` | `--out` (under `docs/benchmarking/datasets/`) |
+|---|---|---|---|
+| Eagle | `data/windows/nlr_eagle_power_embedded/data.parquet` | `dataset.nlr_eagle` | `nlr_eagle_power.avgpcon_per_node.ceiling.json` |
+| Kestrel | `data/windows/nlr_kestrel_power_embedded/data.parquet` | `dataset.nlr_kestrel` | `nlr_kestrel_power.avgpcon_per_node.ceiling.json` |
+| PM100 | `data/windows/pm100_power_embedded/data.parquet` | `dataset.pm100` | `pm100.{avgpcon,maxpcon}_per_node.ceiling.json` |
+
+A field a table lacks, such as frequency outside F-DATA, is left out of its signature.
 
 ## Window selection
 
@@ -166,12 +173,12 @@ UoPC paper's test period, and the NLR systems are chosen against their wind-down
 | Dataset | Test period | Why |
 |---|---|---|
 | F-DATA | the 89 days to its last submit | it matches the UoPC paper's test period, so the two protocols can be compared |
-| Eagle | the last 89 days before its wind-down | its real last 89 days had 122k jobs from 159 users, one with 41.8% |
+| Eagle | the last full quarter before its wind-down, to 2023-09-30 | its real last 89 days (late March to June 2024) fall in the wind-down: 122k jobs with power from 159 users, one with 41.8% |
 | Kestrel | its last 89 days | it never wound down. The runtime benchmark's Kestrel window was rejected: one user submitted 59.5% of its jobs with power |
 | PM100 | its last 89 days | it is a May–Oct 2020 extract with no wind-down, and only just long enough: 89 test days plus the 60-day lookback need 149 of its ~160 days |
 
-The dates, users and top user's share of each test period are on the
-[results page](results.md#datasets). Each window starts 60 days before its test period, for
+The dates and jobs scored of each test period, and the users and top user's share where
+measured, are on the [results page](results.md#datasets). Each window starts 60 days before its test period, for
 the training lookback.
 
 ### Health gate
@@ -240,8 +247,7 @@ From the public sources with per-job power ([power sources](../../datasets/power
   exclusively on their nodes ([Zenodo record](https://zenodo.org/records/10127767),
   [extraction code](https://github.com/francescoantici/PM100-data)). Checked against node lists
   and run times, 5,394 jobs touch another job on a node at their start or end, for at most
-  20 s (median 1 s): scheduler timing at the boundary, not two jobs sharing a node. An
-  earlier version of this page counted those as shared (#230).
+  20 s (median 1 s): scheduler timing at the boundary, not two jobs sharing a node.
 - **In since #230:** PM100 (`pm100`), with average and peak power: 231k jobs, May–Oct 2020.
 - **Waiting on mapping:** Lassen (power needs a join) and Adastra (needs cleaning).
 - **Not used:** `nrel_eagle`, the same machine as `nlr_eagle` from another source, as in the
