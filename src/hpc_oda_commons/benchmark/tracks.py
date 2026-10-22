@@ -37,6 +37,7 @@ from hpc_oda_commons.benchmark.arm_selection import (
     pooled_metric,
     walk_forward,
 )
+from hpc_oda_commons.datasets.ids import dataset_name
 
 BASELINE_MODEL = "model.baseline"
 DEFAULT_CEILINGS_DIR = Path("docs/benchmarking/datasets")
@@ -119,7 +120,7 @@ TRACK_BY_TARGET = {track.target: track for track in TRACKS}
 
 
 def _short(dataset_id: str) -> str:
-    return dataset_id.split(".")[-1]
+    return dataset_name(dataset_id)
 
 
 @dataclass(frozen=True)

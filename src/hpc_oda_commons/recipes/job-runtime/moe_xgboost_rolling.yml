@@ -3,10 +3,11 @@
 # window, with bin edges derived from each training window and a fallback expert
 # for sparse bins.
 #
-# Place ingested data at:
-#   data/ingested/jobs_parquet/fugaku_24_04/data.parquet
-#   data/ingested/jobs_parquet/fugaku_24_04/manifest.json
-# (relative to the repo root when running `hpc-oda benchmark`)
+# Prepare the dataset first:
+#   hpc-oda datasets prepare src/hpc_oda_commons/datasets/descriptors/fdata_fugaku.yml
+#
+# It reads April 2024 of the prepared F-DATA table, the month the example once read from a
+# hand-placed file.
 
 recipe_id: recipe.job_runtime.moe_xgboost_rolling
 problem_domain:
@@ -14,9 +15,9 @@ problem_domain:
 schema_version: oda.job.v0.2.0
 
 dataset:
-  id: fugaku_24_04
-  table_path: data/ingested/jobs_parquet/fugaku_24_04/data.parquet
-  manifest_path: data/ingested/jobs_parquet/fugaku_24_04/manifest.json
+  id: fdata_fugaku
+  table_path: data/datasets/fdata_fugaku/data.parquet
+  window: { start: "2024-04-01", end: "2024-04-30" }
 
 model:
   id: model.moe_xgboost

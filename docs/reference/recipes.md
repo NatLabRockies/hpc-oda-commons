@@ -55,7 +55,7 @@ run:
 
 | Key | Meaning |
 |---|---|
-| `id` | The dataset's name, recorded in the result. |
+| `id` | The dataset's short name, such as `lassen`. Its registry id, `dataset.lassen`, is read the same way. The result names the dataset by the folder `table_path` is in. |
 | `table_path` | The prepared table to read. |
 | `manifest_path` | Optional: its manifest. |
 | `window` | Optional: read only these days, `{start, end, by}`. `start` and `end` are inclusive UTC dates (`YYYY-MM-DD`). With `by: overlap` (the default), a job is read if its submit-to-end interval overlaps the days; with `by: submit`, if it was submitted in them. |

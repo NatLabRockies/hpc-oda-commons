@@ -242,7 +242,9 @@ def test_k_20_is_ours_and_5_the_papers() -> None:
     assert signature.parameters["k"].default == UOPC_DEFAULT_K
 
     root = Path(hpc_oda_commons.__file__).parent / "recipes" / "job-power"
-    ks = {recipe.name: load_recipe(recipe)["split"]["k"] for recipe in root.glob("uopc_*.yml")}
+    # The fixed adaptation (uopc_maxpcon.yml) takes no k from its recipe: it runs the default.
+    recipes = {recipe.name: load_recipe(recipe) for recipe in root.glob("uopc_*.yml")}
+    ks = {n: r["split"]["k"] for n, r in recipes.items() if r["split"]["method"] != "fixed"}
     paper = {"uopc_paper_reproduction_paper_setup.yml", "uopc_paper_reproduction_unpadded.yml"}
     assert {name: k for name, k in ks.items() if name in paper} == dict.fromkeys(paper, PAPER_K)
     assert set(ks) - paper and all(ks[name] == UOPC_DEFAULT_K for name in set(ks) - paper)
