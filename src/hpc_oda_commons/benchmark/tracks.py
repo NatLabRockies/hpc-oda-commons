@@ -158,13 +158,17 @@ def _roster(
     """The datasets a track's table has a column for, whether or not anything ran on them.
 
     For runtime, every card the planner would run: a dataset too large for one node (today
-    ``ccin2p3_2024``) keeps its card but is never planned, so it would leave every model's
-    average incomplete.
+    ``ccin2p3_2024``) or excluded on purpose (``RUNTIME_EXCLUDED``) keeps its card but is
+    never planned, so it would leave every model's average incomplete.
     """
     if track.target == "runtime_seconds":
-        from hpc_oda_commons.benchmarking.hpc.matrix import fits_a_node
+        from hpc_oda_commons.benchmarking.hpc.matrix import RUNTIME_EXCLUDED, fits_a_node
 
-        return sorted(card.dataset for card in cards if fits_a_node(card.effective_rows))
+        return sorted(
+            card.dataset
+            for card in cards
+            if fits_a_node(card.effective_rows) and card.dataset not in RUNTIME_EXCLUDED
+        )
     return sorted(dataset for target, dataset in floors if target == track.target)
 
 

@@ -9,7 +9,7 @@ Each dataset's card. Where models stand on them: the [leaderboard](https://natla
 | [ALCF DJC — Aurora (2025–2026)](alcf_djc_aurora.md) | Aurora | job runtime | 927,999 | 2025-01-02 → 2026-07-14 | [landing page](https://reports.alcf.anl.gov/data/index.html) | Job runtime |
 | [ALCF DJC — Polaris (2022–2026)](alcf_djc_polaris.md) | Polaris | job runtime | 1,000,194 | 2022-08-12 → 2026-07-14 | [landing page](https://reports.alcf.anl.gov/data/index.html) | Job runtime |
 | [ALCF DJC — Theta (2017–2024)](alcf_djc_theta.md) | Theta | job runtime | 540,391 | 2017-07-05 → 2023-12-27 | [landing page](https://reports.alcf.anl.gov/data/index.html) | Job runtime |
-| [Adastra MI250 Jobs (15 days)](adastra_mi250.md) | Adastra | job runtime | — | — | [10.5281/zenodo.14007065](https://doi.org/10.5281/zenodo.14007065) | — |
+| [Adastra MI250 Jobs (15 days)](adastra_mi250.md) | Adastra | job runtime | 15,285 | 2024-08-22 → 2024-09-14 | [10.5281/zenodo.14007065](https://doi.org/10.5281/zenodo.14007065) | — |
 | [Atlas Mustang (LANL)](atlas_mustang.md) | Mustang | job runtime | 2,019,005 | 2011-11-05 → 2016-11-04 | [landing page](https://ftp.pdl.cmu.edu/pub/datasets/ATLAS/) | Job runtime |
 | [Atlas OpenTrinity (LANL)](atlas_opentrinity.md) | Trinity | job runtime | 21,531 | 2016-02-03 → 2016-04-22 | [landing page](https://ftp.pdl.cmu.edu/pub/datasets/ATLAS/) | Job runtime |
 | [CC-IN2P3 2024 Workload (Sep–Dec)](ccin2p3_2024.md) | CC-IN2P3 | job runtime | 15,737,082 | 2024-09-01 → 2024-12-31 | [10.5281/zenodo.18668107](https://doi.org/10.5281/zenodo.18668107) | — |
@@ -17,12 +17,12 @@ Each dataset's card. Where models stand on them: the [leaderboard](https://natla
 | [FRESCO Anvil Job Accounting](fresco_anvil.md) | Anvil | job runtime | 1,475,155 | 2022-07-05 → 2023-05-30 | [landing page](https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/) | Job runtime |
 | [FRESCO Conte Job Accounting](fresco_conte.md) | Conte | job runtime | 1,042,125 | 2015-02-28 → 2016-02-29 | [landing page](https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/) | Job runtime |
 | [FRESCO Stampede1 Job Accounting](fresco_stampede1.md) | Stampede | job runtime | 8,710,048 | 2013-01-11 → 2018-01-17 | [landing page](https://www.datadepot.rcac.purdue.edu/sbagchi/fresco/) | Job runtime |
-| [IC2 Integrated Cloud + HPC Jobs](ic2.md) | IC2, Polaris, AWS | job runtime | — | — | [10.5281/zenodo.15545096](https://doi.org/10.5281/zenodo.15545096) | — |
+| [IC2 Integrated Cloud + HPC Jobs](ic2.md) | IC2, Polaris, AWS | job runtime | 3,599 | 2024-07-05 → 2024-07-26 | [10.5281/zenodo.15545096](https://doi.org/10.5281/zenodo.15545096) | — |
 | [Lassen LAST (LLNL)](lassen.md) | Lassen | job runtime | 1,467,746 | 2018-09-28 → 2020-11-17 | [10.11579/2446528](https://doi.org/10.11579/2446528) | Job runtime |
 | [MIT Supercloud Datacenter Challenge (scheduler)](mit_supercloud.md) | SuperCloud | job runtime | 395,914 | 2021-01-05 → 2021-10-01 | [10.60489/roda.r3c0pq](https://doi.org/10.60489/roda.r3c0pq) | Job runtime |
 | [NLR Eagle Jobs (anonymized)](nlr_eagle.md) | Eagle | job runtime and job power | 13,836,216 | 2018-11-20 → 2024-06-10 | [10.7799/3023273](https://doi.org/10.7799/3023273) | Job runtime, Average power per node |
 | [NLR Kestrel Jobs (anonymized)](nlr_kestrel.md) | Kestrel | job runtime and job power | 9,321,737 | 2023-08-24 → 2025-12-30 | [10.7799/3023270](https://doi.org/10.7799/3023270) | Job runtime, Average power per node |
-| [NREL Eagle Jobs (OEDI 5860)](nrel_eagle.md) | Eagle | job runtime | — | — | [landing page](https://data.openei.org/submissions/5860) | — |
+| [NREL Eagle Jobs (OEDI 5860)](nrel_eagle.md) | Eagle | job runtime | 11,014,796 | 2018-11-15 → 2023-02-20 | [landing page](https://data.openei.org/submissions/5860) | — |
 | [PM100 (Marconi100 Jobs)](pm100.md) | Marconi100 | job runtime and job power | 231,238 | 2020-05-06 → 2020-10-12 | [10.5281/zenodo.10127767](https://doi.org/10.5281/zenodo.10127767) | Job runtime, Average power per node, Peak power per node |
 | [PWA CEA-Curie (cleaned)](pwa_cea_curie.md) | Curie | job runtime | 312,826 | 2012-02-03 → 2012-10-12 | [landing page](https://www.cs.huji.ac.il/labs/parallel/workload/l_cea_curie/) | Job runtime |
 | [PWA HPC2N (Seth cluster)](pwa_hpc2n.md) | Seth | job runtime | 527,370 | 2002-08-13 → 2006-01-15 | [landing page](https://www.cs.huji.ac.il/labs/parallel/workload/l_hpc2n/) | Job runtime |

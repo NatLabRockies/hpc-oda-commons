@@ -163,6 +163,15 @@ _EXTREME_WORKERS = 16
 # scale. Such datasets are skipped and reported rather than moved to a bigger node.
 MAX_NODE_ROWS = 8_000_000
 
+# Datasets kept off the runtime benchmark on purpose, with the reason
+# (docs/benchmarking/runtime/methodology.md#dataset-roster). They keep a runtime card, so
+# their dataset cards still show what they hold, but they are never planned or ranked.
+RUNTIME_EXCLUDED: dict[str, str] = {
+    "nrel_eagle": "it is the same machine as nlr_eagle, so benchmarking both counts Eagle twice",
+    "adastra_mi250": "it is a 15-day sample, shorter than the 30-day test period",
+    "ic2": "its 3,599 tasks are cloud and HPC runs, not one machine's job history",
+}
+
 
 @dataclass(frozen=True)
 class Tier:
@@ -504,6 +513,11 @@ def build_plan(
     )
     embed_wanted = EMBEDDING_MODEL in models
     for card in cards:
+        if card.dataset in RUNTIME_EXCLUDED:
+            plan.skipped.append(
+                {"dataset": card.dataset, "reason": f"excluded: {RUNTIME_EXCLUDED[card.dataset]}"}
+            )
+            continue
         if not card.healthy and not include_unhealthy:
             plan.skipped.append({"dataset": card.dataset, "reason": "window flagged unhealthy"})
             continue

@@ -31,6 +31,7 @@ from hpc_oda_commons.benchmarking.hpc.config import (
     load_site_config,
 )
 from hpc_oda_commons.benchmarking.hpc.matrix import (
+    RUNTIME_EXCLUDED,
     RUNTIME_MODELS,
     ModelSelectionError,
     build_plan,
@@ -301,6 +302,9 @@ def bench_matrix_slice(
     sliced = 0
     for card in cards:
         if dataset and card.dataset != dataset:
+            continue
+        if card.dataset in RUNTIME_EXCLUDED:
+            table.add_row(card.dataset, "-", "-", "[yellow]skip (excluded)[/yellow]")
             continue
         if not card.healthy and not include_unhealthy:
             table.add_row(card.dataset, "-", "-", "[yellow]skip (unhealthy)[/yellow]")

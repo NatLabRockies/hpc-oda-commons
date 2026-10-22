@@ -18,6 +18,7 @@ from hpc_oda_commons.benchmarking.hpc.matrix import (
     LOOKBACK_ARMS,
     MAX_NODE_ROWS,
     MODEL_SPLIT_OVERRIDES,
+    RUNTIME_EXCLUDED,
     RUNTIME_MODELS,
     SLICE_HISTORY_DAYS,
     SPLIT,
@@ -290,6 +291,25 @@ def test_a_slice_too_big_for_one_node_is_skipped_with_a_reason(tmp_path: Path) -
     (skipped,) = plan.skipped
     assert skipped["dataset"] == "huge"
     assert "exceeds what one node can hold" in skipped["reason"]
+
+
+def test_a_dataset_excluded_on_purpose_is_skipped_with_its_reason(tmp_path: Path) -> None:
+    cfg = load_site_config(_write_site(tmp_path))
+
+    plan = build_plan([_card("nrel_eagle", 1_000), _card("ok", 1_000)], cfg, plan_id="p1")
+
+    assert {c.dataset for c in plan.cells} == {"ok"}
+    (skipped,) = plan.skipped
+    assert skipped == {
+        "dataset": "nrel_eagle",
+        "reason": f"excluded: {RUNTIME_EXCLUDED['nrel_eagle']}",
+    }
+
+
+def test_the_excluded_datasets_are_registered() -> None:
+    from hpc_oda_commons.datasets.descriptor import bundled_descriptor_paths
+
+    assert set(RUNTIME_EXCLUDED) <= set(bundled_descriptor_paths())
 
 
 def test_no_cell_is_scheduled_on_a_big_memory_partition(tmp_path: Path) -> None:

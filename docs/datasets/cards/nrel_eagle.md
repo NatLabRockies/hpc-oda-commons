@@ -26,11 +26,46 @@ Per-job Slurm accounting of NREL's Eagle supercomputer (OEDI submission 5860), a
 
 ## Characterization
 
-Not characterized: the dataset has no runtime card (`hpc-oda datasets characterize`).
+- **Rows:** 11,014,796
+- **Healthy span:** 2018-11-15 → 2023-02-20 (1,559 days, 11,011,657 rows)
+- **Job rate:** 7,063 jobs/day (span avg)
+- **Daily volume:** median 5,199, min 1, max 65,075 (gap floor 259)
+- **Missing blocks (span):** 12
+    - 2018-11-21 → 2018-11-25 (5 days)
+    - 2018-12-28 → 2018-12-30 (3 days)
+    - 2019-02-02 → 2019-02-05 (4 days)
+    - 2019-08-02 → 2019-08-06 (5 days)
+    - 2019-10-01 → 2019-10-04 (4 days)
+    - 2020-02-10 → 2020-02-15 (6 days)
+    - 2021-08-13 → 2021-08-15 (3 days)
+    - 2021-10-10 → 2021-10-13 (4 days)
+    - 2022-01-11 → 2022-01-13 (3 days)
+    - 2022-04-04 → 2022-04-06 (3 days)
+    - 2022-06-24 → 2022-06-27 (4 days)
+    - 2022-10-03 → 2022-10-05 (3 days)
+- **Runtime (s):** median 338, p90 14,426, p99 172,808, max 1,123,230
+
+| feature | distinct | missing % |
+|---|---:|---:|
+| `partition` | 42 | 0.0 |
+| `user` | 936 | 0.0 |
+| `account` | 593 | 0.0 |
+| `job_state` | 6 | 0.0 |
 
 ## On the leaderboard
 
 Not on the [leaderboard](https://natlabrockies.github.io/hpc-oda-commons/leaderboard/) of 2026-10-21.
+
+### Job runtime
+
+It has a runtime window, but isn't on the runtime leaderboard: it is excluded from the benchmark, because it is the same machine as nlr_eagle, so benchmarking both counts Eagle twice.
+
+- **Window:** 2021-03-16 → 2021-08-12 (60d train + 90d test)
+- **Test period:** 2021-05-15 → 2021-08-12
+- **Rows in window:** 1,057,437 (7,049 jobs/day)
+- **Anchor:** 0.8 of healthy span
+- **Health:** ✅ healthy
+- **Rationale:** anchor (80%) window overlapped a missing block; shifted 245d to the nearest window clear of every block.
 
 ## Bundled recipes
 

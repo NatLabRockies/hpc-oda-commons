@@ -25,11 +25,35 @@ Slurm per-job records from Adastra (CINES; HPE Cray EX with AMD MI250 GPUs), a 1
 
 ## Characterization
 
-Not characterized: the dataset has no runtime card (`hpc-oda datasets characterize`).
+- **Rows:** 15,285
+- **Healthy span:** 2024-08-22 → 2024-09-14 (24 days, 15,285 rows)
+- **Job rate:** 636 jobs/day (span avg)
+- **Daily volume:** median 366, min 12, max 8,277 (gap floor 18)
+- **Missing blocks (span):** 2
+    - 2024-08-23 → 2024-08-25 (3 days)
+    - 2024-08-27 → 2024-08-30 (4 days)
+- **Runtime (s):** median 7, p90 46,562, p99 86,421, max 86,430
+
+| feature | distinct | missing % |
+|---|---:|---:|
+| `partition` | 1 | 0.0 |
+| `user` | 63 | 0.0 |
+| `job_state` | 6 | 0.0 |
 
 ## On the leaderboard
 
 Not on the [leaderboard](https://natlabrockies.github.io/hpc-oda-commons/leaderboard/) of 2026-10-21.
+
+### Job runtime
+
+It has a runtime window, but isn't on the runtime leaderboard: it is excluded from the benchmark, because it is a 15-day sample, shorter than the 30-day test period.
+
+- **Window:** 2024-08-22 → 2024-09-14 (16d train + 8d test)
+- **Test period:** 2024-09-07 → 2024-09-14
+- **Rows in window:** 15,285 (636 jobs/day)
+- **Anchor:** 0.8 of healthy span
+- **Health:** ⚠️ UNHEALTHY
+- **Rationale:** NO window clear of all missing blocks exists at this size; returned the anchor window. Source affords 24d, short of the 120d history + 90d evaluation requested, so this card runs 16d + 8d. Missing block(s): 2024-08-23..2024-08-25 (3d), 2024-08-27..2024-08-30 (4d). — seek other months or widen the window.
 
 ## Bundled recipes
 

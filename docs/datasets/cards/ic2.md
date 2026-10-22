@@ -27,11 +27,29 @@ Runtime and resource-utilization records of tasks run on integrated cloud and HP
 
 ## Characterization
 
-Not characterized: the dataset has no runtime card (`hpc-oda datasets characterize`).
+- **Rows:** 3,599
+- **Healthy span:** 2024-07-05 → 2024-07-26 (22 days, 3,599 rows)
+- **Job rate:** 163 jobs/day (span avg)
+- **Daily volume:** median 299, min 50, max 1,200 (gap floor 15)
+- **Missing blocks (span):** 2
+    - 2024-07-06 → 2024-07-09 (4 days)
+    - 2024-07-20 → 2024-07-23 (4 days)
+- **Runtime (s):** median 109, p90 821, p99 4,950, max 12,869
 
 ## On the leaderboard
 
 Not on the [leaderboard](https://natlabrockies.github.io/hpc-oda-commons/leaderboard/) of 2026-10-21.
+
+### Job runtime
+
+It has a runtime window, but isn't on the runtime leaderboard: it is excluded from the benchmark, because its 3,599 tasks are cloud and HPC runs, not one machine's job history.
+
+- **Window:** 2024-07-05 → 2024-07-26 (15d train + 7d test)
+- **Test period:** 2024-07-20 → 2024-07-26
+- **Rows in window:** 3,599 (163 jobs/day)
+- **Anchor:** 0.8 of healthy span
+- **Health:** ⚠️ UNHEALTHY
+- **Rationale:** NO window clear of all missing blocks exists at this size; returned the anchor window. Source affords 22d, short of the 120d history + 90d evaluation requested, so this card runs 15d + 7d. Missing block(s): 2024-07-06..2024-07-09 (4d), 2024-07-20..2024-07-23 (4d). — seek other months or widen the window.
 
 ## Bundled recipes
 

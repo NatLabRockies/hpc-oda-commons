@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from hpc_oda_commons.benchmark import dataset_cards
 from hpc_oda_commons.datasets.descriptor import bundled_descriptor_paths
 
@@ -39,8 +41,22 @@ def test_a_card_names_its_source_its_windows_and_its_siblings() -> None:
     assert "### Job runtime" in fdata and "### Average power per node" in fdata
     assert "2023-11-30 → 2024-04-30" in fdata
     assert "[FRESCO Conte Job Accounting](fresco_conte.md)" in cards["fresco_anvil.md"]
-    # A dataset with no runtime card is still carded, and says so.
-    assert "Not characterized" in cards["adastra_mi250.md"]
+
+
+def test_a_dataset_with_no_runtime_card_says_so() -> None:
+    """Every bundled dataset has a runtime card (#259), so a dataset of your own shows this."""
+    from hpc_oda_commons.benchmark.dataset_cards import _characterization
+
+    assert "Not characterized" in "\n".join(_characterization(None))
+
+
+@pytest.mark.parametrize("name", ["nrel_eagle", "adastra_mi250", "ic2"])
+def test_a_dataset_excluded_on_purpose_says_why_it_is_off_the_leaderboard(name: str) -> None:
+    from hpc_oda_commons.benchmarking.hpc.matrix import RUNTIME_EXCLUDED
+
+    card = " ".join(_cards()[f"{name}.md"].split())
+    assert "- **Rows:**" in card
+    assert f"it is excluded from the benchmark, because {RUNTIME_EXCLUDED[name]}" in card
 
 
 def test_a_dataset_too_large_for_a_node_says_why_it_is_off_the_leaderboard() -> None:
