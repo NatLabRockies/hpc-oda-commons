@@ -411,6 +411,20 @@ def test_a_dataset_too_large_to_plan_has_no_runtime_column(tmp_path: Path) -> No
     assert runtime["roster"] == ["lassen"]
 
 
+def test_a_dataset_excluded_on_purpose_has_no_runtime_column(tmp_path: Path) -> None:
+    """nrel_eagle, adastra_mi250 and ic2 have runtime cards so their dataset cards show
+    what they hold, but they are kept off the benchmark (#259)."""
+    from dataclasses import replace
+
+    from hpc_oda_commons.benchmarking.hpc.matrix import RUNTIME_EXCLUDED
+
+    lassen = _lassen_card(tmp_path)
+    excluded = [replace(lassen, dataset=name) for name in RUNTIME_EXCLUDED]
+    tables, _ = build_tables([], ceilings_dir=tmp_path, cards=[lassen, *excluded])
+    runtime = next(t for t in tables if t["key"] == "runtime")
+    assert runtime["roster"] == ["lassen"]
+
+
 def test_a_power_cell_on_other_jobs_gets_no_headroom(power_runs) -> None:
     runs, ceilings = power_runs
     _ceiling(ceilings, "dataset.pm100", "avgpcon_per_node", 100.0, ROWS + 1)

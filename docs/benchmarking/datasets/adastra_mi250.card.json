@@ -1,0 +1,121 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.adastra_mi250",
+  "generated_at": "2026-10-22T13:18:04.593219+00:00",
+  "source": {
+    "table_path": "data/datasets/adastra_mi250/data.parquet",
+    "system": "Adastra",
+    "descriptor": "dataset.adastra_mi250"
+  },
+  "characterization": {
+    "n_rows": 15285,
+    "full_span": {
+      "start": "2024-08-22",
+      "end": "2024-09-14"
+    },
+    "healthy_span": {
+      "start": "2024-08-22",
+      "end": "2024-09-14",
+      "days": 24,
+      "rows": 15285
+    },
+    "daily_volume": {
+      "median": 366.0,
+      "min": 12,
+      "max": 8277,
+      "gap_floor": 18.3
+    },
+    "rate_per_day": 636.9,
+    "gaps": [
+      {
+        "start": "2024-08-23",
+        "end": "2024-08-25",
+        "days": 3
+      },
+      {
+        "start": "2024-08-27",
+        "end": "2024-08-30",
+        "days": 4
+      }
+    ],
+    "columns": {
+      "partition": {
+        "cardinality": 1,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 63,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 6,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 7.0,
+      "p90": 46562.2,
+      "p99": 86421.2,
+      "max": 86430.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 16,
+      "test_days": 8,
+      "history_days": 16,
+      "requested": {
+        "history_days": 120,
+        "test_days": 90,
+        "train_days": 60
+      },
+      "shortfall": true
+    },
+    "window_start": "2024-08-22",
+    "window_end": "2024-09-14",
+    "test_start": "2024-09-07",
+    "test_end": "2024-09-14",
+    "n_rows": 15285,
+    "rate_per_day": 636.9,
+    "gaps_in_window": [
+      {
+        "start": "2024-08-23",
+        "end": "2024-08-25",
+        "days": 3
+      },
+      {
+        "start": "2024-08-27",
+        "end": "2024-08-30",
+        "days": 4
+      }
+    ],
+    "healthy": false,
+    "rationale": "NO window clear of all missing blocks exists at this size; returned the anchor window. Source affords 24d, short of the 120d history + 90d evaluation requested, so this card runs 16d + 8d. Missing block(s): 2024-08-23..2024-08-25 (3d), 2024-08-27..2024-08-30 (4d). \u2014 seek other months or widen the window."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "8cfad871c98a98778f91f2762c1992f0ad2a836d",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/adastra_mi250/data.parquet",
+        "sha256": "b9842a1e38349f29d6735ade00fbde76e0f2b4560df2d4e1bca3e35d29cd0dae",
+        "size_bytes": 445469,
+        "mtime_epoch": 1792674975.2324946
+      }
+    ]
+  }
+}

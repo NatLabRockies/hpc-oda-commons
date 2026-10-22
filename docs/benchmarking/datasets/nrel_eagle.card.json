@@ -1,0 +1,158 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.nrel_eagle",
+  "generated_at": "2026-10-22T13:39:09.648513+00:00",
+  "source": {
+    "table_path": "data/datasets/nrel_eagle/data.parquet",
+    "system": "Eagle",
+    "descriptor": "dataset.nrel_eagle"
+  },
+  "characterization": {
+    "n_rows": 11014796,
+    "full_span": {
+      "start": "2018-11-14",
+      "end": "2023-02-21"
+    },
+    "healthy_span": {
+      "start": "2018-11-15",
+      "end": "2023-02-20",
+      "days": 1559,
+      "rows": 11011657
+    },
+    "daily_volume": {
+      "median": 5199.0,
+      "min": 1,
+      "max": 65075,
+      "gap_floor": 259.9
+    },
+    "rate_per_day": 7063.3,
+    "gaps": [
+      {
+        "start": "2018-11-21",
+        "end": "2018-11-25",
+        "days": 5
+      },
+      {
+        "start": "2018-12-28",
+        "end": "2018-12-30",
+        "days": 3
+      },
+      {
+        "start": "2019-02-02",
+        "end": "2019-02-05",
+        "days": 4
+      },
+      {
+        "start": "2019-08-02",
+        "end": "2019-08-06",
+        "days": 5
+      },
+      {
+        "start": "2019-10-01",
+        "end": "2019-10-04",
+        "days": 4
+      },
+      {
+        "start": "2020-02-10",
+        "end": "2020-02-15",
+        "days": 6
+      },
+      {
+        "start": "2021-08-13",
+        "end": "2021-08-15",
+        "days": 3
+      },
+      {
+        "start": "2021-10-10",
+        "end": "2021-10-13",
+        "days": 4
+      },
+      {
+        "start": "2022-01-11",
+        "end": "2022-01-13",
+        "days": 3
+      },
+      {
+        "start": "2022-04-04",
+        "end": "2022-04-06",
+        "days": 3
+      },
+      {
+        "start": "2022-06-24",
+        "end": "2022-06-27",
+        "days": 4
+      },
+      {
+        "start": "2022-10-03",
+        "end": "2022-10-05",
+        "days": 3
+      }
+    ],
+    "columns": {
+      "partition": {
+        "cardinality": 42,
+        "missingness": 0.0
+      },
+      "user": {
+        "cardinality": 936,
+        "missingness": 0.0
+      },
+      "account": {
+        "cardinality": 593,
+        "missingness": 0.0
+      },
+      "job_state": {
+        "cardinality": 6,
+        "missingness": 0.0
+      }
+    },
+    "runtime_seconds": {
+      "min": 0.0,
+      "median": 338.0,
+      "p90": 14426.0,
+      "p99": 172808.0,
+      "max": 1123230.0
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 60,
+      "test_days": 90,
+      "history_days": 120
+    },
+    "window_start": "2021-03-16",
+    "window_end": "2021-08-12",
+    "test_start": "2021-05-15",
+    "test_end": "2021-08-12",
+    "n_rows": 1057437,
+    "rate_per_day": 7049.6,
+    "gaps_in_window": [],
+    "healthy": true,
+    "rationale": "anchor (80%) window overlapped a missing block; shifted 245d to the nearest window clear of every block."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "8cfad871c98a98778f91f2762c1992f0ad2a836d",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/nrel_eagle/data.parquet",
+        "sha256": "73f4ccad4af4d3194eaf7abdd592f88b357d9d9aaac8e51288eab1e8759cf36a",
+        "size_bytes": 254987833,
+        "mtime_epoch": 1792675271.8033645
+      }
+    ]
+  }
+}

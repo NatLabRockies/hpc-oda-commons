@@ -194,6 +194,10 @@ span is too short to form a 30-day test period, or the data is fundamentally uns
 - **Excluded — too short / unsuitable:** `adastra_mi250` (a deliberately-published ~15-day
   sample; measured ~24 days — shorter than the 30-day test period, and unhealthy) and `ic2`
   (3,599 rows total; cloud tasks, not a machine time-series).
+
+  These two and `nrel_eagle` are `RUNTIME_EXCLUDED` (`benchmarking/hpc/matrix.py`):
+  each has a runtime card, so its dataset card shows what it holds, but the planner skips it
+  and the leaderboard has no column for it.
 - **Excluded — too large for one node:** `ccin2p3_2024`. It covers Sep–Dec 2024, and its card
   window holds 9,969,424 rows, over the planner's `MAX_NODE_ROWS` of 8M. Its earlier, larger
   version (13.9M rows) peaked at ~110 GB per window worker on a 250 GB node, with a cell over

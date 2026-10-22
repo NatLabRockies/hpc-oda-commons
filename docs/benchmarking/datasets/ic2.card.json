@@ -1,0 +1,108 @@
+{
+  "schema_version": "oda.dataset_card.v0.1.0",
+  "dataset_id": "dataset.ic2",
+  "generated_at": "2026-10-22T13:28:19.399426+00:00",
+  "source": {
+    "table_path": "data/datasets/ic2/data.parquet",
+    "system": "IC2",
+    "descriptor": "dataset.ic2"
+  },
+  "characterization": {
+    "n_rows": 3599,
+    "full_span": {
+      "start": "2024-07-05",
+      "end": "2024-07-26"
+    },
+    "healthy_span": {
+      "start": "2024-07-05",
+      "end": "2024-07-26",
+      "days": 22,
+      "rows": 3599
+    },
+    "daily_volume": {
+      "median": 299.0,
+      "min": 50,
+      "max": 1200,
+      "gap_floor": 15.0
+    },
+    "rate_per_day": 163.6,
+    "gaps": [
+      {
+        "start": "2024-07-06",
+        "end": "2024-07-09",
+        "days": 4
+      },
+      {
+        "start": "2024-07-20",
+        "end": "2024-07-23",
+        "days": 4
+      }
+    ],
+    "columns": {},
+    "runtime_seconds": {
+      "min": 0.010951,
+      "median": 109.6,
+      "p90": 821.4,
+      "p99": 4950.3,
+      "max": 12869.431729
+    }
+  },
+  "benchmark_window": {
+    "rule": {
+      "anchor": 0.8,
+      "train_days": 15,
+      "test_days": 7,
+      "history_days": 15,
+      "requested": {
+        "history_days": 120,
+        "test_days": 90,
+        "train_days": 60
+      },
+      "shortfall": true
+    },
+    "window_start": "2024-07-05",
+    "window_end": "2024-07-26",
+    "test_start": "2024-07-20",
+    "test_end": "2024-07-26",
+    "n_rows": 3599,
+    "rate_per_day": 163.6,
+    "gaps_in_window": [
+      {
+        "start": "2024-07-06",
+        "end": "2024-07-09",
+        "days": 4
+      },
+      {
+        "start": "2024-07-20",
+        "end": "2024-07-23",
+        "days": 4
+      }
+    ],
+    "healthy": false,
+    "rationale": "NO window clear of all missing blocks exists at this size; returned the anchor window. Source affords 22d, short of the 120d history + 90d evaluation requested, so this card runs 15d + 7d. Missing block(s): 2024-07-06..2024-07-09 (4d), 2024-07-20..2024-07-23 (4d). \u2014 seek other months or widen the window."
+  },
+  "decisions": [],
+  "provenance": {
+    "schema_versions": {
+      "input": "oda.job.v0.2.0",
+      "result": "oda.dataset_card.v0.1.0"
+    },
+    "environment": {
+      "python": "3.12.2",
+      "packages": []
+    },
+    "code": {
+      "package_version": "0.1.0",
+      "git_commit": "8cfad871c98a98778f91f2762c1992f0ad2a836d",
+      "source_hash": null
+    },
+    "inputs": [
+      {
+        "path": "data/datasets/ic2/data.parquet",
+        "sha256": "804cfb43197c6322294b435e53b386122a2aeef8ceb124f320cdb3521e8a6d14",
+        "size_bytes": 122452,
+        "mtime_epoch": 1792675120.0696921
+      }
+    ]
+  }
+}

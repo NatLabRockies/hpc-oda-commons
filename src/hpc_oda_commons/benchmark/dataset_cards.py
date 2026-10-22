@@ -289,7 +289,7 @@ def _benchmarks(
     recipes: list[dict[str, Any]],
     ctx: _Context,
 ) -> Iterator[str]:
-    from hpc_oda_commons.benchmarking.hpc.matrix import MAX_NODE_ROWS
+    from hpc_oda_commons.benchmarking.hpc.matrix import MAX_NODE_ROWS, RUNTIME_EXCLUDED
 
     tables = [t for t in leaderboard.get("tables", []) if name in t.get("roster", [])]
     when = str(leaderboard.get("generated_at", ""))[:10]
@@ -310,11 +310,12 @@ def _benchmarks(
         yield ""
         yield "### Job runtime"
         yield ""
-        reason = (
-            f"its window holds {rows:,} rows, more than one node takes ({MAX_NODE_ROWS:,})"
-            if rows > MAX_NODE_ROWS
-            else "nothing has run on its window"
-        )
+        if name in RUNTIME_EXCLUDED:
+            reason = f"it is excluded from the benchmark, because {RUNTIME_EXCLUDED[name]}"
+        elif rows > MAX_NODE_ROWS:
+            reason = f"its window holds {rows:,} rows, more than one node takes ({MAX_NODE_ROWS:,})"
+        else:
+            reason = "nothing has run on its window"
         yield f"It has a runtime window, but isn't on the runtime leaderboard: {reason}."
         yield ""
         yield from window_lines(dict(card))
