@@ -5,10 +5,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+import typer
 from typer.testing import CliRunner
 
 from hpc_oda_commons.datasets.descriptor import bundled_descriptor_paths, find_descriptor
 from hpc_oda_commons.qst.cli import app
+from hpc_oda_commons.qst.commands.datasets import descriptor_argument
 
 PM100 = bundled_descriptor_paths()["pm100"]
 
@@ -29,10 +32,11 @@ def test_recipes_write_takes_a_dataset_name(tmp_path: Path) -> None:
 
 
 def test_an_unknown_dataset_is_refused() -> None:
+    # The message is checked on the resolver: how the CLI frames it differs by typer release.
+    with pytest.raises(typer.BadParameter, match="neither a descriptor file nor a bundled"):
+        descriptor_argument(Path("no_such_dataset"))
     result = CliRunner().invoke(app, ["datasets", "fetch", "no_such_dataset", "--offline"])
     assert result.exit_code != 0
-    text = " ".join(result.output.replace("│", " ").split())  # Rich wraps it in a box
-    assert "neither a descriptor file nor a bundled dataset" in text
 
 
 def test_ceilings_go_to_the_folder_the_leaderboard_is_told(tmp_path: Path) -> None:
