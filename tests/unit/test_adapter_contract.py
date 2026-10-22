@@ -22,3 +22,12 @@ def test_slurmctld_adapter_parses_fixture(tmp_path: Path) -> None:
     adapter = SlurmctldAdapter()
     rows = adapter.parse(fixture)
     assert rows
+
+
+def test_adapter_metadata_is_its_registry_entry() -> None:
+    """The adapter reads its name and version from adapter.yml, as the registry does (#259)."""
+    from hpc_oda_commons.adapters.slurmctld.adapter import SLURMCTLD_METADATA
+    from hpc_oda_commons.registry.snapshot import load_registry_snapshot
+
+    entry = next(e for e in load_registry_snapshot(None).entries if e.id == SLURMCTLD_METADATA.id)
+    assert (entry.name, entry.version) == (SLURMCTLD_METADATA.name, SLURMCTLD_METADATA.version)
